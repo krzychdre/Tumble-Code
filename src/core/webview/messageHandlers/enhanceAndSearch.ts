@@ -132,12 +132,11 @@ export const enhanceAndSearchHandlers: DomainHandlerMap<"enhanceAndSearch"> = {
 
 			try {
 				// Get showRooIgnoredFiles setting from state
-				const { showRooIgnoredFiles = SETTINGS_DEFAULTS.showRooIgnoredFiles } =
-					(await provider.getState()) ?? {}
+				const { showRooIgnoredFiles = SETTINGS_DEFAULTS.showRooIgnoredFiles } = await provider.getState()
 
 				// Filter results using RooIgnoreController if showRooIgnoredFiles is false
 				let filteredResults = results
-				if (!showRooIgnoredFiles && rooIgnoreController) {
+				if (!showRooIgnoredFiles) {
 					const allowedPaths = rooIgnoreController.filterPaths(results.map((r) => r.path))
 					filteredResults = results.filter((r) => allowedPaths.includes(r.path))
 				}

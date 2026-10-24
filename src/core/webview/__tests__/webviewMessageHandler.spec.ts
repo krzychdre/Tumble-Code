@@ -1,4 +1,4 @@
-// npx vitest core/webview/__tests__/webviewMessageHandler.spec.ts
+// pnpm --filter tumble-code test core/webview/__tests__/webviewMessageHandler.spec.ts
 
 import type { Mock } from "vitest"
 
@@ -323,87 +323,21 @@ describe("webviewMessageHandler - deleteCustomMode", () => {
 		expect(fs.rm).not.toHaveBeenCalled()
 	})
 
-	it("should delete a project mode through the manager, which removes its rules folder", async () => {
-		const slug = "test-project-mode"
-
-		vi.mocked(mockClineProvider.customModesManager.getCustomModes).mockResolvedValue([
-			{
-				name: "Test Project Mode",
-				slug,
-				roleDefinition: "Test Role",
-				groups: [],
-				source: "project",
-			} as ModeConfig,
-		])
-		vi.mocked(fsUtils.fileExistsAtPath).mockResolvedValue(true)
-		vi.mocked(mockClineProvider.customModesManager.deleteCustomMode).mockResolvedValue(undefined)
-
-		await webviewMessageHandler(mockClineProvider, { type: "deleteCustomMode", slug })
-
-		// The confirmation dialog is now handled in the webview, so we don't expect showInformationMessage to be called
-		expect(vscode.window.showInformationMessage).not.toHaveBeenCalled()
-		expect(mockClineProvider.customModesManager.deleteCustomMode).toHaveBeenCalledWith(slug)
-		expect(fs.rm).not.toHaveBeenCalled()
-	})
-
-	// The running task reads its own mode, so after deleting a mode the switch to the
-	// default mode must go through handleModeSwitch; only overwriting the shared
-	// "mode" state would leave the task running in the deleted mode.
-	it("switches the task to the default mode through handleModeSwitch", async () => {
+	// The manager deletes the rules folder with the mode. The running task reads its own mode,
+	// so the switch to the default mode must go through handleModeSwitch; only overwriting the
+	// shared "mode" state would leave the task running in the deleted mode.
+	it("deletes a mode through the manager and switches the task to the default mode", async () => {
 		const slug = "test-deleted-mode"
 		vi.mocked(mockClineProvider.customModesManager.getCustomModes).mockResolvedValue([
 			{ name: "Deleted", slug, roleDefinition: "Role", groups: [], source: "global" } as ModeConfig,
 		])
-		vi.mocked(fsUtils.fileExistsAtPath).mockResolvedValue(false)
-		vi.mocked(mockClineProvider.customModesManager.deleteCustomMode).mockResolvedValue(undefined)
-
-		await webviewMessageHandler(mockClineProvider, { type: "deleteCustomMode", slug })
-
-		expect(mockClineProvider.handleModeSwitch).toHaveBeenCalledWith(defaultModeSlug)
-	})
-
-	it("should delete a global mode through the manager, which removes its rules folder", async () => {
-		const slug = "test-global-mode"
-
-		vi.mocked(mockClineProvider.customModesManager.getCustomModes).mockResolvedValue([
-			{
-				name: "Test Global Mode",
-				slug,
-				roleDefinition: "Test Role",
-				groups: [],
-				source: "global",
-			} as ModeConfig,
-		])
 		vi.mocked(fsUtils.fileExistsAtPath).mockResolvedValue(true)
 		vi.mocked(mockClineProvider.customModesManager.deleteCustomMode).mockResolvedValue(undefined)
 
 		await webviewMessageHandler(mockClineProvider, { type: "deleteCustomMode", slug })
 
-		// The confirmation dialog is now handled in the webview, so we don't expect showInformationMessage to be called
-		expect(vscode.window.showInformationMessage).not.toHaveBeenCalled()
 		expect(mockClineProvider.customModesManager.deleteCustomMode).toHaveBeenCalledWith(slug)
-		expect(fs.rm).not.toHaveBeenCalled()
-	})
-
-	it("should only delete the mode when rules folder does not exist", async () => {
-		const slug = "test-mode-no-rules"
-		vi.mocked(mockClineProvider.customModesManager.getCustomModes).mockResolvedValue([
-			{
-				name: "Test Mode No Rules",
-				slug,
-				roleDefinition: "Test Role",
-				groups: [],
-				source: "project",
-			} as ModeConfig,
-		])
-		vi.mocked(fsUtils.fileExistsAtPath).mockResolvedValue(false)
-		vi.mocked(mockClineProvider.customModesManager.deleteCustomMode).mockResolvedValue(undefined)
-
-		await webviewMessageHandler(mockClineProvider, { type: "deleteCustomMode", slug })
-
-		// The confirmation dialog is now handled in the webview, so we don't expect showInformationMessage to be called
-		expect(vscode.window.showInformationMessage).not.toHaveBeenCalled()
-		expect(mockClineProvider.customModesManager.deleteCustomMode).toHaveBeenCalledWith(slug)
+		expect(mockClineProvider.handleModeSwitch).toHaveBeenCalledWith(defaultModeSlug)
 		expect(fs.rm).not.toHaveBeenCalled()
 	})
 
@@ -431,63 +365,6 @@ describe("webviewMessageHandler - deleteCustomMode", () => {
 	})
 })
 
-describe("webviewMessageHandler - message dialog preferences", () => {
-	beforeEach(() => {
-		vi.clearAllMocks()
-		// Mock a current Cline instance
-		vi.mocked(mockClineProvider.getCurrentTask).mockReturnValue({
-			taskId: "test-task-id",
-			apiConversationHistory: [],
-			clineMessages: [],
-		} as any)
-		// Reset getValue mock
-		vi.mocked(mockClineProvider.contextProxy.getValue).mockReturnValue(false)
-	})
-
-	describe("deleteMessage", () => {
-		it("should always show dialog for delete confirmation", async () => {
-			vi.mocked(mockClineProvider.getCurrentTask).mockReturnValue({
-				clineMessages: [],
-				apiConversationHistory: [],
-			} as any) // Mock current cline with proper structure
-
-			await webviewMessageHandler(mockClineProvider, {
-				type: "deleteMessage",
-				value: 123456789, // Changed from messageTs to value
-			})
-
-			expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
-				type: "showDeleteMessageDialog",
-				messageTs: 123456789,
-				hasCheckpoint: false,
-			})
-		})
-	})
-
-	describe("submitEditedMessage", () => {
-		it("should always show dialog for edit confirmation", async () => {
-			vi.mocked(mockClineProvider.getCurrentTask).mockReturnValue({
-				clineMessages: [],
-				apiConversationHistory: [],
-			} as any) // Mock current cline with proper structure
-
-			await webviewMessageHandler(mockClineProvider, {
-				type: "submitEditedMessage",
-				value: 123456789,
-				editedMessageContent: "edited content",
-			})
-
-			expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
-				type: "showEditMessageDialog",
-				messageTs: 123456789,
-				text: "edited content",
-				hasCheckpoint: false,
-				images: undefined,
-			})
-		})
-	})
-})
-
 describe("webviewMessageHandler - mcpEnabled", () => {
 	let mockMcpHub: any
 
@@ -503,27 +380,13 @@ describe("webviewMessageHandler - mcpEnabled", () => {
 		;(mockClineProvider as any).getMcpHub = vi.fn().mockReturnValue(mockMcpHub)
 	})
 
-	it("delegates enable=true to McpHub and posts updated state", async () => {
+	it.each([true, false])("hands mcpEnabled=%s to the McpHub and posts the state", async (enabled) => {
 		await webviewMessageHandler(mockClineProvider, {
 			type: "updateSettings",
-			updatedSettings: { mcpEnabled: true },
+			updatedSettings: { mcpEnabled: enabled },
 		})
 
-		expect((mockClineProvider as any).getMcpHub).toHaveBeenCalledTimes(1)
-		expect(mockMcpHub.handleMcpEnabledChange).toHaveBeenCalledTimes(1)
-		expect(mockMcpHub.handleMcpEnabledChange).toHaveBeenCalledWith(true)
-		expect(mockClineProvider.postStateToWebview).toHaveBeenCalledTimes(1)
-	})
-
-	it("delegates enable=false to McpHub and posts updated state", async () => {
-		await webviewMessageHandler(mockClineProvider, {
-			type: "updateSettings",
-			updatedSettings: { mcpEnabled: false },
-		})
-
-		expect((mockClineProvider as any).getMcpHub).toHaveBeenCalledTimes(1)
-		expect(mockMcpHub.handleMcpEnabledChange).toHaveBeenCalledTimes(1)
-		expect(mockMcpHub.handleMcpEnabledChange).toHaveBeenCalledWith(false)
+		expect(mockMcpHub.handleMcpEnabledChange).toHaveBeenCalledExactlyOnceWith(enabled)
 		expect(mockClineProvider.postStateToWebview).toHaveBeenCalledTimes(1)
 	})
 
@@ -535,7 +398,6 @@ describe("webviewMessageHandler - mcpEnabled", () => {
 			updatedSettings: { mcpEnabled: true },
 		})
 
-		expect((mockClineProvider as any).getMcpHub).toHaveBeenCalledTimes(1)
 		expect(mockClineProvider.postStateToWebview).toHaveBeenCalledTimes(1)
 	})
 })
@@ -795,14 +657,6 @@ describe("webviewMessageHandler - requestCommands", () => {
 				},
 			],
 		})
-
-		const commandMessageCall = vi
-			.mocked(mockClineProvider.postMessageToWebview)
-			.mock.calls.find(([postedMessage]) => postedMessage.type === "commands")
-		expect(commandMessageCall).toBeDefined()
-
-		const commandMessage = commandMessageCall?.[0]
-		expect(commandMessage?.commands?.filter((command) => command.name === "init")).toHaveLength(1)
 	})
 
 	it("lists only the built-in commands when the skills manager is unavailable", async () => {

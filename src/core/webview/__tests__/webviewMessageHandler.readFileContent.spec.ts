@@ -98,112 +98,31 @@ describe("webviewMessageHandler - readFileContent path traversal prevention", ()
 		vi.mocked(mockProvider.getCurrentTask).mockReturnValue({ cwd: MOCK_CWD } as any)
 	})
 
-	it("allows reading a file within the workspace using a relative path", async () => {
-		await webviewMessageHandler(mockProvider, {
-			type: "readFileContent",
-			text: "src/index.ts",
-		})
+	it.each([
+		["a relative path", "src/index.ts"],
+		["an absolute path", `${MOCK_CWD}/src/index.ts`],
+	])("reads a file inside the workspace given %s", async (_name, text) => {
+		await webviewMessageHandler(mockProvider, { type: "readFileContent", text })
 
 		expect(fs.readFile).toHaveBeenCalled()
-		expect(mockProvider.postMessageToWebview).toHaveBeenCalledWith(
-			expect.objectContaining({
-				type: "fileContent",
-				fileContent: expect.objectContaining({
-					path: "src/index.ts",
-					content: "file content here",
-				}),
-			}),
-		)
+		expect(mockProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "fileContent",
+			fileContent: { path: text, content: "file content here" },
+		})
 	})
 
-	it("blocks path traversal with ../", async () => {
-		await webviewMessageHandler(mockProvider, {
-			type: "readFileContent",
-			text: "../../../etc/passwd",
-		})
+	it.each([
+		["a ../ traversal", "../../../etc/passwd", "Path is outside workspace"],
+		["an absolute path outside the workspace", "/etc/shadow", "Path is outside workspace"],
+		["a traversal in the middle of a path", "src/../../../../etc/passwd", "Path is outside workspace"],
+		["no path", "", "No path provided"],
+	])("refuses %s without reading anything", async (_name, text, error) => {
+		await webviewMessageHandler(mockProvider, { type: "readFileContent", text })
 
 		expect(fs.readFile).not.toHaveBeenCalled()
-		expect(mockProvider.postMessageToWebview).toHaveBeenCalledWith(
-			expect.objectContaining({
-				type: "fileContent",
-				fileContent: expect.objectContaining({
-					path: "../../../etc/passwd",
-					content: null,
-					error: "Path is outside workspace",
-				}),
-			}),
-		)
-	})
-
-	it("blocks absolute paths outside the workspace", async () => {
-		await webviewMessageHandler(mockProvider, {
-			type: "readFileContent",
-			text: "/etc/shadow",
+		expect(mockProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "fileContent",
+			fileContent: expect.objectContaining({ content: null, error }),
 		})
-
-		expect(fs.readFile).not.toHaveBeenCalled()
-		expect(mockProvider.postMessageToWebview).toHaveBeenCalledWith(
-			expect.objectContaining({
-				type: "fileContent",
-				fileContent: expect.objectContaining({
-					path: "/etc/shadow",
-					content: null,
-					error: "Path is outside workspace",
-				}),
-			}),
-		)
-	})
-
-	it("blocks traversal disguised in the middle of a path", async () => {
-		await webviewMessageHandler(mockProvider, {
-			type: "readFileContent",
-			text: "src/../../../../etc/passwd",
-		})
-
-		expect(fs.readFile).not.toHaveBeenCalled()
-		expect(mockProvider.postMessageToWebview).toHaveBeenCalledWith(
-			expect.objectContaining({
-				type: "fileContent",
-				fileContent: expect.objectContaining({
-					content: null,
-					error: "Path is outside workspace",
-				}),
-			}),
-		)
-	})
-
-	it("returns error when no path is provided", async () => {
-		await webviewMessageHandler(mockProvider, {
-			type: "readFileContent",
-			text: "",
-		})
-
-		expect(fs.readFile).not.toHaveBeenCalled()
-		expect(mockProvider.postMessageToWebview).toHaveBeenCalledWith(
-			expect.objectContaining({
-				type: "fileContent",
-				fileContent: expect.objectContaining({
-					content: null,
-					error: "No path provided",
-				}),
-			}),
-		)
-	})
-
-	it("allows reading a file using an absolute path within the workspace", async () => {
-		await webviewMessageHandler(mockProvider, {
-			type: "readFileContent",
-			text: `${MOCK_CWD}/src/index.ts`,
-		})
-
-		expect(fs.readFile).toHaveBeenCalled()
-		expect(mockProvider.postMessageToWebview).toHaveBeenCalledWith(
-			expect.objectContaining({
-				type: "fileContent",
-				fileContent: expect.objectContaining({
-					content: "file content here",
-				}),
-			}),
-		)
 	})
 })

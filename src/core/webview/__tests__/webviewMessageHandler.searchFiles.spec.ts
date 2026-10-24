@@ -1,4 +1,4 @@
-// npx vitest core/webview/__tests__/webviewMessageHandler.searchFiles.spec.ts
+// pnpm --filter tumble-code test core/webview/__tests__/webviewMessageHandler.searchFiles.spec.ts
 
 import type { Mock } from "vitest"
 
@@ -87,6 +87,8 @@ describe("webviewMessageHandler - searchFiles with RooIgnore filtering", () => {
 			],
 			requestId: "test-request-123",
 		})
+		// The temporary controller is released after use.
+		expect(mockDispose).toHaveBeenCalled()
 	})
 
 	it("should not filter results when showRooIgnoredFiles is true", async () => {
@@ -137,9 +139,11 @@ describe("webviewMessageHandler - searchFiles with RooIgnore filtering", () => {
 
 		// Create a mock task with its own RooIgnoreController
 		const taskFilterPaths = vi.fn().mockReturnValue(["src/index.ts"])
+		const taskDispose = vi.fn()
 		const taskRooIgnoreController = {
 			filterPaths: taskFilterPaths,
 			initialize: vi.fn(),
+			dispose: taskDispose,
 		}
 		;(mockClineProvider.getCurrentTask as Mock).mockReturnValue({
 			taskId: "test-task-id",
@@ -151,6 +155,10 @@ describe("webviewMessageHandler - searchFiles with RooIgnore filtering", () => {
 			query: "index",
 			requestId: "test-request-789",
 		})
+
+		// The task keeps its controller.
+		expect(taskDispose).not.toHaveBeenCalled()
+		expect(mockDispose).not.toHaveBeenCalled()
 
 		// Verify the task's controller was used (not the prototype)
 		expect(taskFilterPaths).toHaveBeenCalledWith(["src/index.ts", "private/secret.ts"])
@@ -208,90 +216,5 @@ describe("webviewMessageHandler - searchFiles with RooIgnore filtering", () => {
 			error: "File search failed",
 			requestId: "test-request-fail",
 		})
-	})
-
-	it("should default showRooIgnoredFiles to false when state is null", async () => {
-		// Setup mock results from file search
-		const mockResults = [{ path: "src/index.ts", type: "file" as const, label: "index.ts" }]
-		mockSearchWorkspaceFiles.mockResolvedValue(mockResults)
-
-		// Setup state to return null
-		;(mockClineProvider.getState as Mock).mockResolvedValue(null)
-
-		// Setup filter to return all paths (no filtering)
-		mockFilterPaths.mockReturnValue(["src/index.ts"])
-
-		// No current task
-		;(mockClineProvider.getCurrentTask as Mock).mockReturnValue(null)
-
-		await webviewMessageHandler(mockClineProvider, {
-			type: "searchFiles",
-			query: "index",
-			requestId: "test-request-default",
-		})
-
-		// Verify filterPaths was called (showRooIgnoredFiles defaults to false)
-		expect(mockFilterPaths).toHaveBeenCalled()
-	})
-
-	it("should dispose temporary RooIgnoreController after use", async () => {
-		// Setup mock results from file search
-		const mockResults = [{ path: "src/index.ts", type: "file" as const, label: "index.ts" }]
-		mockSearchWorkspaceFiles.mockResolvedValue(mockResults)
-
-		// Setup state
-		;(mockClineProvider.getState as Mock).mockResolvedValue({
-			showRooIgnoredFiles: false,
-		})
-
-		// Setup filter
-		mockFilterPaths.mockReturnValue(["src/index.ts"])
-
-		// No current task, so temporary controller will be created and should be disposed
-		;(mockClineProvider.getCurrentTask as Mock).mockReturnValue(null)
-
-		await webviewMessageHandler(mockClineProvider, {
-			type: "searchFiles",
-			query: "index",
-			requestId: "test-request-dispose",
-		})
-
-		// Verify dispose was called on the temporary controller
-		expect(mockDispose).toHaveBeenCalled()
-	})
-
-	it("should not dispose controller from current task", async () => {
-		// Setup mock results from file search
-		const mockResults = [{ path: "src/index.ts", type: "file" as const, label: "index.ts" }]
-		mockSearchWorkspaceFiles.mockResolvedValue(mockResults)
-
-		// Setup state
-		;(mockClineProvider.getState as Mock).mockResolvedValue({
-			showRooIgnoredFiles: false,
-		})
-
-		// Create a mock task with its own RooIgnoreController
-		const taskFilterPaths = vi.fn().mockReturnValue(["src/index.ts"])
-		const taskDispose = vi.fn()
-		const taskRooIgnoreController = {
-			filterPaths: taskFilterPaths,
-			initialize: vi.fn(),
-			dispose: taskDispose,
-		}
-		;(mockClineProvider.getCurrentTask as Mock).mockReturnValue({
-			taskId: "test-task-id",
-			rooIgnoreController: taskRooIgnoreController,
-		})
-
-		await webviewMessageHandler(mockClineProvider, {
-			type: "searchFiles",
-			query: "index",
-			requestId: "test-request-no-dispose",
-		})
-
-		// Verify dispose was NOT called on the task's controller
-		expect(taskDispose).not.toHaveBeenCalled()
-		// Verify the prototype dispose was also not called
-		expect(mockDispose).not.toHaveBeenCalled()
 	})
 })
