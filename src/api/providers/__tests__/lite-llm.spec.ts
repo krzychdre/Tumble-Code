@@ -486,55 +486,31 @@ describe("LiteLLMHandler", () => {
 
 	describe("Gemini thought signature injection", () => {
 		describe("isGeminiModel detection", () => {
-			it("should detect Gemini 3 models", () => {
+			// Gemini 2.5 and later validate thought signatures, under any LiteLLM prefix or model group name.
+			it.each([
+				["gemini-2.5-pro", true],
+				["gemini-3-pro-preview", true],
+				["gemini-3.8-flash", true],
+				["gemini-4-argon", true],
+				["gemini-10-ultra", true],
+				["gemini/gemini-4-argon", true],
+				["vertex_ai/gemini-4-argon", true],
+				["vertex/gemini-2.5-pro", true],
+				["openrouter/google/gemini-3.1-pro-preview", true],
+				["Gemini 3 Pro", true],
+				["google/gemini 2.5 pro", true],
+				["gemini-2.0-flash", false],
+				["gemini/gemini-1.5-pro", false],
+				["gemini-flash-latest", false],
+				["gemini/gemini-embedding-001", false],
+				["gemma-3-27b-it", false],
+				["notgemini-4", false],
+				["gpt-4", false],
+				["claude-3-opus", false],
+			])("%s -> %s", (modelId, expected) => {
 				const handler = new LiteLLMHandler(mockOptions)
-				const isGeminiModel = (handler as any).isGeminiModel.bind(handler)
 
-				expect(isGeminiModel("gemini-3-pro")).toBe(true)
-				expect(isGeminiModel("gemini-3-flash")).toBe(true)
-				expect(isGeminiModel("gemini-3-pro-preview")).toBe(true)
-			})
-
-			it("should detect Gemini 2.5 models", () => {
-				const handler = new LiteLLMHandler(mockOptions)
-				const isGeminiModel = (handler as any).isGeminiModel.bind(handler)
-
-				expect(isGeminiModel("gemini-2.5-pro")).toBe(true)
-				expect(isGeminiModel("gemini-2.5-flash")).toBe(true)
-			})
-
-			it("should detect Gemini models with spaces (LiteLLM model groups)", () => {
-				const handler = new LiteLLMHandler(mockOptions)
-				const isGeminiModel = (handler as any).isGeminiModel.bind(handler)
-
-				// LiteLLM model groups often use space-separated names with title case
-				expect(isGeminiModel("Gemini 3 Pro")).toBe(true)
-				expect(isGeminiModel("Gemini 3 Flash")).toBe(true)
-				expect(isGeminiModel("gemini 3 pro")).toBe(true)
-				expect(isGeminiModel("Gemini 2.5 Pro")).toBe(true)
-				expect(isGeminiModel("gemini 2.5 flash")).toBe(true)
-			})
-
-			it("should detect provider-prefixed Gemini models", () => {
-				const handler = new LiteLLMHandler(mockOptions)
-				const isGeminiModel = (handler as any).isGeminiModel.bind(handler)
-
-				expect(isGeminiModel("google/gemini-3-pro")).toBe(true)
-				expect(isGeminiModel("vertex_ai/gemini-3-pro")).toBe(true)
-				expect(isGeminiModel("vertex/gemini-2.5-pro")).toBe(true)
-				// Space-separated variants with provider prefix
-				expect(isGeminiModel("google/gemini 3 pro")).toBe(true)
-				expect(isGeminiModel("vertex_ai/gemini 2.5 pro")).toBe(true)
-			})
-
-			it("should not detect non-Gemini models", () => {
-				const handler = new LiteLLMHandler(mockOptions)
-				const isGeminiModel = (handler as any).isGeminiModel.bind(handler)
-
-				expect(isGeminiModel("gpt-4")).toBe(false)
-				expect(isGeminiModel("claude-3-opus")).toBe(false)
-				expect(isGeminiModel("gemini-1.5-pro")).toBe(false)
-				expect(isGeminiModel("gemini-2.0-flash")).toBe(false)
+				expect((handler as any).isGeminiModel(modelId)).toBe(expected)
 			})
 		})
 
