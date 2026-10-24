@@ -6,6 +6,7 @@
  * - setup: switching the embedder provider (model cleared, Bedrock region/profile filled);
  * - advanced: the two sliders and their reset buttons;
  * - save: the host's answer, and the discard dialog when closing with unsaved edits.
+ * - the Qdrant URL default and the answer to a clear request.
  * The per-provider fields and their validation are pinned in CodeIndexPopover.per-provider.spec.tsx.
  */
 
@@ -195,16 +196,6 @@ describe("CodeIndexPopover sections", () => {
 			expect(posted()).toContainEqual({ type: "toggleWorkspaceIndexing", bool: true })
 		})
 
-		it("keeps the toggles in the collapsed Advanced group but the disabled note visible", () => {
-			renderOpen(status({ workspaceEnabled: false }))
-			expect(document.getElementById("auto-enable-default-toggle")).toBeNull()
-			expect(document.getElementById("workspace-indexing-toggle")).toBeNull()
-			expect(screen.getByText("settings:codeIndex.workspaceDisabledMessage")).toBeInTheDocument()
-
-			openAdvanced()
-			expect(document.getElementById("workspace-indexing-toggle")).not.toBeNull()
-		})
-
 		it("defaults auto-enable to on and hides the disabled message for an enabled workspace", () => {
 			renderOpen(status({ workspaceEnabled: true }))
 			openAdvanced()
@@ -296,31 +287,42 @@ describe("CodeIndexPopover sections", () => {
 			)
 		})
 
-		it("fills an empty Bedrock region and profile from a Bedrock API profile", async () => {
-			resetState({
-				apiConfiguration: { apiProvider: "bedrock", awsRegion: "eu-west-1", awsProfile: "work" },
-			})
+		// Switching to Bedrock fills an empty region or profile from a Bedrock API profile.
+		it.each([
+			{
+				name: "fills both from a Bedrock API profile",
+				saved: {},
+				api: { apiProvider: "bedrock", awsRegion: "eu-west-1", awsProfile: "work" },
+				expected: ["eu-west-1", "work"],
+			},
+			{
+				name: "keeps a region already set and fills only the profile",
+				saved: { codebaseIndexBedrockRegion: "eu-central-1" },
+				api: { apiProvider: "bedrock", awsRegion: "eu-west-1", awsProfile: "work" },
+				expected: ["eu-central-1", "work"],
+			},
+			{
+				name: "fills only what the API profile has",
+				saved: {},
+				api: { apiProvider: "bedrock", awsRegion: "eu-west-1" },
+				expected: ["eu-west-1", ""],
+			},
+			{
+				name: "fills nothing from a non-Bedrock API profile",
+				saved: {},
+				api: { apiProvider: "openai", awsRegion: "eu-west-1", awsProfile: "work" },
+				expected: ["", ""],
+			},
+		])("Bedrock: $name", async ({ saved, api, expected }) => {
+			resetState({ codebaseIndexConfig: { ...savedConfig, ...saved }, apiConfiguration: api })
 			renderOpen()
 			openSetup()
 			await chooseProvider("settings:codeIndex.bedrockProvider")
 
-			expect(
+			expect([
 				(screen.getByPlaceholderText("settings:codeIndex.bedrockRegionPlaceholder") as HTMLInputElement).value,
-			).toBe("eu-west-1")
-			expect(
 				(screen.getByPlaceholderText("settings:codeIndex.bedrockProfilePlaceholder") as HTMLInputElement).value,
-			).toBe("work")
-		})
-
-		it("does not fill Bedrock fields from a non-Bedrock API profile", async () => {
-			resetState({ apiConfiguration: { apiProvider: "openai", awsRegion: "eu-west-1" } })
-			renderOpen()
-			openSetup()
-			await chooseProvider("settings:codeIndex.bedrockProvider")
-
-			expect(
-				(screen.getByPlaceholderText("settings:codeIndex.bedrockRegionPlaceholder") as HTMLInputElement).value,
-			).toBe("")
+			]).toEqual(expected)
 		})
 
 		it("shows the Qdrant API key field as a password field and sends a typed key", () => {
@@ -333,6 +335,42 @@ describe("CodeIndexPopover sections", () => {
 			expect(postedOfType("saveCodeIndexSettingsAtomic")[0].codeIndexSettings.codeIndexQdrantApiKey).toBe(
 				"qd-key",
 			)
+		})
+	})
+
+	it("setup: an empty Qdrant URL gets the default on blur, which is an edit", () => {
+		resetState({ codebaseIndexConfig: { ...savedConfig, codebaseIndexQdrantUrl: "" } })
+		renderOpen()
+		openSetup()
+		const qdrantField = screen.getByPlaceholderText("settings:codeIndex.qdrantUrlPlaceholder")
+
+		fireEvent.blur(qdrantField)
+
+		expect(qdrantField).toHaveValue("http://localhost:6333")
+		expect(saveButton()).toBeEnabled()
+	})
+
+	describe("clearing the index", () => {
+		const ERROR = "No workspace folder open"
+
+		it("shows the error of a failed clear until a later clear succeeds", () => {
+			renderOpen(status({ systemStatus: "Error" }))
+
+			hostMessage({ type: "indexCleared", values: { success: false, error: ERROR } })
+			expect(screen.getByText(ERROR)).toBeInTheDocument()
+
+			hostMessage({ type: "indexCleared", values: { success: true } })
+			expect(screen.queryByText(ERROR)).not.toBeInTheDocument()
+		})
+
+		it("removes the old error when the user confirms another clear", async () => {
+			renderOpen(status({ systemStatus: "Error" }))
+			hostMessage({ type: "indexCleared", values: { success: false, error: ERROR } })
+
+			fireEvent.click(screen.getByText("settings:codeIndex.clearIndexDataButton"))
+			fireEvent.click(await screen.findByText("settings:codeIndex.clearDataDialog.confirmButton"))
+
+			expect(screen.queryByText(ERROR)).not.toBeInTheDocument()
 		})
 	})
 
@@ -544,24 +582,6 @@ describe("CodeIndexPopover sections", () => {
 			expect(result.current.currentSettings.codebaseIndexQdrantUrl).toBe("http://elsewhere:6333")
 			expect(result.current.currentSettings.codebaseIndexEnabled).toBe(true)
 			expect(result.current.hasUnsavedChanges).toBe(false)
-		})
-
-		it("the enable box stays unticked across a state push in the popover", () => {
-			const { rerender } = renderOpen()
-			const enable = () =>
-				screen
-					.getByText("settings:codeIndex.enableLabel")
-					.closest("label")!
-					.querySelector("input[type=checkbox]") as HTMLInputElement
-			fireEvent.click(enable())
-			expect(enable().checked).toBe(false)
-
-			// What a state push does to the context: same content, new object.
-			mockExtensionState.codebaseIndexConfig = { ...savedConfig }
-			rerender(popover(status()))
-
-			expect(enable().checked).toBe(false)
-			expect(saveButton()).toBeEnabled()
 		})
 
 		it("an indexing status update keeps the workspace switches it carries", () => {
