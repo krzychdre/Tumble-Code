@@ -55,6 +55,9 @@ plan. The vision mode is built in since 2026-10-13 (`DEFAULT_MODES` in `packages
   dependency refresh (bot, GitHub Actions, planned majors, Python service) plus refactoring and test-hygiene
   items for the host, CLI, webview, cloud service and docs. Done 2026-10-23 (#918 to #996, final verification in
   #997); its "Follow-ups found during execution" section lists what is still open.
+- [`2026-10-25_00-26_test-refactor-round-5.md`](2026-10-25_00-26_test-refactor-round-5.md): round 5, test
+  suites pruned to tests of our own logic (no tests of mocks, libraries or impossible states), lane by lane, with
+  coverage and mutation proof per family.
 - [`2026-09-27_ui-modernization.md`](2026-09-27_ui-modernization.md): UI proposals for the VS Code panel, the cloud
   web panel and the CLI; its progress logs record what landed in steps 1 to 5.
 - The 2026-09-24 refactor master plan (`ai_plans/2026-09-24_refactor/`) is intentionally kept on the unmerged
