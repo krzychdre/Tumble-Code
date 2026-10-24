@@ -30,6 +30,36 @@ exports[`JSON output (characterization) > json: answer repeated in completion_re
 "
 `;
 
+exports[`JSON output (characterization) > json: automatic retry 1`] = `
+"{
+  "type": "result",
+  "success": true,
+  "content": "Hi.",
+  "events": [
+    {
+      "type": "system",
+      "subtype": "init",
+      "content": "Task started",
+      "schemaVersion": 1,
+      "protocol": "roo-cli-stream"
+    },
+    {
+      "type": "user",
+      "id": 1,
+      "content": "Say hi",
+      "done": true
+    },
+    {
+      "type": "assistant",
+      "id": 4,
+      "content": "Hi.",
+      "done": true
+    }
+  ]
+}
+"
+`;
+
 exports[`JSON output (characterization) > json: command output 1`] = `
 "{
   "type": "result",
@@ -456,6 +486,15 @@ exports[`JSON output (characterization) > stream-json: answer repeated in comple
 "
 `;
 
+exports[`JSON output (characterization) > stream-json: automatic retry 1`] = `
+"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream"}
+{"type":"user","id":1,"content":"Say hi","done":true}
+{"type":"assistant","id":4,"content":"Hi."}
+{"type":"assistant","id":4,"content":"Hi.","done":true}
+{"type":"result","id":5,"content":"Hi.","done":true,"success":true}
+"
+`;
+
 exports[`JSON output (characterization) > stream-json: command output 1`] = `
 "{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream"}
 {"type":"user","id":1,"content":"List files","done":true}
@@ -571,6 +610,15 @@ exports[`JSON output (characterization) > stream-json: two new messages in one s
 exports[`print mode output (characterization) > answer repeated in completion_result 1`] = `
 "
 [assistant] The sum is 5.
+
+[task complete]
+"
+`;
+
+exports[`print mode output (characterization) > automatic retry 1`] = `
+"«err:[retry] API request failed: OpenAI completion error: Connection error. (connect ECONNREFUSED 127.0.0.1:59999) - retrying in 2 s
+»
+[assistant] Hi.
 
 [task complete]
 "

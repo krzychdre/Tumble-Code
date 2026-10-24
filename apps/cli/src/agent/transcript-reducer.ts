@@ -44,6 +44,7 @@ import type { FileResult, ModeResult, SlashCommandResult } from "../ui/component
 import { extractToolData, formatToolAskMessage, parseTodosFromToolInfo } from "../ui/utils/tools.js"
 import { mcpServersFromMessage } from "../lib/utils/mcp-status.js"
 import { deliveriesOf } from "./transcript-deliveries.js"
+import { describeApiRetry } from "./api-retry.js"
 import { parseMcpAsk, type McpAskDetails } from "../lib/utils/mcp-ask.js"
 
 /**
@@ -501,10 +502,14 @@ function reduceSay(r: Reduction, ts: number, say: ClineSay, text: string, partia
 	}
 
 	let role: TUIMessage["role"] = "assistant"
+	let content = text
 	let toolName: string | undefined
 	let toolData: ToolData | undefined
 
-	if (say === "command_output") {
+	if (say === "api_req_retry_delayed") {
+		role = "system"
+		content = describeApiRetry(text)
+	} else if (say === "command_output") {
 		role = "tool"
 		toolName = "execute_command"
 		toolData = {
@@ -589,7 +594,7 @@ function reduceSay(r: Reduction, ts: number, say: ClineSay, text: string, partia
 	r.addMessage({
 		id: messageId,
 		role,
-		content: text || "",
+		content: content || "",
 		toolName,
 		partial,
 		originalType: say,

@@ -14,6 +14,24 @@ import { getApiErrorStatus, type ProviderErrorFields } from "../../apiErrors"
 import { logger } from "../../../utils/logging"
 
 /**
+ * The message with the innermost `cause` appended. A network failure arrives as an SDK
+ * "Connection error." or "Request timed out." whose cause chain ends in the socket error
+ * that names the host and the reason (`connect ECONNREFUSED 127.0.0.1:8080`, undici's
+ * `Connect Timeout Error (attempted address: ..., timeout: 10000ms)`); without it the user
+ * cannot tell which endpoint failed or why.
+ */
+function withRootCause(message: string, error: Error): string {
+	let root: unknown = error.cause
+	while (root instanceof Error && root.cause instanceof Error) {
+		root = root.cause
+	}
+	if (!(root instanceof Error) || !root.message || message.includes(root.message)) {
+		return message
+	}
+	return `${message} (${root.message})`
+}
+
+/**
  * Handles API provider errors and transforms them into user-friendly messages
  * while preserving important metadata for retry logic and UI display.
  *
@@ -60,7 +78,7 @@ export function handleProviderError(
 
 	if (error instanceof Error) {
 		const anyErr = error as Error & ProviderErrorFields
-		const msg = anyErr?.error?.metadata?.raw || error.message || ""
+		const msg = withRootCause(anyErr?.error?.metadata?.raw || error.message || "", error)
 
 		// Log the original error details for debugging
 		logger.error(`[${providerName}] API error:`, {

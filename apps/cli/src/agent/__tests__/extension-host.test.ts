@@ -1059,8 +1059,8 @@ describe("ExtensionHost", () => {
 			message: { ts: 9, type: "ask" as const, ask: "api_req_failed" as const, text, partial: false },
 		})
 
-		it("rejects runTask with the provider's error when exitOnApiRequestFailed is set", async () => {
-			const host = createTestHost({ exitOnApiRequestFailed: true })
+		it("rejects runTask with the provider's error when unattended is set", async () => {
+			const host = createTestHost({ unattended: true })
 			host.markWebviewReady()
 			const client = getPrivate(host, "client") as ExtensionClient
 
@@ -1133,6 +1133,26 @@ describe("ExtensionHost", () => {
 			host.client.handleMessage(push(text(1, "test prompt"), retry(2), text(3, "later")))
 
 			await expect(taskPromise).rejects.toThrow("429 Too Many Requests")
+		}, 5000)
+
+		// Without --exit-on-error an unattended print run keeps the core's
+		// retries, but only as many as a background task gets.
+		it("fails an unattended run at the 7th failed attempt", async () => {
+			const host = createTestHost({ unattended: true })
+			host.markWebviewReady()
+			const started = { ts: 2, type: "say", say: "api_req_started", text: "{}" }
+			const refused = (ts: number) => ({ ...retry(ts), text: "Connection error.\n<retry_timer>5</retry_timer>" })
+			const retries = [3, 4, 5, 6, 7, 8].map(refused)
+			let settled = false
+
+			const taskPromise = host.runTask("test prompt")
+			void taskPromise.catch(() => {}).finally(() => (settled = true))
+			host.client.handleMessage(push(text(1, "test prompt"), started, ...retries))
+			await Promise.resolve()
+			expect(settled).toBe(false)
+
+			host.client.handleMessage(push(text(1, "test prompt"), started, ...retries, refused(9)))
+			await expect(taskPromise).rejects.toThrow("API request failed after 7 attempts: Connection error.")
 		}, 5000)
 
 		it("ignores a backoff in a resumed task's history", async () => {

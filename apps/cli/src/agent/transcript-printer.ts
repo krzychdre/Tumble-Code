@@ -16,7 +16,8 @@
  * - answer, completion text and reasoning rows, and command output, are
  *   streamed: a header and the text so far when the row first appears, then
  *   only what was appended, and a line break when the row is final;
- * - an error row is written to stderr once;
+ * - an error row and an automatic retry row (the error and the seconds to the
+ *   next attempt) are written to stderr once;
  * - the completion ask row writes `[task complete]` (with its text when no
  *   completion text was printed before it);
  * - everything else (tool rows, MCP responses, auto-approved asks) is left to
@@ -132,6 +133,14 @@ export class TranscriptPrinter implements TranscriptSink {
 		if (row.originalType === "error" && row.role === "assistant") {
 			if (!this.printed.has(row.id)) {
 				this.out.outputError("\n[error]", row.content || "Unknown error")
+				this.printed.set(row.id, { text: row.content, final: true })
+			}
+			return
+		}
+
+		if (row.originalType === "api_req_retry_delayed") {
+			if (!this.printed.has(row.id)) {
+				this.out.outputError("[retry]", row.content)
 				this.printed.set(row.id, { text: row.content, final: true })
 			}
 			return
