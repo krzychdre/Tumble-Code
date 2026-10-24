@@ -80,7 +80,7 @@ export class MistralHandler extends BaseProvider implements SingleCompletionHand
 		messages: Anthropic.Messages.MessageParam[],
 		metadata?: ApiHandlerCreateMessageMetadata,
 	): ApiStream {
-		const { id: model, info, maxTokens, temperature } = this.getModel()
+		const { id: model, maxTokens, temperature } = this.getModel()
 
 		// Build request options
 		const requestOptions: {
@@ -93,7 +93,7 @@ export class MistralHandler extends BaseProvider implements SingleCompletionHand
 		} = {
 			model,
 			messages: [{ role: "system", content: systemPrompt }, ...convertToMistralMessages(messages)],
-			maxTokens: maxTokens ?? info.maxTokens,
+			maxTokens,
 			temperature,
 		}
 
@@ -205,8 +205,7 @@ export class MistralHandler extends BaseProvider implements SingleCompletionHand
 			info: (typeof mistralModels)[MistralModelId]
 		}
 
-		// @TODO: Move this to the `getModelParams` function.
-		const maxTokens = this.options.includeMaxTokens ? info.maxTokens : undefined
+		const maxTokens = info.maxTokens
 		const temperature = this.options.modelTemperature ?? MISTRAL_DEFAULT_TEMPERATURE
 
 		return { id, info, maxTokens, temperature }

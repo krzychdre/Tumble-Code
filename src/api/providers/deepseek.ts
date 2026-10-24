@@ -49,17 +49,18 @@ const isDeepSeekThinkingEnabled = (modelId: string, options: ApiHandlerOptions) 
 	return modelId === "deepseek-reasoner" || supportsDeepSeekThinkingToggle(modelId)
 }
 
+// getModelParams passes only an effort from the model's list (low, medium, high, xhigh).
 const normalizeDeepSeekReasoningEffort = (reasoningEffort?: string): "low" | "high" | "max" | undefined => {
-	if (!reasoningEffort || reasoningEffort === "disable") {
+	if (!reasoningEffort) {
 		return undefined
 	}
 
 	// DeepSeek's thinking levels are low / high / max (since 2026-08-13). Our
 	// "xhigh" is the top option of the settings list, so it asks for max.
-	if (reasoningEffort === "low" || reasoningEffort === "minimal") {
+	if (reasoningEffort === "low") {
 		return "low"
 	}
-	return reasoningEffort === "xhigh" || reasoningEffort === "max" ? "max" : "high"
+	return reasoningEffort === "xhigh" ? "max" : "high"
 }
 
 // Use the computed maxTokens from getModelParams rather than raw model metadata.
