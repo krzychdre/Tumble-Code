@@ -46,11 +46,7 @@ vi.mock("vscode", () => ({
 	},
 }))
 
-vi.mock("@dotenvx/dotenvx", () => ({
-	config: vi.fn(),
-}))
-
-// Mock fs so the extension module can safely check for optional .env.
+// A developer's src/.env must not leak into these tests.
 vi.mock("fs", () => ({
 	existsSync: vi.fn().mockReturnValue(false),
 }))
@@ -252,40 +248,6 @@ describe("extension.ts", () => {
 		} as unknown as vscode.ExtensionContext
 
 		authStateChangedHandler = undefined
-	})
-
-	test("does not call dotenvx.config when optional .env does not exist", async () => {
-		vi.resetModules()
-		vi.clearAllMocks()
-
-		const fs = await import("fs")
-		vi.mocked(fs.existsSync).mockReturnValue(false)
-
-		const dotenvx = await import("@dotenvx/dotenvx")
-
-		const { activate } = await import("../extension")
-		await activate(mockContext)
-
-		expect(dotenvx.config).not.toHaveBeenCalled()
-	})
-
-	test("loads the optional .env without emitting dotenvx's success banner", async () => {
-		vi.resetModules()
-		vi.clearAllMocks()
-
-		const fs = await import("fs")
-		vi.mocked(fs.existsSync).mockReturnValue(true)
-
-		const dotenvx = await import("@dotenvx/dotenvx")
-
-		const { activate } = await import("../extension")
-		await activate(mockContext)
-
-		expect(dotenvx.config).toHaveBeenCalledTimes(1)
-		expect(dotenvx.config).toHaveBeenCalledWith({
-			path: expect.stringMatching(/\.env$/),
-			quiet: true,
-		})
 	})
 
 	test("does not fetch provider model catalogs during activation", async () => {

@@ -18,17 +18,9 @@ fi
 
 $pnpm_cmd run check-types
 
-# Use dotenvx to securely load .env.local and run commands that depend on it
-if [ -f ".env.local" ]; then
-  # Check if RUN_TESTS_ON_PUSH is set to true and run tests with dotenvx
-  if npx dotenvx get RUN_TESTS_ON_PUSH -f .env.local 2>/dev/null | grep -q "^true$"; then
-    npx dotenvx run -f .env.local -- $pnpm_cmd run test
-  fi
-else
-  # Fallback: run tests if RUN_TESTS_ON_PUSH is set in regular environment
-  if [ "$RUN_TESTS_ON_PUSH" = "true" ]; then
-    $pnpm_cmd run test
-  fi
+# RUN_TESTS_ON_PUSH=true, from the environment or .env.local, runs the tests with .env.local loaded.
+if [ "$(node --env-file-if-exists=.env.local -p process.env.RUN_TESTS_ON_PUSH 2>/dev/null)" = "true" ]; then
+  node --env-file-if-exists=.env.local -e 'process.exitCode = require("child_process").spawnSync(process.argv[1], ["run", "test"], { stdio: "inherit", shell: true }).status' "$pnpm_cmd"
 fi
 
 # Check for new changesets.
