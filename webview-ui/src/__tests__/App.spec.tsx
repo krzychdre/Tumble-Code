@@ -1,7 +1,8 @@
 // npx vitest run src/__tests__/App.spec.tsx
 
 import React from "react"
-import { render, screen, act, cleanup } from "@/utils/test-utils"
+import { render, screen, act, cleanup, fireEvent } from "@/utils/test-utils"
+import { vscode } from "@src/utils/vscode"
 
 import AppWithProviders from "../App"
 
@@ -19,10 +20,19 @@ vi.mock("@src/components/ErrorBoundary", () => ({
 
 vi.mock("@src/components/chat/ChatView", () => ({
 	__esModule: true,
-	default: function ChatView({ isHidden }: { isHidden: boolean }) {
+	default: function ChatView({
+		isHidden,
+		showAnnouncement,
+		hideAnnouncement,
+	}: {
+		isHidden: boolean
+		showAnnouncement: boolean
+		hideAnnouncement: () => void
+	}) {
 		return (
-			<div data-testid="chat-view" data-hidden={isHidden}>
+			<div data-testid="chat-view" data-hidden={isHidden} data-announcement={showAnnouncement}>
 				Chat View
+				<button onClick={hideAnnouncement}>hide announcement</button>
 			</div>
 		)
 	},
@@ -202,6 +212,37 @@ describe("App", () => {
 		expect(chatView).toBeInTheDocument()
 		expect(chatView.getAttribute("data-hidden")).toBe("false")
 	}, 10000)
+
+	it("opens the announcement each time it becomes due on the chat tab and reports it shown", async () => {
+		const state = {
+			didHydrateState: true,
+			showWelcome: false,
+			shouldShowAnnouncement: true,
+			experiments: {},
+			language: "en",
+		}
+		mockUseExtensionState.mockImplementation(() => state)
+		const announcementShown = () =>
+			vi.mocked(vscode.postMessage).mock.calls.filter(([m]) => m.type === "didShowAnnouncement").length
+
+		const { rerender } = render(<AppWithProviders />)
+		const chatView = screen.getByTestId("chat-view")
+		expect(chatView.getAttribute("data-announcement")).toBe("true")
+		expect(announcementShown()).toBe(1)
+
+		fireEvent.click(screen.getByText("hide announcement"))
+		rerender(<AppWithProviders />)
+		expect(chatView.getAttribute("data-announcement")).toBe("false")
+		expect(announcementShown()).toBe(1)
+
+		// Due again after a visit to another tab.
+		act(() => triggerMessage("settingsButtonClicked"))
+		await screen.findByTestId("settings-view")
+		expect(chatView.getAttribute("data-announcement")).toBe("false")
+		act(() => triggerMessage("chatButtonClicked"))
+		expect(chatView.getAttribute("data-announcement")).toBe("true")
+		expect(announcementShown()).toBe(2)
+	})
 
 	it("shows welcome view when setup is incomplete", () => {
 		mockUseExtensionState.mockReturnValue({

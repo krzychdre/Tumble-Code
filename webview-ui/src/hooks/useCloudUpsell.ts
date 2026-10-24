@@ -1,43 +1,25 @@
-import { useState, useCallback, useRef, useEffect } from "react"
+import { useState, useCallback } from "react"
 import { vscode } from "@/utils/vscode"
 import { useExtensionSelector } from "@/context/ExtensionStateContext"
 
-interface UseCloudUpsellOptions {
-	onAuthSuccess?: () => void
-	autoOpenOnAuth?: boolean
-}
-
-export const useCloudUpsell = (options: UseCloudUpsellOptions = {}) => {
-	const { onAuthSuccess, autoOpenOnAuth = false } = options
+export const useCloudUpsell = () => {
 	const [isOpen, setIsOpen] = useState(false)
-	const [shouldOpenOnAuth, setShouldOpenOnAuth] = useState(false)
 	// P1: narrow slices.
 	const cloudIsAuthenticated = useExtensionSelector((s) => s.cloudIsAuthenticated)
 	const sharingEnabled = useExtensionSelector((s) => s.sharingEnabled)
 	const publicSharingEnabled = useExtensionSelector((s) => s.publicSharingEnabled)
-	const wasUnauthenticatedRef = useRef(false)
-	const initiatedAuthRef = useRef(false)
+	const isSignedInForSharing = !!cloudIsAuthenticated && !!sharingEnabled
+	const [wasSignedInForSharing, setWasSignedInForSharing] = useState(isSignedInForSharing)
+	const [initiatedAuth, setInitiatedAuth] = useState(false)
 
-	// Track authentication state changes
-	useEffect(() => {
-		if (!cloudIsAuthenticated || !sharingEnabled) {
-			wasUnauthenticatedRef.current = true
-		} else if (wasUnauthenticatedRef.current && cloudIsAuthenticated && sharingEnabled) {
-			// User just authenticated
-			if (initiatedAuthRef.current) {
-				// Auth was initiated from this hook
-				setIsOpen(false) // Close the upsell dialog
-
-				if (autoOpenOnAuth && shouldOpenOnAuth) {
-					onAuthSuccess?.()
-					setShouldOpenOnAuth(false)
-				}
-
-				initiatedAuthRef.current = false // Reset the flag
-			}
-			wasUnauthenticatedRef.current = false
+	// A sign-in started from this hook closes the upsell once it completes.
+	if (isSignedInForSharing !== wasSignedInForSharing) {
+		setWasSignedInForSharing(isSignedInForSharing)
+		if (isSignedInForSharing && initiatedAuth) {
+			setIsOpen(false)
+			setInitiatedAuth(false)
 		}
-	}, [cloudIsAuthenticated, sharingEnabled, onAuthSuccess, autoOpenOnAuth, shouldOpenOnAuth])
+	}
 
 	const openUpsell = useCallback(() => {
 		setIsOpen(true)
@@ -45,20 +27,13 @@ export const useCloudUpsell = (options: UseCloudUpsellOptions = {}) => {
 
 	const closeUpsell = useCallback(() => {
 		setIsOpen(false)
-		setShouldOpenOnAuth(false)
 	}, [])
 
 	const handleConnect = useCallback(() => {
-		// Mark that authentication was initiated from this hook
-		initiatedAuthRef.current = true
-		setShouldOpenOnAuth(true)
-
-		// Send message to VS Code to initiate sign in
+		setInitiatedAuth(true)
 		vscode.postMessage({ type: "rooCloudSignIn" })
-
-		// Close the upsell dialog
-		closeUpsell()
-	}, [closeUpsell])
+		setIsOpen(false)
+	}, [])
 
 	return {
 		isOpen,

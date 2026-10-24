@@ -33,9 +33,11 @@ export function useOrganizationSwitch({
 	const [selectedOrgId, setSelectedOrgId] = useState<string | null>(signedInOrgId)
 	const [isLoading, setIsLoading] = useState(false)
 
-	useEffect(() => {
+	const [prevSignedInOrgId, setPrevSignedInOrgId] = useState(signedInOrgId)
+	if (signedInOrgId !== prevSignedInOrgId) {
+		setPrevSignedInOrgId(signedInOrgId)
 		setSelectedOrgId(signedInOrgId)
-	}, [signedInOrgId])
+	}
 
 	useEffect(() => {
 		const handleMessage = (message: ExtensionMessage) => {

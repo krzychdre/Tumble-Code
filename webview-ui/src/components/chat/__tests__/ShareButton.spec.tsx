@@ -16,29 +16,20 @@ vi.mock("@/utils/vscode", () => ({
 vi.mock("react-i18next")
 
 // Mock the extension state context
+const extensionState = vi.hoisted(() => ({
+	sharingEnabled: true,
+	publicSharingEnabled: true,
+	cloudIsAuthenticated: true,
+	cloudUserInfo: {
+		id: "test-user",
+		email: "test@example.com",
+		organizationName: "Test Organization",
+	},
+}))
 vi.mock("@/context/ExtensionStateContext", () => ({
 	ExtensionStateContextProvider: ({ children }: { children: React.ReactNode }) => children,
-	useExtensionState: () => ({
-		sharingEnabled: true,
-		publicSharingEnabled: true,
-		cloudIsAuthenticated: true,
-		cloudUserInfo: {
-			id: "test-user",
-			email: "test@example.com",
-			organizationName: "Test Organization",
-		},
-	}),
-	useExtensionSelector: (selector: (s: never) => unknown) =>
-		selector({
-			sharingEnabled: true,
-			publicSharingEnabled: true,
-			cloudIsAuthenticated: true,
-			cloudUserInfo: {
-				id: "test-user",
-				email: "test@example.com",
-				organizationName: "Test Organization",
-			},
-		} as never),
+	useExtensionState: () => extensionState,
+	useExtensionSelector: (selector: (s: never) => unknown) => selector(extensionState as never),
 }))
 
 const mockUseTranslation = vi.mocked(useTranslation)
@@ -58,6 +49,7 @@ describe("ShareButton", () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks()
+		extensionState.cloudIsAuthenticated = true
 
 		mockUseTranslation.mockReturnValue({
 			t: mockT,
@@ -82,6 +74,39 @@ describe("ShareButton", () => {
 		await waitFor(() => {
 			expect(screen.getByText("chat:task.shareWithOrganization")).toBeInTheDocument()
 		})
+	})
+
+	test("closes the upsell and opens the share popover once a sign-in started from it completes", async () => {
+		extensionState.cloudIsAuthenticated = false
+		const { rerender } = render(<ShareButton item={mockItem} />)
+
+		fireEvent.click(screen.getByRole("button"))
+		fireEvent.click(await screen.findByText("cloud:connect"))
+		expect(mockVscode.postMessage).toHaveBeenCalledWith({ type: "rooCloudSignIn" })
+		await waitFor(() => expect(screen.queryByText("cloud:connect")).not.toBeInTheDocument())
+
+		// Reopened while the browser sign-in is still running.
+		fireEvent.click(screen.getByRole("button"))
+		await screen.findByText("cloud:connect")
+
+		extensionState.cloudIsAuthenticated = true
+		rerender(<ShareButton item={mockItem} />)
+
+		await waitFor(() => expect(screen.queryByText("cloud:connect")).not.toBeInTheDocument())
+		expect(screen.getByText("chat:task.shareWithOrganization")).toBeInTheDocument()
+	})
+
+	test("leaves the upsell and the popover alone when the user signs in elsewhere", async () => {
+		extensionState.cloudIsAuthenticated = false
+		const { rerender } = render(<ShareButton item={mockItem} />)
+		fireEvent.click(screen.getByRole("button"))
+		await screen.findByText("cloud:connect")
+
+		extensionState.cloudIsAuthenticated = true
+		rerender(<ShareButton item={mockItem} />)
+
+		expect(screen.getByText("cloud:connect")).toBeInTheDocument()
+		expect(screen.queryByText("chat:task.shareWithOrganization")).not.toBeInTheDocument()
 	})
 
 	test("sends organization share message when organization button clicked", async () => {
