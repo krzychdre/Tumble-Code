@@ -325,9 +325,9 @@ export class BackgroundTaskRunner {
 				// (dispose tears down the tracker). Resolve to absolute paths.
 				let writtenPaths: string[] = []
 				try {
-					writtenPaths = (task.fileContextTracker?.getAndClearCheckpointPossibleFile?.() ?? []).map((p) =>
-						path.isAbsolute(p) ? p : path.resolve(task.cwd, p),
-					)
+					writtenPaths = task.fileContextTracker
+						.getAndClearCheckpointPossibleFile()
+						.map((p) => (path.isAbsolute(p) ? p : path.resolve(task.cwd, p)))
 				} catch {
 					// Non-fatal: no written-path reporting for this run.
 				}

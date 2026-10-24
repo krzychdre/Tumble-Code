@@ -119,151 +119,101 @@ describe("skillsMessageHandler", () => {
 	})
 
 	describe("handleCreateSkill", () => {
-		it("creates a skill successfully", async () => {
-			const provider = createMockProvider(true)
+		it.each([
+			["for every mode", {}, undefined],
+			["for one mode", { skillMode: "code" }, ["code"]],
+		])("creates a skill %s, opens it and posts the list", async (_name, extra, modes) => {
 			mockCreateSkill.mockResolvedValue("/path/to/new-skill/SKILL.md")
 			mockGetSkillsMetadata.mockReturnValue(mockSkills)
 
-			const result = await handleCreateSkill(provider, {
+			const result = await handleCreateSkill(createMockProvider(true), {
 				type: "createSkill",
 				skillName: "new-skill",
 				source: "global",
 				skillDescription: "New skill description",
+				...extra,
 			} as WebviewMessage)
 
 			expect(result).toEqual(mockSkills)
-			expect(mockCreateSkill).toHaveBeenCalledWith("new-skill", "global", "New skill description", undefined)
+			expect(mockCreateSkill).toHaveBeenCalledWith("new-skill", "global", "New skill description", modes)
 			expect(openFile).toHaveBeenCalledWith("/path/to/new-skill/SKILL.md")
 			expect(mockPostMessageToWebview).toHaveBeenCalledWith({ type: "skills", skills: mockSkills })
 		})
 
-		it("creates a skill with mode restriction", async () => {
-			const provider = createMockProvider(true)
-			mockCreateSkill.mockResolvedValue("/path/to/new-skill/SKILL.md")
-			mockGetSkillsMetadata.mockReturnValue(mockSkills)
-
-			const result = await handleCreateSkill(provider, {
+		it.each([
+			[
+				"required fields are missing",
+				true,
+				{ skillName: "new-skill" },
+				"Missing required fields: skillName, source, or skillDescription",
+			],
+			[
+				"the skills manager is not available",
+				false,
+				{ skillName: "new-skill", source: "global", skillDescription: "d" },
+				"Skills manager not available",
+			],
+		])("reports a failure when %s", async (_name, hasManager, fields, reason) => {
+			const result = await handleCreateSkill(createMockProvider(hasManager), {
 				type: "createSkill",
-				skillName: "new-skill",
-				source: "project",
-				skillDescription: "New skill description",
-				skillMode: "code",
-			} as WebviewMessage)
-
-			expect(result).toEqual(mockSkills)
-			expect(mockCreateSkill).toHaveBeenCalledWith("new-skill", "project", "New skill description", ["code"])
-		})
-
-		it("returns undefined when required fields are missing", async () => {
-			const provider = createMockProvider(true)
-
-			const result = await handleCreateSkill(provider, {
-				type: "createSkill",
-				skillName: "new-skill",
-				// missing source and skillDescription
+				...fields,
 			} as WebviewMessage)
 
 			expect(result).toBeUndefined()
-			expect(loggerErrorSpy).toHaveBeenCalledWith(
-				"Error creating skill: Missing required fields: skillName, source, or skillDescription",
-			)
-			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
-				"Failed to create skill: Missing required fields: skillName, source, or skillDescription",
-			)
-		})
-
-		it("returns undefined when skills manager is not available", async () => {
-			const provider = createMockProvider(false)
-
-			const result = await handleCreateSkill(provider, {
-				type: "createSkill",
-				skillName: "new-skill",
-				source: "global",
-				skillDescription: "New skill description",
-			} as WebviewMessage)
-
-			expect(result).toBeUndefined()
-			expect(loggerErrorSpy).toHaveBeenCalledWith("Error creating skill: Skills manager not available")
-			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
-				"Failed to create skill: Skills manager not available",
-			)
+			expect(loggerErrorSpy).toHaveBeenCalledWith(`Error creating skill: ${reason}`)
+			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(`Failed to create skill: ${reason}`)
 		})
 	})
 
 	describe("handleDeleteSkill", () => {
-		it("deletes a skill successfully", async () => {
-			const provider = createMockProvider(true)
-			mockDeleteSkill.mockResolvedValue(undefined)
+		it.each([
+			["for every mode", {}, undefined],
+			["for one mode", { skillMode: "code" }, "code"],
+		])("deletes a skill %s and posts the list", async (_name, extra, mode) => {
 			mockGetSkillsMetadata.mockReturnValue([mockSkills[1]])
 
-			const result = await handleDeleteSkill(provider, {
+			const result = await handleDeleteSkill(createMockProvider(true), {
 				type: "deleteSkill",
 				skillName: "test-skill",
 				source: "global",
+				...extra,
 			} as WebviewMessage)
 
 			expect(result).toEqual([mockSkills[1]])
-			expect(mockDeleteSkill).toHaveBeenCalledWith("test-skill", "global", undefined)
+			expect(mockDeleteSkill).toHaveBeenCalledWith("test-skill", "global", mode)
 			expect(mockPostMessageToWebview).toHaveBeenCalledWith({ type: "skills", skills: [mockSkills[1]] })
 		})
 
-		it("deletes a skill with mode restriction", async () => {
-			const provider = createMockProvider(true)
-			mockDeleteSkill.mockResolvedValue(undefined)
-			mockGetSkillsMetadata.mockReturnValue([mockSkills[0]])
-
-			const result = await handleDeleteSkill(provider, {
+		it.each([
+			[
+				"required fields are missing",
+				true,
+				{ skillName: "test-skill" },
+				"Missing required fields: skillName or source",
+			],
+			[
+				"the skills manager is not available",
+				false,
+				{ skillName: "test-skill", source: "global" },
+				"Skills manager not available",
+			],
+		])("reports a failure when %s", async (_name, hasManager, fields, reason) => {
+			const result = await handleDeleteSkill(createMockProvider(hasManager), {
 				type: "deleteSkill",
-				skillName: "project-skill",
-				source: "project",
-				skillMode: "code",
-			} as WebviewMessage)
-
-			expect(result).toEqual([mockSkills[0]])
-			expect(mockDeleteSkill).toHaveBeenCalledWith("project-skill", "project", "code")
-		})
-
-		it("returns undefined when required fields are missing", async () => {
-			const provider = createMockProvider(true)
-
-			const result = await handleDeleteSkill(provider, {
-				type: "deleteSkill",
-				skillName: "test-skill",
-				// missing source
+				...fields,
 			} as WebviewMessage)
 
 			expect(result).toBeUndefined()
-			expect(loggerErrorSpy).toHaveBeenCalledWith(
-				"Error deleting skill: Missing required fields: skillName or source",
-			)
-			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
-				"Failed to delete skill: Missing required fields: skillName or source",
-			)
-		})
-
-		it("returns undefined when skills manager is not available", async () => {
-			const provider = createMockProvider(false)
-
-			const result = await handleDeleteSkill(provider, {
-				type: "deleteSkill",
-				skillName: "test-skill",
-				source: "global",
-			} as WebviewMessage)
-
-			expect(result).toBeUndefined()
-			expect(loggerErrorSpy).toHaveBeenCalledWith("Error deleting skill: Skills manager not available")
-			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
-				"Failed to delete skill: Skills manager not available",
-			)
+			expect(loggerErrorSpy).toHaveBeenCalledWith(`Error deleting skill: ${reason}`)
+			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(`Failed to delete skill: ${reason}`)
 		})
 	})
 
 	describe("handleOpenSkillFile", () => {
-		it("opens a skill file successfully", async () => {
-			const provider = createMockProvider(true)
+		it("opens the file of the skill found by name and source", async () => {
 			mockFindSkillByNameAndSource.mockReturnValue(mockSkills[0])
 
-			await handleOpenSkillFile(provider, {
+			await handleOpenSkillFile(createMockProvider(true), {
 				type: "openSkillFile",
 				skillName: "test-skill",
 				source: "global",
@@ -273,67 +223,36 @@ describe("skillsMessageHandler", () => {
 			expect(openFile).toHaveBeenCalledWith("/path/to/test-skill/SKILL.md")
 		})
 
-		it("opens a skill file with mode restriction", async () => {
-			const provider = createMockProvider(true)
-			mockFindSkillByNameAndSource.mockReturnValue(mockSkills[1])
-
-			await handleOpenSkillFile(provider, {
-				type: "openSkillFile",
-				skillName: "project-skill",
-				source: "project",
-				skillMode: "code",
-			} as WebviewMessage)
-
-			expect(mockFindSkillByNameAndSource).toHaveBeenCalledWith("project-skill", "project")
-			expect(openFile).toHaveBeenCalledWith("/project/.roo/skills/project-skill/SKILL.md")
-		})
-
-		it("shows error when required fields are missing", async () => {
-			const provider = createMockProvider(true)
-
-			await handleOpenSkillFile(provider, {
-				type: "openSkillFile",
-				skillName: "test-skill",
-				// missing source
-			} as WebviewMessage)
-
-			expect(loggerErrorSpy).toHaveBeenCalledWith(
-				"Error opening skill file: Missing required fields: skillName or source",
-			)
-			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
-				"Failed to open skill file: Missing required fields: skillName or source",
-			)
-		})
-
-		it("shows error when skills manager is not available", async () => {
-			const provider = createMockProvider(false)
-
-			await handleOpenSkillFile(provider, {
-				type: "openSkillFile",
-				skillName: "test-skill",
-				source: "global",
-			} as WebviewMessage)
-
-			expect(loggerErrorSpy).toHaveBeenCalledWith("Error opening skill file: Skills manager not available")
-			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
-				"Failed to open skill file: Skills manager not available",
-			)
-		})
-
-		it("shows error when skill is not found", async () => {
-			const provider = createMockProvider(true)
+		it.each([
+			[
+				"required fields are missing",
+				true,
+				{ skillName: "test-skill" },
+				"Missing required fields: skillName or source",
+			],
+			[
+				"the skills manager is not available",
+				false,
+				{ skillName: "test-skill", source: "global" },
+				"Skills manager not available",
+			],
+			[
+				"the skill is not found",
+				true,
+				{ skillName: "nonexistent-skill", source: "global" },
+				'Skill "nonexistent-skill" not found',
+			],
+		])("reports a failure when %s", async (_name, hasManager, fields, reason) => {
 			mockFindSkillByNameAndSource.mockReturnValue(undefined)
 
-			await handleOpenSkillFile(provider, {
+			await handleOpenSkillFile(createMockProvider(hasManager), {
 				type: "openSkillFile",
-				skillName: "nonexistent-skill",
-				source: "global",
+				...fields,
 			} as WebviewMessage)
 
-			expect(loggerErrorSpy).toHaveBeenCalledWith('Error opening skill file: Skill "nonexistent-skill" not found')
-			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
-				'Failed to open skill file: Skill "nonexistent-skill" not found',
-			)
+			expect(openFile).not.toHaveBeenCalled()
+			expect(loggerErrorSpy).toHaveBeenCalledWith(`Error opening skill file: ${reason}`)
+			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(`Failed to open skill file: ${reason}`)
 		})
 	})
 })

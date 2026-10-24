@@ -1,8 +1,7 @@
 // pnpm --filter tumble-code test core/webview/__tests__/PlanReviewPanel.html.spec.ts
 //
-// CORE-R6 e characterization: the exact HTML (and CSP) of the plan review
-// panel in production and development (HMR) mode, pinned byte for byte before
-// the generator moves to a module shared with the sidebar (ClineProvider).
+// The HTML itself is pinned in WebviewHtml.spec; this pins what the plan review
+// panel passes to it in production and development (HMR) mode.
 
 import * as vscode from "vscode"
 import axios from "axios"
@@ -106,26 +105,27 @@ describe("PlanReviewPanel webview HTML", () => {
 		while (spies.length) spies.pop()!.mockRestore()
 	})
 
-	test("production", async () => {
-		await expect(await render(false)).toMatchFileSnapshot("__snapshots__/webview-html/plan-review.production.html")
+	test("production loads the built bundle in plan review mode under the Plan Review title", async () => {
+		const html = await render(false)
+
+		expect(html).toContain("<title>Plan Review</title>")
+		expect(html).toContain("window.PLAN_REVIEW_MODE = true")
+		expect(html).toContain('src="vscode-resource:/ext/webview-ui/build/assets/index.js"')
 	})
 
-	test("development with the dev server running on the default port", async () => {
+	test("development is served by the dev server", async () => {
 		const html = await render(true)
+
 		expect(html).toContain("http://localhost:5173/src/index.tsx")
-		await expect(html).toMatchFileSnapshot("__snapshots__/webview-html/plan-review.hmr.html")
-	})
-
-	test("development with the port taken from the .vite-port file", async () => {
-		stubPortFile("5174\n")
-		const html = await render(true)
-		expect(html).toContain("http://localhost:5174/src/index.tsx")
-		await expect(html).toMatchFileSnapshot("__snapshots__/webview-html/plan-review.hmr.port-5174.html")
+		expect(html).toContain("window.PLAN_REVIEW_MODE = true")
 	})
 
 	test("development without a dev server falls back to production silently", async () => {
 		devServerUp = false
-		await expect(await render(true)).toMatchFileSnapshot("__snapshots__/webview-html/plan-review.production.html")
+
+		const html = await render(true)
+
+		expect(html).toContain('src="vscode-resource:/ext/webview-ui/build/assets/index.js"')
 		expect(vscode.window.showErrorMessage).not.toHaveBeenCalled()
 	})
 })
