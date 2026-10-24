@@ -15,7 +15,7 @@ import { logMcpError, type McpConnection, McpConnectionManager } from "./McpConn
 import { McpToolCatalog, type McpRequestOptions } from "./McpToolCatalog"
 import { logger } from "../../utils/logging"
 
-export { type ConnectedMcpConnection, type DisconnectedMcpConnection, type McpConnection } from "./McpConnectionManager"
+export { type McpConnection } from "./McpConnectionManager"
 
 /**
  * The part of the provider (ClineProvider) the hub and McpServerManager use.

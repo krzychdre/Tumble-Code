@@ -21,6 +21,17 @@ describe("validateServerConfig", () => {
 		expect(input.type).toBe("stdio")
 	})
 
+	it.each(["sse", "streamable-http"])("keeps a %s server's type and applies the defaults", (type) => {
+		expect(validateServerConfig({ type, url: "http://localhost:3000/mcp", headers: { A: "1" } }, "r")).toEqual({
+			type,
+			url: "http://localhost:3000/mcp",
+			headers: { A: "1" },
+			timeout: 60,
+			alwaysAllow: [],
+			disabledTools: [],
+		})
+	})
+
 	it.each([
 		[
 			"stdio and url fields mixed",

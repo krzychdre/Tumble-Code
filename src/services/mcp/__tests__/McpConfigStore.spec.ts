@@ -71,6 +71,14 @@ describe("McpConfigStore", () => {
 			expect(JSON.parse(await fs.readFile(settingsPath, "utf8"))).toEqual({ mcpServers: {} })
 		})
 
+		it("creates the file named by ROO_MCP_SETTINGS_PATH together with its directory", async () => {
+			const override = path.join(settingsDir, "fresh-home", ".roo", "mcp.json")
+			process.env[MCP_SETTINGS_PATH_ENV] = override
+
+			expect(await store.getGlobalPath()).toBe(override)
+			expect(JSON.parse(await fs.readFile(override, "utf8"))).toEqual({ mcpServers: {} })
+		})
+
 		it("keeps a config another process wrote after the existence check", async () => {
 			const settingsPath = path.join(settingsDir, "mcp_settings.json")
 			const concurrent = JSON.stringify({ mcpServers: { github: { command: "gh-mcp" } } }, null, 2)
