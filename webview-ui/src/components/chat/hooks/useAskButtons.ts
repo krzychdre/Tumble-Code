@@ -261,17 +261,9 @@ export function useAskButtons({
 							setSendingDisabled(false)
 							setClineAsk("resume_task")
 							setEnableButtons(true)
-							// For completed subtasks, show "Start New Task" instead of "Resume"
-							// A subtask is considered completed if:
-							// - It has a parentTaskId AND
-							// - Its messages contain a completion_result (either ask or say)
-							if (currentTaskItem?.parentTaskId && hasCompletionResult(messages)) {
-								setPrimaryButton("startNewTask", "chat:startNewTask.title")
-								setSecondaryButton(undefined, undefined)
-							} else {
-								setPrimaryButton("resumeTask", "chat:resumeTask.title")
-								setSecondaryButton("terminate", "chat:terminate.title")
-							}
+							// A finished subtask shows "Start New Task" instead (isFinishedSubtaskResume).
+							setPrimaryButton("resumeTask", "chat:resumeTask.title")
+							setSecondaryButton("terminate", "chat:terminate.title")
 							break
 						case "resume_completed_task":
 							setSendingDisabled(false)
@@ -310,25 +302,28 @@ export function useAskButtons({
 		}
 	}, [lastMessage, secondLastMessage])
 
-	// Update button text when messages change (e.g., completion_result is added) for subtasks in resume_task state
-	useEffect(() => {
-		if (clineAsk === "resume_task" && currentTaskItem?.parentTaskId) {
-			if (hasCompletionResult(messages)) {
-				setPrimaryButton("startNewTask", "chat:startNewTask.title")
-				setSecondaryButton(undefined, undefined)
-			}
-		}
-	}, [clineAsk, currentTaskItem?.parentTaskId, messages, setPrimaryButton, setSecondaryButton])
+	// A subtask that resumes after its completion_result (also one that arrives later) is done: it offers
+	// "Start New Task" instead of "Resume" / "Terminate".
+	const isFinishedSubtaskResume =
+		clineAsk === "resume_task" && !!currentTaskItem?.parentTaskId && hasCompletionResult(messages)
+	const shownPrimaryButtonText = isFinishedSubtaskResume ? t("chat:startNewTask.title") : primaryButtonText
+	const shownPrimaryButtonKind = isFinishedSubtaskResume ? "startNewTask" : primaryButtonKind
+	const shownSecondaryButtonText = isFinishedSubtaskResume ? undefined : secondaryButtonText
+	const shownSecondaryButtonKind = isFinishedSubtaskResume ? undefined : secondaryButtonKind
 
-	useEffect(() => {
-		if (messages.length === 0) {
+	// An empty message list (no task) resets the buttons.
+	const hasNoMessages = messages.length === 0
+	const [hadNoMessages, setHadNoMessages] = useState(hasNoMessages)
+	if (hasNoMessages !== hadNoMessages) {
+		setHadNoMessages(hasNoMessages)
+		if (hasNoMessages) {
 			setSendingDisabled(false)
 			setClineAsk(undefined)
 			setEnableButtons(false)
 			setPrimaryButton(undefined, undefined)
 			setSecondaryButton(undefined, undefined)
 		}
-	}, [messages.length, setPrimaryButton, setSecondaryButton])
+	}
 
 	const isStreaming = useMemo(() => {
 		// Checking clineAsk isn't enough since messages effect may be called
@@ -341,7 +336,7 @@ export function useAskButtons({
 		const isLastAsk = !!modifiedMessages.at(-1)?.ask
 
 		const isToolCurrentlyAsking =
-			isLastAsk && clineAsk !== undefined && enableButtons && primaryButtonText !== undefined
+			isLastAsk && clineAsk !== undefined && enableButtons && shownPrimaryButtonText !== undefined
 
 		if (isToolCurrentlyAsking) {
 			return false
@@ -372,7 +367,7 @@ export function useAskButtons({
 		}
 
 		return false
-	}, [modifiedMessages, clineAsk, enableButtons, primaryButtonText])
+	}, [modifiedMessages, clineAsk, enableButtons, shownPrimaryButtonText])
 
 	// ts of the ask the user answered from this view (an approval button or a
 	// typed reply). Until the host sends the next message that ask is still
@@ -415,10 +410,10 @@ export function useAskButtons({
 		setClineAsk,
 		enableButtons,
 		setEnableButtons,
-		primaryButtonText,
-		primaryButtonKind,
-		secondaryButtonText,
-		secondaryButtonKind,
+		primaryButtonText: shownPrimaryButtonText,
+		primaryButtonKind: shownPrimaryButtonKind,
+		secondaryButtonText: shownSecondaryButtonText,
+		secondaryButtonKind: shownSecondaryButtonKind,
 		sendingDisabled,
 		setSendingDisabled,
 		isStreaming,

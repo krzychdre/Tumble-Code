@@ -60,4 +60,26 @@ describe("useScrollLifecycle", () => {
 		act(() => result.current.handleRowHeightChange(true))
 		expect(behaviours().filter((b) => b === "smooth")).toHaveLength(2)
 	})
+	it.each([2, undefined])("a task switch (to %s) hides the scroll-to-bottom button", (nextTaskTs) => {
+		const virtuosoRef = { current: { scrollToIndex: vi.fn() } as unknown as VirtuosoHandle }
+		const scrollContainerRef = { current: document.createElement("div") }
+		const { result, rerender } = renderHook(
+			({ taskTs }: { taskTs: number | undefined }) =>
+				useScrollLifecycle({
+					virtuosoRef,
+					scrollContainerRef,
+					taskTs,
+					isStreaming: false,
+					isHidden: false,
+					hasTask: true,
+				}),
+			{ initialProps: { taskTs: 1 as number | undefined } },
+		)
+		act(() => result.current.enterUserBrowsingHistory("pointer-scroll-up"))
+		expect(result.current.showScrollToBottom).toBe(true)
+
+		rerender({ taskTs: nextTaskTs })
+
+		expect(result.current.showScrollToBottom).toBe(false)
+	})
 })

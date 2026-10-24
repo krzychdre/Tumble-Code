@@ -243,7 +243,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		task,
 		currentTaskItem,
 		subagents,
-		modifiedMessagesLength: modifiedMessages.length,
 	})
 
 	useEffect(() => {
