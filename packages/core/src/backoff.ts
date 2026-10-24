@@ -16,6 +16,24 @@
  * rate-limit one ignored abort.
  */
 
+/**
+ * Retries an unattended task gets for a retryable API error (400, 5xx, no
+ * status) before it ends: 6 backoffs of 5, 10, 20, 40, 80 and 160 s at the
+ * default 5 s base (315 s in total), so 7 requests. Nobody watches the
+ * countdown to cancel it, so without the cap such a task would retry forever.
+ * Two callers: `RetryHandler` ends a background task (memory writer, parallel
+ * subagent) with it, and the CLI ends a print run (`apps/cli`
+ * `UnattendedRetryCap`). A task in a panel or the TUI has no cap: the user
+ * sees the countdown and can cancel.
+ *
+ * HTTP 429 (too many requests) is not capped (owner decision 2026-09-25): the
+ * provider is up and asks us to slow down, so the task keeps backing off until
+ * the provider answers or the task is aborted. In a mixed sequence a 429 retry
+ * does not count toward the cap: the task ends at the 7th failure that is not
+ * a 429.
+ */
+export const UNATTENDED_MAX_API_RETRIES = 6
+
 /** Options for {@link backoffDelayMs}. */
 export interface BackoffOptions {
 	/** First-step delay in milliseconds. */

@@ -13,7 +13,7 @@
  */
 
 import delay from "delay"
-import { backoffDelayMsNoJitter, countdown } from "@tumble-code/core"
+import { backoffDelayMsNoJitter, countdown, UNATTENDED_MAX_API_RETRIES } from "@tumble-code/core"
 import { SETTINGS_DEFAULTS, type ProviderSettings, type ClineApiReqCancelReason } from "@tumble-code/types"
 import { serializeThrown } from "../../utils/errors"
 import { type ApiHandler } from "../../api"
@@ -105,22 +105,6 @@ class ApiRetryDeclinedError extends Error {
 	}
 }
 
-/**
- * Retries a background task gets for a retryable API error (400, 5xx, no
- * status) before it ends: 6 backoffs of 5, 10, 20, 40, 80 and 160 s at the
- * default 5 s base (315 s in total), so 7 requests. Foreground tasks have no
- * cap (the user sees the countdown and can cancel). Without this cap a
- * background task would retry forever: it has no turn limit.
- *
- * HTTP 429 (too many requests) is not capped (owner decision 2026-09-25): the
- * provider is up and asks us to slow down, so the task keeps backing off (one
- * wait never exceeds MAX_EXPONENTIAL_BACKOFF_SECONDS, 600 s, unless a RetryInfo
- * delay on the 429 asks for more) until the provider answers or the task is
- * aborted. In a mixed sequence a 429 retry does not count toward the cap:
- * the task ends at the 7th failure that is not a 429 (see isCappedRetry).
- */
-export const BACKGROUND_MAX_API_RETRIES = 6
-
 /** HTTP 429: the one retryable status a background task retries without a cap. */
 export function isRateLimitError(error: unknown): boolean {
 	return getApiErrorStatus(error) === 429
@@ -128,7 +112,7 @@ export function isRateLimitError(error: unknown): boolean {
 
 /**
  * Thrown out of the first-chunk error dispatch when a background task used
- * up BACKGROUND_MAX_API_RETRIES. TaskApiLoop's handleStreamError recognises
+ * up UNATTENDED_MAX_API_RETRIES. TaskApiLoop's handleStreamError recognises
  * it and ends the task with the original error and the number of requests
  * made.
  */
@@ -443,7 +427,7 @@ export class RetryHandler {
 
 		// A background task that used up its retries ends too: on the first
 		// chunk (thrown by handleApiRequestError) or mid-stream. A 429 never
-		// ends it (see BACKGROUND_MAX_API_RETRIES).
+		// ends it (see UNATTENDED_MAX_API_RETRIES).
 		if (error instanceof BackgroundRetriesExhaustedError) {
 			await this.endBackgroundTaskOnApiError(error.apiError, error.attempts)
 			return "ended"
@@ -467,7 +451,7 @@ export class RetryHandler {
 	}
 
 	/**
-	 * Whether a background task has used up BACKGROUND_MAX_API_RETRIES and must
+	 * Whether a background task has used up UNATTENDED_MAX_API_RETRIES and must
 	 * end on this failure instead of retrying. `retryAttempt` is the number of
 	 * retries already made, `rateLimitRetries` how many of them were for a 429.
 	 * A 429 never ends the task, and earlier 429 retries do not count: only the
@@ -477,12 +461,12 @@ export class RetryHandler {
 		if (!this.access.isBackground || isRateLimitError(error)) {
 			return false
 		}
-		return retryAttempt - rateLimitRetries >= BACKGROUND_MAX_API_RETRIES
+		return retryAttempt - rateLimitRetries >= UNATTENDED_MAX_API_RETRIES
 	}
 
 	/**
 	 * End a background task after a non-retryable API error, or a retryable
-	 * one after BACKGROUND_MAX_API_RETRIES (`attempts` requests): record one line
+	 * one after UNATTENDED_MAX_API_RETRIES (`attempts` requests): record one line
 	 * for whoever awaits it (BackgroundTaskRunner.awaitTaskCompletion hands it
 	 * to the parallel-subagent parent and the memory-writer log) and abort as
 	 * `streaming_failed`, so the memory runner keeps its one fallback run on

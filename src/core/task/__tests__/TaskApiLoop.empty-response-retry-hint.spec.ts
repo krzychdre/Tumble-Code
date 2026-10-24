@@ -252,7 +252,7 @@ describe("TaskApiLoop: the retry of an empty answer names the callable tools", (
 	})
 
 	// A background task has no turn limit: empty answers end it after as many
-	// retries as a failed request (BACKGROUND_MAX_API_RETRIES).
+	// retries as a failed request (UNATTENDED_MAX_API_RETRIES).
 	it.each([
 		[5, "continue", false],
 		[6, "return_true", true],

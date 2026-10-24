@@ -299,7 +299,7 @@ describe("TaskApiLoop: no automatic retry for 401, 403 and 404", () => {
 
 		// Backoff alone is not a bound: a background task has no turn limit,
 		// and the first-chunk retry recurses inside attemptApiRequest. After
-		// BACKGROUND_MAX_API_RETRIES retries (5+10+20+40+80+160 s = 315 s of
+		// UNATTENDED_MAX_API_RETRIES retries (5+10+20+40+80+160 s = 315 s of
 		// backoff at the default 5 s base) the task ends like a 401 does.
 		it.each([true, false])(
 			"500 on every request (auto-approve %s): 7 requests, 6 backoffs, then the task ends",
@@ -403,7 +403,7 @@ describe("TaskApiLoop: no automatic retry for 401, 403 and 404", () => {
 		// "later", so a background task keeps backing off (the backoff itself
 		// stops growing at 600 s, and a RetryInfo delay on the 429 wins) until the
 		// provider answers or the task is aborted. Rule for a mixed sequence: a
-		// 429 retry does not count toward BACKGROUND_MAX_API_RETRIES, every other
+		// 429 retry does not count toward UNATTENDED_MAX_API_RETRIES, every other
 		// retryable failure does; the task ends at the 7th counted failure.
 		describe("429 is not subject to the retry cap", () => {
 			function sequenceLoop(statuses: Array<number | undefined>, autoApprovalEnabled = false) {

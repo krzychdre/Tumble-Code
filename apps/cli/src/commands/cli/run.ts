@@ -807,8 +807,8 @@ async function runPrint({
 	const useJsonOutput = outputFormat === "json" || outputFormat === "stream-json"
 
 	extensionHostOptions.disableOutput = useJsonOutput
-	// Nobody answers an api_req_failed ask in an unattended print or JSON run.
-	extensionHostOptions.exitOnApiRequestFailed = extensionHostOptions.nonInteractive
+	// Nobody answers an api_req_failed ask or cancels a retry in a print or JSON run that auto-approves.
+	extensionHostOptions.unattended = extensionHostOptions.nonInteractive
 
 	const host = new ExtensionHost(extensionHostOptions)
 	const jsonEmitter = useJsonOutput ? new JsonEventEmitter({ mode: outputFormat as "json" | "stream-json" }) : null

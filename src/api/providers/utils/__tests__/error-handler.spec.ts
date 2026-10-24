@@ -228,6 +228,29 @@ describe("handleProviderError", () => {
 		})
 	})
 
+	// The cause chains the OpenAI SDK (over undici fetch) delivers for an unreachable host.
+	describe("network failure cause", () => {
+		const fetchFailed = (socketError: string) => new TypeError("fetch failed", { cause: new Error(socketError) })
+
+		it.each([
+			[
+				"Connection error.",
+				"connect ECONNREFUSED 127.0.0.1:59999",
+				"TestProvider completion error: Connection error. (connect ECONNREFUSED 127.0.0.1:59999)",
+			],
+			[
+				"Request timed out.",
+				"Connect Timeout Error (attempted address: 10.255.255.1:11111, timeout: 10000ms)",
+				"TestProvider completion error: Request timed out. (Connect Timeout Error (attempted address: 10.255.255.1:11111, timeout: 10000ms))",
+			],
+			["fetch failed: bad port", "bad port", "TestProvider completion error: fetch failed: bad port"],
+		])("names the socket error behind %s", (sdkMessage, socketError, expected) => {
+			const error = new Error(sdkMessage, { cause: fetchFailed(socketError) })
+
+			expect(handleProviderError(error, providerName).message).toBe(expected)
+		})
+	})
+
 	describe("real-world error scenarios", () => {
 		it("should handle 401 Unauthorized with status and message", () => {
 			const error = new Error("Unauthorized") as any

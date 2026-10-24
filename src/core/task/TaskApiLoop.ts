@@ -183,7 +183,7 @@ interface StackItem {
 	includeFileDetails: boolean
 	retryAttempt?: number
 	// How many of the retryAttempt retries were for HTTP 429, which a
-	// background task does not count toward BACKGROUND_MAX_API_RETRIES.
+	// background task does not count toward UNATTENDED_MAX_API_RETRIES.
 	rateLimitRetries?: number
 	userMessageWasRemoved?: boolean
 }

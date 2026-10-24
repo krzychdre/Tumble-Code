@@ -194,6 +194,19 @@ const SCENARIOS: Record<string, Scenario> = {
 		feed.add(ask(5, "completion_result", ""))
 	},
 
+	// An unreachable host: RetryHandler counts the backoff down in one partial
+	// message, finalizes it without the timer, and the retry then succeeds.
+	"automatic retry": (feed) => {
+		const error = "OpenAI completion error: Connection error. (connect ECONNREFUSED 127.0.0.1:59999)\n"
+		feed.add(say(1, "text", "Say hi"))
+		feed.add(apiReq(2))
+		feed.add(say(3, "api_req_retry_delayed", `${error}<retry_timer>2</retry_timer>`, true))
+		feed.update(say(3, "api_req_retry_delayed", `${error}<retry_timer>1</retry_timer>`, true))
+		feed.update(say(3, "api_req_retry_delayed", error, false))
+		streamThenFinalize(feed, 4, "text", ["Hi."])
+		feed.add(ask(5, "completion_result", ""))
+	},
+
 	// Every state push replays the whole array, so each final message is
 	// delivered again and again by the pushes that follow it.
 	"state push replays": (feed) => {

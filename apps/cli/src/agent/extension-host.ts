@@ -55,6 +55,7 @@ import { openExternal as openInBrowser } from "@/lib/utils/open-external.js"
 
 import type { WaitingForInputEvent } from "./events.js"
 import type { MessageDelivery } from "./transcript-deliveries.js"
+import { UnattendedRetryCap } from "./api-retry.js"
 import { ExtensionClient } from "./extension-client.js"
 import { OutputManager } from "./output-manager.js"
 import { TranscriptPrinter } from "./transcript-printer.js"
@@ -138,11 +139,13 @@ export interface ExtensionHostOptions {
 	 */
 	exitOnError?: boolean
 	/**
-	 * When true, an api_req_failed ask fails the run (runTask rejects, so the
-	 * CLI exits with code 1) instead of waiting for an answer nobody gives.
-	 * Set for unattended print and JSON runs; the TUI answers the ask itself.
+	 * Nobody watches the run (print and JSON runs with auto-approval; the TUI
+	 * answers and cancels itself). An api_req_failed ask then fails the run
+	 * (runTask rejects, so the CLI exits with code 1) instead of waiting for an
+	 * answer nobody gives, and so does an automatic retry past the cap a
+	 * background task gets (UnattendedRetryCap).
 	 */
-	exitOnApiRequestFailed?: boolean
+	unattended?: boolean
 	/**
 	 * When true, completely disables all direct stdout/stderr output.
 	 * Use this when running in TUI mode where Ink controls the terminal.
@@ -733,8 +736,9 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 
 			// When exitOnError is enabled, listen for api_req_retry_delayed messages
 			// (sent by Task.ts during auto-approval retry backoff) and exit
-			// immediately. Every new one counts, not only the last message of a
-			// push, but not an old one in a resumed task's history.
+			// immediately; an unattended run exits after the retry cap. Every new
+			// one counts, not only the last message of a push, but not an old one
+			// in a resumed task's history.
 			let deliveryHandler: ((delivery: MessageDelivery) => void) | null = null
 
 			if (this.options.exitOnError) {
@@ -746,6 +750,17 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 				}
 
 				this.client.on("delivery", deliveryHandler)
+			} else if (this.options.unattended) {
+				const retryCap = new UnattendedRetryCap()
+				deliveryHandler = ({ message: msg, history }: MessageDelivery) => {
+					const failure = history ? undefined : retryCap.observe(msg)
+					if (failure) {
+						cleanup()
+						reject(new Error(failure))
+					}
+				}
+
+				this.client.on("delivery", deliveryHandler)
 			}
 
 			// An api_req_failed ask in an unattended run (or with --exit-on-error)
@@ -753,7 +768,7 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 			// for errors a retry cannot fix (401, 403, 404), so fail the run.
 			let waitingHandler: ((event: WaitingForInputEvent) => void) | null = null
 
-			if (this.options.exitOnApiRequestFailed || this.options.exitOnError) {
+			if (this.options.unattended || this.options.exitOnError) {
 				waitingHandler = (event: WaitingForInputEvent) => {
 					if (event.ask === "api_req_failed") {
 						cleanup()
