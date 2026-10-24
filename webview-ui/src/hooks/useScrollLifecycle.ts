@@ -230,6 +230,7 @@ export function useScrollLifecycle({
 
 		// The button hides together with the phase change: hidden in render, a Virtuoso
 		// atBottomStateChange that still sees the old phase in the ref would show it again.
+		// eslint-disable-next-line react-hooks/set-state-in-effect -- reset with the ref-held scroll phase
 		setShowScrollToBottom(false)
 		if (taskTs) {
 			transitionScrollPhase("HYDRATING_PINNED_TO_BOTTOM")

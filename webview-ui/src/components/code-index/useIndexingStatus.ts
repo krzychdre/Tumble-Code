@@ -11,10 +11,12 @@ import { onExtensionMessage } from "@src/utils/extensionBus"
 export function useIndexingStatus(externalIndexingStatus: IndexingStatus, cwd: string | undefined) {
 	const [indexingStatus, setIndexingStatus] = useState<IndexingStatus>(externalIndexingStatus)
 
-	// Update indexing status from parent
-	useEffect(() => {
+	// Follow a new status from the parent.
+	const [prevExternalStatus, setPrevExternalStatus] = useState(externalIndexingStatus)
+	if (externalIndexingStatus !== prevExternalStatus) {
+		setPrevExternalStatus(externalIndexingStatus)
 		setIndexingStatus(externalIndexingStatus)
-	}, [externalIndexingStatus])
+	}
 
 	// Listen for indexing status updates
 	useEffect(() => {

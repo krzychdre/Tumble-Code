@@ -40,14 +40,11 @@ export const reactConfig = [
 		settings: { react: { version: "detect" } },
 		rules: {
 			// eslint-plugin-react-hooks 7 adds the React Compiler diagnostics to its
-			// recommended preset, so a new violation fails lint. set-state-in-effect
-			// still reports findings in webview-ui and stays off until those
-			// components are refactored; the compiled-or-not answer stays with
-			// scripts/check-react-compiler-bailouts.mjs, which runs the build's own
-			// compiler version.
+			// recommended preset, so a new violation fails lint. The compiled-or-not
+			// answer stays with scripts/check-react-compiler-bailouts.mjs, which runs
+			// the build's own compiler version.
 			...pluginReactHooks.configs.recommended.rules,
 			...deferredEslint10Rules,
-			"react-hooks/set-state-in-effect": "off",
 			// React scope no longer necessary with new JSX transform.
 			"react/react-in-jsx-scope": "off",
 		},

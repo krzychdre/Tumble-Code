@@ -104,4 +104,16 @@ describe("MermaidBlock with the real Mermaid parser", () => {
 			document.body.classList.remove("vscode-light")
 		}
 	})
+
+	it("new code drops the old error and shows loading until the new diagram renders", async () => {
+		const { rerender } = render(<MermaidBlock code={"graph TD\n  A -->"} />)
+		expect(await screen.findByText("common:mermaid.render_error", {}, { timeout: 5000 })).toBeInTheDocument()
+		expect(screen.queryByText("common:mermaid.loading")).toBeNull()
+
+		rerender(<MermaidBlock code={"graph TD\n  A --> B"} />)
+
+		expect(screen.queryByText("common:mermaid.render_error")).toBeNull()
+		expect(screen.getByText("common:mermaid.loading")).toBeInTheDocument()
+		expect(await screen.findByTestId("mermaid-svg", {}, { timeout: 5000 })).toBeInTheDocument()
+	})
 })

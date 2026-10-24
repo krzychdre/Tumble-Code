@@ -1,4 +1,4 @@
-import { useCallback, forwardRef, useState, useEffect } from "react"
+import { useCallback, forwardRef, useState } from "react"
 
 import { Input, type InputProps } from "@src/components/ui/input"
 
@@ -31,13 +31,6 @@ function FormattedTextFieldInner<T>(
 ) {
 	const [rawInput, setRawInput] = useState<string>("")
 	const [isTyping, setIsTyping] = useState(false)
-
-	// Update raw input when external value changes (but not when we're actively typing)
-	useEffect(() => {
-		if (!isTyping) {
-			setRawInput(formatter.format(value))
-		}
-	}, [value, formatter, isTyping])
 
 	const handleChange = useCallback(
 		(e: React.ChangeEvent<HTMLInputElement>) => {

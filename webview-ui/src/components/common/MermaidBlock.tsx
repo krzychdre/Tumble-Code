@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { useDebounceEffect } from "@src/utils/useDebounceEffect"
 import { vscode } from "@src/utils/vscode"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
@@ -42,17 +42,19 @@ interface MermaidBlockProps {
 
 export default function MermaidBlock({ code }: MermaidBlockProps) {
 	const containerRef = useRef<HTMLDivElement>(null)
-	const [isLoading, setIsLoading] = useState(false)
+	const [isLoading, setIsLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
 	const [isErrorExpanded, setIsErrorExpanded] = useState(false)
 	const { showCopyFeedback, copyWithFeedback } = useCopyToClipboard()
 	const { t } = useAppTranslation()
 
 	// 1) Whenever `code` changes, mark that we need to re-render a new chart
-	useEffect(() => {
+	const [prevCode, setPrevCode] = useState(code)
+	if (code !== prevCode) {
+		setPrevCode(code)
 		setIsLoading(true)
 		setError(null)
-	}, [code])
+	}
 
 	// 2) Debounce the actual parse/render
 	useDebounceEffect(
