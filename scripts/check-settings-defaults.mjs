@@ -21,22 +21,22 @@ const TABLE_PATH = join(root, "packages/types/src/settings-defaults.ts")
 
 /**
  * Call sites that are allowed a literal default on a table key, with a reason.
- * Map of "file:path-relative-to-root:line" -> reason. Keep it empty if possible.
+ * Map of "path-relative-to-root: expression" -> reason, where the expression is
+ * the matched fallback as the violation report prints it. Each entry allows ONE
+ * occurrence in that file. Keep it empty if possible.
  */
 const ALLOWED = {
 	// Import cycle: settings-defaults.ts imports WEB_TOOLS_DEFAULTS from
 	// web-tools.ts, so this resolver cannot read the table.
-	"packages/types/src/web-tools.ts:100": "import cycle with the defaults table",
-	"packages/types/src/web-tools.ts:101": "import cycle with the defaults table",
-	// Write path: `||` also guards the empty string a profile clear leaves
-	// behind; a read-side `??` would save "" as a config name.
-	"src/extension/api.ts:358": "write path; || also guards the empty string",
+	'packages/types/src/web-tools.ts: webSearchBackend ?? "searxng"': "import cycle with the defaults table",
+	'packages/types/src/web-tools.ts: searxngBaseUrl ?? ""': "import cycle with the defaults table",
 	// Display-only: the empty string is not the default config name, it just
 	// renders "no profile selected" in the input.
-	"webview-ui/src/components/settings/ApiConfigManager.tsx:29": 'optional prop; "" renders the empty input',
-	"webview-ui/src/components/settings/ApiConfigManager.tsx:137":
+	'webview-ui/src/components/settings/ApiConfigManager.tsx: currentApiConfigName = ""':
+		'optional prop; "" renders the empty input',
+	'webview-ui/src/components/settings/ApiConfigManager.tsx: currentApiConfigName || ""':
 		'display path; || also guards the empty string ("" is not a config name)',
-	"webview-ui/src/components/chat/ComposerToolbar.tsx:53":
+	'webview-ui/src/components/chat/ComposerToolbar.tsx: currentApiConfigName || ""':
 		'display path; || also guards the empty string ("" is not a config name)',
 }
 
@@ -121,6 +121,7 @@ function literalFallbackRe(key) {
 
 function scan(keys, rootDir) {
 	const violations = []
+	const used = new Set()
 	for (const dir of SCAN_DIRS) {
 		for (const file of walk(join(rootDir, dir))) {
 			const rel = relative(rootDir, file).split(sep).join("/")
@@ -133,10 +134,14 @@ function scan(keys, rootDir) {
 					if (!line.includes(key)) continue
 					const m = line.match(re)
 					if (m) {
-						const id = `${rel}:${i + 1}`
-						const allowance = ALLOWED[id]
-						if (allowance !== undefined) continue
-						violations.push({ file: rel, line: i + 1, key, text: line.trim() })
+						// Drop the `,`/`(`/`{` anchor and the `obj?.` receiver.
+						const expression = m[0].replace(/^[,({]?[ \t]*(?:\??\.)?/, "")
+						const id = `${rel}: ${expression}`
+						if (ALLOWED[id] !== undefined && !used.has(id)) {
+							used.add(id)
+							continue
+						}
+						violations.push({ file: rel, line: i + 1, key, expression, text: line.trim() })
 					}
 				}
 			}
@@ -171,7 +176,7 @@ if (isMain) {
 				"use `?? SETTINGS_DEFAULTS.<key>` (packages/types/src/settings-defaults.ts is the one table).",
 		)
 		for (const v of result.violations) {
-			console.error(`  ${v.file}:${v.line}  [${v.key}]  ${v.text}`)
+			console.error(`  ${v.file}:${v.line}  [${v.expression}]  ${v.text}`)
 		}
 		process.exit(1)
 	}
