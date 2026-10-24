@@ -47,9 +47,14 @@ function useSubagentMessages(taskId: string): { messages: ClineMessage[]; loaded
 	const [messages, setMessages] = useState<ClineMessage[]>([])
 	const [loaded, setLoaded] = useState(false)
 
-	useEffect(() => {
+	const [prevTaskId, setPrevTaskId] = useState(taskId)
+	if (taskId !== prevTaskId) {
+		setPrevTaskId(taskId)
 		setMessages([])
 		setLoaded(false)
+	}
+
+	useEffect(() => {
 		vscode.postMessage({ type: "subscribeSubagentMessages", taskId })
 		return () => {
 			vscode.postMessage({ type: "unsubscribeSubagentMessages", taskId })

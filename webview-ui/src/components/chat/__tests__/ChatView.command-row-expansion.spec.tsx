@@ -203,4 +203,27 @@ describe("ChatView command row expansion", () => {
 			expect(getByTestId(`chat-row-${COMMAND_TS}`)).toHaveAttribute("data-expanded", "false")
 		})
 	})
+	it("forgets expanded rows when another task opens", async () => {
+		const taskA = (): ClineMessage[] => [
+			{ type: "say", say: "task", ts: 1, text: "Task A" },
+			{ type: "say", say: "text", ts: 2, text: "answer" },
+		]
+		const { getByTestId, getByLabelText } = renderChatView()
+		await act(async () => {
+			hydrateState(taskA())
+		})
+		await act(async () => {
+			fireEvent.click(getByLabelText("toggle-2"))
+		})
+		await waitFor(() => expect(getByTestId("chat-row-2")).toHaveAttribute("data-expanded", "true"))
+
+		await act(async () => {
+			hydrateState([{ type: "say", say: "task", ts: 100, text: "Task B" }])
+		})
+		await act(async () => {
+			hydrateState(taskA())
+		})
+
+		await waitFor(() => expect(getByTestId("chat-row-2")).toHaveAttribute("data-expanded", "false"))
+	})
 })

@@ -44,8 +44,8 @@ const STATUS_OPTIONS = [
 const genId = () => Math.random().toString(36).slice(2, 10)
 
 // The default for a missing `todos` prop. It must be one shared array: the
-// effect that copies `todos` into state is keyed on it, so a fresh `[]` per
-// render would set state on every render and loop forever.
+// component restarts its edit copy whenever `todos` changes identity, so a
+// fresh `[]` per render would reset state on every render and loop forever.
 const NO_TODOS: TodoItem[] = []
 
 /*
@@ -126,12 +126,10 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 	const [isEditing, setIsEditing] = useState(false)
 	const deleteLabelId = useId()
 
-	// Automatically exit edit mode when external editable becomes false
-	useEffect(() => {
-		if (!editable && isEditing) {
-			setIsEditing(false)
-		}
-	}, [editable, isEditing])
+	// Leave edit mode when the parent makes the block read-only.
+	if (!editable && isEditing) {
+		setIsEditing(false)
+	}
 
 	// Check if onChange is passed, once: the ref makes later runs (a new onChange) return early.
 	const onChangeCheckedRef = useRef(false)
@@ -147,10 +145,12 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 		}
 	}, [onChange])
 
-	// Sync when external props.todos changes
-	useEffect(() => {
+	// Start over from the parent's todos whenever it passes new ones.
+	const [prevTodos, setPrevTodos] = useState(todos)
+	if (todos !== prevTodos) {
+		setPrevTodos(todos)
 		setEditTodos(todos.length > 0 ? todos.map((todo) => ({ ...todo, id: todo.id || genId() })) : [])
-	}, [todos])
+	}
 
 	// Auto focus on new item
 	useEffect(() => {

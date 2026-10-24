@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, memo } from "react"
+import { useCallback, useMemo, useState, memo } from "react"
 import { Server, ChevronDown, ChevronRight } from "lucide-react"
 import { useTranslation } from "react-i18next"
 
@@ -172,26 +172,22 @@ export const McpExecution = ({
 
 	useExtensionMessage("mcpExecutionStatus", onMessage)
 
-	// Initialize with text if provided and parse command/response sections
-	useEffect(() => {
-		// Handle arguments text - don't parse JSON here as it might be incomplete
-		if (text) {
-			setArgumentsText(text)
-		}
-
-		// Handle response text
-		if (useMcpServer?.response) {
-			setResponseText(useMcpServer.response)
-		}
-
-		if (initialServerName && initialServerName !== serverName) {
-			setServerName(initialServerName)
-		}
-
-		if (initialToolName && initialToolName !== toolName) {
-			setToolName(initialToolName)
-		}
-	}, [text, useMcpServer, initialServerName, initialToolName, serverName, toolName, isArguments])
+	// Follow the ask while it streams. Arguments and names keep their last non-empty value; the response
+	// from the ask replaces streamed output whenever it changes.
+	if (text && text !== argumentsText) {
+		setArgumentsText(text)
+	}
+	const [askResponse, setAskResponse] = useState(useMcpServer?.response)
+	if (useMcpServer?.response && useMcpServer.response !== askResponse) {
+		setAskResponse(useMcpServer.response)
+		setResponseText(useMcpServer.response)
+	}
+	if (initialServerName && initialServerName !== serverName) {
+		setServerName(initialServerName)
+	}
+	if (initialToolName && initialToolName !== toolName) {
+		setToolName(initialToolName)
+	}
 
 	const hasArguments = !!(isArguments || useMcpServer?.arguments || argumentsText)
 	const hasResponse = responseText.length > 0

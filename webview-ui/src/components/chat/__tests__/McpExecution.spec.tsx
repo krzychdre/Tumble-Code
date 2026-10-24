@@ -443,4 +443,37 @@ describe("McpExecution", () => {
 			expect(screen.getByTestId("mcp-tool-row-server")).toHaveTextContent("direct-server")
 		})
 	})
+	describe("props that change while the ask streams", () => {
+		it("shows the latest server, tool and arguments", () => {
+			const { rerender } = render(
+				<McpExecution executionId="test-1" serverName="first-server" toolName="first-tool" text='{"q":1}' />,
+			)
+			rerender(
+				<McpExecution executionId="test-1" serverName="second-server" toolName="second-tool" text='{"q":2}' />,
+			)
+
+			fireEvent.click(screen.getByTestId("mcp-execution-header"))
+
+			expect(screen.getByTestId("mcp-server-name")).toHaveTextContent("second-server")
+			expect(screen.getByTestId("mcp-tool-name")).toHaveTextContent("second-tool")
+			expect(screen.getByTestId("code-block")).toHaveTextContent('"q": 2')
+		})
+
+		it("shows the latest response from the ask", () => {
+			const ask = (response: string) => ({
+				type: "use_mcp_tool" as const,
+				serverName: "context7",
+				toolName: "query-docs",
+				arguments: "{}",
+				response,
+			})
+			const { rerender } = render(<McpExecution executionId="test-1" useMcpServer={ask("first answer")} />)
+			fireEvent.click(screen.getByTestId("mcp-execution-header"))
+			fireEvent.click(screen.getByTestId("mcp-response-header"))
+
+			rerender(<McpExecution executionId="test-1" useMcpServer={ask("second answer")} />)
+
+			expect(screen.getByTestId("markdown")).toHaveTextContent("second answer")
+		})
+	})
 })

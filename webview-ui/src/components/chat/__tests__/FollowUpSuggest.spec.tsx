@@ -415,6 +415,33 @@ describe("FollowUpSuggest", () => {
 		expect(mockOnSuggestionClick).not.toHaveBeenCalled()
 	})
 
+	it.each([
+		{ change: "a new timeout", next: { suggestions: mockSuggestions, timeoutMs: 5000 }, expected: /5s/ },
+		{ change: "new suggestions", next: { suggestions: [{ answer: "Other" }], timeoutMs: 3000 }, expected: /3s/ },
+	])("starts the countdown over on $change", async ({ next, expected }) => {
+		const view = (suggestions: typeof mockSuggestions, timeoutMs: number) => (
+			<TestExtensionStateProvider value={{ ...defaultTestState, followupAutoApproveTimeoutMs: timeoutMs }}>
+				<TooltipProvider>
+					<FollowUpSuggest
+						suggestions={suggestions}
+						onSuggestionClick={mockOnSuggestionClick}
+						ts={123}
+						onCancelAutoApproval={mockOnCancelAutoApproval}
+					/>
+				</TooltipProvider>
+			</TestExtensionStateProvider>
+		)
+		const { rerender } = render(view(mockSuggestions, 3000))
+		await act(async () => {
+			vi.advanceTimersByTime(1000)
+		})
+		expect(screen.getByText(/2s/)).toBeInTheDocument()
+
+		rerender(view(next.suggestions, next.timeoutMs))
+
+		expect(screen.getByText(expected)).toBeInTheDocument()
+	})
+
 	it("should handle component unmounting during countdown", () => {
 		const { unmount } = renderWithTestProviders(
 			<FollowUpSuggest
