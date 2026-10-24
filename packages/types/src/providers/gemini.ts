@@ -178,7 +178,7 @@ export const geminiModels = {
 
 		inputPrice: 2.5, // This is the pricing for prompts above 200k tokens.
 		outputPrice: 15,
-		cacheReadsPrice: 0.625,
+		cacheReadsPrice: 0.25,
 		cacheWritesPrice: 4.5,
 		maxThinkingTokens: 32_768,
 		supportsReasoningBudget: true,
@@ -188,13 +188,13 @@ export const geminiModels = {
 				contextWindow: 200_000,
 				inputPrice: 1.25,
 				outputPrice: 10,
-				cacheReadsPrice: 0.31,
+				cacheReadsPrice: 0.125,
 			},
 			{
 				contextWindow: Infinity,
 				inputPrice: 2.5,
 				outputPrice: 15,
-				cacheReadsPrice: 0.625,
+				cacheReadsPrice: 0.25,
 			},
 		],
 	},
@@ -221,7 +221,7 @@ export const geminiModels = {
 
 		inputPrice: 0.3,
 		outputPrice: 2.5,
-		cacheReadsPrice: 0.075,
+		cacheReadsPrice: 0.03,
 		cacheWritesPrice: 1.0,
 		maxThinkingTokens: 24_576,
 		supportsReasoningBudget: true,
