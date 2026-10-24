@@ -249,20 +249,13 @@ describe("strict tool schema characterization (API-3)", () => {
 			expect(pin(sent)).toMatchSnapshot()
 		})
 
-		it("OpenAiCodexHandler request tools are unchanged", async () => {
+		// Codex shares the Responses API request builder; pinned by comparison, not by a third snapshot.
+		it("OpenAiCodexHandler sends the same schemas as OpenAiNativeHandler, leaving its input alone", async () => {
 			const tools = allToolSets()[set]
 			const before = structuredClone(tools)
 
-			const sent = await codexRequestTools(tools)
-
-			expect(tools).toEqual(before)
-			expect(pin(sent)).toMatchSnapshot()
-		})
-
-		it("OpenAiNativeHandler and OpenAiCodexHandler send the same schemas", async () => {
-			const tools = allToolSets()[set]
-
 			expect(await codexRequestTools(tools)).toEqual(await nativeRequestTools(tools))
+			expect(tools).toEqual(before)
 		})
 	})
 
