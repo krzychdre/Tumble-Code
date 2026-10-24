@@ -74,22 +74,17 @@ describe("ChatRow - command row expand toggle", () => {
 		vi.clearAllMocks()
 	})
 
-	it("asks the parent to open a collapsed row", () => {
-		renderCommandRow(false)
+	// The target state comes from what is displayed. A row that opens by
+	// default has no entry in the parent's map, so flipping the stored value
+	// instead would compute !undefined === true and keep the row open.
+	it.each([
+		[false, "chat:commandExecution.expandCommand", true],
+		[true, "chat:commandExecution.collapseCommand", false],
+	])("with isExpanded=%s the chevron asks the parent for %s", (isExpanded, label, target) => {
+		renderCommandRow(isExpanded)
 
-		fireEvent.click(screen.getByRole("button", { name: "chat:commandExecution.expandCommand" }))
+		fireEvent.click(screen.getByRole("button", { name: label }))
 
-		expect(onToggleExpand).toHaveBeenCalledWith(commandMessage.ts, true)
-	})
-
-	it("asks the parent to close an expanded row", () => {
-		renderCommandRow(true)
-
-		// The target state comes from what is displayed. A row that opens by
-		// default has no entry in the parent's map, so flipping the stored value
-		// instead would compute !undefined === true and keep the row open.
-		fireEvent.click(screen.getByRole("button", { name: "chat:commandExecution.collapseCommand" }))
-
-		expect(onToggleExpand).toHaveBeenCalledWith(commandMessage.ts, false)
+		expect(onToggleExpand).toHaveBeenCalledWith(commandMessage.ts, target)
 	})
 })

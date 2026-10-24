@@ -59,62 +59,24 @@ function renderRow(message: ClineMessage) {
 	)
 }
 
+// decodeStoredProse.spec.ts covers which kinds are decoded; here the row must
+// apply it to the message and to a tool ask's payload.
 describe("ChatRow - escaped letters in stored messages", () => {
-	it("shows a completion_result say with real letters", () => {
-		const { container } = renderRow({ ts: 1, type: "say", say: "completion_result", text: ESCAPED })
+	it.each([
+		["completion_result say", { ts: 1, type: "say", say: "completion_result", text: ESCAPED }],
+		[
+			"newTask tool ask",
+			{
+				ts: 2,
+				type: "ask",
+				ask: "tool",
+				text: JSON.stringify({ tool: "newTask", mode: "code", content: ESCAPED }),
+			},
+		],
+	] as const)("shows a %s with real letters", (_name, message) => {
+		const { container } = renderRow(message as ClineMessage)
 
 		expect(container.textContent).toContain(DECODED)
 		expect(container.textContent).not.toContain("\\u0142")
-	})
-
-	it("shows a completion_result ask with real letters", () => {
-		const { container } = renderRow({ ts: 2, type: "ask", ask: "completion_result", text: ESCAPED })
-
-		expect(container.textContent).toContain(DECODED)
-	})
-
-	it("keeps an escape inside a code span as written", () => {
-		const { container } = renderRow({
-			ts: 3,
-			type: "say",
-			say: "completion_result",
-			text: "Litera `\\u0142` to Dok\\u0142adnie ł",
-		})
-
-		expect(container.querySelector("code")?.textContent).toBe("\\u0142")
-		expect(container.textContent).toContain("Dokładnie ł")
-	})
-
-	it("shows a follow-up question and its suggestions with real letters", () => {
-		const { container } = renderRow({
-			ts: 4,
-			type: "ask",
-			ask: "followup",
-			text: JSON.stringify({
-				question: "Kt\\u00f3ry wariant?",
-				suggest: [{ answer: "Pierwszy, bo kr\\u00f3tszy" }, { answer: "Drugi", mode: "architect" }],
-			}),
-		})
-
-		expect(container.textContent).toContain("Który wariant?")
-		expect(container.textContent).toContain("Pierwszy, bo krótszy")
-		expect(container.textContent).not.toContain("\\u00f3")
-	})
-
-	it("shows a new subtask's instructions with real letters", () => {
-		const { container } = renderRow({
-			ts: 5,
-			type: "ask",
-			ask: "tool",
-			text: JSON.stringify({ tool: "newTask", mode: "code", content: ESCAPED }),
-		})
-
-		expect(container.textContent).toContain(DECODED)
-	})
-
-	it("leaves a command row as written", () => {
-		const { container } = renderRow({ ts: 6, type: "ask", ask: "command", text: "printf 'Dok\\u0142adnie'" })
-
-		expect(container.textContent).toContain("Dok\\u0142adnie")
 	})
 })

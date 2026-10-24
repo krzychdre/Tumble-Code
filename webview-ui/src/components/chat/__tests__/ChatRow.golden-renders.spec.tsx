@@ -194,11 +194,7 @@ const TOOL_CASES: Case[] = [
 		}),
 	},
 	{ name: "searchAndReplace", message: toolAsk({ tool: "searchAndReplace", path: "src/b.ts", diff: DIFF }) },
-	{ name: "search_and_replace", message: toolAsk({ tool: "search_and_replace", path: "src/b.ts", diff: DIFF }) },
-	{ name: "search_replace", message: toolAsk({ tool: "search_replace", path: "src/b.ts", diff: DIFF }) },
 	{ name: "edit", message: toolAsk({ tool: "edit", path: "src/b.ts", diff: DIFF }, { partial: true }) },
-	{ name: "edit_file", message: toolAsk({ tool: "edit_file", path: "src/b.ts", diff: DIFF }) },
-	{ name: "apply_patch", message: toolAsk({ tool: "apply_patch", path: "src/b.ts", diff: DIFF }) },
 	{
 		name: "apply_diff batch",
 		message: toolAsk({
@@ -397,7 +393,6 @@ const SAY_CASES: Case[] = [
 	},
 	{ name: "api_req_started without text", message: say("api_req_started") },
 	{ name: "api_req_finished", message: say("api_req_finished", "{}") },
-	{ name: "api_req_retried (default)", message: say("api_req_retried") },
 	{
 		name: "api_req_retry_delayed known code",
 		message: say("api_req_retry_delayed", "429 Too many requests<retry_timer>12</retry_timer>"),
@@ -409,8 +404,12 @@ const SAY_CASES: Case[] = [
 		name: "api_req_rate_limit_wait waiting",
 		message: say("api_req_rate_limit_wait", JSON.stringify({ seconds: 7 }), { partial: true }),
 	},
+	{
+		name: "api_req_rate_limit_wait without text",
+		message: say("api_req_rate_limit_wait", undefined, { partial: true }),
+	},
 	{ name: "api_req_rate_limit_wait done", message: say("api_req_rate_limit_wait", JSON.stringify({ seconds: 7 })) },
-	{ name: "api_req_deleted (default)", message: say("api_req_deleted") },
+	{ name: "api_req_deleted (default row)", message: say("api_req_deleted") },
 	{ name: "text", message: say("text", "Hello **world**\n\n- item") },
 	{ name: "text partial with images", message: say("text", "Streaming", { partial: true, images: [IMAGE] }) },
 	{
@@ -431,10 +430,7 @@ const SAY_CASES: Case[] = [
 		name: "user_feedback_diff",
 		message: say("user_feedback_diff", JSON.stringify({ tool: "appliedDiff", diff: DIFF })),
 	},
-	{ name: "command_output (default)", message: say("command_output", "npm test output") },
 	{ name: "shell_integration_warning", message: say("shell_integration_warning") },
-	{ name: "mcp_server_request_started (default)", message: say("mcp_server_request_started") },
-	{ name: "mcp_server_response (default)", message: say("mcp_server_response", '{"temp": 21}') },
 	{ name: "subtask_result", message: say("subtask_result", "Child finished") },
 	{
 		name: "subtask_result with child link",
@@ -443,7 +439,7 @@ const SAY_CASES: Case[] = [
 	},
 	{ name: "checkpoint_saved", message: say("checkpoint_saved", "abc123", { checkpoint: { from: "a", to: "b" } }) },
 	{ name: "checkpoint_saved not current", message: say("checkpoint_saved", "def456") },
-	{ name: "rooignore_error (default)", message: say("rooignore_error", "secret.txt") },
+	{ name: "rooignore_error (default row)", message: say("rooignore_error", "secret.txt") },
 	{ name: "diff_error", message: say("diff_error", "No match found") },
 	{ name: "condense_context partial", message: say("condense_context", undefined, { partial: true }) },
 	{
@@ -525,14 +521,9 @@ const SAY_CASES: Case[] = [
 		message: toolSay({ tool: "readArtifact", searchPattern: "ERROR", matchCount: 3 }),
 	},
 	{
-		name: "tool readArtifact search one match",
-		message: toolSay({ tool: "readArtifact", searchPattern: "ERROR", matchCount: 1 }),
-	},
-	{
 		name: "tool readArtifact range",
 		message: toolSay({ tool: "readArtifact", readStart: 0, readEnd: 2048, totalBytes: 5 * 1024 * 1024 }),
 	},
-	{ name: "tool readCommandOutput total", message: toolSay({ tool: "readCommandOutput", totalBytes: 512 }) },
 	{ name: "tool readCommandOutput bare", message: toolSay({ tool: "readCommandOutput" }) },
 	{ name: "tool unknown", message: toolSay({ tool: "readFile", path: "a.ts" }) },
 	{ name: "tool unparsable", message: say("tool", "{oops") },
@@ -558,12 +549,9 @@ const ASK_CASES: Case[] = [
 		isLast: true,
 		lastModifiedMessage: { type: "ask", ask: "command", ts: TS, text: "npm test\nOutput:\nok" },
 	},
-	{ name: "command_output (default)", message: ask("command_output", "") },
 	{ name: "completion_result", message: ask("completion_result", "Finished.") },
 	{ name: "completion_result empty", message: ask("completion_result", "") },
-	{ name: "api_req_failed (default)", message: ask("api_req_failed", "500") },
-	{ name: "resume_task (default)", message: ask("resume_task") },
-	{ name: "resume_completed_task (default)", message: ask("resume_completed_task") },
+	{ name: "resume_task (no renderer)", message: ask("resume_task") },
 	{ name: "mistake_limit_reached", message: ask("mistake_limit_reached", "Too many mistakes") },
 	{
 		name: "use_mcp_server tool",

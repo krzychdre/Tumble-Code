@@ -90,175 +90,69 @@ function renderChatRow(message: any, currentTaskItem?: Partial<HistoryItem>, met
 	)
 }
 
+const newTaskAsk = {
+	ts: 1000,
+	type: "ask" as const,
+	ask: "tool" as const,
+	text: JSON.stringify({ tool: "newTask", mode: "code", content: "Implement feature X" }),
+}
+
+const subtaskResult = {
+	ts: 2000,
+	type: "say" as const,
+	say: "subtask_result" as const,
+	text: "The subtask has been completed successfully.",
+}
+
 describe("ChatRow - subtask links", () => {
 	beforeEach(() => {
 		mockPostMessage.mockClear()
 	})
 
-	describe("newTask tool", () => {
-		it("should display 'Go to subtask' link when currentTaskItem has childIds", () => {
-			const message = {
-				ts: Date.now(),
-				type: "ask" as const,
-				ask: "tool" as const,
-				text: JSON.stringify({
-					tool: "newTask",
-					mode: "code",
-					content: "Implement feature X",
-				}),
-			}
+	// childIds maps by index to the task's newTask asks (meta.newTaskIndex).
+	it.each([
+		[
+			"the first newTask",
+			newTaskAsk,
+			{ childIds: ["first-child", "second-child"] },
+			FIRST_NEW_TASK_META,
+			"first-child",
+		],
+		[
+			"the second newTask",
+			newTaskAsk,
+			{ childIds: ["first-child", "second-child"] },
+			{ ...FIRST_NEW_TASK_META, newTaskIndex: 1 },
+			"second-child",
+		],
+		[
+			"a subtask_result",
+			subtaskResult,
+			{ completedByChildId: "completed-child-456" },
+			FIRST_NEW_TASK_META,
+			"completed-child-456",
+		],
+	])("links %s to its child task", (_name, message, taskItem, meta, childId) => {
+		renderChatRow(message, taskItem, meta)
 
-			// childIds maps by index to newTask messages - first newTask gets childIds[0]
-			renderChatRow(message, {
-				childIds: ["child-task-123"],
-			})
+		fireEvent.click(screen.getByText("Go to subtask"))
 
-			const goToSubtaskButton = screen.getByText("Go to subtask")
-			expect(goToSubtaskButton).toBeInTheDocument()
-
-			fireEvent.click(goToSubtaskButton)
-
-			expect(mockPostMessage).toHaveBeenCalledWith({
-				type: "showTaskWithId",
-				text: "child-task-123",
-			})
-		})
-
-		it("should display 'Go to subtask' link using index-matched childId for multiple newTasks", () => {
-			const message = {
-				ts: Date.now(),
-				type: "ask" as const,
-				ask: "tool" as const,
-				text: JSON.stringify({
-					tool: "newTask",
-					mode: "architect",
-					content: "Design system architecture",
-				}),
-			}
-
-			// The implementation maps newTask messages to childIds by index
-			// Since this is the first (and only) newTask message, it gets childIds[0]
-			renderChatRow(message, {
-				childIds: ["first-child", "second-child"],
-			})
-
-			const goToSubtaskButton = screen.getByText("Go to subtask")
-			expect(goToSubtaskButton).toBeInTheDocument()
-
-			fireEvent.click(goToSubtaskButton)
-
-			// First newTask message maps to first childId
-			expect(mockPostMessage).toHaveBeenCalledWith({
-				type: "showTaskWithId",
-				text: "first-child",
-			})
-		})
-
-		it("should not display 'Go to subtask' link when no child task exists", () => {
-			const message = {
-				ts: Date.now(),
-				type: "ask" as const,
-				ask: "tool" as const,
-				text: JSON.stringify({
-					tool: "newTask",
-					mode: "code",
-					content: "Implement feature X",
-				}),
-			}
-
-			renderChatRow(message, undefined)
-
-			const goToSubtaskButton = screen.queryByText("Go to subtask")
-			expect(goToSubtaskButton).toBeNull()
-		})
-
-		it("links to the child at the row's newTask index", () => {
-			const message = {
-				ts: 2000,
-				type: "ask" as const,
-				ask: "tool" as const,
-				text: JSON.stringify({
-					tool: "newTask",
-					mode: "code",
-					content: "Second delegated piece",
-				}),
-			}
-
-			renderChatRow(
-				message,
-				{ childIds: ["first-child", "second-child"] },
-				{ ...FIRST_NEW_TASK_META, newTaskIndex: 1 },
-			)
-
-			fireEvent.click(screen.getByText("Go to subtask"))
-
-			expect(mockPostMessage).toHaveBeenCalledWith({
-				type: "showTaskWithId",
-				text: "second-child",
-			})
-		})
-
-		it("should not display 'Go to subtask' link when directly followed by subtask_result", () => {
-			const newTaskMessage = {
-				ts: 1000,
-				type: "ask" as const,
-				ask: "tool" as const,
-				text: JSON.stringify({
-					tool: "newTask",
-					mode: "code",
-					content: "Implement feature X",
-				}),
-			}
-
-			// The child exists, but the result row right after carries the link.
-			renderChatRow(
-				newTaskMessage,
-				{ childIds: ["child-task-123"] },
-				{ ...FIRST_NEW_TASK_META, nextTs: 1001, followedBySubtaskResult: true },
-			)
-
-			// Button should be hidden because next message is subtask_result
-			const goToSubtaskButton = screen.queryByText("Go to subtask")
-			expect(goToSubtaskButton).toBeNull()
-		})
+		expect(mockPostMessage).toHaveBeenCalledWith({ type: "showTaskWithId", text: childId })
 	})
 
-	describe("subtask_result say message", () => {
-		it("should display 'Go to subtask' link when currentTaskItem has completedByChildId", () => {
-			const message = {
-				ts: Date.now(),
-				type: "say" as const,
-				say: "subtask_result" as const,
-				text: "The subtask has been completed successfully.",
-			}
+	// Directly followed by a subtask_result, the result row carries the link.
+	it.each([
+		["a newTask without a child", newTaskAsk, undefined, FIRST_NEW_TASK_META],
+		[
+			"a newTask followed by its result",
+			newTaskAsk,
+			{ childIds: ["child-task-123"] },
+			{ ...FIRST_NEW_TASK_META, nextTs: 1001, followedBySubtaskResult: true },
+		],
+		["a subtask_result without a child", subtaskResult, undefined, FIRST_NEW_TASK_META],
+	])("shows no link for %s", (_name, message, taskItem, meta) => {
+		renderChatRow(message, taskItem, meta)
 
-			renderChatRow(message, {
-				completedByChildId: "completed-child-456",
-			})
-
-			const goToSubtaskButton = screen.getByText("Go to subtask")
-			expect(goToSubtaskButton).toBeInTheDocument()
-
-			fireEvent.click(goToSubtaskButton)
-
-			expect(mockPostMessage).toHaveBeenCalledWith({
-				type: "showTaskWithId",
-				text: "completed-child-456",
-			})
-		})
-
-		it("should not display 'Go to subtask' link when no completedByChildId exists", () => {
-			const message = {
-				ts: Date.now(),
-				type: "say" as const,
-				say: "subtask_result" as const,
-				text: "The subtask has been completed successfully.",
-			}
-
-			renderChatRow(message, undefined)
-
-			const goToSubtaskButton = screen.queryByText("Go to subtask")
-			expect(goToSubtaskButton).toBeNull()
-		})
+		expect(screen.queryByText("Go to subtask")).toBeNull()
 	})
 })
