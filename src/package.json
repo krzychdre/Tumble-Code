@@ -514,7 +514,8 @@
 		"bundle": "node esbuild.mjs",
 		"vscode:prepublish": "pnpm bundle --production",
 		"vsix": "mkdirp ../bin && vsce package --no-dependencies --allow-package-env-file --out ../bin",
-		"publish:marketplace": "vsce publish --packagePath ../bin/tumble-code-$npm_package_version.vsix && ovsx publish --packagePath ../bin/tumble-code-$npm_package_version.vsix",
+		"publish:marketplace": "vsce publish --azure-credential --packagePath ../bin/tumble-code-$npm_package_version.vsix",
+		"publish:openvsx": "ovsx publish --packagePath ../bin/tumble-code-$npm_package_version.vsix",
 		"watch:bundle": "pnpm bundle --watch",
 		"watch:tsc": "cd .. && tsc --noEmit --watch --project src/tsconfig.json",
 		"clean": "rimraf README.md CHANGELOG.md LICENSE dist logs mock .turbo"
