@@ -53,133 +53,23 @@ describe("ChatTextArea - lockApiConfigAcrossModes toggle", () => {
 		togglePinnedApiConfig: vi.fn(),
 	}
 
-	beforeEach(() => {
-		vi.clearAllMocks()
-	})
+	// The toggle lives in ApiConfigSelector's popover; ComposerToolbar posts the flipped value.
+	it.each([
+		[false, "chat:lockApiConfigAcrossModes", "text-vscode-descriptionForeground", true],
+		[undefined, "chat:lockApiConfigAcrossModes", "text-vscode-descriptionForeground", true],
+		[true, "chat:unlockApiConfigAcrossModes", "text-vscode-focusBorder", false],
+	])("with lockApiConfigAcrossModes=%s shows %s and posts bool=%s", (locked, label, colour, posted) => {
+		const state = { ...defaultState, lockApiConfigAcrossModes: locked }
+		;(useExtensionState as ReturnType<typeof vi.fn>).mockReturnValue(state)
+		;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) => selector(state))
+		render(<ChatTextArea {...defaultProps} />)
+		mockPostMessage.mockClear()
 
-	/**
-	 * Helper: Opens the ApiConfigSelector popover by clicking the trigger,
-	 * then returns the lock toggle button by its aria-label.
-	 */
-	const openPopoverAndGetLockToggle = (ariaLabel: string) => {
-		const trigger = screen.getByTestId("dropdown-trigger")
-		fireEvent.click(trigger)
-		return screen.getByRole("button", { name: ariaLabel })
-	}
+		fireEvent.click(screen.getByTestId("dropdown-trigger"))
+		const button = screen.getByRole("button", { name: label })
+		fireEvent.click(button)
 
-	describe("rendering", () => {
-		it("renders in the description colour when lockApiConfigAcrossModes is false", () => {
-			;(useExtensionState as ReturnType<typeof vi.fn>).mockReturnValue({
-				...defaultState,
-				lockApiConfigAcrossModes: false,
-			})
-			;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
-				selector({
-					...defaultState,
-					lockApiConfigAcrossModes: false,
-				}),
-			)
-
-			render(<ChatTextArea {...defaultProps} />)
-
-			const button = openPopoverAndGetLockToggle("chat:lockApiConfigAcrossModes")
-			expect(button).toBeInTheDocument()
-			// Unlocked state uses the muted description colour
-			expect(button.className).toContain("text-vscode-descriptionForeground")
-			expect(button.className).not.toContain("text-vscode-focusBorder")
-		})
-
-		it("renders with highlight color when lockApiConfigAcrossModes is true", () => {
-			;(useExtensionState as ReturnType<typeof vi.fn>).mockReturnValue({
-				...defaultState,
-				lockApiConfigAcrossModes: true,
-			})
-			;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
-				selector({
-					...defaultState,
-					lockApiConfigAcrossModes: true,
-				}),
-			)
-
-			render(<ChatTextArea {...defaultProps} />)
-
-			const button = openPopoverAndGetLockToggle("chat:unlockApiConfigAcrossModes")
-			expect(button).toBeInTheDocument()
-			// Locked state has the focus border highlight color
-			expect(button.className).toContain("text-vscode-focusBorder")
-			expect(button.className).not.toContain("text-vscode-descriptionForeground")
-		})
-
-		it("renders in unlocked state when lockApiConfigAcrossModes is undefined (default)", () => {
-			;(useExtensionState as ReturnType<typeof vi.fn>).mockReturnValue({
-				...defaultState,
-			})
-			;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
-				selector({
-					...defaultState,
-				}),
-			)
-
-			render(<ChatTextArea {...defaultProps} />)
-
-			const button = openPopoverAndGetLockToggle("chat:lockApiConfigAcrossModes")
-			expect(button).toBeInTheDocument()
-			// Default (undefined/falsy) renders in unlocked style
-			expect(button.className).toContain("text-vscode-descriptionForeground")
-		})
-	})
-
-	describe("interaction", () => {
-		it("posts lockApiConfigAcrossModes=true message when locking", () => {
-			;(useExtensionState as ReturnType<typeof vi.fn>).mockReturnValue({
-				...defaultState,
-				lockApiConfigAcrossModes: false,
-			})
-			;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
-				selector({
-					...defaultState,
-					lockApiConfigAcrossModes: false,
-				}),
-			)
-
-			render(<ChatTextArea {...defaultProps} />)
-
-			// Clear any initialization messages
-			mockPostMessage.mockClear()
-
-			const button = openPopoverAndGetLockToggle("chat:lockApiConfigAcrossModes")
-			fireEvent.click(button)
-
-			expect(mockPostMessage).toHaveBeenCalledWith({
-				type: "lockApiConfigAcrossModes",
-				bool: true,
-			})
-		})
-
-		it("posts lockApiConfigAcrossModes=false message when unlocking", () => {
-			;(useExtensionState as ReturnType<typeof vi.fn>).mockReturnValue({
-				...defaultState,
-				lockApiConfigAcrossModes: true,
-			})
-			;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
-				selector({
-					...defaultState,
-					lockApiConfigAcrossModes: true,
-				}),
-			)
-
-			render(<ChatTextArea {...defaultProps} />)
-
-			// Clear any initialization messages
-			mockPostMessage.mockClear()
-
-			const button = openPopoverAndGetLockToggle("chat:unlockApiConfigAcrossModes")
-			fireEvent.click(button)
-
-			expect(mockPostMessage).toHaveBeenCalledWith({
-				type: "lockApiConfigAcrossModes",
-				bool: false,
-			})
-		})
+		expect(button).toHaveClass(colour)
+		expect(mockPostMessage).toHaveBeenCalledWith({ type: "lockApiConfigAcrossModes", bool: posted })
 	})
 })

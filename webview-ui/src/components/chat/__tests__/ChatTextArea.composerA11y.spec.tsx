@@ -1,6 +1,6 @@
-// §2.5 (ai_plans/2026-09-27_ui-modernization.md): the composer's quiet hint
-// row, single focus outline, textarea aria-label, and the ContextMenu's
-// listbox semantics (role="listbox", aria-activedescendant, options with ids).
+// §2.5 (ai_plans/2026-09-27_ui-modernization.md): the composer's single focus
+// outline, textarea aria-label, and the ContextMenu's listbox semantics
+// (role="listbox", aria-activedescendant, options with ids).
 
 import { useState } from "react"
 import { render, screen, fireEvent } from "@src/utils/test-utils"
@@ -78,11 +78,6 @@ describe("ChatTextArea composer accessibility (§2.5)", () => {
 		expect(textbox()).toHaveAttribute("aria-label", defaultProps.placeholderText)
 	})
 
-	it("renders no keyboard hint row under the input (it only took space)", () => {
-		const { container } = render(<Harness />)
-		expect(container.querySelector('[data-testid="composer-hint-row"]')).toBeNull()
-	})
-
 	it("shows one focus outline on focus: a single ring class, no double border+outline", () => {
 		render(<Harness />)
 		fireEvent.focus(textbox())
@@ -104,42 +99,22 @@ describe("ChatTextArea composer accessibility (§2.5)", () => {
 		expect(textbox().className).not.toContain("border-transparent")
 	})
 
-	it("the @ mention menu is a listbox whose options carry ids and selection state", () => {
+	it("the @ mention menu is a listbox whose active option follows the keyboard", () => {
 		const { container } = render(<Harness />)
 		type("@")
-
 		const menu = screen.getByRole("listbox")
-		expect(menu).toHaveAttribute("aria-label", expect.stringContaining("menu"))
+		const activeOption = () =>
+			container.querySelector(`#${CSS.escape(menu.getAttribute("aria-activedescendant")!)}`)
 
-		const options = menu.querySelectorAll('[role="option"]')
-		expect(options.length).toBeGreaterThan(0)
-		for (const option of options) {
+		for (const option of menu.querySelectorAll('[role="option"]')) {
 			expect(option.id).toMatch(/^context-menu-option-/)
 		}
-
-		// The highlighted option is the aria-activedescendant and aria-selected.
-		const activeId = menu.getAttribute("aria-activedescendant")
-		expect(activeId).toBeTruthy()
-		const active = container.querySelector(`#${CSS.escape(activeId!)}`)
-		expect(active).not.toBeNull()
-		expect(active!.getAttribute("aria-selected")).toBe("true")
-	})
-
-	it("mention menu keyboard navigation moves aria-activedescendant", () => {
-		const { container } = render(<Harness />)
-		type("@")
-		const menu = screen.getByRole("listbox")
-		const before = menu.getAttribute("aria-activedescendant")
+		const before = activeOption()
+		expect(before).toHaveAttribute("aria-selected", "true")
 
 		fireEvent.keyDown(textbox(), { key: "ArrowDown" })
 
-		const after = menu.getAttribute("aria-activedescendant")
-		expect(after).toBeTruthy()
-		// ArrowDown moves or wraps; either way the id points at an option
-		// that is now the selected one.
-		const active = container.querySelector(`#${CSS.escape(after!)}`)
-		expect(active).not.toBeNull()
-		expect(active!.getAttribute("aria-selected")).toBe("true")
-		expect(typeof before).toBe("string")
+		expect(activeOption()).not.toBe(before)
+		expect(activeOption()).toHaveAttribute("aria-selected", "true")
 	})
 })

@@ -145,4 +145,64 @@ describe("usePromptHistory", () => {
 		expect(result.current.historyIndex).toBe(-1)
 		expect(result.current.tempInput).toBe("")
 	})
+
+	const task = (taskText: string, workspace?: string) => ({ task: taskText, workspace }) as HistoryItem
+
+	it.each([
+		[
+			"the task's own prompts, newest first, without empty ones",
+			[feedback("Valid prompt", 1000), feedback("", 2000), feedback("   ", 3000), feedback("Another", 4000)],
+			[task("Old task")],
+			"/test/workspace",
+			["Another", "Valid prompt"],
+		],
+		[
+			"nothing in a running task without user prompts",
+			[{ type: "say", say: "text", text: "Answer", ts: 1000 } as ClineMessage],
+			[task("Old task")],
+			"/test/workspace",
+			[],
+		],
+		[
+			"this workspace's tasks, oldest first, without a fresh task",
+			[],
+			[task("First", "/test/workspace"), task("Elsewhere", "/other"), task("No workspace"), task("  ")],
+			"/test/workspace",
+			["First", "No workspace"],
+		],
+		["nothing without a workspace", undefined, [task("First")], undefined, []],
+	])("offers %s", (_name, clineMessages, taskHistory, cwd, expected) => {
+		const { result } = renderHook(() =>
+			usePromptHistory({ clineMessages, taskHistory, cwd, inputValue: "", setInputValue: vi.fn() }),
+		)
+
+		expect(result.current.promptHistory).toEqual(expected)
+	})
+
+	it("does nothing on ArrowUp with an empty history", () => {
+		const setInputValue = vi.fn()
+		const { result } = renderHook(() => usePromptHistory({ ...baseProps([]), setInputValue }))
+
+		act(() => {
+			expect(result.current.handleHistoryNavigation(arrowUp(), false, false)).toBe(false)
+		})
+		expect(setInputValue).not.toHaveBeenCalled()
+	})
+
+	it("walks back through the history and forward again", () => {
+		const setInputValue = vi.fn()
+		const { result } = renderHook(() => usePromptHistory({ ...baseProps(streamingMessages("H")), setInputValue }))
+
+		act(() => {
+			result.current.handleHistoryNavigation(arrowUp(), false, false)
+		})
+		act(() => {
+			result.current.handleHistoryNavigation(arrowUp(), false, false)
+		})
+		act(() => {
+			result.current.handleHistoryNavigation(arrowDown(), false, false)
+		})
+
+		expect(setInputValue.mock.calls).toEqual([["Third prompt"], ["Second prompt"], ["Third prompt"]])
+	})
 })

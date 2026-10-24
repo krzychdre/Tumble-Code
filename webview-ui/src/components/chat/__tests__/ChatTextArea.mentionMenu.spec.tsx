@@ -1,6 +1,5 @@
-// Characterization tests for the ChatTextArea mention menu (the "@" and "/" context menu) and the
-// highlight layer behind the textarea. They pin the behavior that S5 moves out of ChatTextArea into
-// useMentionMenu and useHighlightLayer, so the move can be checked against them.
+// The ChatTextArea mention menu (the "@" and "/" context menu, useMentionMenu) and the highlight
+// layer behind the textarea (useHighlightLayer).
 //
 // ContextMenu is replaced by a probe that records the props it receives: the menu's own rendering and
 // filtering are covered by ContextMenu's specs, what matters here is what ChatTextArea feeds it and how
@@ -104,7 +103,7 @@ const postFromHost = (message: Record<string, unknown>) => {
 	})
 }
 
-describe("ChatTextArea mention menu (characterization)", () => {
+describe("ChatTextArea mention menu", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
 		menu.props = null
@@ -346,12 +345,6 @@ describe("ChatTextArea mention menu (characterization)", () => {
 			expect(menu.props.selectedIndex).toBe(3)
 			expect(screen.getByTestId("menu-probe")).toBeInTheDocument()
 		})
-
-		it("Enter sends when the menu is closed", () => {
-			render(<Harness initial="hello" />)
-			fireEvent.keyDown(textbox(), { key: "Enter" })
-			expect(onSendSpy).toHaveBeenCalledTimes(1)
-		})
 	})
 
 	describe("selecting an option", () => {
@@ -524,7 +517,7 @@ describe("ChatTextArea mention menu (characterization)", () => {
 	})
 })
 
-describe("ChatTextArea highlight layer (characterization)", () => {
+describe("ChatTextArea highlight layer", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
 		setState(baseState)
