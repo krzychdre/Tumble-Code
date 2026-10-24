@@ -25,9 +25,10 @@ Save buffer (the `cachedState` rule from `AGENTS.md`: controls bind to the buffe
    (typed by the key, no new props on `SettingsView`). `schema.spec.ts` pins the rows.
 5. **State**: if the webview needs the current value outside the Settings view, add it to the state
    `ProviderStateBuilder` (`src/core/webview/ProviderStateBuilder.ts`) posts, so it arrives as part of `ExtensionState`.
-6. **Docs and changelog**: a changeset, and when the setting changes a documented mechanism, the docs page in the
-   same PR. If a secret or credential is involved, it belongs in `SecretStorage` (via `ContextProxy` secrets or
-   `ProviderSettingsManager`), never in `globalState` or a plain env var (see [06-persistence.md](06-persistence.md)).
+6. **Docs and changelog**: a changeset written as [.changeset/README.md](../.changeset/README.md) says, and when the
+   setting changes a documented mechanism, the docs page in the same PR. If a secret or credential is involved, it
+   belongs in `SecretStorage` (via `ContextProxy` secrets or `ProviderSettingsManager`), never in `globalState` or a
+   plain env var (see [06-persistence.md](06-persistence.md)).
 
 For an environment variable instead of (or beside) a setting, add a row to
 [09-environment-variables.md](09-environment-variables.md) in the same PR.
