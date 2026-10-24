@@ -7,6 +7,8 @@ import type { HistoryItem } from "@tumble-code/types"
 import { TaskHistoryStore, type TaskHistoryStoreHandle } from "../../task-persistence"
 import { ShadowCheckpointService } from "../../../services/checkpoints/ShadowCheckpointService"
 import { TaskHistoryGateway, type TaskHistoryGatewayHost } from "../TaskHistoryGateway"
+import { downloadTask } from "../../../integrations/misc/export-markdown"
+import { resolveDefaultSaveUri, saveLastExportPath } from "../../../utils/export"
 import type { MockInstance } from "vitest"
 import { logger } from "../../../utils/logging"
 
@@ -33,7 +35,7 @@ vi.mock("../../../integrations/misc/export-markdown", () => ({
 }))
 
 vi.mock("../../../utils/export", () => ({
-	resolveDefaultSaveUri: vi.fn().mockResolvedValue(undefined),
+	resolveDefaultSaveUri: vi.fn().mockResolvedValue({ fsPath: "/downloads/default.md" }),
 	saveLastExportPath: vi.fn().mockResolvedValue(undefined),
 }))
 
@@ -289,6 +291,19 @@ describe("TaskHistoryGateway", () => {
 			expect(contextProxy.clearLegacyTaskHistoryKeys).toHaveBeenCalledTimes(1)
 		})
 
+		it("clears the legacy keys without migrating when the legacy array is empty", async () => {
+			const store = makeHandle()
+			acquire = vi.spyOn(TaskHistoryStore, "acquire").mockResolvedValue(store.handle)
+			const { host, contextProxy } = makeHost()
+			contextProxy.hasLegacyTaskHistory.mockReturnValue(true)
+			contextProxy.getLegacyTaskHistory.mockReturnValue([])
+
+			await gatewayFor(host).getStore()
+
+			expect(store.store.migrateFromLegacyHistory).not.toHaveBeenCalled()
+			expect(contextProxy.clearLegacyTaskHistoryKeys).toHaveBeenCalledTimes(1)
+		})
+
 		it("reports a throwing migration as a storage error without failing the acquire", async () => {
 			const store = makeHandle()
 			store.store.migrateFromLegacyHistory.mockRejectedValue(new Error("bad legacy"))
@@ -439,6 +454,83 @@ describe("TaskHistoryGateway", () => {
 			for (const id of expected) {
 				expect(fs.rm).toHaveBeenCalledWith(`/storage/tasks/${id}`, { recursive: true, force: true })
 			}
+		})
+
+		it("deleteTaskWithId without cascade deletes only the item and keeps a task that is not current", async () => {
+			const { gateway, host, store, records } = await ready()
+			records.set("p", item("p", { childIds: ["c"] }))
+			records.set("c", item("c"))
+			host.getCurrentTask.mockReturnValue({ taskId: "other" })
+
+			await gateway.deleteTaskWithId("p", false)
+
+			expect(store.deleteMany).toHaveBeenCalledWith(["p"], gateway.origin)
+			expect(records.has("c")).toBe(true)
+			expect(host.clearCurrentTask).not.toHaveBeenCalled()
+			expect(messagesOfType(host, "taskHistoryItemDeleted")).toEqual([
+				{ type: "taskHistoryItemDeleted", taskHistoryItemId: "p" },
+			])
+		})
+
+		it("deleteTaskWithId of an unknown id only removes it from state", async () => {
+			const { gateway, host, store } = await ready()
+
+			await gateway.deleteTaskWithId("never-existed")
+
+			expect(store.delete).toHaveBeenCalledWith("never-existed", gateway.origin)
+			expect(store.deleteMany).not.toHaveBeenCalled()
+			expect(ShadowCheckpointService.deleteTask).not.toHaveBeenCalled()
+			expect(messagesOfType(host, "taskHistoryItemDeleted")).toEqual([
+				{ type: "taskHistoryItemDeleted", taskHistoryItemId: "never-existed" },
+			])
+		})
+
+		it("exportTaskWithId saves the conversation and remembers the export path only when saved", async () => {
+			const { gateway, host, records } = await ready()
+			records.set("export-me", item("export-me", { ts: 1_700_000_000_000 }))
+			const savedUri = { fsPath: "/downloads/saved.md" }
+			vi.mocked(downloadTask).mockResolvedValueOnce(savedUri as any)
+
+			await gateway.exportTaskWithId("export-me")
+
+			expect(resolveDefaultSaveUri).toHaveBeenCalledWith(
+				host.contextProxy,
+				"lastTaskExportPath",
+				"task-1700000000000.md",
+				expect.objectContaining({ useWorkspace: false }),
+			)
+			expect(downloadTask).toHaveBeenCalledWith(1_700_000_000_000, [], { fsPath: "/downloads/default.md" })
+			expect(saveLastExportPath).toHaveBeenCalledWith(host.contextProxy, "lastTaskExportPath", savedUri)
+
+			vi.mocked(saveLastExportPath).mockClear()
+			vi.mocked(downloadTask).mockResolvedValueOnce(undefined)
+			await gateway.exportTaskWithId("export-me")
+			expect(saveLastExportPath).not.toHaveBeenCalled()
+		})
+
+		it("deleteTaskWithId logs a task directory it cannot remove and still deletes the rest", async () => {
+			const { gateway, host, records } = await ready()
+			records.set("p", item("p", { childIds: ["c"] }))
+			records.set("c", item("c"))
+			vi.mocked(fs.rm).mockRejectedValueOnce(new Error("busy"))
+			const loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
+
+			await gateway.deleteTaskWithId("p")
+
+			expect(loggerErrorSpy).toHaveBeenCalledWith("[deleteTaskWithIdp] failed to remove task directory: busy")
+			expect(fs.rm).toHaveBeenCalledWith("/storage/tasks/c", { recursive: true, force: true })
+			expect(host.postStateToWebview).toHaveBeenCalledTimes(1)
+			loggerErrorSpy.mockRestore()
+		})
+
+		it("deleteTaskFromState sends the targeted delete only to a launched view, and always pushes the state", async () => {
+			const { gateway, host, state } = await ready()
+			state.isViewLaunched = false
+
+			await gateway.deleteTaskFromState("x")
+
+			expect(messagesOfType(host, "taskHistoryItemDeleted")).toEqual([])
+			expect(host.postStateToWebview).toHaveBeenCalledTimes(1)
 		})
 
 		it("deleteTaskWithId rethrows errors other than 'Task not found'", async () => {

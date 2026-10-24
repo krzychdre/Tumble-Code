@@ -229,7 +229,7 @@ interface ProviderStateSources {
 	getCustomModes(): Promise<ModeConfig[]>
 	getCwd(): string
 	getMcpServers(): McpServer[]
-	isApiConfigLockedAcrossModes(): boolean | undefined
+	isApiConfigLockedAcrossModes(): boolean
 
 	/** The provider's own `getState()`, so the webview state follows it (and test spies on it). */
 	getState(): Promise<ProviderState>
@@ -319,7 +319,7 @@ export class ProviderStateBuilder {
 			// materializes it. Callers that need the history use
 			// `getTaskHistory` or `getStateToPostToWebview`.
 			taskHistory: [],
-			lockApiConfigAcrossModes: this.sources.isApiConfigLockedAcrossModes() ?? false,
+			lockApiConfigAcrossModes: this.sources.isApiConfigLockedAcrossModes(),
 		}
 	}
 
