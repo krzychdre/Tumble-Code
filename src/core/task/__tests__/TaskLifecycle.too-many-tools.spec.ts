@@ -9,7 +9,7 @@ import { TaskLifecycle, type TaskLifecycleAccess } from "../TaskLifecycle"
 // startTask warns once when MCP tools exceed the threshold. A "don't show again"
 // click (kept in dismissedUpsells) mutes the warning until the count has been
 // under the threshold once, which clears the dismissal.
-async function runStartTask(toolCount: number, dismissedUpsells: string[]) {
+async function runStartTask(toolCount: number, dismissedUpsells: string[] | undefined) {
 	const say = vi.fn().mockResolvedValue(undefined)
 	const setValue = vi.fn().mockResolvedValue(undefined)
 	const provider = {
@@ -37,8 +37,11 @@ async function runStartTask(toolCount: number, dismissedUpsells: string[]) {
 describe("TaskLifecycle.startTask too many tools warning", () => {
 	const over = MAX_MCP_TOOLS_THRESHOLD + 1
 
-	it("warns when over the threshold and not dismissed", async () => {
-		const { warnings } = await runStartTask(over, [])
+	it.each([
+		["nothing was dismissed", []],
+		["nothing was ever stored", undefined],
+	])("warns when over the threshold and %s", async (_label, dismissed) => {
+		const { warnings } = await runStartTask(over, dismissed)
 		expect(warnings).toHaveLength(1)
 	})
 

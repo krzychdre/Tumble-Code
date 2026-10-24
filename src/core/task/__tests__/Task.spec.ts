@@ -1,4 +1,4 @@
-// npx vitest core/task/__tests__/Task.spec.ts
+// npx vitest run core/task/__tests__/Task.spec.ts
 
 import * as fs from "fs"
 import * as os from "os"
@@ -7,16 +7,14 @@ import * as path from "path"
 import * as vscode from "vscode"
 import { Anthropic } from "@anthropic-ai/sdk"
 
-import { type GlobalState, type ProviderSettings, type ModelInfo, TelemetryEventName } from "@tumble-code/types"
+import { type ProviderSettings, type ModelInfo, TelemetryEventName } from "@tumble-code/types"
 import { TelemetryService } from "@tumble-code/telemetry"
 
-import { Task } from "../Task"
-import { resetGlobalApiRequestTime, getLastGlobalApiRequestTime } from "../RetryHandler"
+import { Task, type TaskOptions } from "../Task"
+import { resetGlobalApiRequestTime } from "../RetryHandler"
 import { ClineProvider } from "../../webview/ClineProvider"
 import { ApiStreamChunk } from "../../../api/transform/stream"
 import { ContextProxy } from "../../config/ContextProxy"
-import { processUserContentMentions } from "../../mentions/processUserContentMentions"
-import { MultiSearchReplaceDiffStrategy } from "../../diff/strategies/multi-search-replace"
 import type { ApiMessage } from "../../task-persistence/apiMessages"
 
 // Mock delay before any imports that might use it
@@ -227,2514 +225,361 @@ afterAll(() => {
 	}
 })
 
-describe("Cline", () => {
-	let mockProvider: any
-	let mockApiConfig: ProviderSettings
-	let mockOutputChannel: any
-	let mockExtensionContext: vscode.ExtensionContext
-
-	beforeEach(() => {
-		if (!TelemetryService.hasInstance()) {
-			TelemetryService.createInstance([])
-		}
-
-		// Setup mock extension context
-		const storageUri = {
-			fsPath: path.join(os.tmpdir(), "test-storage"),
-		}
-
-		mockExtensionContext = {
-			globalState: {
-				get: vi.fn().mockImplementation((_key: keyof GlobalState) => undefined),
-				update: vi.fn().mockImplementation((_key, _value) => Promise.resolve()),
-				keys: vi.fn().mockReturnValue([]),
-			},
-			globalStorageUri: storageUri,
-			workspaceState: {
-				get: vi.fn().mockImplementation((_key) => undefined),
-				update: vi.fn().mockImplementation((_key, _value) => Promise.resolve()),
-				keys: vi.fn().mockReturnValue([]),
-			},
-			secrets: {
-				get: vi.fn().mockImplementation((_key) => Promise.resolve(undefined)),
-				store: vi.fn().mockImplementation((_key, _value) => Promise.resolve()),
-				delete: vi.fn().mockImplementation((_key) => Promise.resolve()),
-			},
-			extensionUri: {
-				fsPath: "/mock/extension/path",
-			},
-			extension: {
-				packageJSON: {
-					version: "1.0.0",
-				},
-			},
-		} as unknown as vscode.ExtensionContext
-
-		// Setup mock output channel
-		mockOutputChannel = {
-			appendLine: vi.fn(),
-			append: vi.fn(),
-			clear: vi.fn(),
-			show: vi.fn(),
-			hide: vi.fn(),
-			dispose: vi.fn(),
-		}
-
-		// Setup mock provider with output channel
-		mockProvider = new ClineProvider(
-			mockExtensionContext,
-			mockOutputChannel,
-			"sidebar",
-			new ContextProxy(mockExtensionContext),
-		) as any
-
-		// Setup mock API configuration
-		mockApiConfig = {
-			apiProvider: "anthropic",
-			apiModelId: "claude-3-5-sonnet-20241022",
-			apiKey: "test-api-key", // Add API key to mock config
-		}
-
-		// Mock provider methods
-		mockProvider.postMessageToWebview = vi.fn().mockResolvedValue(undefined)
-		mockProvider.postStateToWebview = vi.fn().mockResolvedValue(undefined)
-		mockProvider.postStateToWebviewWithoutTaskHistory = vi.fn().mockResolvedValue(undefined)
-		mockProvider.getTaskWithId = vi.fn().mockImplementation(async (id) => ({
-			historyItem: {
-				id,
-				ts: Date.now(),
-				task: "historical task",
-				tokensIn: 100,
-				tokensOut: 200,
-				cacheWrites: 0,
-				cacheReads: 0,
-				totalCost: 0.001,
-			},
-			taskDirPath: "/mock/storage/path/tasks/123",
-			apiConversationHistoryFilePath: "/mock/storage/path/tasks/123/api_conversation_history.json",
-			uiMessagesFilePath: "/mock/storage/path/tasks/123/ui_messages.json",
-			apiConversationHistory: [
-				{
-					role: "user",
-					content: [{ type: "text", text: "historical task" }],
-					ts: Date.now(),
-				},
-				{
-					role: "assistant",
-					content: [{ type: "text", text: "I'll help you with that task." }],
-					ts: Date.now(),
-				},
-			],
-		}))
-	})
-
-	describe("constructor", () => {
-		it("should always have diff strategy defined", async () => {
-			const cline = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				task: "test task",
-				startTask: false,
-			})
-
-			// Diff is always enabled - diffStrategy should be defined
-			expect(cline.diffStrategy).toBeDefined()
-		})
-
-		it("should use default consecutiveMistakeLimit when not provided", () => {
-			const cline = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				task: "test task",
-				startTask: false,
-			})
-
-			expect(cline.consecutiveMistakeLimit).toBe(3)
-		})
-
-		it("should respect provided consecutiveMistakeLimit", () => {
-			const cline = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				consecutiveMistakeLimit: 5,
-				task: "test task",
-				startTask: false,
-			})
-
-			expect(cline.consecutiveMistakeLimit).toBe(5)
-		})
-
-		it("should keep consecutiveMistakeLimit of 0 as 0 for unlimited", () => {
-			const cline = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				consecutiveMistakeLimit: 0,
-				task: "test task",
-				startTask: false,
-			})
-
-			expect(cline.consecutiveMistakeLimit).toBe(0)
-		})
-
-		// A background task has nobody to lift "no limit": it keeps the default.
-		it.each([
-			{ limit: 0, isBackground: false, effective: 0 },
-			{ limit: 0, isBackground: true, effective: 3 },
-			{ limit: 5, isBackground: true, effective: 5 },
-		])("effectiveMistakeLimit of limit $limit, background $isBackground", ({ limit, isBackground, effective }) => {
-			const cline = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				consecutiveMistakeLimit: limit,
-				isBackground,
-				task: "test task",
-				startTask: false,
-			})
-
-			expect(cline.effectiveMistakeLimit).toBe(effective)
-		})
-
-		it("should pass 0 to ToolRepetitionDetector for unlimited mode", () => {
-			const cline = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				consecutiveMistakeLimit: 0,
-				task: "test task",
-				startTask: false,
-			})
-
-			// The toolRepetitionDetector should be initialized with 0 for unlimited mode
-			expect(cline.toolRepetitionDetector).toBeDefined()
-			// Verify the limit remains as 0
-			expect(cline.consecutiveMistakeLimit).toBe(0)
-		})
-
-		it("should pass consecutiveMistakeLimit to ToolRepetitionDetector", () => {
-			const cline = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				consecutiveMistakeLimit: 5,
-				task: "test task",
-				startTask: false,
-			})
-
-			// The toolRepetitionDetector should be initialized with the same limit
-			expect(cline.toolRepetitionDetector).toBeDefined()
-			expect(cline.consecutiveMistakeLimit).toBe(5)
-		})
-
-		it("keeps the root id it is given for a new subtask", () => {
-			const parent = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				task: "parent task",
-				startTask: false,
-			})
-			const child = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				task: "child task",
-				parentTask: parent,
-				rootTaskId: "root-task",
-				startTask: false,
-			})
-
-			expect(child.rootTaskId).toBe("root-task")
-			expect(child.parentTaskId).toBe(parent.taskId)
-		})
-
-		it("takes the root id from the history item when reopening a subtask", () => {
-			const reopened = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				historyItem: {
-					id: "child-task",
-					number: 1,
-					ts: Date.now(),
-					task: "child task",
-					tokensIn: 0,
-					tokensOut: 0,
-					totalCost: 0,
-					parentTaskId: "parent-task",
-					rootTaskId: "root-task",
-				},
-				rootTaskId: "ignored",
-				startTask: false,
-			})
-
-			expect(reopened.rootTaskId).toBe("root-task")
-		})
-
-		it("should require either task or historyItem", () => {
-			expect(() => {
-				new Task({ provider: mockProvider, apiConfiguration: mockApiConfig })
-			}).toThrow("Either historyItem or task/images must be provided")
-		})
-	})
-
-	describe("getEnvironmentDetails", () => {
-		describe("API conversation handling", () => {
-			beforeEach(() => {
-				resetGlobalApiRequestTime()
-			})
-
-			afterEach(() => {
-				resetGlobalApiRequestTime()
-			})
-
-			it("should strip non-protocol fields from API conversation history before sending to the API", async () => {
-				const cline = new Task({
-					provider: mockProvider,
-					apiConfiguration: mockApiConfig,
-					task: "test task",
-					startTask: false,
-				})
-				vi.spyOn(cline.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
-
-				const mockStream = {
-					async *[Symbol.asyncIterator]() {
-						yield { type: "text", text: "response" }
-					},
-					async next() {
-						return { done: true, value: { type: "text", text: "response" } }
-					},
-					async return() {
-						return { done: true, value: undefined }
-					},
-					async throw(error: any) {
-						throw error
-					},
-					async [Symbol.asyncDispose]() {
-						// Cleanup
-					},
-				} as AsyncGenerator<ApiStreamChunk>
-				const createMessageSpy = vi.spyOn(cline.api, "createMessage").mockReturnValue(mockStream)
-
-				cline.apiConversationHistory = [
-					{
-						role: "user" as const,
-						content: [{ type: "text" as const, text: "test message" }],
-						ts: Date.now(),
-						extraProp: "should be removed",
-					},
-				] as any
-
-				const iterator = cline.attemptApiRequest(0)
-				await iterator.next()
-
-				const [, cleanConversationHistory] = createMessageSpy.mock.calls[0]!
-
-				expect(cleanConversationHistory).toEqual([
-					{
-						role: "user",
-						content: [{ type: "text", text: "test message" }],
-					},
-				])
-				expect(Object.keys(cleanConversationHistory[0]!)).toEqual(["role", "content"])
-			})
-
-			it("should shape image blocks for API compatibility before request construction", async () => {
-				const conversationHistory = [
-					{
-						role: "user" as const,
-						content: [
-							{ type: "text" as const, text: "Here is an image" },
-							{
-								type: "image" as const,
-								source: {
-									type: "base64" as const,
-									media_type: "image/jpeg",
-									data: "base64data",
-								},
-							},
-						],
-					},
-				]
-
-				const withImages = new Task({
-					provider: mockProvider,
-					apiConfiguration: {
-						...mockApiConfig,
-						apiModelId: "claude-3-sonnet",
-					},
-					task: "test task",
-					startTask: false,
-				})
-				vi.spyOn(withImages.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
-
-				vi.spyOn(withImages.api, "getModel").mockReturnValue({
-					id: "claude-3-sonnet",
-					info: {
-						supportsImages: true,
-						supportsPromptCache: true,
-						contextWindow: 200000,
-						maxTokens: 4096,
-						inputPrice: 0.25,
-						outputPrice: 0.75,
-					} as ModelInfo,
-				})
-
-				const withoutImages = new Task({
-					provider: mockProvider,
-					apiConfiguration: {
-						...mockApiConfig,
-						apiModelId: "gpt-3.5-turbo",
-					},
-					task: "test task",
-					startTask: false,
-				})
-				vi.spyOn(withoutImages.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
-
-				vi.spyOn(withoutImages.api, "getModel").mockReturnValue({
-					id: "gpt-3.5-turbo",
-					info: {
-						supportsImages: false,
-						supportsPromptCache: false,
-						contextWindow: 16000,
-						maxTokens: 2048,
-						inputPrice: 0.1,
-						outputPrice: 0.2,
-					} as ModelInfo,
-				})
-
-				const mockStream = {
-					async *[Symbol.asyncIterator]() {
-						yield { type: "text", text: "response" }
-					},
-					async next() {
-						return { done: true, value: { type: "text", text: "response" } }
-					},
-					async return() {
-						return { done: true, value: undefined }
-					},
-					async throw(error: any) {
-						throw error
-					},
-					async [Symbol.asyncDispose]() {
-						// Cleanup
-					},
-				} as AsyncGenerator<ApiStreamChunk>
-				const withImagesSpy = vi.spyOn(withImages.api, "createMessage").mockReturnValue(mockStream)
-				const withoutImagesSpy = vi.spyOn(withoutImages.api, "createMessage").mockReturnValue(mockStream)
-
-				withImages.apiConversationHistory = conversationHistory as any
-				withoutImages.apiConversationHistory = conversationHistory as any
-
-				const withImagesIterator = withImages.attemptApiRequest(0)
-				await withImagesIterator.next()
-				const withoutImagesIterator = withoutImages.attemptApiRequest(0)
-				await withoutImagesIterator.next()
-
-				const [, historyWithImages] = withImagesSpy.mock.calls[0]!
-				const [, historyWithoutImages] = withoutImagesSpy.mock.calls[0]!
-
-				expect(historyWithImages).toEqual([
-					{
-						role: "user",
-						content: [
-							{ type: "text", text: "Here is an image" },
-							{
-								type: "image",
-								source: {
-									type: "base64",
-									media_type: "image/jpeg",
-									data: "base64data",
-								},
-							},
-						],
-					},
-				])
-				expect(historyWithoutImages).toEqual([
-					{
-						role: "user",
-						content: [
-							{ type: "text", text: "Here is an image" },
-							{ type: "text", text: "[Referenced image in conversation]" },
-						],
-					},
-				])
-			})
-
-			it("should handle API retry with countdown", async () => {
-				const cline = new Task({
-					provider: mockProvider,
-					apiConfiguration: mockApiConfig,
-					task: "test task",
-					startTask: false,
-				})
-				vi.spyOn(cline.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
-
-				// Mock delay to track countdown timing
-				const mockDelay = vi.fn().mockResolvedValue(undefined)
-				vi.spyOn(await import("delay"), "default").mockImplementation(mockDelay)
-
-				// Mock say to track messages
-				const saySpy = vi.spyOn(cline.askSay, "say")
-
-				// Create a stream that fails on first chunk
-				const mockError = new Error("API Error")
-				const mockFailedStream = {
-					// eslint-disable-next-line require-yield
-					async *[Symbol.asyncIterator]() {
-						throw mockError
-					},
-					async next() {
-						throw mockError
-					},
-					async return() {
-						return { done: true, value: undefined }
-					},
-					async throw(e: any) {
-						throw e
-					},
-					async [Symbol.asyncDispose]() {
-						// Cleanup
-					},
-				} as AsyncGenerator<ApiStreamChunk>
-
-				// Create a successful stream for retry
-				const mockSuccessStream = {
-					async *[Symbol.asyncIterator]() {
-						yield { type: "text", text: "Success" }
-					},
-					async next() {
-						return { done: true, value: { type: "text", text: "Success" } }
-					},
-					async return() {
-						return { done: true, value: undefined }
-					},
-					async throw(e: any) {
-						throw e
-					},
-					async [Symbol.asyncDispose]() {
-						// Cleanup
-					},
-				} as AsyncGenerator<ApiStreamChunk>
-
-				// Mock createMessage to fail first then succeed
-				let firstAttempt = true
-				vi.spyOn(cline.api, "createMessage").mockImplementation(() => {
-					if (firstAttempt) {
-						firstAttempt = false
-						return mockFailedStream
-					}
-					return mockSuccessStream
-				})
-				const providerState = await mockProvider.getState()
-				vi.spyOn(mockProvider, "getState").mockResolvedValue({
-					...providerState,
-					apiConfiguration: mockApiConfig,
-					autoApprovalEnabled: true,
-					requestDelaySeconds: 3,
-				})
-
-				// Trigger API request
-				const iterator = cline.attemptApiRequest(0)
-				await iterator.next()
-
-				const retryMessages = saySpy.mock.calls.filter((call) => call[0] === "api_req_retry_delayed")
-				expect(retryMessages).toEqual([
-					["api_req_retry_delayed", "API Error\n<retry_timer>3</retry_timer>", undefined, true],
-					["api_req_retry_delayed", "API Error\n<retry_timer>2</retry_timer>", undefined, true],
-					["api_req_retry_delayed", "API Error\n<retry_timer>1</retry_timer>", undefined, true],
-					["api_req_retry_delayed", "API Error\n", undefined, false],
-				])
-				expect(mockDelay).toHaveBeenCalledTimes(3)
-				expect(mockDelay).toHaveBeenCalledWith(1000)
-			})
-
-			it("should not apply retry delay twice", async () => {
-				const cline = new Task({
-					provider: mockProvider,
-					apiConfiguration: mockApiConfig,
-					task: "test task",
-					startTask: false,
-				})
-				vi.spyOn(cline.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
-
-				// Mock delay to track countdown timing
-				const mockDelay = vi.fn().mockResolvedValue(undefined)
-				vi.spyOn(await import("delay"), "default").mockImplementation(mockDelay)
-
-				// Mock say to track messages
-				const saySpy = vi.spyOn(cline.askSay, "say")
-
-				// Create a stream that fails on first chunk
-				const mockError = new Error("API Error")
-				const mockFailedStream = {
-					// eslint-disable-next-line require-yield
-					async *[Symbol.asyncIterator]() {
-						throw mockError
-					},
-					async next() {
-						throw mockError
-					},
-					async return() {
-						return { done: true, value: undefined }
-					},
-					async throw(e: any) {
-						throw e
-					},
-					async [Symbol.asyncDispose]() {
-						// Cleanup
-					},
-				} as AsyncGenerator<ApiStreamChunk>
-
-				// Create a successful stream for retry
-				const mockSuccessStream = {
-					async *[Symbol.asyncIterator]() {
-						yield { type: "text", text: "Success" }
-					},
-					async next() {
-						return { done: true, value: { type: "text", text: "Success" } }
-					},
-					async return() {
-						return { done: true, value: undefined }
-					},
-					async throw(e: any) {
-						throw e
-					},
-					async [Symbol.asyncDispose]() {
-						// Cleanup
-					},
-				} as AsyncGenerator<ApiStreamChunk>
-
-				// Mock createMessage to fail first then succeed
-				let firstAttempt = true
-				vi.spyOn(cline.api, "createMessage").mockImplementation(() => {
-					if (firstAttempt) {
-						firstAttempt = false
-						return mockFailedStream
-					}
-					return mockSuccessStream
-				})
-				const providerState = await mockProvider.getState()
-				vi.spyOn(mockProvider, "getState").mockResolvedValue({
-					...providerState,
-					apiConfiguration: mockApiConfig,
-					autoApprovalEnabled: true,
-					requestDelaySeconds: 3,
-				})
-
-				// Trigger API request
-				const iterator = cline.attemptApiRequest(0)
-				await iterator.next()
-
-				expect(mockDelay).toHaveBeenCalledTimes(3)
-				expect(mockDelay).toHaveBeenCalledWith(1000) // Each delay should be 1 second
-
-				// Verify countdown messages were only shown once
-				const retryMessages = saySpy.mock.calls.filter(
-					(call) => call[0] === "api_req_retry_delayed" && call[3] === true,
-				)
-				expect(retryMessages).toEqual([
-					["api_req_retry_delayed", "API Error\n<retry_timer>3</retry_timer>", undefined, true],
-					["api_req_retry_delayed", "API Error\n<retry_timer>2</retry_timer>", undefined, true],
-					["api_req_retry_delayed", "API Error\n<retry_timer>1</retry_timer>", undefined, true],
-				])
-			})
-
-			describe("processUserContentMentions", () => {
-				it("should process mentions in user_message tags", async () => {
-					const [cline, task] = Task.create({
-						provider: mockProvider,
-						apiConfiguration: mockApiConfig,
-						task: "test task",
-					})
-
-					const userContent = [
-						{
-							type: "text",
-							text: "Regular text with 'some/path' (see below for file content)",
-						} as const,
-						{
-							type: "text",
-							text: "<user_message>Text with 'some/path' (see below for file content) in user_message tags</user_message>",
-						} as const,
-						{
-							type: "tool_result",
-							tool_use_id: "test-id",
-							content: [
-								{
-									type: "text",
-									text: "<user_message>Check 'some/path' (see below for file content)</user_message>",
-								},
-							],
-						} as Anthropic.ToolResultBlockParam,
-						{
-							type: "tool_result",
-							tool_use_id: "test-id-2",
-							content: [
-								{
-									type: "text",
-									text: "Regular tool result with 'path' (see below for file content)",
-								},
-							],
-						} as Anthropic.ToolResultBlockParam,
-					]
-
-					const { content: processedContent } = await processUserContentMentions({
-						userContent,
-						cwd: cline.cwd,
-						fileContextTracker: cline.fileContextTracker,
-					})
-
-					// Regular text should not be processed
-					expect((processedContent[0] as Anthropic.TextBlockParam).text).toBe(
-						"Regular text with 'some/path' (see below for file content)",
-					)
-
-					// Text within user_message tags should be processed
-					expect((processedContent[1] as Anthropic.TextBlockParam).text).toContain("processed:")
-					expect((processedContent[1] as Anthropic.TextBlockParam).text).toContain(
-						"<user_message>Text with 'some/path' (see below for file content) in user_message tags</user_message>",
-					)
-
-					// user_message tag content should be processed
-					const toolResult1 = processedContent[2] as Anthropic.ToolResultBlockParam
-					const content1 = Array.isArray(toolResult1.content) ? toolResult1.content[0] : toolResult1.content
-					expect((content1 as Anthropic.TextBlockParam).text).toContain("processed:")
-					expect((content1 as Anthropic.TextBlockParam).text).toContain(
-						"<user_message>Check 'some/path' (see below for file content)</user_message>",
-					)
-
-					// Regular tool result should not be processed
-					const toolResult2 = processedContent[3] as Anthropic.ToolResultBlockParam
-					const content2 = Array.isArray(toolResult2.content) ? toolResult2.content[0] : toolResult2.content
-					expect((content2 as Anthropic.TextBlockParam).text).toBe(
-						"Regular tool result with 'path' (see below for file content)",
-					)
-
-					await cline.abortTask(true)
-					await task.catch(() => {})
-				})
-			})
-		})
-
-		describe("Subtask Rate Limiting", () => {
-			let mockProvider: any
-			let mockApiConfig: any
-			let mockDelay: ReturnType<typeof vi.fn>
-			// Deterministic clock. The rate-limit countdown is derived from
-			// `performance.now() - lastGlobalApiRequestTime`, so relying on real wall-clock time
-			// makes these assertions flaky — on Windows CI the suite runs in a single heavily-loaded
-			// fork (see vitest.config.ts `singleFork`), where the gap between the parent and child
-			// request can balloon past the rate-limit window (→ 0 delays) or the 20s test timeout.
-			// Controlling `performance.now()` makes the elapsed time — and the expected delay count —
-			// exact and machine-independent.
-			let mockNow: number
-			let perfNowSpy: ReturnType<typeof vi.spyOn>
-
-			beforeEach(() => {
-				vi.clearAllMocks()
-				// Reset the global timestamp before each test
-				resetGlobalApiRequestTime()
-
-				// Install a controllable clock; tests advance `mockNow` explicitly.
-				mockNow = 1_000_000
-				perfNowSpy = vi.spyOn(performance, "now").mockImplementation(() => mockNow)
-
-				mockApiConfig = {
-					apiProvider: "anthropic",
-					apiKey: "test-key",
-					rateLimitSeconds: 5,
-				}
-
-				mockProvider = {
-					context: {
-						globalStorageUri: { fsPath: "/test/storage" },
-						globalState: {
-							get: vi.fn().mockImplementation(() => undefined),
-							update: vi.fn().mockResolvedValue(undefined),
-							keys: vi.fn().mockReturnValue([]),
-						},
-					},
-					getState: vi.fn().mockResolvedValue({
-						apiConfiguration: mockApiConfig,
-						mcpEnabled: false,
-					}),
-					getMcpHub: vi.fn().mockReturnValue(undefined),
-					getSkillsManager: vi.fn().mockReturnValue(undefined),
-					say: vi.fn(),
-					postStateToWebview: vi.fn().mockResolvedValue(undefined),
-					postStateToWebviewWithoutTaskHistory: vi.fn().mockResolvedValue(undefined),
-					postMessageToWebview: vi.fn().mockResolvedValue(undefined),
-					updateTaskHistory: vi.fn().mockResolvedValue(undefined),
-					getCurrentTask: vi.fn().mockReturnValue(undefined),
-				}
-
-				// Get the mocked delay function
-				mockDelay = delay as ReturnType<typeof vi.fn>
-				mockDelay.mockClear()
-			})
-
-			afterEach(() => {
-				// Clean up the global state after each test
-				resetGlobalApiRequestTime()
-				// Restore the real clock so nothing leaks into other tests (critical under singleFork).
-				perfNowSpy.mockRestore()
-			})
-
-			it("should enforce rate limiting across parent and subtask", async () => {
-				// Add a spy to track getState calls
-				const getStateSpy = vi.spyOn(mockProvider, "getState")
-
-				// Create parent task
-				const parent = new Task({
-					provider: mockProvider,
-					apiConfiguration: mockApiConfig,
-					task: "parent task",
-					startTask: false,
-				})
-				vi.spyOn(parent.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
-
-				// Mock the API stream response
-				const mockStream = {
-					async *[Symbol.asyncIterator]() {
-						yield { type: "text", text: "parent response" }
-					},
-					async next() {
-						return { done: true, value: { type: "text", text: "parent response" } }
-					},
-					async return() {
-						return { done: true, value: undefined }
-					},
-					async throw(e: any) {
-						throw e
-					},
-					[Symbol.asyncDispose]: async () => {},
-				} as AsyncGenerator<ApiStreamChunk>
-
-				vi.spyOn(parent.api, "createMessage").mockReturnValue(mockStream)
-
-				// Make an API request with the parent task
-				const parentIterator = parent.attemptApiRequest(0)
-				await parentIterator.next()
-
-				// Verify no delay was applied for the first request
-				expect(mockDelay).not.toHaveBeenCalled()
-
-				// Create a subtask immediately after
-				const child = new Task({
-					provider: mockProvider,
-					apiConfiguration: mockApiConfig,
-					task: "child task",
-					parentTask: parent,
-					rootTaskId: parent.taskId,
-					startTask: false,
-				})
-				vi.spyOn(child.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
-
-				// Spy on child.say to verify the emitted message type
-				const saySpy = vi.spyOn(child.askSay, "say")
-
-				// Mock the child's API stream
-				const childMockStream = {
-					async *[Symbol.asyncIterator]() {
-						yield { type: "text", text: "child response" }
-					},
-					async next() {
-						return { done: true, value: { type: "text", text: "child response" } }
-					},
-					async return() {
-						return { done: true, value: undefined }
-					},
-					async throw(e: any) {
-						throw e
-					},
-					[Symbol.asyncDispose]: async () => {},
-				} as AsyncGenerator<ApiStreamChunk>
-
-				vi.spyOn(child.api, "createMessage").mockReturnValue(childMockStream)
-
-				// Make an API request with the child task
-				const childIterator = child.attemptApiRequest(0)
-				await childIterator.next()
-
-				// Verify rate limiting was applied
-				expect(mockDelay).toHaveBeenCalledTimes(mockApiConfig.rateLimitSeconds)
-				expect(mockDelay).toHaveBeenCalledWith(1000)
-
-				// Verify we used the non-error rate-limit wait message type (JSON format)
-				expect(saySpy).toHaveBeenCalledWith(
-					"api_req_rate_limit_wait",
-					expect.stringMatching(/\{"seconds":\d+\}/),
-					undefined,
-					true,
-				)
-
-				// Verify the wait message was finalized
-				expect(saySpy).toHaveBeenCalledWith("api_req_rate_limit_wait", undefined, undefined, false)
-			}, 10000) // Increase timeout to 10 seconds
-
-			it("should not apply rate limiting if enough time has passed", async () => {
-				// Create parent task
-				const parent = new Task({
-					provider: mockProvider,
-					apiConfiguration: mockApiConfig,
-					task: "parent task",
-					startTask: false,
-				})
-				vi.spyOn(parent.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
-
-				// Mock the API stream response
-				const mockStream = {
-					async *[Symbol.asyncIterator]() {
-						yield { type: "text", text: "response" }
-					},
-					async next() {
-						return { done: true, value: { type: "text", text: "response" } }
-					},
-					async return() {
-						return { done: true, value: undefined }
-					},
-					async throw(e: any) {
-						throw e
-					},
-					[Symbol.asyncDispose]: async () => {},
-				} as AsyncGenerator<ApiStreamChunk>
-
-				vi.spyOn(parent.api, "createMessage").mockReturnValue(mockStream)
-
-				// Make an API request with the parent task
-				const parentIterator = parent.attemptApiRequest(0)
-				await parentIterator.next()
-
-				// Simulate time passing (more than the rate limit window) by advancing the clock.
-				mockNow += (mockApiConfig.rateLimitSeconds + 1) * 1000
-
-				// Create a subtask after time has passed
-				const child = new Task({
-					provider: mockProvider,
-					apiConfiguration: mockApiConfig,
-					task: "child task",
-					parentTask: parent,
-					rootTaskId: parent.taskId,
-					startTask: false,
-				})
-				vi.spyOn(child.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
-
-				vi.spyOn(child.api, "createMessage").mockReturnValue(mockStream)
-
-				// Make an API request with the child task
-				const childIterator = child.attemptApiRequest(0)
-				await childIterator.next()
-
-				// Verify no rate limiting was applied
-				expect(mockDelay).not.toHaveBeenCalled()
-			})
-
-			it("should share rate limiting across multiple subtasks", async () => {
-				// Create parent task
-				const parent = new Task({
-					provider: mockProvider,
-					apiConfiguration: mockApiConfig,
-					task: "parent task",
-					startTask: false,
-				})
-				vi.spyOn(parent.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
-
-				// Mock the API stream response
-				const mockStream = {
-					async *[Symbol.asyncIterator]() {
-						yield { type: "text", text: "response" }
-					},
-					async next() {
-						return { done: true, value: { type: "text", text: "response" } }
-					},
-					async return() {
-						return { done: true, value: undefined }
-					},
-					async throw(e: any) {
-						throw e
-					},
-					[Symbol.asyncDispose]: async () => {},
-				} as AsyncGenerator<ApiStreamChunk>
-
-				vi.spyOn(parent.api, "createMessage").mockReturnValue(mockStream)
-
-				// Make an API request with the parent task
-				const parentIterator = parent.attemptApiRequest(0)
-				await parentIterator.next()
-
-				// Create first subtask
-				const child1 = new Task({
-					provider: mockProvider,
-					apiConfiguration: mockApiConfig,
-					task: "child task 1",
-					parentTask: parent,
-					rootTaskId: parent.taskId,
-					startTask: false,
-				})
-				vi.spyOn(child1.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
-
-				vi.spyOn(child1.api, "createMessage").mockReturnValue(mockStream)
-
-				// Make an API request with the first child task
-				const child1Iterator = child1.attemptApiRequest(0)
-				await child1Iterator.next()
-
-				// Verify rate limiting was applied
-				const firstDelayCount = mockDelay.mock.calls.length
-				expect(firstDelayCount).toBe(mockApiConfig.rateLimitSeconds)
-
-				// Clear the mock to count new delays
-				mockDelay.mockClear()
-
-				// Create second subtask immediately after
-				const child2 = new Task({
-					provider: mockProvider,
-					apiConfiguration: mockApiConfig,
-					task: "child task 2",
-					parentTask: parent,
-					rootTaskId: parent.taskId,
-					startTask: false,
-				})
-				vi.spyOn(child2.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
-
-				vi.spyOn(child2.api, "createMessage").mockReturnValue(mockStream)
-
-				// Make an API request with the second child task
-				const child2Iterator = child2.attemptApiRequest(0)
-				await child2Iterator.next()
-
-				// Verify rate limiting was applied again
-				expect(mockDelay).toHaveBeenCalledTimes(mockApiConfig.rateLimitSeconds)
-			}, 15000) // Increase timeout to 15 seconds
-
-			it("should handle rate limiting with zero rate limit", async () => {
-				// Update config to have zero rate limit
-				mockApiConfig.rateLimitSeconds = 0
-				mockProvider.getState.mockResolvedValue({
-					apiConfiguration: mockApiConfig,
-					mcpEnabled: false,
-				})
-
-				// Create parent task
-				const parent = new Task({
-					provider: mockProvider,
-					apiConfiguration: mockApiConfig,
-					task: "parent task",
-					startTask: false,
-				})
-				vi.spyOn(parent.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
-
-				// Mock the API stream response
-				const mockStream = {
-					async *[Symbol.asyncIterator]() {
-						yield { type: "text", text: "response" }
-					},
-					async next() {
-						return { done: true, value: { type: "text", text: "response" } }
-					},
-					async return() {
-						return { done: true, value: undefined }
-					},
-					async throw(e: any) {
-						throw e
-					},
-					[Symbol.asyncDispose]: async () => {},
-				} as AsyncGenerator<ApiStreamChunk>
-
-				vi.spyOn(parent.api, "createMessage").mockReturnValue(mockStream)
-
-				// Make an API request with the parent task
-				const parentIterator = parent.attemptApiRequest(0)
-				await parentIterator.next()
-
-				// Create a subtask
-				const child = new Task({
-					provider: mockProvider,
-					apiConfiguration: mockApiConfig,
-					task: "child task",
-					parentTask: parent,
-					rootTaskId: parent.taskId,
-					startTask: false,
-				})
-				vi.spyOn(child.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
-
-				vi.spyOn(child.api, "createMessage").mockReturnValue(mockStream)
-
-				// Make an API request with the child task
-				const childIterator = child.attemptApiRequest(0)
-				await childIterator.next()
-
-				// Verify no delay was applied
-				expect(mockDelay).not.toHaveBeenCalled()
-			})
-
-			it("should update global timestamp even when no rate limiting is needed", async () => {
-				// Create task
-				const task = new Task({
-					provider: mockProvider,
-					apiConfiguration: mockApiConfig,
-					task: "test task",
-					startTask: false,
-				})
-				vi.spyOn(task.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
-
-				// Mock the API stream response
-				const mockStream = {
-					async *[Symbol.asyncIterator]() {
-						yield { type: "text", text: "response" }
-					},
-					async next() {
-						return { done: true, value: { type: "text", text: "response" } }
-					},
-					async return() {
-						return { done: true, value: undefined }
-					},
-					async throw(e: any) {
-						throw e
-					},
-					[Symbol.asyncDispose]: async () => {},
-				} as AsyncGenerator<ApiStreamChunk>
-
-				vi.spyOn(task.api, "createMessage").mockReturnValue(mockStream)
-
-				// Make an API request
-				const iterator = task.attemptApiRequest(0)
-				await iterator.next()
-
-				// Access the private static property via reflection for testing
-				const globalTimestamp = getLastGlobalApiRequestTime()
-				expect(globalTimestamp).toBeDefined()
-				expect(globalTimestamp).toBeGreaterThan(0)
-			})
-		})
-
-		describe("Dynamic Strategy Selection", () => {
-			let mockProvider: any
-			let mockApiConfig: any
-
-			beforeEach(() => {
-				vi.clearAllMocks()
-
-				mockApiConfig = {
-					apiProvider: "anthropic",
-					apiKey: "test-key",
-				}
-
-				mockProvider = {
-					context: {
-						globalStorageUri: { fsPath: "/test/storage" },
-					},
-					getState: vi.fn(),
-				}
-			})
-
-			it("should use MultiSearchReplaceDiffStrategy by default", async () => {
-				mockProvider.getState.mockResolvedValue({})
-
-				const task = new Task({
-					provider: mockProvider,
-					apiConfiguration: mockApiConfig,
-					task: "test task",
-					startTask: false,
-				})
-
-				// Should be MultiSearchReplaceDiffStrategy
-				expect(task.diffStrategy).toBeInstanceOf(MultiSearchReplaceDiffStrategy)
-				expect(task.diffStrategy?.getName()).toBe("MultiSearchReplace")
-			})
-
-			it("should keep MultiSearchReplaceDiffStrategy when experiments are undefined", async () => {
-				mockProvider.getState.mockResolvedValue({})
-
-				const task = new Task({
-					provider: mockProvider,
-					apiConfiguration: mockApiConfig,
-					task: "test task",
-					startTask: false,
-				})
-
-				// Initially should be MultiSearchReplaceDiffStrategy
-				expect(task.diffStrategy).toBeInstanceOf(MultiSearchReplaceDiffStrategy)
-
-				// Wait for async strategy update
-				await new Promise((resolve) => setTimeout(resolve, 10))
-
-				// Should still be MultiSearchReplaceDiffStrategy
-				expect(task.diffStrategy).toBeInstanceOf(MultiSearchReplaceDiffStrategy)
-				expect(task.diffStrategy?.getName()).toBe("MultiSearchReplace")
-			})
-		})
-
-		describe("getApiProtocol", () => {
-			it("should determine API protocol based on provider and model", async () => {
-				// Test with Anthropic provider
-				const anthropicConfig = {
-					...mockApiConfig,
-					apiProvider: "anthropic" as const,
-					apiModelId: "gpt-4",
-				}
-				const anthropicTask = new Task({
-					provider: mockProvider,
-					apiConfiguration: anthropicConfig,
-					task: "test task",
-					startTask: false,
-				})
-				// Should use anthropic protocol even with non-claude model
-				expect(anthropicTask.apiConfiguration.apiProvider).toBe("anthropic")
-
-				// Test with OpenRouter provider and Claude model
-				const openrouterClaudeConfig = {
-					apiProvider: "openrouter" as const,
-					openRouterModelId: "anthropic/claude-3-opus",
-				}
-				const openrouterClaudeTask = new Task({
-					provider: mockProvider,
-					apiConfiguration: openrouterClaudeConfig,
-					task: "test task",
-					startTask: false,
-				})
-				expect(openrouterClaudeTask.apiConfiguration.apiProvider).toBe("openrouter")
-
-				// Test with OpenRouter provider and non-Claude model
-				const openrouterGptConfig = {
-					apiProvider: "openrouter" as const,
-					openRouterModelId: "openai/gpt-4",
-				}
-				const openrouterGptTask = new Task({
-					provider: mockProvider,
-					apiConfiguration: openrouterGptConfig,
-					task: "test task",
-					startTask: false,
-				})
-				expect(openrouterGptTask.apiConfiguration.apiProvider).toBe("openrouter")
-
-				// Test with various Claude model formats
-				const claudeModelFormats = [
-					"claude-3-opus",
-					"Claude-3-Sonnet",
-					"CLAUDE-instant",
-					"anthropic/claude-3-haiku",
-					"some-provider/claude-model",
-				]
-
-				for (const modelId of claudeModelFormats) {
-					const config = {
-						apiProvider: "openai" as const,
-						openAiModelId: modelId,
-					}
-					const task = new Task({
-						provider: mockProvider,
-						apiConfiguration: config,
-						task: "test task",
-						startTask: false,
-					})
-					// Verify the model ID contains claude (case-insensitive)
-					expect(modelId.toLowerCase()).toContain("claude")
-				}
-			})
-
-			it("should handle edge cases for API protocol detection", async () => {
-				// Test with undefined provider
-				const undefinedProviderConfig = {
-					apiModelId: "claude-3-opus",
-				}
-				const undefinedProviderTask = new Task({
-					provider: mockProvider,
-					apiConfiguration: undefinedProviderConfig,
-					task: "test task",
-					startTask: false,
-				})
-				expect(undefinedProviderTask.apiConfiguration.apiProvider).toBeUndefined()
-
-				// Test with no model ID
-				const noModelConfig = {
-					apiProvider: "openai" as const,
-				}
-				const noModelTask = new Task({
-					provider: mockProvider,
-					apiConfiguration: noModelConfig,
-					task: "test task",
-					startTask: false,
-				})
-				expect(noModelTask.apiConfiguration.apiProvider).toBe("openai")
-			})
-		})
-
-		describe("submitUserMessage", () => {
-			it("should call handleWebviewAskResponse directly", async () => {
-				const task = new Task({
-					provider: mockProvider,
-					apiConfiguration: mockApiConfig,
-					task: "initial task",
-					startTask: false,
-				})
-
-				// Spy on handleWebviewAskResponse
-				const handleResponseSpy = vi.spyOn(task.askSay, "handleWebviewAskResponse")
-
-				// Set up some existing messages to simulate an ongoing conversation
-				task.clineMessages = [
-					{
-						ts: Date.now(),
-						type: "say",
-						say: "text",
-						text: "Initial message",
-					},
-				]
-
-				// Call submitUserMessage
-				task.submitUserMessage("test message", ["image1.png"])
-
-				// Verify handleWebviewAskResponse was called directly (not webview)
-				expect(handleResponseSpy).toHaveBeenCalledWith("messageResponse", "test message", ["image1.png"])
-				// Should NOT route through webview anymore
-				expect(mockProvider.postMessageToWebview).not.toHaveBeenCalled()
-			})
-
-			it("should handle empty messages gracefully", async () => {
-				const task = new Task({
-					provider: mockProvider,
-					apiConfiguration: mockApiConfig,
-					task: "initial task",
-					startTask: false,
-				})
-
-				// Spy on handleWebviewAskResponse
-				const handleResponseSpy = vi.spyOn(task.askSay, "handleWebviewAskResponse")
-
-				// Call with empty text and no images
-				task.submitUserMessage("", [])
-
-				// Should not call handleWebviewAskResponse for empty messages
-				expect(handleResponseSpy).not.toHaveBeenCalled()
-
-				// Call with whitespace only
-				task.submitUserMessage("   ", [])
-				expect(handleResponseSpy).not.toHaveBeenCalled()
-			})
-
-			it("should call handleWebviewAskResponse for both new and existing task states", async () => {
-				const task = new Task({
-					provider: mockProvider,
-					apiConfiguration: mockApiConfig,
-					task: "initial task",
-					startTask: false,
-				})
-
-				// Spy on handleWebviewAskResponse
-				const handleResponseSpy = vi.spyOn(task.askSay, "handleWebviewAskResponse")
-
-				// Test with no messages (new task scenario)
-				task.clineMessages = []
-				task.submitUserMessage("new task", ["image1.png"])
-
-				expect(handleResponseSpy).toHaveBeenCalledWith("messageResponse", "new task", ["image1.png"])
-
-				// Clear mock
-				handleResponseSpy.mockClear()
-
-				// Test with existing messages (ongoing task scenario)
-				task.clineMessages = [
-					{
-						ts: Date.now(),
-						type: "say",
-						say: "text",
-						text: "Initial message",
-					},
-				]
-				task.submitUserMessage("follow-up message", ["image2.png"])
-
-				expect(handleResponseSpy).toHaveBeenCalledWith("messageResponse", "follow-up message", ["image2.png"])
-			})
-
-			it("switches the task's own mode when a message names one", async () => {
-				// The task reads its own mode (not provider state) for prompts, tools and
-				// validation, so a mode sent with the message must reach the task itself.
-				const task = new Task({
-					provider: mockProvider,
-					apiConfiguration: mockApiConfig,
-					task: "initial task",
-					startTask: false,
-				})
-				vi.spyOn(mockProvider, "getCurrentTask").mockReturnValue(task)
-				const handleModeSwitchSpy = vi.spyOn(mockProvider, "handleModeSwitch").mockResolvedValue(undefined)
-				vi.spyOn(task.askSay, "handleWebviewAskResponse").mockImplementation(() => {})
-
-				await task.submitUserMessage("plan it", [], "architect")
-
-				expect(handleModeSwitchSpy).toHaveBeenCalledWith("architect")
-			})
-
-			it("should handle undefined provider gracefully", async () => {
-				const task = new Task({
-					provider: mockProvider,
-					apiConfiguration: mockApiConfig,
-					task: "initial task",
-					startTask: false,
-				})
-
-				// Spy on handleWebviewAskResponse
-				const handleResponseSpy = vi.spyOn(task.askSay, "handleWebviewAskResponse")
-
-				// Simulate weakref returning undefined
-				Object.defineProperty(task, "providerRef", {
-					value: { deref: () => undefined },
-					writable: false,
-					configurable: true,
-				})
-
-				// Spy on logger.error to verify error is logged
-				const loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
-
-				// Should log error but not throw
-				task.submitUserMessage("test message")
-
-				expect(loggerErrorSpy).toHaveBeenCalledWith("[Task#submitUserMessage] Provider reference lost")
-				expect(handleResponseSpy).not.toHaveBeenCalled()
-
-				// Restore logger.error
-				loggerErrorSpy.mockRestore()
-			})
-		})
-	})
-
-	describe("abortTask", () => {
-		it("should set abort flag and emit TaskAborted event", async () => {
-			const task = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				task: "test task",
-				startTask: false,
-			})
-
-			// Spy on emit method
-			const emitSpy = vi.spyOn(task, "emit")
-
-			// Mock the dispose method to avoid actual cleanup
-			vi.spyOn(task, "dispose").mockImplementation(() => {})
-
-			// Call abortTask
-			await task.abortTask()
-
-			// Verify abort flag is set
-			expect(task.abort).toBe(true)
-
-			// Verify TaskAborted event was emitted
-			expect(emitSpy).toHaveBeenCalledWith("taskAborted")
-		})
-
-		it("should be equivalent to clicking Cancel button functionality", async () => {
-			const task = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				task: "test task",
-				startTask: false,
-			})
-
-			// Mock the dispose method to track cleanup - spy on lifecycle.dispose
-			const disposeSpy = vi.spyOn(task.lifecycle, "dispose").mockImplementation(() => {})
-
-			// Call abortTask
-			await task.abortTask()
-
-			// Verify the same behavior as Cancel button
-			expect(task.abort).toBe(true)
-			expect(disposeSpy).toHaveBeenCalled()
-		})
-
-		it("should work with TaskLike interface", async () => {
-			const task = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				task: "test task",
-				startTask: false,
-			})
-
-			// Cast to TaskLike to ensure interface compliance
-			const taskLike = task as any // TaskLike interface from types package
-
-			// Verify abortTask method exists and is callable
-			expect(typeof taskLike.abortTask).toBe("function")
-
-			// Mock the dispose method to avoid actual cleanup
-			vi.spyOn(task, "dispose").mockImplementation(() => {})
-
-			// Call abortTask through interface
-			await taskLike.abortTask()
-
-			// Verify it works
-			expect(task.abort).toBe(true)
-		})
-
-		it("should handle errors during disposal gracefully", async () => {
-			const task = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				task: "test task",
-				startTask: false,
-			})
-
-			// Mock dispose to throw an error - spy on lifecycle.dispose
-			const mockError = new Error("Disposal failed")
-			vi.spyOn(task.lifecycle, "dispose").mockImplementation(() => {
-				throw mockError
-			})
-
-			// Spy on logger.error to verify error is logged
-			const loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
-
-			// abortTask should not throw even if dispose fails
-			await expect(task.abortTask()).resolves.not.toThrow()
-
-			// Verify error was logged - the error message format changed slightly
-			expect(loggerErrorSpy).toHaveBeenCalledWith(expect.stringContaining("Error during task"), mockError)
-
-			// Verify abort flag is still set
-			expect(task.abort).toBe(true)
-
-			// Restore logger.error
-			loggerErrorSpy.mockRestore()
-		})
-		describe("Stream Failure Retry", () => {
-			it("should not abort task on stream failure, only on user cancellation", async () => {
-				const task = new Task({
-					provider: mockProvider,
-					apiConfiguration: mockApiConfig,
-					task: "test task",
-					startTask: false,
-				})
-
-				// Spy on logger.error to verify error logging
-				const loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
-
-				// Spy on abortTask to verify it's NOT called for stream failures
-				const abortTaskSpy = vi.spyOn(task, "abortTask").mockResolvedValue(undefined)
-
-				// Test Case 1: Stream failure should NOT abort task
-				task.abort = false
-				task.abandoned = false
-
-				// Simulate the catch block behavior for stream failure
-				const streamFailureError = new Error("Stream failed mid-execution")
-
-				// The key assertion: verify that when abort=false, abortTask is NOT called
-				// This would normally happen in the catch block around line 2184
-				const shouldAbort = task.abort
-				expect(shouldAbort).toBe(false)
-
-				// Verify error would be logged (this is what the new code does)
-				logger.error(
-					`[Task#${task.taskId}.${task.instanceId}] Stream failed, will retry: ${streamFailureError.message}`,
-				)
-				expect(loggerErrorSpy).toHaveBeenCalledWith(expect.stringContaining("Stream failed, will retry"))
-
-				// Verify abortTask was NOT called
-				expect(abortTaskSpy).not.toHaveBeenCalled()
-
-				// Test Case 2: User cancellation SHOULD abort task
-				task.abort = true
-
-				// For user cancellation, abortTask SHOULD be called
-				if (task.abort) {
-					await task.abortTask()
-				}
-
-				expect(abortTaskSpy).toHaveBeenCalled()
-
-				// Restore mocks
-				loggerErrorSpy.mockRestore()
-			})
-		})
-
-		describe("cancelCurrentRequest", () => {
-			it("should cancel the current HTTP request via AbortController", () => {
-				const task = new Task({
-					provider: mockProvider,
-					apiConfiguration: mockApiConfig,
-					task: "test task",
-					startTask: false,
-				})
-
-				// Create a real AbortController and spy on its abort method
-				const mockAbortController = new AbortController()
-				const abortSpy = vi.spyOn(mockAbortController, "abort")
-				task.currentRequestAbortController = mockAbortController
-
-				// Spy on logger.info
-				const loggerInfoSpy = vi.spyOn(logger, "info").mockImplementation(() => {})
-
-				// Call cancelCurrentRequest
-				task.cancelCurrentRequest()
-
-				// Verify abort was called on the controller
-				expect(abortSpy).toHaveBeenCalled()
-
-				// Verify the controller was cleared
-				expect(task.currentRequestAbortController).toBeUndefined()
-
-				// Verify logging
-				expect(loggerInfoSpy).toHaveBeenCalledWith(expect.stringContaining("Aborting current HTTP request"))
-
-				// Restore logger.info
-				loggerInfoSpy.mockRestore()
-			})
-
-			it("should handle missing AbortController gracefully", () => {
-				const task = new Task({
-					provider: mockProvider,
-					apiConfiguration: mockApiConfig,
-					task: "test task",
-					startTask: false,
-				})
-
-				// Ensure no controller exists
-				task.currentRequestAbortController = undefined
-
-				// Should not throw when called with no controller
-				expect(() => task.cancelCurrentRequest()).not.toThrow()
-			})
-
-			it("should be called during dispose", () => {
-				const task = new Task({
-					provider: mockProvider,
-					apiConfiguration: mockApiConfig,
-					task: "test task",
-					startTask: false,
-				})
-
-				// Spy on cancelCurrentRequest
-				const cancelSpy = vi.spyOn(task, "cancelCurrentRequest")
-
-				// Mock other dispose operations
-				vi.spyOn(task.messageQueueService, "removeListener").mockImplementation(
-					() => task.messageQueueService as any,
-				)
-				vi.spyOn(task.messageQueueService, "dispose").mockImplementation(() => {})
-				vi.spyOn(task, "removeAllListeners").mockImplementation(() => task as any)
-
-				// Call dispose
-				task.dispose()
-
-				// Verify cancelCurrentRequest was called
-				expect(cancelSpy).toHaveBeenCalled()
-			})
-		})
-	})
-
-	describe("start()", () => {
-		it("should be a no-op if the task was already started in the constructor", () => {
-			const task = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				task: "test task",
-				startTask: false,
-			})
-
-			// Manually trigger start - spy on lifecycle.startTask
-			const startTaskSpy = vi.spyOn(task.lifecycle, "startTask").mockImplementation(async () => {})
-			task.start()
-
-			expect(startTaskSpy).toHaveBeenCalledTimes(1)
-
-			// Calling start() again should be a no-op
-			task.start()
-			expect(startTaskSpy).toHaveBeenCalledTimes(1)
-		})
-
-		it("should not call startTask if already started via constructor", async () => {
-			// Create a task without starting it first
-			const task = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				task: "test task",
-				startTask: false,
-			})
-
-			// Spy on lifecycle.startTask before calling start
-			const startTaskSpy = vi.spyOn(task.lifecycle, "startTask").mockImplementation(async () => {})
-
-			// Call start - this should trigger startTask
-			task.start()
-
-			// Wait for any async operations
-			await new Promise((resolve) => setTimeout(resolve, 0))
-
-			// startTask was called by start()
-			expect(startTaskSpy).toHaveBeenCalledTimes(1)
-
-			// Calling start() should be a no-op since _started is already true
-			task.start()
-			await new Promise((resolve) => setTimeout(resolve, 0))
-			expect(startTaskSpy).toHaveBeenCalledTimes(1)
-
-			startTaskSpy.mockRestore()
-		})
-	})
+const apiConfig: ProviderSettings = {
+	apiProvider: "anthropic",
+	apiModelId: "claude-3-5-sonnet-20241022",
+	apiKey: "test-api-key",
+}
+
+const testModel = (info: Partial<ModelInfo> = {}) => ({
+	id: "test-model",
+	info: { contextWindow: 128000, maxTokens: 4096, supportsImages: false, supportsPromptCache: false, ...info },
 })
 
-describe("Queued message processing after condense", () => {
-	function createProvider(): any {
-		const storageUri = { fsPath: path.join(os.tmpdir(), "test-storage") }
-		const ctx = {
-			globalState: {
-				get: vi.fn().mockImplementation((_key: keyof GlobalState) => undefined),
-				update: vi.fn().mockResolvedValue(undefined),
-				keys: vi.fn().mockReturnValue([]),
-			},
-			globalStorageUri: storageUri,
-			workspaceState: {
-				get: vi.fn().mockImplementation((_key) => undefined),
-				update: vi.fn().mockResolvedValue(undefined),
-				keys: vi.fn().mockReturnValue([]),
-			},
-			secrets: {
-				get: vi.fn().mockResolvedValue(undefined),
-				store: vi.fn().mockResolvedValue(undefined),
-				delete: vi.fn().mockResolvedValue(undefined),
-			},
-			extensionUri: { fsPath: "/mock/extension/path" },
-			extension: { packageJSON: { version: "1.0.0" } },
-		} as unknown as vscode.ExtensionContext
-
-		const output = {
-			appendLine: vi.fn(),
-			append: vi.fn(),
-			clear: vi.fn(),
-			show: vi.fn(),
-			hide: vi.fn(),
-			dispose: vi.fn(),
-		}
-
-		const provider = new ClineProvider(ctx, output as any, "sidebar", new ContextProxy(ctx)) as any
-		provider.postMessageToWebview = vi.fn().mockResolvedValue(undefined)
-		provider.postStateToWebview = vi.fn().mockResolvedValue(undefined)
-		provider.postStateToWebviewWithoutTaskHistory = vi.fn().mockResolvedValue(undefined)
-		provider.getState = vi.fn().mockResolvedValue({})
-		return provider
+/** A real ClineProvider over a fake extension context, with its webview posts stubbed. */
+function makeProvider(): any {
+	const context = {
+		globalState: { get: vi.fn(), update: vi.fn().mockResolvedValue(undefined), keys: vi.fn().mockReturnValue([]) },
+		globalStorageUri: { fsPath: path.join(os.tmpdir(), "test-storage") },
+		workspaceState: {
+			get: vi.fn(),
+			update: vi.fn().mockResolvedValue(undefined),
+			keys: vi.fn().mockReturnValue([]),
+		},
+		secrets: {
+			get: vi.fn().mockResolvedValue(undefined),
+			store: vi.fn().mockResolvedValue(undefined),
+			delete: vi.fn().mockResolvedValue(undefined),
+		},
+		extensionUri: { fsPath: "/mock/extension/path" },
+		extension: { packageJSON: { version: "1.0.0" } },
+	} as unknown as vscode.ExtensionContext
+	const output = {
+		appendLine: vi.fn(),
+		append: vi.fn(),
+		clear: vi.fn(),
+		show: vi.fn(),
+		hide: vi.fn(),
+		dispose: vi.fn(),
 	}
 
-	const apiConfig: ProviderSettings = {
-		apiProvider: "anthropic",
-		apiModelId: "claude-3-5-sonnet-20241022",
-		apiKey: "test-api-key",
-	} as any
+	const provider = new ClineProvider(context, output as any, "sidebar", new ContextProxy(context)) as any
+	provider.postMessageToWebview = vi.fn().mockResolvedValue(undefined)
+	provider.postStateToWebview = vi.fn().mockResolvedValue(undefined)
+	provider.postStateToWebviewWithoutTaskHistory = vi.fn().mockResolvedValue(undefined)
+	return provider
+}
 
-	it("processes queued message after condense completes", async () => {
-		const provider = createProvider()
-		const task = new Task({
-			provider,
-			apiConfiguration: apiConfig,
-			task: "initial task",
-			startTask: false,
-		})
+function newTask(provider: any, options: Partial<TaskOptions> = {}): Task {
+	return new Task({ provider, apiConfiguration: apiConfig, task: "test task", startTask: false, ...options })
+}
 
-		// Make condense fast + deterministic
-		vi.spyOn(task as any, "getSystemPrompt").mockResolvedValue("system")
-		const submitSpy = vi.spyOn(task, "submitUserMessage").mockResolvedValue(undefined)
+const stream = (...chunks: ApiStreamChunk[]) =>
+	({
+		async *[Symbol.asyncIterator]() {
+			yield* chunks
+		},
+	}) as AsyncGenerator<ApiStreamChunk>
 
-		// Queue a message during condensing
-		task.messageQueueService.addMessage("queued text", ["img1.png"])
+const failingStream = (error: Error) =>
+	({
+		// eslint-disable-next-line require-yield
+		async *[Symbol.asyncIterator]() {
+			throw error
+		},
+	}) as unknown as AsyncGenerator<ApiStreamChunk>
 
-		// Use fake timers to capture setTimeout(0) in processQueuedMessages
-		vi.useFakeTimers()
-		await task.condenseContext()
+/** Provider state for a request: the provider's own state with `overrides` on top. */
+async function stubState(provider: any, overrides: Record<string, unknown> = {}) {
+	const state = await provider.getState()
+	vi.spyOn(provider, "getState").mockResolvedValue({ ...state, apiConfiguration: apiConfig, ...overrides })
+}
 
-		// Flush the microtask that submits the queued message
-		vi.runAllTimers()
-		vi.useRealTimers()
+/** Runs one request cycle of `task` up to its first yielded chunk. */
+async function requestOnce(task: Task) {
+	await task.attemptApiRequest(0).next()
+}
 
-		expect(submitSpy).toHaveBeenCalledWith("queued text", ["img1.png"])
-		expect(task.messageQueueService.isEmpty()).toBe(true)
-	})
-
-	it("does not cross-drain queues between separate tasks", async () => {
-		const providerA = createProvider()
-		const providerB = createProvider()
-
-		const taskA = new Task({
-			provider: providerA,
-			apiConfiguration: apiConfig,
-			task: "task A",
-			startTask: false,
-		})
-		const taskB = new Task({
-			provider: providerB,
-			apiConfiguration: apiConfig,
-			task: "task B",
-			startTask: false,
-		})
-
-		vi.spyOn(taskA as any, "getSystemPrompt").mockResolvedValue("system")
-		vi.spyOn(taskB as any, "getSystemPrompt").mockResolvedValue("system")
-
-		const spyA = vi.spyOn(taskA, "submitUserMessage").mockResolvedValue(undefined)
-		const spyB = vi.spyOn(taskB, "submitUserMessage").mockResolvedValue(undefined)
-
-		taskA.messageQueueService.addMessage("A message")
-		taskB.messageQueueService.addMessage("B message")
-
-		// Condense in task A should only drain A's queue
-		vi.useFakeTimers()
-		await taskA.condenseContext()
-		vi.runAllTimers()
-		vi.useRealTimers()
-
-		expect(spyA).toHaveBeenCalledWith("A message", undefined)
-		expect(spyB).not.toHaveBeenCalled()
-		expect(taskB.messageQueueService.isEmpty()).toBe(false)
-
-		// Now condense in task B should drain B's queue
-		vi.useFakeTimers()
-		await taskB.condenseContext()
-		vi.runAllTimers()
-		vi.useRealTimers()
-
-		expect(spyB).toHaveBeenCalledWith("B message", undefined)
-		expect(taskB.messageQueueService.isEmpty()).toBe(true)
-	})
+beforeEach(() => {
+	if (!TelemetryService.hasInstance()) {
+		TelemetryService.createInstance([])
+	}
+	resetGlobalApiRequestTime()
 })
 
-describe("pushToolResultToUserContent", () => {
-	let mockProvider: any
-	let mockApiConfig: ProviderSettings
-
-	beforeEach(() => {
-		mockApiConfig = {
-			apiProvider: "anthropic",
-			apiModelId: "claude-3-5-sonnet-20241022",
-			apiKey: "test-api-key",
-		}
-
-		const storageUri = { fsPath: path.join(os.tmpdir(), "test-storage") }
-		const mockExtensionContext = {
-			globalState: {
-				get: vi.fn().mockImplementation((_key: keyof GlobalState) => undefined),
-				update: vi.fn().mockResolvedValue(undefined),
-				keys: vi.fn().mockReturnValue([]),
-			},
-			globalStorageUri: storageUri,
-			workspaceState: {
-				get: vi.fn().mockImplementation((_key) => undefined),
-				update: vi.fn().mockResolvedValue(undefined),
-				keys: vi.fn().mockReturnValue([]),
-			},
-			secrets: {
-				get: vi.fn().mockResolvedValue(undefined),
-				store: vi.fn().mockResolvedValue(undefined),
-				delete: vi.fn().mockResolvedValue(undefined),
-			},
-			extensionUri: { fsPath: "/mock/extension/path" },
-			extension: { packageJSON: { version: "1.0.0" } },
-		} as unknown as vscode.ExtensionContext
-
-		const mockOutputChannel = {
-			name: "test-output",
-			appendLine: vi.fn(),
-			append: vi.fn(),
-			replace: vi.fn(),
-			clear: vi.fn(),
-			show: vi.fn(),
-			hide: vi.fn(),
-			dispose: vi.fn(),
-		}
-
-		mockProvider = new ClineProvider(
-			mockExtensionContext,
-			mockOutputChannel,
-			"sidebar",
-			new ContextProxy(mockExtensionContext),
-		) as any
-
-		mockProvider.postMessageToWebview = vi.fn().mockResolvedValue(undefined)
-		mockProvider.postStateToWebview = vi.fn().mockResolvedValue(undefined)
-		mockProvider.postStateToWebviewWithoutTaskHistory = vi.fn().mockResolvedValue(undefined)
-	})
-
-	it("should add tool_result when not a duplicate", () => {
-		const task = new Task({
-			provider: mockProvider,
-			apiConfiguration: mockApiConfig,
-			task: "test task",
-			startTask: false,
-		})
-
-		const toolResult: Anthropic.ToolResultBlockParam = {
-			type: "tool_result",
-			tool_use_id: "test-id-1",
-			content: "Test result",
-		}
-
-		const added = task.pushToolResultToUserContent(toolResult)
-
-		expect(added).toBe(true)
-		expect(task.userMessageContent).toHaveLength(1)
-		expect(task.userMessageContent[0]).toEqual(toolResult)
-	})
-
-	it("should prevent duplicate tool_result with same tool_use_id", () => {
-		const task = new Task({
-			provider: mockProvider,
-			apiConfiguration: mockApiConfig,
-			task: "test task",
-			startTask: false,
-		})
-
-		const toolResult1: Anthropic.ToolResultBlockParam = {
-			type: "tool_result",
-			tool_use_id: "duplicate-id",
-			content: "First result",
-		}
-
-		const toolResult2: Anthropic.ToolResultBlockParam = {
-			type: "tool_result",
-			tool_use_id: "duplicate-id",
-			content: "Second result (should be skipped)",
-		}
-
-		// Spy on logger.warn to verify warning is logged
-		const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {})
-
-		// Add first result - should succeed
-		const added1 = task.pushToolResultToUserContent(toolResult1)
-		expect(added1).toBe(true)
-		expect(task.userMessageContent).toHaveLength(1)
-
-		// Add second result with same ID - should be skipped
-		const added2 = task.pushToolResultToUserContent(toolResult2)
-		expect(added2).toBe(false)
-		expect(task.userMessageContent).toHaveLength(1)
-
-		// Verify only the first result is in the array
-		expect(task.userMessageContent[0]).toEqual(toolResult1)
-
-		// Verify warning was logged
-		expect(warnSpy).toHaveBeenCalledWith(
-			expect.stringContaining("Skipping duplicate tool_result for tool_use_id: duplicate-id"),
-		)
-
-		warnSpy.mockRestore()
-	})
-
-	it("should allow different tool_use_ids to be added", () => {
-		const task = new Task({
-			provider: mockProvider,
-			apiConfiguration: mockApiConfig,
-			task: "test task",
-			startTask: false,
-		})
-
-		const toolResult1: Anthropic.ToolResultBlockParam = {
-			type: "tool_result",
-			tool_use_id: "id-1",
-			content: "Result 1",
-		}
-
-		const toolResult2: Anthropic.ToolResultBlockParam = {
-			type: "tool_result",
-			tool_use_id: "id-2",
-			content: "Result 2",
-		}
-
-		const added1 = task.pushToolResultToUserContent(toolResult1)
-		const added2 = task.pushToolResultToUserContent(toolResult2)
-
-		expect(added1).toBe(true)
-		expect(added2).toBe(true)
-		expect(task.userMessageContent).toHaveLength(2)
-		expect(task.userMessageContent[0]).toEqual(toolResult1)
-		expect(task.userMessageContent[1]).toEqual(toolResult2)
-	})
-
-	it("should handle tool_result with is_error flag", () => {
-		const task = new Task({
-			provider: mockProvider,
-			apiConfiguration: mockApiConfig,
-			task: "test task",
-			startTask: false,
-		})
-
-		const errorResult: Anthropic.ToolResultBlockParam = {
-			type: "tool_result",
-			tool_use_id: "error-id",
-			content: "Error message",
-			is_error: true,
-		}
-
-		const added = task.pushToolResultToUserContent(errorResult)
-
-		expect(added).toBe(true)
-		expect(task.userMessageContent).toHaveLength(1)
-		expect(task.userMessageContent[0]).toEqual(errorResult)
-	})
-
-	it("should not interfere with other content types in userMessageContent", () => {
-		const task = new Task({
-			provider: mockProvider,
-			apiConfiguration: mockApiConfig,
-			task: "test task",
-			startTask: false,
-		})
-
-		// Add text and image blocks manually
-		task.userMessageContent.push(
-			{ type: "text", text: "Some text" },
-			{ type: "image", source: { type: "base64", media_type: "image/png", data: "base64data" } },
-		)
-
-		const toolResult: Anthropic.ToolResultBlockParam = {
-			type: "tool_result",
-			tool_use_id: "test-id",
-			content: "Result",
-		}
-
-		const added = task.pushToolResultToUserContent(toolResult)
-
-		expect(added).toBe(true)
-		expect(task.userMessageContent).toHaveLength(3)
-		expect(task.userMessageContent[0].type).toBe("text")
-		expect(task.userMessageContent[1].type).toBe("image")
-		expect(task.userMessageContent[2]).toEqual(toolResult)
-	})
-
-	describe("tool-result spill policy", () => {
-		/** 400 padded lines: comfortably over any inline budget used here. */
-		const hugeResult = Array.from({ length: 400 }, (_, index) => `line-${index + 1}`.padEnd(80, "x")).join("\n")
-
-		const artifactsDirFor = (taskId: string) => path.join(os.tmpdir(), "test-storage", "tasks", taskId, "artifacts")
-
-		// The file-level fs/promises mock turns writeFile into a no-op, but these tests check the
-		// artifact on disk, and the atomic write goes through fs/promises: use the real writeFile.
-		beforeEach(async () => {
-			const actualFs = await vi.importActual<typeof import("fs/promises")>("fs/promises")
-			vi.mocked(fsPromises.writeFile).mockImplementation(actualFs.writeFile as any)
-		})
-
-		// Every Task in this file shares one taskId (uuid is pinned), so a failed test must not
-		// leave its artifacts directory behind for the next one.
-		afterEach(() => {
-			vi.mocked(fsPromises.writeFile).mockReset()
-			vi.mocked(fsPromises.writeFile).mockResolvedValue(undefined)
-			fs.rmSync(artifactsDirFor("00000000-0000-7000-8000-000000000000"), { recursive: true, force: true })
-		})
-
-		it("spills an oversized tool result and leaves a preview that cites the artifact", async () => {
-			const task = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				task: "test task",
-				startTask: false,
-			})
-
-			await task.ensureToolResultSpill(1024)
-
-			task.pushToolResultToUserContent(
-				{ type: "tool_result", tool_use_id: "spill-id", content: hugeResult },
-				{ toolName: "search_files" },
-			)
-
-			// The artifact is written asynchronously: until the file exists the
-			// result stays inline, so no preview ever cites a missing artifact.
-			expect((task.userMessageContent[0] as Anthropic.ToolResultBlockParam).content).toBe(hugeResult)
-
-			await task.settlePendingToolResultSpills()
-
-			const pushed = task.userMessageContent[0] as Anthropic.ToolResultBlockParam
-			const content = pushed.content as string
-
-			expect(content).toMatch(/^\[Tool result: \d+ KB, showing first \d+ and last \d+ lines\./)
-			expect(content).toContain("Use read_artifact (search/offset/limit) to inspect the rest.]")
-			expect(content.length).toBeLessThan(hugeResult.length)
-
-			const artifactId = content.match(/artifact "([^"]+)"/)?.[1]
-			expect(artifactId).toMatch(/^tool-\d+\.txt$/)
-
-			const artifactPath = path.join(artifactsDirFor(task.taskId), artifactId!)
-			expect(fs.readFileSync(artifactPath, "utf8")).toBe(hugeResult)
-
-			fs.rmSync(artifactsDirFor(task.taskId), { recursive: true, force: true })
-		})
-
-		it("keeps the result inline when the artifact write fails", async () => {
-			const task = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				task: "test task",
-				startTask: false,
-			})
-			const save = vi.fn().mockRejectedValue(new Error("ENOSPC: no space left on device"))
-			;(task as any).toolResultSpill = { store: { save }, maxInlineBytes: 1024 }
-			const warn = vi.spyOn(logger, "warn").mockImplementation(() => {})
-
-			task.pushToolResultToUserContent(
-				{ type: "tool_result", tool_use_id: "failed-spill-id", content: hugeResult },
-				{ toolName: "search_files" },
-			)
-			await task.settlePendingToolResultSpills()
-
-			expect(save).toHaveBeenCalledTimes(1)
-			expect((task.userMessageContent[0] as Anthropic.ToolResultBlockParam).content).toBe(hugeResult)
-			warn.mockRestore()
-		})
-
-		it("never spills a protocol tool's result", async () => {
-			const task = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				task: "test task",
-				startTask: false,
-			})
-
-			await task.ensureToolResultSpill(1024)
-
-			task.pushToolResultToUserContent(
-				{ type: "tool_result", tool_use_id: "bypass-id", content: hugeResult },
-				{ toolName: "attempt_completion" },
-			)
-
-			const pushed = task.userMessageContent[0] as Anthropic.ToolResultBlockParam
-			expect(pushed.content).toBe(hugeResult)
-			expect(fs.existsSync(artifactsDirFor(task.taskId))).toBe(false)
-		})
-
-		it("keeps everything inline until the policy is prepared", () => {
-			const task = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				task: "test task",
-				startTask: false,
-			})
-
-			task.pushToolResultToUserContent(
-				{ type: "tool_result", tool_use_id: "unprepared-id", content: hugeResult },
-				{ toolName: "search_files" },
-			)
-
-			const pushed = task.userMessageContent[0] as Anthropic.ToolResultBlockParam
-			expect(pushed.content).toBe(hugeResult)
-		})
-	})
+afterEach(() => {
+	resetGlobalApiRequestTime()
+	vi.restoreAllMocks()
 })
 
-describe("AP-7: context management fallback on zero tracked tokens", () => {
-	let mockProvider: any
-	let mockApiConfig: ProviderSettings
-
+describe("Task constructor", () => {
+	let provider: any
 	beforeEach(() => {
-		if (!TelemetryService.hasInstance()) {
-			TelemetryService.createInstance([])
-		}
+		provider = makeProvider()
+	})
 
-		resetGlobalApiRequestTime()
+	it.each([
+		{ limit: undefined, isBackground: false, configured: 3, effective: 3 },
+		{ limit: 5, isBackground: false, configured: 5, effective: 5 },
+		{ limit: 0, isBackground: false, configured: 0, effective: 0 },
+		// A background task has nobody to lift "no limit": it keeps the default.
+		{ limit: 0, isBackground: true, configured: 0, effective: 3 },
+		{ limit: 5, isBackground: true, configured: 5, effective: 5 },
+	])(
+		"mistake limit $limit, background $isBackground: $configured configured, $effective effective",
+		({ limit, isBackground, configured, effective }) => {
+			const task = newTask(provider, { consecutiveMistakeLimit: limit, isBackground })
 
-		mockApiConfig = {
-			apiProvider: "anthropic",
-			apiModelId: "claude-3-5-sonnet-20241022",
-			apiKey: "test-api-key",
-		}
+			expect(task.consecutiveMistakeLimit).toBe(configured)
+			expect(task.effectiveMistakeLimit).toBe(effective)
+		},
+	)
 
-		const storageUri = { fsPath: path.join(os.tmpdir(), "test-storage") }
-		const mockExtensionContext = {
-			globalState: {
-				get: vi.fn().mockImplementation((_key: keyof GlobalState) => undefined),
-				update: vi.fn().mockResolvedValue(undefined),
-				keys: vi.fn().mockReturnValue([]),
-			},
-			globalStorageUri: storageUri,
-			workspaceState: {
-				get: vi.fn().mockImplementation((_key) => undefined),
-				update: vi.fn().mockResolvedValue(undefined),
-				keys: vi.fn().mockReturnValue([]),
-			},
-			secrets: {
-				get: vi.fn().mockResolvedValue(undefined),
-				store: vi.fn().mockResolvedValue(undefined),
-				delete: vi.fn().mockResolvedValue(undefined),
-			},
-			extensionUri: { fsPath: "/mock/extension/path" },
-			extension: { packageJSON: { version: "1.0.0" } },
-		} as unknown as vscode.ExtensionContext
+	it("keeps the root id it is given for a new subtask", () => {
+		const parent = newTask(provider)
+		const child = newTask(provider, { parentTask: parent, rootTaskId: "root-task" })
 
-		const mockOutputChannel = {
-			name: "test-output",
-			appendLine: vi.fn(),
-			append: vi.fn(),
-			replace: vi.fn(),
-			clear: vi.fn(),
-			show: vi.fn(),
-			hide: vi.fn(),
-			dispose: vi.fn(),
-		}
+		expect(child.rootTaskId).toBe("root-task")
+		expect(child.parentTaskId).toBe(parent.taskId)
+	})
 
-		mockProvider = new ClineProvider(
-			mockExtensionContext,
-			mockOutputChannel,
-			"sidebar",
-			new ContextProxy(mockExtensionContext),
-		) as any
-
-		mockProvider.postMessageToWebview = vi.fn().mockResolvedValue(undefined)
-		mockProvider.postStateToWebview = vi.fn().mockResolvedValue(undefined)
-		mockProvider.postStateToWebviewWithoutTaskHistory = vi.fn().mockResolvedValue(undefined)
-		mockProvider.getTaskWithId = vi.fn().mockImplementation(async (id) => ({
+	it("takes the root id from the history item when reopening a subtask", () => {
+		const reopened = newTask(provider, {
+			task: undefined,
 			historyItem: {
-				id,
+				id: "child-task",
+				number: 1,
 				ts: Date.now(),
-				task: "historical task",
-				tokensIn: 100,
-				tokensOut: 200,
-				cacheWrites: 0,
-				cacheReads: 0,
-				totalCost: 0.001,
+				task: "child task",
+				tokensIn: 0,
+				tokensOut: 0,
+				totalCost: 0,
+				parentTaskId: "parent-task",
+				rootTaskId: "root-task",
 			},
-			taskDirPath: "/mock/storage/path/tasks/123",
-			apiConversationHistoryFilePath: "/mock/storage/path/tasks/123/api_conversation_history.json",
-			uiMessagesFilePath: "/mock/storage/path/tasks/123/ui_messages.json",
-			apiConversationHistory: [
-				{
-					role: "user",
-					content: [{ type: "text", text: "historical task" }],
-					ts: Date.now(),
-				},
-				{
-					role: "assistant",
-					content: [{ type: "text", text: "I'll help you with that task." }],
-					ts: Date.now(),
-				},
-			],
-		}))
+			rootTaskId: "ignored",
+		})
+
+		expect(reopened.rootTaskId).toBe("root-task")
 	})
 
-	afterEach(() => {
-		resetGlobalApiRequestTime()
-		vi.restoreAllMocks()
-	})
-
-	it("should fall back to countTokens when contextTokens is 0 and history is non-empty", async () => {
-		// Mock getState before creating Task to avoid ClineProvider internals
-		vi.spyOn(mockProvider, "getState").mockResolvedValue({
-			apiConfiguration: mockApiConfig,
-			autoApprovalEnabled: false,
-			requestDelaySeconds: 0,
-			mode: "code",
-			autoCondenseContext: true,
-			autoCondenseContextPercent: 100,
-			profileThresholds: {},
-		} as any)
-
-		const cline = new Task({
-			provider: mockProvider,
-			apiConfiguration: mockApiConfig,
-			task: "test task",
-			startTask: false,
-		})
-		vi.spyOn(cline.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
-
-		// Mock the API to return a simple stream
-		const mockStream = {
-			async *[Symbol.asyncIterator]() {
-				yield { type: "text", text: "response" }
-			},
-		} as AsyncGenerator<ApiStreamChunk>
-		vi.spyOn(cline.api, "createMessage").mockReturnValue(mockStream)
-
-		// Mock getModel to return valid model info
-		vi.spyOn(cline.api, "getModel").mockReturnValue({
-			id: "test-model",
-			info: {
-				contextWindow: 128000,
-				maxTokens: 4096,
-				supportsImages: false,
-				supportsPromptCache: false,
-				inputPrice: 0,
-				outputPrice: 0,
-			} as ModelInfo,
-		})
-
-		// Set up non-empty conversation history
-		cline.apiConversationHistory = [
-			{
-				role: "user" as const,
-				content: [{ type: "text" as const, text: "Hello, can you help me?" }],
-				ts: Date.now(),
-			},
-			{
-				role: "assistant" as const,
-				content: [{ type: "text" as const, text: "Of course! What do you need?" }],
-				ts: Date.now(),
-			},
-		] as any
-
-		// Mock getTokenUsage to return 0 contextTokens (the bug condition)
-		vi.spyOn(cline, "getTokenUsage").mockReturnValue({
-			totalTokensIn: 0,
-			totalTokensOut: 0,
-			contextTokens: 0,
-			totalCost: 0,
-			totalCacheWrites: 0,
-			totalCacheReads: 0,
-		} as any)
-
-		// Spy on countTokens to verify it's called as fallback
-		const countTokensSpy = vi.spyOn(cline.api, "countTokens").mockResolvedValue(500)
-
-		// Spy on manageContextIfNeeded to verify it's called
-		const manageContextSpy = vi
-			.spyOn(cline.contextManager, "manageContextIfNeeded")
-			.mockResolvedValue(undefined as any)
-
-		// Mock buildToolsArray via bracket notation to bypass private access
-		vi.spyOn(cline.apiLoop as any, "buildToolsArray").mockResolvedValue({
-			allTools: [],
-			allowedFunctionNames: undefined,
-		})
-
-		const iterator = cline.attemptApiRequest(0)
-		await iterator.next()
-
-		// AP-7: countTokens should have been called as fallback
-		expect(countTokensSpy).toHaveBeenCalled()
-		// AP-7: manageContextIfNeeded should have been called with the fallback estimate
-		expect(manageContextSpy).toHaveBeenCalled()
-		// The contextTokens passed should be the fallback estimate (non-zero)
-		const callArgs = manageContextSpy.mock.calls[0][0]
-		expect(callArgs.contextTokens).toBeGreaterThan(0)
-
-		countTokensSpy.mockRestore()
-		manageContextSpy.mockRestore()
-	})
-
-	it("DEF-C16: the zero-usage fallback counts tool_result content, not only text parts", async () => {
-		// Mock getState before creating Task to avoid ClineProvider internals
-		vi.spyOn(mockProvider, "getState").mockResolvedValue({
-			apiConfiguration: mockApiConfig,
-			autoApprovalEnabled: false,
-			requestDelaySeconds: 0,
-			mode: "code",
-			autoCondenseContext: true,
-			autoCondenseContextPercent: 100,
-			profileThresholds: {},
-		} as any)
-
-		const cline = new Task({
-			provider: mockProvider,
-			apiConfiguration: mockApiConfig,
-			task: "test task",
-			startTask: false,
-		})
-		vi.spyOn(cline.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
-
-		// Mock the API to return a simple stream
-		const mockStream = {
-			async *[Symbol.asyncIterator]() {
-				yield { type: "text", text: "response" }
-			},
-		} as AsyncGenerator<ApiStreamChunk>
-		vi.spyOn(cline.api, "createMessage").mockReturnValue(mockStream)
-
-		// Mock getModel to return valid model info
-		vi.spyOn(cline.api, "getModel").mockReturnValue({
-			id: "test-model",
-			info: {
-				contextWindow: 128000,
-				maxTokens: 4096,
-				supportsImages: false,
-				supportsPromptCache: false,
-				inputPrice: 0,
-				outputPrice: 0,
-			} as ModelInfo,
-		})
-
-		// Set up non-empty conversation history
-		const fileBody = "export const a = 1\n".repeat(50)
-		cline.apiConversationHistory = [
-			{ role: "user" as const, content: "Read a.ts", ts: Date.now() },
-			{
-				role: "assistant" as const,
-				content: [{ type: "tool_use" as const, id: "call_1", name: "read_file", input: { path: "a.ts" } }],
-				ts: Date.now(),
-			},
-			{
-				role: "user" as const,
-				content: [{ type: "tool_result" as const, tool_use_id: "call_1", content: fileBody }],
-				ts: Date.now(),
-			},
-		] as any
-
-		// Mock getTokenUsage to return 0 contextTokens (the bug condition)
-		vi.spyOn(cline, "getTokenUsage").mockReturnValue({
-			totalTokensIn: 0,
-			totalTokensOut: 0,
-			contextTokens: 0,
-			totalCost: 0,
-			totalCacheWrites: 0,
-			totalCacheReads: 0,
-		} as any)
-
-		// Spy on countTokens to verify it's called as fallback
-		const countTokensSpy = vi.spyOn(cline.api, "countTokens").mockResolvedValue(500)
-
-		// Spy on manageContextIfNeeded to verify it's called
-		const manageContextSpy = vi
-			.spyOn(cline.contextManager, "manageContextIfNeeded")
-			.mockResolvedValue(undefined as any)
-
-		// Mock buildToolsArray via bracket notation to bypass private access
-		vi.spyOn(cline.apiLoop as any, "buildToolsArray").mockResolvedValue({
-			allTools: [],
-			allowedFunctionNames: undefined,
-		})
-
-		const iterator = cline.attemptApiRequest(0)
-		await iterator.next()
-
-		// The first countTokens call is the fallback over the history; it must see
-		// the tool_result and tool_use blocks, not only the text parts.
-		const fallbackBlocks = countTokensSpy.mock.calls[0][0]
-		expect(fallbackBlocks).toContainEqual(
-			expect.objectContaining({ type: "tool_result", tool_use_id: "call_1", content: fileBody }),
+	it("requires either task or historyItem", () => {
+		expect(() => newTask(provider, { task: undefined, startTask: true })).toThrow(
+			"Either historyItem or task/images must be provided",
 		)
-		expect(fallbackBlocks).toContainEqual(expect.objectContaining({ type: "tool_use", name: "read_file" }))
-
-		countTokensSpy.mockRestore()
-		manageContextSpy.mockRestore()
 	})
 
-	it("should NOT call countTokens when contextTokens is non-zero (fast path preserved)", async () => {
-		// Mock getState before creating Task
-		vi.spyOn(mockProvider, "getState").mockResolvedValue({
-			apiConfiguration: mockApiConfig,
-			autoApprovalEnabled: false,
-			requestDelaySeconds: 0,
-			mode: "code",
-			autoCondenseContext: true,
-			autoCondenseContextPercent: 100,
-			profileThresholds: {},
-		} as any)
+	it("start() starts the task once", () => {
+		const task = newTask(provider)
+		const startTask = vi.spyOn(task.lifecycle, "startTask").mockResolvedValue(undefined)
 
-		const cline = new Task({
-			provider: mockProvider,
-			apiConfiguration: mockApiConfig,
-			task: "test task",
-			startTask: false,
-		})
-		vi.spyOn(cline.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
+		task.start()
+		task.start()
 
-		const mockStream = {
-			async *[Symbol.asyncIterator]() {
-				yield { type: "text", text: "response" }
-			},
-		} as AsyncGenerator<ApiStreamChunk>
-		vi.spyOn(cline.api, "createMessage").mockReturnValue(mockStream)
+		expect(startTask).toHaveBeenCalledTimes(1)
+	})
+})
 
-		vi.spyOn(cline.api, "getModel").mockReturnValue({
-			id: "test-model",
-			info: {
-				contextWindow: 128000,
-				maxTokens: 4096,
-				supportsImages: false,
-				supportsPromptCache: false,
-				inputPrice: 0,
-				outputPrice: 0,
-			} as ModelInfo,
-		})
+describe("Task request cycle", () => {
+	let provider: any
+	beforeEach(() => {
+		provider = makeProvider()
+	})
 
-		cline.apiConversationHistory = [
+	function requestTask(options: Partial<TaskOptions> = {}) {
+		const task = newTask(provider, options)
+		vi.spyOn(task.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
+		return task
+	}
+
+	it("sends only role and content, with images shaped for a model without image support", async () => {
+		const task = requestTask()
+		vi.spyOn(task.api, "getModel").mockReturnValue(testModel({ supportsImages: false }) as any)
+		const createMessage = vi.spyOn(task.api, "createMessage").mockReturnValue(stream({ type: "text", text: "ok" }))
+		task.apiConversationHistory = [
 			{
-				role: "user" as const,
-				content: [{ type: "text" as const, text: "Hello" }],
+				role: "user",
+				content: [
+					{ type: "text", text: "Here is an image" },
+					{ type: "image", source: { type: "base64", media_type: "image/jpeg", data: "base64data" } },
+				],
 				ts: Date.now(),
+				extraProp: "should be removed",
 			},
 		] as any
 
-		// Mock getTokenUsage to return non-zero contextTokens
-		vi.spyOn(cline, "getTokenUsage").mockReturnValue({
-			totalTokensIn: 100,
-			totalTokensOut: 200,
-			contextTokens: 300,
-			totalCost: 0,
-			totalCacheWrites: 0,
-			totalCacheReads: 0,
-		} as any)
+		await requestOnce(task)
 
-		// countTokens should NOT be called in the fast path
-		const countTokensSpy = vi.spyOn(cline.api, "countTokens").mockResolvedValue(999)
-
-		const manageContextSpy = vi
-			.spyOn(cline.contextManager, "manageContextIfNeeded")
-			.mockResolvedValue(undefined as any)
-
-		vi.spyOn(cline.apiLoop as any, "buildToolsArray").mockResolvedValue({
-			allTools: [],
-			allowedFunctionNames: undefined,
-		})
-
-		const iterator = cline.attemptApiRequest(0)
-		await iterator.next()
-
-		// AP-7: countTokens should NOT have been called from the fallback path.
-		// Note: handleContextManagement internally calls countTokens for lastMessageTokens,
-		// so countTokens MAY be called once from there. The fallback path should NOT add
-		// an additional call. We verify by checking the contextTokens passed to
-		// manageContextIfNeeded is the tracked value (300), not a fallback.
-		expect(manageContextSpy).toHaveBeenCalled()
-		const callArgs = manageContextSpy.mock.calls[0][0]
-		expect(callArgs.contextTokens).toBe(300)
-
-		countTokensSpy.mockRestore()
-		manageContextSpy.mockRestore()
-	})
-
-	it("requests tools and metadata for the task's own mode, not the provider's", async () => {
-		// The provider state holds the focused task's mode. A background subagent (explicit
-		// taskMode) runs in its own mode and must get that mode's tools.
-		vi.spyOn(mockProvider, "getState").mockResolvedValue({
-			apiConfiguration: mockApiConfig,
-			autoApprovalEnabled: false,
-			requestDelaySeconds: 0,
-			mode: "code",
-			autoCondenseContext: true,
-			autoCondenseContextPercent: 100,
-			profileThresholds: {},
-		} as any)
-
-		const cline = new Task({
-			provider: mockProvider,
-			apiConfiguration: mockApiConfig,
-			task: "test task",
-			taskMode: "architect",
-			startTask: false,
-		})
-		vi.spyOn(cline.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
-		const createMessageSpy = vi.spyOn(cline.api, "createMessage").mockReturnValue({
-			async *[Symbol.asyncIterator]() {
-				yield { type: "text", text: "response" }
+		expect(createMessage.mock.calls[0][1]).toEqual([
+			{
+				role: "user",
+				content: [
+					{ type: "text", text: "Here is an image" },
+					{ type: "text", text: "[Referenced image in conversation]" },
+				],
 			},
-		} as AsyncGenerator<ApiStreamChunk>)
-		cline.apiConversationHistory = [
-			{ role: "user" as const, content: [{ type: "text" as const, text: "Hello" }], ts: Date.now() },
-		] as any
-		vi.spyOn(cline, "getTokenUsage").mockReturnValue({ contextTokens: 300 } as any)
-		vi.spyOn(cline.contextManager, "manageContextIfNeeded").mockResolvedValue(undefined as any)
-		const buildToolsSpy = vi.spyOn(cline.apiLoop as any, "buildToolsArray").mockResolvedValue({
-			allTools: [],
-			allowedFunctionNames: undefined,
-		})
-
-		const iterator = cline.attemptApiRequest(0)
-		await iterator.next()
-
-		expect(buildToolsSpy.mock.calls[0][2]).toBe("architect")
-		expect(createMessageSpy.mock.calls[0][2]).toEqual(expect.objectContaining({ mode: "architect" }))
+		])
 	})
 
-	// DEF-C33. Nested here to reuse this block's real-provider harness. The provider
-	// rejected a request as too big, and the forced pass decided that clearing old tool
-	// output at send time (microcompaction) is enough. That decision lives only in
-	// transient per-request state, so it has to reach the retry, or the retry resends
+	it("counts down the request delay once before retrying a failed stream", async () => {
+		const task = requestTask()
+		const say = vi.spyOn(task.askSay, "say")
+		vi.spyOn(task.api, "createMessage")
+			.mockReturnValueOnce(failingStream(new Error("API Error")))
+			.mockReturnValue(stream({ type: "text", text: "Success" }))
+		await stubState(provider, { autoApprovalEnabled: true, requestDelaySeconds: 3 })
+
+		await requestOnce(task)
+
+		expect(say.mock.calls.filter(([type]) => type === "api_req_retry_delayed")).toEqual([
+			["api_req_retry_delayed", "API Error\n<retry_timer>3</retry_timer>", undefined, true],
+			["api_req_retry_delayed", "API Error\n<retry_timer>2</retry_timer>", undefined, true],
+			["api_req_retry_delayed", "API Error\n<retry_timer>1</retry_timer>", undefined, true],
+			["api_req_retry_delayed", "API Error\n", undefined, false],
+		])
+		expect(vi.mocked(delay).mock.calls).toEqual([[1000], [1000], [1000]])
+	})
+
+	describe("provider rate limit, shared by a parent and its subtasks", () => {
+		// The countdown is derived from performance.now(); a fixed clock keeps the expected
+		// number of one-second waits exact on a loaded CI machine.
+		let now: number
+		beforeEach(() => {
+			now = 1_000_000
+			vi.spyOn(performance, "now").mockImplementation(() => now)
+			vi.mocked(delay).mockClear()
+		})
+
+		it.each([
+			{ rateLimitSeconds: 5, elapsedMs: 0, waits: 5 },
+			{ rateLimitSeconds: 5, elapsedMs: 2_500, waits: 3 },
+			{ rateLimitSeconds: 5, elapsedMs: 6_000, waits: 0 },
+			{ rateLimitSeconds: 0, elapsedMs: 0, waits: 0 },
+		])(
+			"limit $rateLimitSeconds s, $elapsedMs ms after the parent's request: $waits waits",
+			async ({ rateLimitSeconds, elapsedMs, waits }) => {
+				const limited = { ...apiConfig, rateLimitSeconds }
+				await stubState(provider, { apiConfiguration: limited })
+				const parent = requestTask({ apiConfiguration: limited })
+				vi.spyOn(parent.api, "createMessage").mockReturnValue(stream({ type: "text", text: "parent" }))
+
+				await requestOnce(parent)
+				expect(delay).not.toHaveBeenCalled()
+
+				now += elapsedMs
+				const child = requestTask({ apiConfiguration: limited, parentTask: parent, rootTaskId: parent.taskId })
+				vi.spyOn(child.api, "createMessage").mockReturnValue(stream({ type: "text", text: "child" }))
+				const say = vi.spyOn(child.askSay, "say")
+
+				await requestOnce(child)
+
+				expect(delay).toHaveBeenCalledTimes(waits)
+				const waitMessages = say.mock.calls.filter(([type]) => type === "api_req_rate_limit_wait")
+				if (waits > 0) {
+					expect(waitMessages[0]).toEqual([
+						"api_req_rate_limit_wait",
+						JSON.stringify({ seconds: waits }),
+						undefined,
+						true,
+					])
+					expect(waitMessages.at(-1)).toEqual(["api_req_rate_limit_wait", undefined, undefined, false])
+				} else {
+					expect(waitMessages).toEqual([])
+				}
+			},
+		)
+	})
+
+	describe("context management before the request", () => {
+		async function managedTask(options: { contextTokens: number; history: ApiMessage[]; taskMode?: string }) {
+			await stubState(provider, {
+				autoApprovalEnabled: false,
+				requestDelaySeconds: 0,
+				mode: "code",
+				autoCondenseContext: true,
+				autoCondenseContextPercent: 100,
+				profileThresholds: {},
+			})
+			const task = requestTask({ taskMode: options.taskMode })
+			const createMessage = vi
+				.spyOn(task.api, "createMessage")
+				.mockReturnValue(stream({ type: "text", text: "ok" }))
+			vi.spyOn(task.api, "getModel").mockReturnValue(testModel() as any)
+			task.apiConversationHistory = options.history
+			vi.spyOn(task, "getTokenUsage").mockReturnValue({ contextTokens: options.contextTokens } as any)
+			const countTokens = vi.spyOn(task.api, "countTokens").mockResolvedValue(500)
+			const manageContext = vi
+				.spyOn(task.contextManager, "manageContextIfNeeded")
+				.mockResolvedValue(undefined as any)
+			const buildTools = vi
+				.spyOn(task.apiLoop as any, "buildToolsArray")
+				.mockResolvedValue({ allTools: [], allowedFunctionNames: undefined })
+			return { task, createMessage, countTokens, manageContext, buildTools }
+		}
+
+		it("AP-7 / DEF-C16: with no tracked usage, counts the whole history, tool blocks included", async () => {
+			const fileBody = "export const a = 1\n".repeat(50)
+			const { task, countTokens, manageContext } = await managedTask({
+				contextTokens: 0,
+				history: [
+					{ role: "user", content: "Read a.ts", ts: 1 },
+					{
+						role: "assistant",
+						content: [{ type: "tool_use", id: "call_1", name: "read_file", input: {} }],
+						ts: 2,
+					},
+					{
+						role: "user",
+						content: [{ type: "tool_result", tool_use_id: "call_1", content: fileBody }],
+						ts: 3,
+					},
+				],
+			})
+
+			await requestOnce(task)
+
+			const fallbackBlocks = countTokens.mock.calls[0][0]
+			expect(fallbackBlocks).toContainEqual(
+				expect.objectContaining({ type: "tool_result", tool_use_id: "call_1", content: fileBody }),
+			)
+			expect(fallbackBlocks).toContainEqual(expect.objectContaining({ type: "tool_use", name: "read_file" }))
+			expect(manageContext.mock.calls[0][0].contextTokens).toBeGreaterThan(0)
+		})
+
+		it("uses the tracked usage when there is some", async () => {
+			const { task, manageContext } = await managedTask({
+				contextTokens: 300,
+				history: [{ role: "user", content: [{ type: "text", text: "Hello" }], ts: 1 }],
+			})
+
+			await requestOnce(task)
+
+			expect(manageContext.mock.calls[0][0].contextTokens).toBe(300)
+		})
+
+		it("requests tools and metadata for the task's own mode, not the provider's", async () => {
+			const { task, createMessage, buildTools } = await managedTask({
+				contextTokens: 300,
+				history: [{ role: "user", content: [{ type: "text", text: "Hello" }], ts: 1 }],
+				taskMode: "architect",
+			})
+
+			await requestOnce(task)
+
+			expect(buildTools.mock.calls[0][2]).toBe("architect")
+			expect(createMessage.mock.calls[0][2]).toEqual(expect.objectContaining({ mode: "architect" }))
+		})
+	})
+
+	// DEF-C33. The provider rejected a request as too big, and the forced pass decided that
+	// clearing old tool output at send time (microcompaction) is enough. That decision lives
+	// only in transient per-request state, so it has to reach the retry, or the retry resends
 	// exactly the request the provider just rejected.
 	describe("forced condense after a context-window error applies microcompaction to the retry", () => {
 		const CONTEXT_WINDOW = 100_000
-		// Size of each old read_file result: big enough to be clearable (the floor is
-		// 2,000 chars) and small enough that the forced pass clears only a few of them.
+		// Big enough to be clearable (the floor is 2,000 chars), small enough that the forced
+		// pass clears only a few of them.
 		const RESULT_CHARS = 6_000
-
-		const contextWindowError = () =>
-			Object.assign(new Error("This model's maximum context length is 100000 tokens"), { status: 400 })
 
 		function readFilePair(index: number): ApiMessage[] {
 			const id = `read-${index}`
@@ -2750,168 +595,374 @@ describe("AP-7: context management fallback on zero tracked tokens", () => {
 					content: [{ type: "tool_result", tool_use_id: id, content: body.slice(0, RESULT_CHARS) }],
 					ts: 1001 + index * 2,
 				},
-			] as ApiMessage[]
+			]
 		}
 
 		function clearedIdsIn(messages: any[]): string[] {
-			const ids: string[] = []
-			for (const msg of messages) {
-				if (!Array.isArray(msg.content)) continue
-				for (const block of msg.content) {
-					if (
-						block.type === "tool_result" &&
-						JSON.stringify(block.content).includes("Old tool output cleared")
-					) {
-						ids.push(block.tool_use_id)
-					}
-				}
-			}
-			return ids
+			return messages.flatMap((msg) =>
+				Array.isArray(msg.content)
+					? msg.content
+							.filter(
+								(block: any) =>
+									block.type === "tool_result" &&
+									JSON.stringify(block.content).includes("Old tool output cleared"),
+							)
+							.map((block: any) => block.tool_use_id)
+					: [],
+			)
 		}
 
-		async function setUpRejectedTask({
-			contextTokens,
-			rejections = 1,
-		}: {
-			contextTokens: number
-			rejections?: number
-		}) {
-			vi.spyOn(mockProvider, "getState").mockResolvedValue({
-				apiConfiguration: mockApiConfig,
+		/** A task whose first `rejections` requests fail as too big; `contextTokens` is the last reported size. */
+		async function rejectedTask(rejections = 1) {
+			// The user's normal threshold: the regular pass only acts near the hard limit.
+			await stubState(provider, {
 				autoApprovalEnabled: false,
 				requestDelaySeconds: 0,
 				mode: "code",
-				// The user's normal threshold: the regular pass only acts near the hard limit.
 				autoCondenseContext: true,
 				autoCondenseContextPercent: 100,
 				profileThresholds: {},
-			} as any)
-
-			const task = new Task({
-				provider: mockProvider,
-				apiConfiguration: mockApiConfig,
-				task: "test task",
-				startTask: false,
 			})
-			vi.spyOn(task.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
-			vi.spyOn(task.api, "getModel").mockReturnValue({
-				id: "test-model",
-				info: {
-					contextWindow: CONTEXT_WINDOW,
-					maxTokens: 4096,
-					supportsImages: false,
-					supportsPromptCache: false,
-					inputPrice: 0,
-					outputPrice: 0,
-				} as ModelInfo,
-			})
+			const task = requestTask()
+			vi.spyOn(task.api, "getModel").mockReturnValue(testModel({ contextWindow: CONTEXT_WINDOW }) as any)
 			vi.spyOn(task.apiLoop as any, "buildToolsArray").mockResolvedValue({
 				allTools: [],
 				allowedFunctionNames: undefined,
 			})
+			task.apiConversationHistory = [
+				{ role: "user", content: [{ type: "text", text: "task" }], ts: 999 },
+				...Array.from({ length: 8 }, (_, i) => readFilePair(i)).flat(),
+				{ role: "user", content: [{ type: "text", text: "continue" }], ts: 2000 },
+			]
+			// 78% of the window: under the user's thresholds, so the rejected request went out
+			// whole, but over the forced pass's 75% target. A failed request reports no usage,
+			// so the retry sees the same number.
+			vi.spyOn(task, "getTokenUsage").mockReturnValue({ contextTokens: 78_000 } as any)
 
-			const history: ApiMessage[] = [{ role: "user", content: [{ type: "text", text: "task" }], ts: 999 }]
-			for (let i = 0; i < 8; i++) {
-				history.push(...readFilePair(i))
-			}
-			history.push({ role: "user", content: [{ type: "text", text: "continue" }], ts: 2000 })
-			task.apiConversationHistory = history
-
-			// The provider-reported size of the last successful request. A failed request
-			// reports no usage, so the retry sees exactly the same number.
-			vi.spyOn(task, "getTokenUsage").mockReturnValue({ contextTokens } as any)
-
-			// The first `rejections` requests: rejected as too big. Every later one: accepted.
 			let calls = 0
 			const createMessage = vi.spyOn(task.api, "createMessage").mockImplementation(() => {
 				calls += 1
-				const reject = calls <= rejections
-				return {
-					async *[Symbol.asyncIterator]() {
-						if (reject) {
-							throw contextWindowError()
-						}
-						yield { type: "text", text: "response" }
-					},
-				} as AsyncGenerator<ApiStreamChunk>
+				return calls <= rejections
+					? failingStream(
+							Object.assign(new Error("This model's maximum context length is 100000 tokens"), {
+								status: 400,
+							}),
+						)
+					: stream({ type: "text", text: "response" })
 			})
-
 			return { task, createMessage }
 		}
 
 		it("sends a smaller retry than the rejected request", async () => {
-			// 78% of the window: under the user's thresholds, so the rejected request went
-			// out whole, but over the forced pass's 75% target, and a few old results are
-			// enough to get under it.
-			const { task, createMessage } = await setUpRejectedTask({ contextTokens: 78_000 })
+			const { task, createMessage } = await rejectedTask()
 			const capture = vi.spyOn(TelemetryService.instance, "capture")
-			const microcompactedCalls = () =>
-				capture.mock.calls.filter(([event]) => event === TelemetryEventName.CONTEXT_MICROCOMPACTED)
 
-			const iterator = task.attemptApiRequest(0)
-			await iterator.next()
+			await requestOnce(task)
 
 			expect(createMessage).toHaveBeenCalledTimes(2)
-			// Guard: the forced pass (and only it, the regular pass stays under its
-			// thresholds) selected old results to clear.
-			expect(microcompactedCalls()).toHaveLength(1)
-			expect((microcompactedCalls()[0]![1] as { cleared: number }).cleared).toBeGreaterThan(0)
+			const microcompacted = capture.mock.calls.filter(
+				([event]) => event === TelemetryEventName.CONTEXT_MICROCOMPACTED,
+			)
+			// Only the forced pass selected old results; the regular pass stays under its thresholds.
+			expect(microcompacted).toHaveLength(1)
+			expect((microcompacted[0]![1] as { cleared: number }).cleared).toBeGreaterThan(0)
 			const rejected = createMessage.mock.calls[0][1] as any[]
 			const retry = createMessage.mock.calls[1][1] as any[]
-
-			// Guard: the rejected request was sent whole.
 			expect(clearedIdsIn(rejected)).toEqual([])
-			// Guard: the forced pass chose microcompaction alone, so nothing was persisted.
+			// Microcompaction alone: nothing was persisted.
 			expect(task.apiConversationHistory.some((m) => m.isSummary || m.truncationParent)).toBe(false)
-
-			// The retry carries the forced pass's decision: old results are cleared and
-			// the request is smaller than the one the provider rejected.
 			expect(clearedIdsIn(retry).length).toBeGreaterThan(0)
 			expect(JSON.stringify(retry).length).toBeLessThan(JSON.stringify(rejected).length)
-
-			// The transient bookkeeping matches what went over the wire, so the next
-			// request's threshold check adds the stripped size back.
+			// The bookkeeping matches the wire, so the next threshold check adds the stripped size back.
 			expect([...task.microcompactedIds].sort()).toEqual(clearedIdsIn(retry).sort())
 			expect(task.microcompactStrippedTokens).toBeGreaterThan(0)
 		})
 
 		it("replaces a stale set left by an earlier pass in another mode", async () => {
-			const { task, createMessage } = await setUpRejectedTask({ contextTokens: 78_000 })
-
-			// Left over from an earlier pass under another mode and model: an id that no
-			// longer resolves in this history. Mutate in place: the request builder holds
-			// this very Set.
+			const { task, createMessage } = await rejectedTask()
+			// An id that no longer resolves in this history. Mutated in place: the request
+			// builder holds this very Set.
 			task.microcompactedIds.add("stale-from-other-mode")
 			task.microcompactStrippedTokens = 0
 
-			const iterator = task.attemptApiRequest(0)
-			await iterator.next()
+			await requestOnce(task)
 
-			expect(createMessage).toHaveBeenCalledTimes(2)
 			const retry = createMessage.mock.calls[1][1] as any[]
-
 			expect(task.microcompactedIds.has("stale-from-other-mode")).toBe(false)
-			expect(clearedIdsIn(retry).length).toBeGreaterThan(0)
 			expect([...task.microcompactedIds].sort()).toEqual(clearedIdsIn(retry).sort())
-			// The stripped-size correction now describes this request, not the old one.
 			expect(task.microcompactStrippedTokens).toBeGreaterThan(0)
 		})
 
 		it("strips more on a second rejection in a row instead of resending the same retry", async () => {
-			const { task, createMessage } = await setUpRejectedTask({ contextTokens: 78_000, rejections: 2 })
+			const { task, createMessage } = await rejectedTask(2)
 
-			const iterator = task.attemptApiRequest(0)
-			await iterator.next()
+			await requestOnce(task)
 
 			expect(createMessage).toHaveBeenCalledTimes(3)
 			const firstRetry = createMessage.mock.calls[1][1] as any[]
 			const secondRetry = createMessage.mock.calls[2][1] as any[]
-
-			// The second forced pass measures the pristine size (the first retry's strip
-			// added back) and keeps the first retry's clears, so it can only add to them.
+			// The second pass measures the pristine size and keeps the first retry's clears.
 			expect(clearedIdsIn(secondRetry)).toEqual(expect.arrayContaining(clearedIdsIn(firstRetry)))
 			expect(clearedIdsIn(secondRetry).length).toBeGreaterThan(clearedIdsIn(firstRetry).length)
 			expect(JSON.stringify(secondRetry).length).toBeLessThan(JSON.stringify(firstRetry).length)
+		})
+	})
+})
+
+describe("submitUserMessage", () => {
+	let provider: any
+	let task: Task
+	let handleResponse: ReturnType<typeof vi.spyOn>
+	beforeEach(() => {
+		provider = makeProvider()
+		task = newTask(provider)
+		handleResponse = vi.spyOn(task.askSay, "handleWebviewAskResponse").mockImplementation(() => {})
+	})
+
+	it("hands the message to the task directly, not through the webview", async () => {
+		await task.submitUserMessage("  test message ", ["image1.png"])
+
+		expect(handleResponse).toHaveBeenCalledWith("messageResponse", "test message", ["image1.png"])
+		expect(provider.postMessageToWebview).not.toHaveBeenCalled()
+	})
+
+	it.each([
+		["empty", ""],
+		["whitespace", "   "],
+	])("ignores an %s message without images", async (_label, text) => {
+		await task.submitUserMessage(text, [])
+
+		expect(handleResponse).not.toHaveBeenCalled()
+	})
+
+	it("sends images without text", async () => {
+		await task.submitUserMessage("", ["image1.png"])
+
+		expect(handleResponse).toHaveBeenCalledWith("messageResponse", "", ["image1.png"])
+	})
+
+	it("switches the mode like the mode selector when the task is the focused one", async () => {
+		// The task reads its own mode (not provider state) for prompts, tools and validation.
+		vi.spyOn(provider, "getCurrentTask").mockReturnValue(task)
+		const handleModeSwitch = vi.spyOn(provider, "handleModeSwitch").mockResolvedValue(undefined)
+		const setMode = vi.spyOn(provider, "setMode").mockResolvedValue(undefined)
+
+		await task.submitUserMessage("plan it", [], "architect")
+
+		expect(handleModeSwitch).toHaveBeenCalledWith("architect")
+		expect(setMode).not.toHaveBeenCalled()
+	})
+
+	it("sets the mode directly when the task is not the focused one", async () => {
+		vi.spyOn(provider, "getCurrentTask").mockReturnValue(undefined)
+		const handleModeSwitch = vi.spyOn(provider, "handleModeSwitch").mockResolvedValue(undefined)
+		const setMode = vi.spyOn(provider, "setMode").mockResolvedValue(undefined)
+
+		await task.submitUserMessage("plan it", [], "architect")
+
+		expect(setMode).toHaveBeenCalledWith("architect")
+		expect(handleModeSwitch).not.toHaveBeenCalled()
+	})
+
+	it("switches to the named provider profile and takes its configuration", async () => {
+		const profileConfig: ProviderSettings = { apiProvider: "openrouter", openRouterModelId: "some/model" }
+		const setProviderProfile = vi.spyOn(provider, "setProviderProfile").mockResolvedValue(undefined)
+		await stubState(provider, { apiConfiguration: profileConfig })
+
+		await task.submitUserMessage("go", [], undefined, "cheap")
+
+		expect(setProviderProfile).toHaveBeenCalledWith("cheap")
+		expect(task.apiConfiguration).toEqual(profileConfig)
+		expect(handleResponse).toHaveBeenCalledWith("messageResponse", "go", [])
+	})
+
+	it("logs and drops the message when the provider is gone", async () => {
+		Object.defineProperty(task, "providerRef", { value: { deref: () => undefined } })
+		const error = vi.spyOn(logger, "error").mockImplementation(() => {})
+
+		await task.submitUserMessage("test message")
+
+		expect(error).toHaveBeenCalledWith("[Task#submitUserMessage] Provider reference lost")
+		expect(handleResponse).not.toHaveBeenCalled()
+	})
+})
+
+describe("abortTask and dispose", () => {
+	let task: Task
+	beforeEach(() => {
+		task = newTask(makeProvider())
+	})
+
+	it("sets the abort flag, emits TaskAborted and disposes", async () => {
+		const emit = vi.spyOn(task, "emit")
+		const dispose = vi.spyOn(task.lifecycle, "dispose").mockImplementation(() => {})
+
+		await task.abortTask()
+
+		expect(task.abort).toBe(true)
+		expect(emit).toHaveBeenCalledWith("taskAborted")
+		expect(dispose).toHaveBeenCalled()
+	})
+
+	it("still aborts when disposal throws", async () => {
+		const failure = new Error("Disposal failed")
+		vi.spyOn(task.lifecycle, "dispose").mockImplementation(() => {
+			throw failure
+		})
+		const error = vi.spyOn(logger, "error").mockImplementation(() => {})
+
+		await task.abortTask()
+
+		expect(task.abort).toBe(true)
+		expect(error).toHaveBeenCalledWith(expect.stringContaining("Error during task"), failure)
+	})
+
+	it("dispose cancels the current HTTP request", () => {
+		const controller = new AbortController()
+		task.currentRequestAbortController = controller
+
+		task.dispose()
+
+		expect(controller.signal.aborted).toBe(true)
+		expect(task.currentRequestAbortController).toBeUndefined()
+	})
+})
+
+describe("queued messages after a condense", () => {
+	it("submits the task's own queued message and leaves another task's queue alone", async () => {
+		const taskA = newTask(makeProvider())
+		const taskB = newTask(makeProvider())
+		for (const task of [taskA, taskB]) {
+			vi.spyOn(task as any, "getSystemPrompt").mockResolvedValue("system")
+		}
+		const submitA = vi.spyOn(taskA, "submitUserMessage").mockResolvedValue(undefined)
+		const submitB = vi.spyOn(taskB, "submitUserMessage").mockResolvedValue(undefined)
+		taskA.messageQueueService.addMessage("queued text", ["img1.png"])
+		taskB.messageQueueService.addMessage("B message")
+
+		// Fake timers capture the setTimeout(0) that submits the queued message.
+		vi.useFakeTimers()
+		try {
+			await taskA.condenseContext()
+			vi.runAllTimers()
+		} finally {
+			vi.useRealTimers()
+		}
+
+		expect(submitA).toHaveBeenCalledWith("queued text", ["img1.png"])
+		expect(taskA.messageQueueService.isEmpty()).toBe(true)
+		expect(submitB).not.toHaveBeenCalled()
+		expect(taskB.messageQueueService.isEmpty()).toBe(false)
+	})
+})
+
+describe("pushToolResultToUserContent", () => {
+	let provider: any
+	beforeEach(() => {
+		provider = makeProvider()
+	})
+
+	const result = (id: string, content: Anthropic.ToolResultBlockParam["content"] = `result ${id}`) =>
+		({ type: "tool_result", tool_use_id: id, content }) as Anthropic.ToolResultBlockParam
+
+	it("appends results after other content and skips a second result for the same tool_use_id", () => {
+		const task = newTask(provider)
+		const warn = vi.spyOn(logger, "warn").mockImplementation(() => {})
+		task.userMessageContent.push({ type: "text", text: "Some text" })
+
+		expect(task.pushToolResultToUserContent(result("id-1"))).toBe(true)
+		expect(task.pushToolResultToUserContent(result("id-2"))).toBe(true)
+		expect(task.pushToolResultToUserContent(result("id-1", "second"))).toBe(false)
+
+		expect(task.userMessageContent).toEqual([{ type: "text", text: "Some text" }, result("id-1"), result("id-2")])
+		expect(warn).toHaveBeenCalledWith(
+			expect.stringContaining("Skipping duplicate tool_result for tool_use_id: id-1"),
+		)
+	})
+
+	describe("tool-result spill policy", () => {
+		/** 400 padded lines (about 32 KB): over every inline budget used here. */
+		const hugeResult = Array.from({ length: 400 }, (_, index) => `line-${index + 1}`.padEnd(80, "x")).join("\n")
+
+		const artifactsDirFor = (taskId: string) => path.join(os.tmpdir(), "test-storage", "tasks", taskId, "artifacts")
+
+		// The file-level fs/promises mock makes writeFile a no-op; these tests check the artifact
+		// on disk, and the atomic write goes through fs/promises.
+		beforeEach(async () => {
+			const actualFs = await vi.importActual<typeof import("fs/promises")>("fs/promises")
+			vi.mocked(fsPromises.writeFile).mockImplementation(actualFs.writeFile as any)
+		})
+
+		// Every Task in this file shares one taskId (uuid is pinned): leave no artifacts behind.
+		afterEach(() => {
+			vi.mocked(fsPromises.writeFile).mockReset()
+			vi.mocked(fsPromises.writeFile).mockResolvedValue(undefined)
+			fs.rmSync(artifactsDirFor("00000000-0000-7000-8000-000000000000"), { recursive: true, force: true })
+		})
+
+		const pushedContent = (task: Task) => (task.userMessageContent[0] as Anthropic.ToolResultBlockParam).content
+
+		it("spills an oversized tool result and leaves a preview that cites the artifact", async () => {
+			const task = newTask(provider)
+			await task.ensureToolResultSpill(1024)
+
+			task.pushToolResultToUserContent(result("spill-id", hugeResult), { toolName: "search_files" })
+
+			// Until the artifact exists the result stays inline, so no preview cites a missing file.
+			expect(pushedContent(task)).toBe(hugeResult)
+
+			await task.settlePendingToolResultSpills()
+
+			const content = pushedContent(task) as string
+			expect(content).toMatch(/^\[Tool result: \d+ KB, showing first \d+ and last \d+ lines\./)
+			expect(content).toContain("Use read_artifact (search/offset/limit) to inspect the rest.]")
+			const artifactId = content.match(/artifact "([^"]+)"/)?.[1]
+			expect(artifactId).toMatch(/^tool-\d+\.txt$/)
+			expect(fs.readFileSync(path.join(artifactsDirFor(task.taskId), artifactId!), "utf8")).toBe(hugeResult)
+		})
+
+		it("keeps the result inline when the artifact write fails", async () => {
+			const task = newTask(provider)
+			const save = vi.fn().mockRejectedValue(new Error("ENOSPC: no space left on device"))
+			;(task as any).toolResultSpill = { store: { save }, maxInlineBytes: 1024 }
+			vi.spyOn(logger, "warn").mockImplementation(() => {})
+
+			task.pushToolResultToUserContent(result("failed-spill-id", hugeResult), { toolName: "search_files" })
+			await task.settlePendingToolResultSpills()
+
+			expect(save).toHaveBeenCalledTimes(1)
+			expect(pushedContent(task)).toBe(hugeResult)
+		})
+
+		it.each([
+			["a protocol tool's result", "attempt_completion", true],
+			["anything before the policy is prepared", "search_files", false],
+		])("never spills %s", async (_label, toolName, prepared) => {
+			const task = newTask(provider)
+			if (prepared) {
+				await task.ensureToolResultSpill(1024)
+			}
+
+			task.pushToolResultToUserContent(result("kept-id", hugeResult), { toolName })
+			await task.settlePendingToolResultSpills()
+
+			expect(pushedContent(task)).toBe(hugeResult)
+			expect(fs.existsSync(artifactsDirFor(task.taskId))).toBe(false)
+		})
+
+		it("on a compact profile cuts a text result in place and leaves block content alone", async () => {
+			const task = newTask(provider, { apiConfiguration: { ...apiConfig, compactProfile: true } })
+			const blocks = [{ type: "text" as const, text: hugeResult }]
+
+			task.pushToolResultToUserContent(result("text-id", hugeResult), { toolName: "some_mcp_tool" })
+			task.pushToolResultToUserContent(result("blocks-id", blocks), { toolName: "some_mcp_tool" })
+			await task.settlePendingToolResultSpills()
+
+			const [text, kept] = task.userMessageContent as Anthropic.ToolResultBlockParam[]
+			expect((text.content as string).length).toBeLessThan(hugeResult.length)
+			expect(text.content).toContain(hugeResult.slice(0, 80))
+			expect(kept.content).toBe(blocks)
+			expect(fs.existsSync(artifactsDirFor(task.taskId))).toBe(false)
 		})
 	})
 })
