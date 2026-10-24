@@ -34,7 +34,7 @@ const ALLOWED = {
 	// Display-only: the empty string is not the default config name, it just
 	// renders "no profile selected" in the input.
 	"webview-ui/src/components/settings/ApiConfigManager.tsx:29": 'optional prop; "" renders the empty input',
-	"webview-ui/src/components/settings/ApiConfigManager.tsx:135":
+	"webview-ui/src/components/settings/ApiConfigManager.tsx:137":
 		'display path; || also guards the empty string ("" is not a config name)',
 	"webview-ui/src/components/chat/ComposerToolbar.tsx:53":
 		'display path; || also guards the empty string ("" is not a config name)',
