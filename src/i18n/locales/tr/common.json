@@ -45,7 +45,6 @@
 		"condense_failed": "Bağlam sıkıştırılamadı",
 		"condense_not_enough_messages": "Bağlamı sıkıştırmak için yeterli mesaj yok",
 		"condensed_recently": "Bağlam yakın zamanda sıkıştırıldı; bu deneme atlanıyor",
-		"condense_handler_invalid": "Bağlamı sıkıştırmak için API işleyicisi geçersiz",
 		"condense_api_failed": "Sıkıştırma API çağrısı başarısız oldu: {{message}}",
 		"share_task_failed": "Görev paylaşılamadı",
 		"share_no_active_task": "Paylaşılacak aktif görev yok",

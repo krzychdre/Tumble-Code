@@ -198,54 +198,22 @@ export function getEffectiveApiHistory(messages: ApiMessage[]): ApiMessage[] {
 			})
 			.filter((msg): msg is ApiMessage => msg !== null)
 
-		// Still need to filter out any truncated messages within this range
-		const existingTruncationIds = new Set<string>()
-		for (const msg of messagesFromSummary) {
-			if (msg.isTruncationMarker && msg.truncationId) {
-				existingTruncationIds.add(msg.truncationId)
-			}
-		}
-
-		return messagesFromSummary.filter((msg) => {
-			// Filter out truncated messages if their truncation marker exists
-			if (msg.truncationParent && existingTruncationIds.has(msg.truncationParent)) {
-				return false
-			}
-			return true
-		})
+		return withoutTruncated(messagesFromSummary)
 	}
 
-	// No summary - filter based on condenseParent and truncationParent as before
-	// This handles the case of orphaned condenseParent tags (summary was deleted via rewind)
+	// No summary: condenseParent tags are orphans of a summary deleted by a rewind, so those messages are active again.
+	return withoutTruncated(messages)
+}
 
-	// Collect all condenseIds of summaries that exist in the current history
-	const existingSummaryIds = new Set<string>()
-	// Collect all truncationIds of truncation markers that exist in the current history
-	const existingTruncationIds = new Set<string>()
-
+/** Drops the messages whose sliding-window truncation marker is still in `messages`. */
+function withoutTruncated(messages: ApiMessage[]): ApiMessage[] {
+	const markerIds = new Set<string>()
 	for (const msg of messages) {
-		if (msg.isSummary && msg.condenseId) {
-			existingSummaryIds.add(msg.condenseId)
-		}
 		if (msg.isTruncationMarker && msg.truncationId) {
-			existingTruncationIds.add(msg.truncationId)
+			markerIds.add(msg.truncationId)
 		}
 	}
-
-	// Filter out messages whose condenseParent points to an existing summary
-	// or whose truncationParent points to an existing truncation marker.
-	// Messages with orphaned parents (summary/marker was deleted) are included.
-	return messages.filter((msg) => {
-		// Filter out condensed messages if their summary exists
-		if (msg.condenseParent && existingSummaryIds.has(msg.condenseParent)) {
-			return false
-		}
-		// Filter out truncated messages if their truncation marker exists
-		if (msg.truncationParent && existingTruncationIds.has(msg.truncationParent)) {
-			return false
-		}
-		return true
-	})
+	return messages.filter((msg) => !(msg.truncationParent && markerIds.has(msg.truncationParent)))
 }
 
 /**

@@ -45,7 +45,6 @@
 		"condense_failed": "壓縮上下文失敗",
 		"condense_not_enough_messages": "沒有足夠的訊息來壓縮上下文",
 		"condensed_recently": "上下文最近已壓縮；跳過此次嘗試",
-		"condense_handler_invalid": "壓縮上下文的 API 處理程式無效",
 		"condense_api_failed": "壓縮 API 呼叫失敗：{{message}}",
 		"share_task_failed": "分享工作失敗。請重試。",
 		"share_no_active_task": "沒有活躍的工作可分享",

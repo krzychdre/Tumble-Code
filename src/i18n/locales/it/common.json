@@ -45,7 +45,6 @@
 		"condense_failed": "Impossibile condensare il contesto",
 		"condense_not_enough_messages": "Non ci sono abbastanza messaggi per condensare il contesto",
 		"condensed_recently": "Il contesto è stato condensato di recente; questo tentativo viene saltato",
-		"condense_handler_invalid": "Il gestore API per condensare il contesto non è valido",
 		"condense_api_failed": "Chiamata API di condensazione fallita: {{message}}",
 		"share_task_failed": "Condivisione dell'attività fallita. Riprova.",
 		"share_no_active_task": "Nessuna attività attiva da condividere",

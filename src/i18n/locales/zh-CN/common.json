@@ -50,7 +50,6 @@
 		"condense_failed": "压缩上下文失败",
 		"condense_not_enough_messages": "没有足够的对话来压缩上下文",
 		"condensed_recently": "上下文最近已压缩；跳过此次尝试",
-		"condense_handler_invalid": "压缩上下文的API处理程序无效",
 		"condense_api_failed": "压缩 API 调用失败：{{message}}",
 		"share_task_failed": "分享任务失败。请重试。",
 		"share_no_active_task": "没有活跃任务可分享",

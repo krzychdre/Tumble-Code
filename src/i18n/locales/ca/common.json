@@ -49,7 +49,6 @@
 		"condense_failed": "Ha fallat la condensació del context",
 		"condense_not_enough_messages": "No hi ha prou missatges per condensar el context",
 		"condensed_recently": "El context s'ha condensat recentment; s'omet aquest intent",
-		"condense_handler_invalid": "El gestor de l'API per condensar el context no és vàlid",
 		"condense_api_failed": "La crida a l'API de condensació ha fallat: {{message}}",
 		"share_task_failed": "Ha fallat compartir la tasca. Si us plau, torna-ho a provar.",
 		"share_no_active_task": "No hi ha cap tasca activa per compartir",

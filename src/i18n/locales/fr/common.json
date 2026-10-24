@@ -45,7 +45,6 @@
 		"condense_failed": "Échec de la condensation du contexte",
 		"condense_not_enough_messages": "Pas assez de messages pour condenser le contexte",
 		"condensed_recently": "Le contexte a été condensé récemment ; cette tentative est ignorée",
-		"condense_handler_invalid": "Le gestionnaire d'API pour condenser le contexte est invalide",
 		"condense_api_failed": "L'appel API de condensation a échoué : {{message}}",
 		"share_task_failed": "Échec du partage de la tâche. Veuillez réessayer.",
 		"share_no_active_task": "Aucune tâche active à partager",
