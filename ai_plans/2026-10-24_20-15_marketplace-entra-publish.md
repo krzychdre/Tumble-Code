@@ -1,9 +1,8 @@
 # Marketplace publishing with Microsoft Entra ID instead of a PAT
 
-**Status:** done on the repository side; the Marketplace membership step is manual (below).
+**Status:** done; publish rights verified with `vsce verify-pat --azure-credential QUB-IT` on 2026-10-24.
 **Related plans:** `2026-10-24_*_r4-vsix-no-dotenv.md`, `2026-10-01_22-30_ci-release-concurrency-nightly-prune.md`.
-**Touched:** `.github/workflows/marketplace-publish.yml`, `.github/workflows/marketplace-identity.yml` (one-off),
-`.github/workflows/nightly-publish.yml` (comment), `src/package.json` (`publish:*` scripts).
+**Touched:** `.github/workflows/marketplace-publish.yml`, `.github/workflows/nightly-publish.yml` (comment), `src/package.json` (`publish:*` scripts).
 
 ## Problem
 
@@ -21,16 +20,16 @@ accessible organizations"), and Azure DevOps is retiring those, so a new long-li
 - `marketplace-publish.yml`: the job runs in the `marketplace` environment with `id-token: write`, logs in with
   `azure/login` (OIDC, no secret) and runs `vsce publish --azure-credential`. Open VSX is a separate step that runs
   only when `OVSX_PAT` is set.
-- `marketplace-identity.yml`: one-off `workflow_dispatch` job that prints the identity's Azure DevOps profile id.
 
-## Manual steps
+## Marketplace membership
 
-1. Create the publisher `QUB-IT` at https://marketplace.visualstudio.com/manage with the same Microsoft account.
-2. Run "Marketplace identity id" from the Actions tab and copy the printed id.
-3. Add that id to the publisher's Members with the Contributor role.
-4. Delete `marketplace-identity.yml`.
+The publisher `QUB-IT` was created at https://marketplace.visualstudio.com/manage with the owner's Microsoft account.
+The identity's Azure DevOps profile id (`abfd365c-bc69-6881-9cb1-59c72710e590`, read once from inside a GitHub
+Actions job with `az rest -u https://app.vssps.visualstudio.com/_apis/profile/profiles/me --resource
+499b84ac-1321-427f-aa17-267ca6975798`) is a member of the publisher with the Contributor role; the Marketplace lists
+it as `<tenant id>\<principal id>`.
 
 ## Notes
 
-The Marketplace step is no longer skipped: until steps 1 to 3 are done, a release run fails at it, after the tag is
-pushed and before the GitHub release is created.
+The Marketplace step is not skipped: if the identity loses its membership, a release run fails at it after the tag
+is pushed and before the GitHub release is created.
