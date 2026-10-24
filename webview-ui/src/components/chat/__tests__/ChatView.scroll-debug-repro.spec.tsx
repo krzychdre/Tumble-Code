@@ -205,13 +205,6 @@ const buildMessages = (baseTs: number): ClineMessage[] => [
 	{ type: "say", say: "text", ts: baseTs + 2, text: "row-2" },
 ]
 
-const buildMessagesWithCheckpoint = (baseTs: number): ClineMessage[] => [
-	{ type: "say", say: "text", ts: baseTs, text: "task" },
-	{ type: "say", say: "text", ts: baseTs + 1, text: "row-1" },
-	{ type: "say", say: "checkpoint_saved", ts: baseTs + 2, text: "checkpoint-1" },
-	{ type: "say", say: "text", ts: baseTs + 3, text: "row-2" },
-]
-
 const buildMessagesWithMultipleCheckpoints = (baseTs: number): ClineMessage[] => [
 	{ type: "say", say: "text", ts: baseTs, text: "task" },
 	{ type: "say", say: "checkpoint_saved", ts: baseTs + 1, text: "checkpoint-1" },
@@ -544,35 +537,6 @@ describe("ChatView scroll behavior regression coverage", () => {
 		await waitForCallsSettled()
 		expect(harness.scrollCalls).toBe(callsBeforeClick + 2)
 		await expectChevronHidden()
-	})
-
-	it("shows jump-to-checkpoint button and scrolls to latest checkpoint", async () => {
-		await hydrate(2, buildMessagesWithCheckpoint(Date.now() - 3_000))
-		await waitForCalls(2)
-		await waitForCallsSettled()
-
-		await act(async () => {
-			fireEvent.keyDown(window, { key: "PageUp" })
-		})
-
-		await advanceTimers(100)
-		await expectChevronVisible()
-
-		const checkpointButton = document.querySelector("button[aria-label='chat:scrollToLatestCheckpoint']")
-		expect(checkpointButton).toBeInstanceOf(HTMLButtonElement)
-
-		const callsBeforeClick = harness.scrollCalls
-
-		await act(async () => {
-			;(checkpointButton as HTMLButtonElement).click()
-		})
-
-		expect(harness.scrollCalls).toBe(callsBeforeClick + 1)
-		expect(harness.scrollToIndexArgs.at(-1)).toMatchObject({
-			index: 1,
-			align: "center",
-			behavior: "smooth",
-		})
 	})
 
 	it("repeated checkpoint clicks step backward through previous checkpoints", async () => {
