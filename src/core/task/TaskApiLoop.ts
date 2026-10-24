@@ -62,6 +62,7 @@ import { type MemoryCoordinator } from "../memory/memoryTaskIntegration"
 import { getApiRequestTimeout } from "../../api/providers/utils/timeout-config"
 import type { Task } from "./Task"
 import { logger } from "../../utils/logging"
+import { withoutEnvironmentDetails } from "./TaskMessageLog.helpers"
 import {
 	captureApiRequest,
 	reportApiError,
@@ -770,18 +771,10 @@ export class TaskApiLoop {
 
 		const environmentDetails = await getEnvironmentDetails(this.task, currentIncludeFileDetails, state)
 
-		// Remove any existing environment_details blocks
-		const contentWithoutEnvDetails = parsedUserContent.filter((block) => {
-			if (block.type === "text" && typeof block.text === "string") {
-				const isEnvironmentDetailsBlock =
-					block.text.trim().startsWith("<environment_details>") &&
-					block.text.trim().endsWith("</environment_details>")
-				return !isEnvironmentDetailsBlock
-			}
-			return true
-		})
-
-		const finalUserContent = [...contentWithoutEnvDetails, { type: "text" as const, text: environmentDetails }]
+		const finalUserContent = [
+			...withoutEnvironmentDetails(parsedUserContent),
+			{ type: "text" as const, text: environmentDetails },
+		]
 
 		const isEmptyUserContent = currentUserContent.length === 0
 		const shouldAddUserMessage: boolean =

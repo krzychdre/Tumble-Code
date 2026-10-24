@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import type { ClineProvider } from "../../webview/ClineProvider"
-import type { ProviderSettings, ModelInfo } from "@tumble-code/types"
+import type { ProviderSettings } from "@tumble-code/types"
 
 // All vi.mock() calls are hoisted to the top of the file by Vitest
 // and are applied before any imports are resolved
@@ -152,358 +152,72 @@ vi.mock("../../../utils/fs", () => ({
 // Import Task AFTER all vi.mock() calls - Vitest hoists mocks so this works
 import { Task } from "../Task"
 
-describe("Task reasoning preservation", () => {
-	let mockProvider: Partial<ClineProvider>
-	let mockApiConfiguration: ProviderSettings
-
-	beforeEach(() => {
-		// Mock provider with necessary methods
-		mockProvider = {
+describe("Task reasoning preservation in API history", () => {
+	function newTask(api: unknown): Task {
+		const provider = {
 			postStateToWebview: vi.fn().mockResolvedValue(undefined),
 			postStateToWebviewWithoutTaskHistory: vi.fn().mockResolvedValue(undefined),
-			getState: vi.fn().mockResolvedValue({
-				mode: "code",
-				experiments: {},
-			}),
-			context: {
-				globalStorageUri: { fsPath: "/test/storage" },
-				extensionPath: "/test/extension",
-			} as any,
+			getState: vi.fn().mockResolvedValue({ mode: "code", experiments: {} }),
+			context: { globalStorageUri: { fsPath: "/test/storage" }, extensionPath: "/test/extension" },
 			updateTaskHistory: vi.fn().mockResolvedValue(undefined),
 			postMessageToWebview: vi.fn().mockResolvedValue(undefined),
 		}
-
-		mockApiConfiguration = {
-			apiProvider: "anthropic",
-			apiKey: "test-key",
-		} as ProviderSettings
-	})
-
-	it("should append reasoning to assistant message when preserveReasoning is true", async () => {
-		// Create a task instance
 		const task = new Task({
-			provider: mockProvider as ClineProvider,
-			apiConfiguration: mockApiConfiguration,
+			provider: provider as unknown as ClineProvider,
+			apiConfiguration: { apiProvider: "anthropic", apiKey: "test-key" } as ProviderSettings,
 			task: "Test task",
 			startTask: false,
 		})
+		task.api = api as Task["api"]
+		return task
+	}
 
-		// Mock the API to return a model with preserveReasoning enabled
-		const mockModelInfo: ModelInfo = {
-			contextWindow: 16000,
-			supportsPromptCache: true,
-			preserveReasoning: true,
-		}
+	const answer = { role: "assistant" as const, content: [{ type: "text" as const, text: "Here is my response." }] }
 
-		task.api = {
-			getModel: vi.fn().mockReturnValue({
-				id: "test-model",
-				info: mockModelInfo,
-			}),
-		} as any
-
-		// Mock the API conversation history
-		task.apiConversationHistory = []
-
-		// Simulate adding an assistant message with reasoning
-		const assistantMessage = "Here is my response to your question."
-		const reasoningMessage = "Let me think about this step by step. First, I need to..."
-
-		// Spy on addToApiConversationHistory
-		const addToApiHistorySpy = vi.spyOn(task.history, "addToApiConversationHistory")
-
-		// Simulate what happens in the streaming loop when preserveReasoning is true
-		let finalAssistantMessage = assistantMessage
-		if (reasoningMessage && task.api.getModel().info.preserveReasoning) {
-			finalAssistantMessage = `<think>${reasoningMessage}</think>\n${assistantMessage}`
-		}
-
-		await task.history.addToApiConversationHistory({
-			role: "assistant",
-			content: [{ type: "text", text: finalAssistantMessage }],
-		})
-
-		// Verify that reasoning was prepended in <think> tags to the assistant message
-		expect(addToApiHistorySpy).toHaveBeenCalledWith({
-			role: "assistant",
-			content: [
-				{
-					type: "text",
-					text: "<think>Let me think about this step by step. First, I need to...</think>\nHere is my response to your question.",
-				},
-			],
-		})
-
-		// Verify the API conversation history contains the message with reasoning
-		expect(task.apiConversationHistory).toHaveLength(1)
-		expect((task.apiConversationHistory[0].content[0] as { text: string }).text).toContain("<think>")
-		expect((task.apiConversationHistory[0].content[0] as { text: string }).text).toContain("</think>")
-		expect((task.apiConversationHistory[0].content[0] as { text: string }).text).toContain(
-			"Here is my response to your question.",
-		)
-		expect((task.apiConversationHistory[0].content[0] as { text: string }).text).toContain(
-			"Let me think about this step by step. First, I need to...",
-		)
-	})
-
-	it("should NOT append reasoning to assistant message when preserveReasoning is false", async () => {
-		// Create a task instance
-		const task = new Task({
-			provider: mockProvider as ClineProvider,
-			apiConfiguration: mockApiConfiguration,
-			task: "Test task",
-			startTask: false,
-		})
-
-		// Mock the API to return a model with preserveReasoning disabled (or undefined)
-		const mockModelInfo: ModelInfo = {
-			contextWindow: 16000,
-			supportsPromptCache: true,
-			preserveReasoning: false,
-		}
-
-		task.api = {
-			getModel: vi.fn().mockReturnValue({
-				id: "test-model",
-				info: mockModelInfo,
-			}),
-		} as any
-
-		// Mock the API conversation history
-		task.apiConversationHistory = []
-
-		// Simulate adding an assistant message with reasoning
-		const assistantMessage = "Here is my response to your question."
-		const reasoningMessage = "Let me think about this step by step. First, I need to..."
-
-		// Spy on addToApiConversationHistory
-		const addToApiHistorySpy = vi.spyOn(task.history, "addToApiConversationHistory")
-
-		// Simulate what happens in the streaming loop when preserveReasoning is false
-		let finalAssistantMessage = assistantMessage
-		if (reasoningMessage && task.api.getModel().info.preserveReasoning) {
-			finalAssistantMessage = `<think>${reasoningMessage}</think>\n${assistantMessage}`
-		}
-
-		await task.history.addToApiConversationHistory({
-			role: "assistant",
-			content: [{ type: "text", text: finalAssistantMessage }],
-		})
-
-		// Verify that reasoning was NOT appended to the assistant message
-		expect(addToApiHistorySpy).toHaveBeenCalledWith({
-			role: "assistant",
-			content: [{ type: "text", text: "Here is my response to your question." }],
-		})
-
-		// Verify the API conversation history does NOT contain reasoning
-		expect(task.apiConversationHistory).toHaveLength(1)
-		expect((task.apiConversationHistory[0].content[0] as { text: string }).text).toBe(
-			"Here is my response to your question.",
-		)
-		expect((task.apiConversationHistory[0].content[0] as { text: string }).text).not.toContain("<think>")
-	})
-
-	it("should handle empty reasoning message gracefully when preserveReasoning is true", async () => {
-		// Create a task instance
-		const task = new Task({
-			provider: mockProvider as ClineProvider,
-			apiConfiguration: mockApiConfiguration,
-			task: "Test task",
-			startTask: false,
-		})
-
-		// Mock the API to return a model with preserveReasoning enabled
-		const mockModelInfo: ModelInfo = {
-			contextWindow: 16000,
-			supportsPromptCache: true,
-			preserveReasoning: true,
-		}
-
-		task.api = {
-			getModel: vi.fn().mockReturnValue({
-				id: "test-model",
-				info: mockModelInfo,
-			}),
-		} as any
-
-		// Mock the API conversation history
-		task.apiConversationHistory = []
-
-		const assistantMessage = "Here is my response."
-		const reasoningMessage = "" // Empty reasoning
-
-		// Spy on addToApiConversationHistory
-		const addToApiHistorySpy = vi.spyOn(task.history, "addToApiConversationHistory")
-
-		// Simulate what happens in the streaming loop
-		let finalAssistantMessage = assistantMessage
-		if (reasoningMessage && task.api.getModel().info.preserveReasoning) {
-			finalAssistantMessage = `<think>${reasoningMessage}</think>\n${assistantMessage}`
-		}
-
-		await task.history.addToApiConversationHistory({
-			role: "assistant",
-			content: [{ type: "text", text: finalAssistantMessage }],
-		})
-
-		// Verify that no reasoning tags were added when reasoning is empty
-		expect(addToApiHistorySpy).toHaveBeenCalledWith({
-			role: "assistant",
-			content: [{ type: "text", text: "Here is my response." }],
-		})
-
-		// Verify the message doesn't contain reasoning tags
-		expect((task.apiConversationHistory[0].content[0] as { text: string }).text).toBe("Here is my response.")
-		expect((task.apiConversationHistory[0].content[0] as { text: string }).text).not.toContain("<think>")
-	})
-
-	it("should handle undefined preserveReasoning (defaults to false)", async () => {
-		// Create a task instance
-		const task = new Task({
-			provider: mockProvider as ClineProvider,
-			apiConfiguration: mockApiConfiguration,
-			task: "Test task",
-			startTask: false,
-		})
-
-		// Mock the API to return a model without preserveReasoning field (undefined)
-		const mockModelInfo: ModelInfo = {
-			contextWindow: 16000,
-			supportsPromptCache: true,
-			// preserveReasoning is undefined
-		}
-
-		task.api = {
-			getModel: vi.fn().mockReturnValue({
-				id: "test-model",
-				info: mockModelInfo,
-			}),
-		} as any
-
-		// Mock the API conversation history
-		task.apiConversationHistory = []
-
-		const assistantMessage = "Here is my response."
-		const reasoningMessage = "Some reasoning here."
-
-		// Simulate what happens in the streaming loop
-		let finalAssistantMessage = assistantMessage
-		if (reasoningMessage && task.api.getModel().info.preserveReasoning) {
-			finalAssistantMessage = `<think>${reasoningMessage}</think>\n${assistantMessage}`
-		}
-
-		await task.history.addToApiConversationHistory({
-			role: "assistant",
-			content: [{ type: "text", text: finalAssistantMessage }],
-		})
-
-		// Verify reasoning was NOT prepended (undefined defaults to false)
-		expect((task.apiConversationHistory[0].content[0] as { text: string }).text).toBe("Here is my response.")
-		expect((task.apiConversationHistory[0].content[0] as { text: string }).text).not.toContain("<think>")
-	})
-
-	it("should embed encrypted reasoning as first assistant content block", async () => {
-		const task = new Task({
-			provider: mockProvider as ClineProvider,
-			apiConfiguration: mockApiConfiguration,
-			task: "Test task",
-			startTask: false,
-		})
-
-		// Avoid disk writes in this test
-		;(task as any).saveApiConversationHistory = vi.fn().mockResolvedValue(undefined)
-
-		// Mock API handler to provide encrypted reasoning data and response id
-		task.api = {
-			getEncryptedContent: vi.fn().mockReturnValue({
-				encrypted_content: "encrypted_payload",
-				id: "rs_test",
-			}),
+	it("stores the provider's encrypted reasoning first and the response id on the message", async () => {
+		const task = newTask({
+			getEncryptedContent: vi.fn().mockReturnValue({ encrypted_content: "encrypted_payload", id: "rs_test" }),
 			getResponseId: vi.fn().mockReturnValue("resp_test"),
-		} as any
-
-		await task.history.addToApiConversationHistory({
-			role: "assistant",
-			content: [{ type: "text", text: "Here is my response." }],
 		})
 
-		expect(task.apiConversationHistory).toHaveLength(1)
-		const stored = task.apiConversationHistory[0] as any
+		await task.history.addToApiConversationHistory(answer)
 
-		expect(stored.role).toBe("assistant")
-		expect(Array.isArray(stored.content)).toBe(true)
-		expect(stored.id).toBe("resp_test")
-
-		const [reasoningBlock, textBlock] = stored.content
-
-		expect(reasoningBlock).toMatchObject({
-			type: "reasoning",
-			encrypted_content: "encrypted_payload",
-			id: "rs_test",
-		})
-
-		expect(textBlock).toMatchObject({
-			type: "text",
-			text: "Here is my response.",
-		})
+		expect(task.apiConversationHistory).toEqual([
+			expect.objectContaining({
+				role: "assistant",
+				id: "resp_test",
+				content: [
+					expect.objectContaining({
+						type: "reasoning",
+						encrypted_content: "encrypted_payload",
+						id: "rs_test",
+					}),
+					{ type: "text", text: "Here is my response." },
+				],
+			}),
+		])
 	})
 
-	it("should store plain text reasoning from streaming for all providers", async () => {
-		const task = new Task({
-			provider: mockProvider as ClineProvider,
-			apiConfiguration: mockApiConfiguration,
-			task: "Test task",
-			startTask: false,
+	it("stores streamed plain-text reasoning first when the provider has no encrypted content", async () => {
+		const task = newTask({
+			getModel: vi.fn().mockReturnValue({ id: "test-model", info: { contextWindow: 16000 } }),
+		})
+		const reasoning = "Let me analyze this carefully."
+
+		await task.history.addToApiConversationHistory(answer, reasoning)
+
+		const [reasoningBlock, textBlock] = task.apiConversationHistory[0].content as any[]
+		expect(reasoningBlock).toEqual({ type: "reasoning", text: reasoning, summary: [] })
+		expect(textBlock).toEqual({ type: "text", text: "Here is my response." })
+	})
+
+	it("stores the answer alone when there is no reasoning of either kind", async () => {
+		const task = newTask({
+			getModel: vi.fn().mockReturnValue({ id: "test-model", info: { contextWindow: 16000 } }),
 		})
 
-		// Avoid disk writes in this test
-		;(task as any).saveApiConversationHistory = vi.fn().mockResolvedValue(undefined)
+		await task.history.addToApiConversationHistory(answer)
 
-		// Mock API handler without getEncryptedContent (like Anthropic, Gemini, etc.)
-		task.api = {
-			getModel: vi.fn().mockReturnValue({
-				id: "test-model",
-				info: {
-					contextWindow: 16000,
-					supportsPromptCache: true,
-				},
-			}),
-		} as any
-
-		// Simulate the new path: passing reasoning as a parameter
-		const reasoningText = "Let me analyze this carefully. First, I'll consider the requirements..."
-		const assistantText = "Here is my response."
-
-		await task.history.addToApiConversationHistory(
-			{
-				role: "assistant",
-				content: [{ type: "text", text: assistantText }],
-			},
-			reasoningText,
-		)
-
-		expect(task.apiConversationHistory).toHaveLength(1)
-		const stored = task.apiConversationHistory[0] as any
-
-		expect(stored.role).toBe("assistant")
-		expect(Array.isArray(stored.content)).toBe(true)
-
-		const [reasoningBlock, textBlock] = stored.content
-
-		// Verify reasoning is stored with plain text, not encrypted
-		expect(reasoningBlock).toMatchObject({
-			type: "reasoning",
-			text: reasoningText,
-			summary: [],
-		})
-
-		// Verify there's no encrypted_content field (that's only for OpenAI Native)
-		expect(reasoningBlock.encrypted_content).toBeUndefined()
-
-		expect(textBlock).toMatchObject({
-			type: "text",
-			text: assistantText,
-		})
+		expect(task.apiConversationHistory[0].content).toEqual(answer.content)
 	})
 })
