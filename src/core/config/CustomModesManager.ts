@@ -203,6 +203,11 @@ export class CustomModesManager {
 			// Add source to each mode
 			return result.data.customModes.map((mode) => ({ ...mode, source }))
 		} catch (error) {
+			// No file is no modes. On a fresh profile the first readers get here
+			// before getCustomModesFilePath's queued write has created it.
+			if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+				return []
+			}
 			// parseYamlSafely reports its own parse errors and returns {} instead
 			// of throwing, so anything caught here (read failure, unexpected
 			// shape) is a new error and is logged.
