@@ -205,4 +205,185 @@ describe("McpConnectionManager", () => {
 		expect(manager.connections).toEqual([])
 		expect(transport.close).toHaveBeenCalled()
 	})
+
+	it("connects sse with the configured headers and leaves the global EventSource alone", async () => {
+		const globalRef = globalThis as { EventSource?: unknown }
+		const originalEventSource = globalRef.EventSource
+		const sentinel = function SentinelEventSource() {}
+		globalRef.EventSource = sentinel
+		const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(""))
+		try {
+			await manager.createTransport("t", "global", {
+				type: "sse",
+				url: "https://mcp.example.com/sse",
+				headers: { Authorization: "Bearer secret" },
+			} as unknown as McpServerConfig)
+
+			expect(globalRef.EventSource).toBe(sentinel)
+			const [url, options] = constructors.sse.mock.calls[0]
+			expect(String(url)).toBe("https://mcp.example.com/sse")
+			expect(options.requestInit.headers).toEqual({ Authorization: "Bearer secret" })
+			expect(options.eventSourceInit.withCredentials).toBe(true)
+
+			await options.eventSourceInit.fetch("https://mcp.example.com/sse", {
+				headers: { Accept: "text/event-stream" },
+			})
+			const sentHeaders = fetchSpy.mock.calls[0][1]!.headers as Headers
+			expect(sentHeaders.get("Authorization")).toBe("Bearer secret")
+			expect(sentHeaders.get("Accept")).toBe("text/event-stream")
+		} finally {
+			globalRef.EventSource = originalEventSource
+			fetchSpy.mockRestore()
+		}
+	})
+
+	describe("stdio command on each platform", () => {
+		const originalPlatform = Object.getOwnPropertyDescriptor(process, "platform")!
+		afterEach(() => Object.defineProperty(process, "platform", originalPlatform))
+
+		it.each([
+			["win32", "npx", ["-y", "pkg"], "cmd.exe", ["/c", "npx", "-y", "pkg"]],
+			["darwin", "npx", ["-y", "pkg"], "npx", ["-y", "pkg"]],
+			["win32", "cmd.exe", ["/c", "echo"], "cmd.exe", ["/c", "echo"]],
+			["win32", "CMD", ["/c", "echo"], "CMD", ["/c", "echo"]],
+		])("on %s runs %s %j as %s %j", async (platform, command, args, expectedCommand, expectedArgs) => {
+			Object.defineProperty(process, "platform", { value: platform, configurable: true })
+
+			await manager.createTransport("t", "global", {
+				type: "stdio",
+				command,
+				args,
+				env: { FNM_DIR: "C:\\fnm" },
+			} as unknown as McpServerConfig)
+
+			expect(constructors.stdio).toHaveBeenCalledWith(
+				expect.objectContaining({
+					command: expectedCommand,
+					args: expectedArgs,
+					env: { PATH: "/usr/bin", FNM_DIR: "C:\\fnm" },
+					stderr: "pipe",
+				}),
+			)
+		})
+	})
+
+	describe("transport handler details", () => {
+		it("logs the transport type of a streamable-http server and records a non-Error as text", async () => {
+			await manager.connectToServer("t", configs["streamable-http"], "global")
+
+			await transport.onerror!("plain failure")
+
+			expect(logger.error).toHaveBeenCalledWith('Transport error for "t" (streamable-http):', "plain failure")
+			expect(manager.findConnection("t", "global")!.server.error).toBe("plain failure")
+		})
+
+		it("still pushes the state when its server is already gone", async () => {
+			await manager.connectToServer("t", configs.sse, "global")
+			manager.connections = []
+			deps.notifyServerChanges.mockClear()
+
+			await transport.onerror!(new Error("late"))
+			await transport.onclose!()
+
+			expect(deps.notifyServerChanges).toHaveBeenCalledTimes(2)
+		})
+
+		it("truncates a long error and keeps the last 100 in the history", async () => {
+			await manager.connectToServer("t", configs.sse, "global")
+			const server = manager.findConnection("t", "global")!.server
+
+			for (let i = 0; i < 101; i++) {
+				await transport.onerror!(new Error(`e${i}`))
+			}
+			await transport.onerror!(new Error("x".repeat(1001)))
+
+			expect(server.errorHistory).toHaveLength(100)
+			expect(server.errorHistory![0].message).toBe("e2")
+			expect(server.error).toBe(`${"x".repeat(1000)}...(error message truncated)`)
+		})
+	})
+
+	it("restarts a stdio server when a watched path or its build/index.js changes", async () => {
+		const chokidar = (await import("chokidar")).default
+		await manager.connectToServer(
+			"t",
+			{ ...configs.stdio, args: ["build/index.js"], watchPaths: ["/w"] } as McpServerConfig,
+			"global",
+		)
+		expect(vi.mocked(chokidar.watch).mock.calls.map(([paths]) => paths)).toEqual([["/w"], "build/index.js"])
+		const restart = vi.spyOn(manager, "restartConnection").mockRejectedValue(new Error("busy"))
+
+		const watcher = vi.mocked(chokidar.watch).mock.results[0].value
+		for (const [, onChange] of watcher.on.mock.calls) {
+			await onChange("/w/changed.js")
+		}
+
+		expect(restart.mock.calls).toEqual([
+			["t", "global"],
+			["t", "global"],
+		])
+		expect(logger.error).toHaveBeenCalledWith(
+			"Failed to restart server t after change in /w/changed.js:",
+			expect.any(Error),
+		)
+		expect(logger.error).toHaveBeenCalledWith(
+			"Failed to restart server t after change in build/index.js:",
+			expect.any(Error),
+		)
+	})
+
+	describe("server lookup", () => {
+		const server = (name: string, source: "global" | "project", disabled = false) =>
+			({
+				type: "disconnected",
+				server: { name, config: "{}", status: "connected", source, disabled },
+				client: null,
+				transport: null,
+			}) as const
+
+		it("getServers drops disabled servers and lets a project server hide a global one", () => {
+			manager.connections = [
+				server("shared", "global"),
+				server("shared", "project"),
+				server("global-only", "global"),
+				server("off", "global", true),
+			]
+
+			expect(manager.getServers().map((s) => `${s.source}:${s.name}`)).toEqual([
+				"project:shared",
+				"global:global-only",
+			])
+		})
+
+		it("finds a server by a sanitized name with underscores for hyphens", () => {
+			manager.connections = [server("my-server", "global")]
+
+			expect(manager.findServerNameBySanitizedName("my-server")).toBe("my-server")
+			expect(manager.findServerNameBySanitizedName("my_server")).toBe("my-server")
+			expect(manager.findServerNameBySanitizedName("other")).toBeNull()
+		})
+	})
+
+	// DEF-C13: every API request waits up to 10 s while isConnecting is true.
+	it.each([
+		[
+			"updating the connections",
+			async (m: McpConnectionManager) => {
+				await m.connectToServer("gone", configs.stdio, "global")
+				vi.spyOn(m, "deleteConnection").mockRejectedValue(new Error("close failed"))
+				return m.updateServerConnections({}, "global")
+			},
+		],
+		[
+			"a restart",
+			(m: McpConnectionManager) => {
+				deps.isMcpEnabled.mockRejectedValue(new Error("state unavailable"))
+				return m.restartConnection("t", "global")
+			},
+		],
+	])("resets isConnecting when %s throws", async (_label, run) => {
+		await expect(run(manager)).rejects.toThrow()
+
+		expect(manager.isConnecting).toBe(false)
+	})
 })
