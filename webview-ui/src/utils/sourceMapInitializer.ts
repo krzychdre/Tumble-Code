@@ -2,8 +2,8 @@
  * Source Map Initializer
  *
  * This utility ensures source maps are properly loaded in production builds.
- * It attempts to preload source maps for all scripts on the page and
- * sets up global error handlers to enhance errors with source maps.
+ * It preloads the source map of every script on the page and sets up
+ * global error handlers to enhance errors with source maps.
  *
  * This implementation is compatible with VSCode's Content Security Policy.
  */
@@ -53,55 +53,19 @@ export function initializeSourceMaps(): void {
 		}
 	})
 
-	// Preload source maps for all scripts
+	// Preload the source map of every script. The build writes it next to the
+	// script as `<name>.js.map` (vite `build.sourcemap`, sourcemapPlugin).
 	try {
 		const scripts = document.getElementsByTagName("script")
 		for (let i = 0; i < scripts.length; i++) {
 			const script = scripts[i]
 			if (script.src) {
-				// Try multiple source map locations
-				const possibleMapUrls = [
-					`${script.src}.map`,
-					`${script.src}?source-map=true`,
-					script.src.replace(/\.js$/, ".js.map"),
-					script.src.replace(/\.js$/, ".map.json"),
-					script.src.replace(/\.js$/, ".sourcemap"),
-				]
-
-				// Preload all possible source map locations
-				for (const mapUrl of possibleMapUrls) {
-					const link = document.createElement("link")
-					link.rel = "preload"
-					link.as = "fetch"
-					link.href = mapUrl
-					link.crossOrigin = "anonymous"
-					document.head.appendChild(link)
-				}
-
-				// Also check for inline sourceMappingURL comments
-				fetch(script.src)
-					.then((response) => response.text())
-					.then((content) => {
-						const sourceMappingURLMatch = content.match(/\/\/[#@]\s*sourceMappingURL=([^\s]+)/)
-						if (sourceMappingURLMatch && sourceMappingURLMatch[1]) {
-							const sourceMappingURL = sourceMappingURLMatch[1]
-
-							// If it's not a data: URL, preload it
-							if (!sourceMappingURL.startsWith("data:")) {
-								const scriptUrlObj = new URL(script.src)
-								const baseUrl = scriptUrlObj.href.substring(0, scriptUrlObj.href.lastIndexOf("/") + 1)
-								const fullUrl = new URL(sourceMappingURL, baseUrl).href
-
-								const link = document.createElement("link")
-								link.rel = "preload"
-								link.as = "fetch"
-								link.href = fullUrl
-								link.crossOrigin = "anonymous"
-								document.head.appendChild(link)
-							}
-						}
-					})
-					.catch((e) => console.debug("Error checking for inline sourceMappingURL:", e))
+				const link = document.createElement("link")
+				link.rel = "preload"
+				link.as = "fetch"
+				link.href = `${script.src}.map`
+				link.crossOrigin = "anonymous"
+				document.head.appendChild(link)
 			}
 		}
 	} catch (e) {
