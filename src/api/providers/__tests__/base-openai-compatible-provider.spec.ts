@@ -1,821 +1,198 @@
-// npx vitest run api/providers/__tests__/base-openai-compatible-provider.spec.ts
+// cd src && ./node_modules/.bin/vitest run api/providers/__tests__/base-openai-compatible-provider.spec.ts
+// Stream reading (think tags, reasoning_content, tool call partials, finish reasons, usage) is
+// streamChatCompletion's and pinned for this loop by chat-completions-characterization. This
+// spec covers what the base class adds: the client, the request params and cancellation.
 
-import { Anthropic } from "@anthropic-ai/sdk"
+const mocks = vi.hoisted(() => ({ create: vi.fn(), logInfo: vi.fn() }))
 
+vi.mock("openai", async () => {
+	const { openAiModuleMock } = await import("./provider-test-helpers")
+	return openAiModuleMock(mocks.create)
+})
+vi.mock("../utils/timeout-config", async (importOriginal) => ({
+	...(await importOriginal<typeof import("../utils/timeout-config")>()),
+	getApiRequestTimeout: vi.fn(() => 600_000),
+}))
+vi.mock("../../../utils/logging", () => ({ logger: { info: mocks.logInfo, error: vi.fn(), warn: vi.fn() } }))
+
+import OpenAI from "openai"
+
+import type { ApiHandlerOptions } from "@tumble-code/core/browser"
 import type { ModelInfo } from "@tumble-code/types"
 
 import { BaseOpenAiCompatibleProvider } from "../base-openai-compatible-provider"
+import { DEFAULT_HEADERS } from "../constants"
+import { wireCaptureFetch } from "../utils/wire-capture"
+import { defaultOpenAiCreate } from "./provider-test-helpers"
 
-// Create mock functions
-const mockCreate = vi.hoisted(() => vi.fn())
+const testModels: Record<string, ModelInfo> = {
+	"test-model": { maxTokens: 4096, contextWindow: 128_000, supportsPromptCache: false },
+	"binary-model": {
+		maxTokens: 4096,
+		contextWindow: 128_000,
+		supportsPromptCache: false,
+		supportsReasoningBinary: true,
+		defaultTemperature: 0.6,
+	},
+}
 
-// Mock OpenAI module
-vi.mock("openai", async () => {
-	const { openAiModuleMock } = await import("./provider-test-helpers")
-	return openAiModuleMock(mockCreate)
-})
-
-// Create a concrete test implementation of the abstract base class
-class TestOpenAiCompatibleProvider extends BaseOpenAiCompatibleProvider<"test-model"> {
-	constructor(apiKey: string) {
-		const testModels: Record<"test-model", ModelInfo> = {
-			"test-model": {
-				maxTokens: 4096,
-				contextWindow: 128000,
-				supportsImages: false,
-				supportsPromptCache: false,
-				inputPrice: 0.5,
-				outputPrice: 1.5,
-			},
-		}
-
+class TestProvider extends BaseOpenAiCompatibleProvider<string> {
+	constructor(options: Partial<ApiHandlerOptions> = {}, sendsParallelToolCalls = true) {
 		super({
+			apiKey: "test-api-key",
+			...options,
 			providerName: "TestProvider",
 			baseURL: "https://test.example.com/v1",
 			defaultProviderModelId: "test-model",
 			providerModels: testModels,
-			apiKey,
+			defaultTemperature: 0.2,
 		})
+		Object.assign(this, { sendsParallelToolCalls })
 	}
 }
 
-describe("BaseOpenAiCompatibleProvider", () => {
-	let handler: TestOpenAiCompatibleProvider
+async function drain(stream: AsyncIterable<unknown>) {
+	for await (const _chunk of stream) {
+		// drain
+	}
+}
 
-	beforeEach(() => {
-		vi.clearAllMocks()
-		handler = new TestOpenAiCompatibleProvider("test-api-key")
+async function streamParamsOf(handler: TestProvider, metadata?: Parameters<TestProvider["createMessage"]>[2]) {
+	await drain(handler.createMessage("System", [{ role: "user", content: "Hello" }], metadata))
+	const [body, requestOptions] = mocks.create.mock.calls.at(-1)!
+	return { body, requestOptions }
+}
+
+beforeEach(() => {
+	vi.clearAllMocks()
+	mocks.create.mockImplementation(defaultOpenAiCreate)
+})
+
+it("requires an API key", () => {
+	expect(() => new TestProvider({ apiKey: "" })).toThrow("API key is required")
+})
+
+it("builds the client for the provider's URL with the default headers and the request timeout", () => {
+	new TestProvider()
+	expect(vi.mocked(OpenAI).mock.calls.at(-1)![0]).toEqual({
+		baseURL: "https://test.example.com/v1",
+		apiKey: "test-api-key",
+		defaultHeaders: DEFAULT_HEADERS,
+		timeout: 600_000,
+		fetch: wireCaptureFetch,
+	})
+})
+
+describe("streamed request", () => {
+	it("sends the clamped max tokens, the provider's default temperature, usage and the tools", async () => {
+		const tools = [{ type: "function" as const, function: { name: "read_file", parameters: {} } }]
+		const { body } = await streamParamsOf(new TestProvider(), { taskId: "t", tools, tool_choice: "auto" })
+		expect(body).toMatchObject({
+			model: "test-model",
+			max_tokens: 4096,
+			temperature: 0.2,
+			messages: [
+				{ role: "system", content: "System" },
+				{ role: "user", content: "Hello" },
+			],
+			stream: true,
+			stream_options: { include_usage: true },
+			tool_choice: "auto",
+			parallel_tool_calls: true,
+		})
+		expect(body.tools.map((tool: any) => tool.function.name)).toEqual(["read_file"])
+		expect(body).not.toHaveProperty("thinking")
 	})
 
-	afterEach(() => {
-		vi.restoreAllMocks()
+	it.each([
+		["the user's temperature", { modelTemperature: 0.9 }, 0.9],
+		["the model's default temperature", { apiModelId: "binary-model" }, 0.6],
+	])("sends %s", async (_label, options, temperature) => {
+		const { body } = await streamParamsOf(new TestProvider(options))
+		expect(body.temperature).toBe(temperature)
 	})
 
-	describe("TagMatcher reasoning tags", () => {
-		it("should handle reasoning tags (<think>) from stream", async () => {
-			mockCreate.mockImplementationOnce(() => {
-				return {
-					[Symbol.asyncIterator]: () => ({
-						next: vi
-							.fn()
-							.mockResolvedValueOnce({
-								done: false,
-								value: { choices: [{ delta: { content: "<think>Let me think" } }] },
-							})
-							.mockResolvedValueOnce({
-								done: false,
-								value: { choices: [{ delta: { content: " about this</think>" } }] },
-							})
-							.mockResolvedValueOnce({
-								done: false,
-								value: { choices: [{ delta: { content: "The answer is 42" } }] },
-							})
-							.mockResolvedValueOnce({ done: true }),
-					}),
-				}
-			})
+	it.each([
+		["on for a binary model with reasoning on", "binary-model", true, { type: "enabled" }],
+		["absent with reasoning off", "binary-model", false, undefined],
+		["absent for a model without the switch", "test-model", true, undefined],
+	])("the thinking switch is %s", async (_label, apiModelId, enableReasoningEffort, thinking) => {
+		const handler = new TestProvider({ apiModelId, enableReasoningEffort })
+		const { body } = await streamParamsOf(handler)
+		expect(body.thinking).toEqual(thinking)
+		await handler.completePrompt("p")
+		expect(mocks.create.mock.calls.at(-1)![0].thinking).toEqual(thinking)
+	})
 
-			const stream = handler.createMessage("system prompt", [])
-			const chunks = []
-			for await (const chunk of stream) {
-				chunks.push(chunk)
-			}
+	it.each([
+		["the caller's choice", true, { taskId: "t", parallelToolCalls: false }, false],
+		["nothing when the API has no such field", false, { taskId: "t" }, undefined],
+	])("parallel_tool_calls is %s", async (_label, sendsParallelToolCalls, metadata, expected) => {
+		const { body } = await streamParamsOf(new TestProvider({}, sendsParallelToolCalls), metadata)
+		expect(body.parallel_tool_calls).toBe(expected)
+	})
 
-			// TagMatcher yields chunks as they're processed
-			expect(chunks).toEqual([
-				{ type: "reasoning", text: "Let me think" },
-				{ type: "reasoning", text: " about this" },
-				{ type: "text", text: "The answer is 42" },
-			])
-		})
+	it("aborts the request with the task's signal and gives every request its own signal", async () => {
+		const task = new AbortController()
+		const handler = new TestProvider()
+		const first = await streamParamsOf(handler, { taskId: "t", signal: task.signal })
+		const second = await streamParamsOf(handler)
+		expect(first.requestOptions.signal).not.toBe(second.requestOptions.signal)
 
-		it("should handle reasoning tags (<thought>) from stream", async () => {
-			mockCreate.mockImplementationOnce(() => {
-				return {
-					[Symbol.asyncIterator]: () => ({
-						next: vi
-							.fn()
-							.mockResolvedValueOnce({
-								done: false,
-								value: { choices: [{ delta: { content: "<thought>Deep thought" } }] },
-							})
-							.mockResolvedValueOnce({
-								done: false,
-								value: { choices: [{ delta: { content: " here</thought>" } }] },
-							})
-							.mockResolvedValueOnce({
-								done: false,
-								value: { choices: [{ delta: { content: "Result: 42" } }] },
-							})
-							.mockResolvedValueOnce({ done: true }),
-					}),
-				}
-			})
-			const stream = handler.createMessage("system prompt", [])
-			const chunks = []
-			for await (const chunk of stream) {
-				chunks.push(chunk)
-			}
-			expect(chunks).toEqual([
-				{ type: "reasoning", text: "Deep thought" },
-				{ type: "reasoning", text: " here" },
-				{ type: "text", text: "Result: 42" },
-			])
-		})
+		task.abort()
+		expect(first.requestOptions.signal.aborted).toBe(true)
+		expect(second.requestOptions.signal.aborted).toBe(false)
+	})
 
-		it("should not close <think> tag with </thought> tag", async () => {
-			mockCreate.mockImplementationOnce(() => {
-				return {
-					[Symbol.asyncIterator]: () => ({
-						next: vi
-							.fn()
-							.mockResolvedValueOnce({
-								done: false,
-								value: { choices: [{ delta: { content: "<think>Thinking" } }] },
-							})
-							.mockResolvedValueOnce({
-								done: false,
-								value: { choices: [{ delta: { content: " but closing with wrong tag</thought>" } }] },
-							})
-							.mockResolvedValueOnce({
-								done: false,
-								value: { choices: [{ delta: { content: " still thinking" } }] },
-							})
-							.mockResolvedValueOnce({ done: true }),
-					}),
-				}
-			})
-			const stream = handler.createMessage("system prompt", [])
-			const chunks = []
-			for await (const chunk of stream) {
-				chunks.push(chunk)
-			}
-			// The </thought> tag should be treated as text since it doesn't match the active <think> tag
-			expect(chunks).toEqual([
-				{ type: "reasoning", text: "Thinking" },
-				{ type: "reasoning", text: " but closing with wrong tag</thought>" },
-				{ type: "reasoning", text: " still thinking" },
-			])
-		})
+	it("logs the raw usage only with ROO_LOG_RAW_USAGE=1", async () => {
+		await streamParamsOf(new TestProvider())
+		expect(mocks.logInfo).not.toHaveBeenCalled()
 
-		it("should handle complete <think> tag in a single chunk", async () => {
-			mockCreate.mockImplementationOnce(() => {
-				return {
-					[Symbol.asyncIterator]: () => ({
-						next: vi
-							.fn()
-							.mockResolvedValueOnce({
-								done: false,
-								value: { choices: [{ delta: { content: "Regular text before " } }] },
-							})
-							.mockResolvedValueOnce({
-								done: false,
-								value: { choices: [{ delta: { content: "<think>Complete thought</think>" } }] },
-							})
-							.mockResolvedValueOnce({
-								done: false,
-								value: { choices: [{ delta: { content: " regular text after" } }] },
-							})
-							.mockResolvedValueOnce({ done: true }),
-					}),
-				}
-			})
+		vi.stubEnv("ROO_LOG_RAW_USAGE", "1")
+		try {
+			await streamParamsOf(new TestProvider())
+		} finally {
+			vi.unstubAllEnvs()
+		}
+		expect(mocks.logInfo).toHaveBeenCalledWith(expect.stringMatching(/^\[TestProvider\] raw usage: \{/))
+	})
+})
 
-			const stream = handler.createMessage("system prompt", [])
-			const chunks = []
-			for await (const chunk of stream) {
-				chunks.push(chunk)
-			}
-
-			// When a complete tag arrives in one chunk, TagMatcher may not parse it
-			// This test documents the actual behavior
-			expect(chunks.length).toBeGreaterThan(0)
-			expect(chunks[0]).toEqual({ type: "text", text: "Regular text before " })
-		})
-
-		it("should handle incomplete <think> tag at end of stream", async () => {
-			mockCreate.mockImplementationOnce(() => {
-				return {
-					[Symbol.asyncIterator]: () => ({
-						next: vi
-							.fn()
-							.mockResolvedValueOnce({
-								done: false,
-								value: { choices: [{ delta: { content: "<think>Incomplete thought" } }] },
-							})
-							.mockResolvedValueOnce({ done: true }),
-					}),
-				}
-			})
-
-			const stream = handler.createMessage("system prompt", [])
-			const chunks = []
-			for await (const chunk of stream) {
-				chunks.push(chunk)
-			}
-
-			// TagMatcher should flush incomplete reasoning content on stream end
-			expect(chunks).toContainEqual({ type: "reasoning", text: "Incomplete thought" })
-		})
-
-		it("should handle text without any <think> tags", async () => {
-			mockCreate.mockImplementationOnce(() => {
-				return {
-					[Symbol.asyncIterator]: () => ({
-						next: vi
-							.fn()
-							.mockResolvedValueOnce({
-								done: false,
-								value: { choices: [{ delta: { content: "Just regular text" } }] },
-							})
-							.mockResolvedValueOnce({
-								done: false,
-								value: { choices: [{ delta: { content: " without reasoning" } }] },
-							})
-							.mockResolvedValueOnce({ done: true }),
-					}),
-				}
-			})
-
-			const stream = handler.createMessage("system prompt", [])
-			const chunks = []
-			for await (const chunk of stream) {
-				chunks.push(chunk)
-			}
-
-			expect(chunks).toEqual([
-				{ type: "text", text: "Just regular text" },
-				{ type: "text", text: " without reasoning" },
-			])
-		})
-
-		it("should handle <think> tags that start at beginning of stream", async () => {
-			mockCreate.mockImplementationOnce(() => {
-				return {
-					[Symbol.asyncIterator]: () => ({
-						next: vi
-							.fn()
-							.mockResolvedValueOnce({
-								done: false,
-								value: { choices: [{ delta: { content: "<think>reasoning" } }] },
-							})
-							.mockResolvedValueOnce({
-								done: false,
-								value: { choices: [{ delta: { content: " content</think>" } }] },
-							})
-							.mockResolvedValueOnce({
-								done: false,
-								value: { choices: [{ delta: { content: " normal text" } }] },
-							})
-							.mockResolvedValueOnce({ done: true }),
-					}),
-				}
-			})
-
-			const stream = handler.createMessage("system prompt", [])
-			const chunks = []
-			for await (const chunk of stream) {
-				chunks.push(chunk)
-			}
-
-			expect(chunks).toEqual([
-				{ type: "reasoning", text: "reasoning" },
-				{ type: "reasoning", text: " content" },
-				{ type: "text", text: " normal text" },
-			])
+describe("completePrompt", () => {
+	it("sends the prompt as one user message and returns the text with usage", async () => {
+		const result = await new TestProvider().completePromptWithUsage("Test prompt")
+		expect(result).toMatchObject({ text: "Test response", usage: { inputTokens: 10, outputTokens: 5 } })
+		expect(mocks.create.mock.calls[0][0]).toEqual({
+			model: "test-model",
+			messages: [{ role: "user", content: "Test prompt" }],
 		})
 	})
 
-	describe("reasoning_content field", () => {
-		it("should preserve whitespace-only reasoning_content so streamed boundaries survive concatenation", async () => {
-			mockCreate.mockImplementationOnce(() => {
-				return {
-					[Symbol.asyncIterator]: () => ({
-						next: vi
-							.fn()
-							.mockResolvedValueOnce({
-								done: false,
-								value: { choices: [{ delta: { reasoning_content: "\n" } }] },
-							})
-							.mockResolvedValueOnce({
-								done: false,
-								value: { choices: [{ delta: { reasoning_content: "   " } }] },
-							})
-							.mockResolvedValueOnce({
-								done: false,
-								value: { choices: [{ delta: { reasoning_content: "\t\n  " } }] },
-							})
-							.mockResolvedValueOnce({
-								done: false,
-								value: { choices: [{ delta: { content: "Regular content" } }] },
-							})
-							.mockResolvedValueOnce({ done: true }),
-					}),
-				}
-			})
+	it("wraps a failure with the provider name", async () => {
+		mocks.create.mockRejectedValueOnce(new Error("boom"))
+		await expect(new TestProvider().completePrompt("p")).rejects.toThrow("TestProvider completion error: boom")
+	})
+})
 
-			const stream = handler.createMessage("system prompt", [])
-			const chunks = []
-			for await (const chunk of stream) {
-				chunks.push(chunk)
-			}
-
-			expect(chunks).toEqual([
-				{ type: "reasoning", text: "\n" },
-				{ type: "reasoning", text: "   " },
-				{ type: "reasoning", text: "\t\n  " },
-				{ type: "text", text: "Regular content" },
-			])
-		})
-
-		it("should yield reasoning before text when one delta carries both", async () => {
-			mockCreate.mockImplementationOnce(() => {
-				return {
-					[Symbol.asyncIterator]: () => ({
-						next: vi
-							.fn()
-							.mockResolvedValueOnce({
-								done: false,
-								value: {
-									choices: [{ delta: { reasoning_content: "thinking...", content: "answer" } }],
-								},
-							})
-							.mockResolvedValueOnce({ done: true }),
-					}),
-				}
-			})
-
-			const chunks = []
-			for await (const chunk of handler.createMessage("system prompt", [])) {
-				chunks.push(chunk)
-			}
-
-			expect(chunks).toEqual([
-				{ type: "reasoning", text: "thinking..." },
-				{ type: "text", text: "answer" },
-			])
-		})
-
-		it("should yield non-empty reasoning_content", async () => {
-			mockCreate.mockImplementationOnce(() => {
-				return {
-					[Symbol.asyncIterator]: () => ({
-						next: vi
-							.fn()
-							.mockResolvedValueOnce({
-								done: false,
-								value: { choices: [{ delta: { reasoning_content: "Thinking step 1" } }] },
-							})
-							.mockResolvedValueOnce({
-								done: false,
-								value: { choices: [{ delta: { reasoning_content: "\n" } }] },
-							})
-							.mockResolvedValueOnce({
-								done: false,
-								value: { choices: [{ delta: { reasoning_content: "Thinking step 2" } }] },
-							})
-							.mockResolvedValueOnce({ done: true }),
-					}),
-				}
-			})
-
-			const stream = handler.createMessage("system prompt", [])
-			const chunks = []
-			for await (const chunk of stream) {
-				chunks.push(chunk)
-			}
-
-			expect(chunks).toEqual([
-				{ type: "reasoning", text: "Thinking step 1" },
-				{ type: "reasoning", text: "\n" },
-				{ type: "reasoning", text: "Thinking step 2" },
-			])
-		})
-
-		it("should handle reasoning_content with leading/trailing whitespace", async () => {
-			mockCreate.mockImplementationOnce(() => {
-				return {
-					[Symbol.asyncIterator]: () => ({
-						next: vi
-							.fn()
-							.mockResolvedValueOnce({
-								done: false,
-								value: { choices: [{ delta: { reasoning_content: "  content with spaces  " } }] },
-							})
-							.mockResolvedValueOnce({ done: true }),
-					}),
-				}
-			})
-
-			const stream = handler.createMessage("system prompt", [])
-			const chunks = []
-			for await (const chunk of stream) {
-				chunks.push(chunk)
-			}
-
-			// Should yield reasoning with spaces (only pure whitespace is filtered)
-			expect(chunks).toEqual([{ type: "reasoning", text: "  content with spaces  " }])
-		})
+describe("cancelRequest", () => {
+	it("aborts the request in flight", async () => {
+		const handler = new TestProvider()
+		mocks.create.mockImplementationOnce(
+			(_body, { signal }) =>
+				new Promise((_resolve, reject) => signal.addEventListener("abort", () => reject(new Error("aborted")))),
+		)
+		const pending = handler.completePrompt("p")
+		handler.cancelRequest()
+		await expect(pending).rejects.toThrow("aborted")
 	})
 
-	describe("Basic functionality", () => {
-		it("should create stream with correct parameters", async () => {
-			mockCreate.mockImplementationOnce(() => {
-				return {
-					[Symbol.asyncIterator]: () => ({
-						async next() {
-							return { done: true }
-						},
-					}),
-				}
-			})
-
-			const systemPrompt = "Test system prompt"
-			const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Test message" }]
-
-			const messageGenerator = handler.createMessage(systemPrompt, messages)
-			await messageGenerator.next()
-
-			expect(mockCreate).toHaveBeenCalledWith(
-				expect.objectContaining({
-					model: "test-model",
-					messages: expect.arrayContaining([{ role: "system", content: systemPrompt }]),
-					stream: true,
-					stream_options: { include_usage: true },
-				}),
-				expect.objectContaining({
-					signal: expect.any(AbortSignal),
-				}),
-			)
-		})
-
-		it("should yield usage data from stream", async () => {
-			mockCreate.mockImplementationOnce(() => {
-				return {
-					[Symbol.asyncIterator]: () => ({
-						next: vi
-							.fn()
-							.mockResolvedValueOnce({
-								done: false,
-								value: {
-									choices: [{ delta: {} }],
-									usage: { prompt_tokens: 100, completion_tokens: 50 },
-								},
-							})
-							.mockResolvedValueOnce({ done: true }),
-					}),
-				}
-			})
-
-			const stream = handler.createMessage("system prompt", [])
-			const firstChunk = await stream.next()
-
-			expect(firstChunk.done).toBe(false)
-			expect(firstChunk.value).toMatchObject({ type: "usage", inputTokens: 100, outputTokens: 50 })
-		})
-	})
-
-	describe("Tool call handling", () => {
-		it("should yield finish_reason chunk when finish_reason is tool_calls (AP-2)", async () => {
-			mockCreate.mockImplementationOnce(() => {
-				return {
-					[Symbol.asyncIterator]: () => ({
-						next: vi
-							.fn()
-							.mockResolvedValueOnce({
-								done: false,
-								value: {
-									choices: [
-										{
-											delta: {
-												tool_calls: [
-													{
-														index: 0,
-														id: "call_123",
-														function: { name: "test_tool", arguments: '{"arg":' },
-													},
-												],
-											},
-										},
-									],
-								},
-							})
-							.mockResolvedValueOnce({
-								done: false,
-								value: {
-									choices: [
-										{
-											delta: {
-												tool_calls: [
-													{
-														index: 0,
-														function: { arguments: '"value"}' },
-													},
-												],
-											},
-										},
-									],
-								},
-							})
-							.mockResolvedValueOnce({
-								done: false,
-								value: {
-									choices: [
-										{
-											delta: {},
-											finish_reason: "tool_calls",
-										},
-									],
-								},
-							})
-							.mockResolvedValueOnce({ done: true }),
-					}),
-				}
-			})
-
-			const stream = handler.createMessage("system prompt", [])
-			const chunks = []
-			for await (const chunk of stream) {
-				chunks.push(chunk)
-			}
-
-			// AP-2: base provider now yields finish_reason chunks instead of tool_call_end
-			const partialChunks = chunks.filter((chunk) => chunk.type === "tool_call_partial")
-			const finishReasonChunks = chunks.filter((chunk) => chunk.type === "finish_reason")
-
-			expect(partialChunks).toHaveLength(2)
-			expect(finishReasonChunks).toHaveLength(1)
-			expect(finishReasonChunks[0]).toEqual({ type: "finish_reason", finishReason: "tool_calls" })
-		})
-
-		it("should yield finish_reason chunk for multiple parallel tool calls (AP-2)", async () => {
-			mockCreate.mockImplementationOnce(() => {
-				return {
-					[Symbol.asyncIterator]: () => ({
-						next: vi
-							.fn()
-							.mockResolvedValueOnce({
-								done: false,
-								value: {
-									choices: [
-										{
-											delta: {
-												tool_calls: [
-													{
-														index: 0,
-														id: "call_001",
-														function: { name: "tool_a", arguments: "{}" },
-													},
-													{
-														index: 1,
-														id: "call_002",
-														function: { name: "tool_b", arguments: "{}" },
-													},
-												],
-											},
-										},
-									],
-								},
-							})
-							.mockResolvedValueOnce({
-								done: false,
-								value: {
-									choices: [
-										{
-											delta: {},
-											finish_reason: "tool_calls",
-										},
-									],
-								},
-							})
-							.mockResolvedValueOnce({ done: true }),
-					}),
-				}
-			})
-
-			const stream = handler.createMessage("system prompt", [])
-			const chunks = []
-			for await (const chunk of stream) {
-				chunks.push(chunk)
-			}
-
-			// AP-2: should yield a single finish_reason chunk, not individual tool_call_end events
-			const finishReasonChunks = chunks.filter((chunk) => chunk.type === "finish_reason")
-			expect(finishReasonChunks).toHaveLength(1)
-			expect(finishReasonChunks[0]).toEqual({ type: "finish_reason", finishReason: "tool_calls" })
-		})
-
-		it("should yield finish_reason chunk when server returns 'stop' after tool_calls deltas (AP-2)", async () => {
-			mockCreate.mockImplementationOnce(() => {
-				return {
-					[Symbol.asyncIterator]: () => ({
-						next: vi
-							.fn()
-							.mockResolvedValueOnce({
-								done: false,
-								value: {
-									choices: [
-										{
-											delta: {
-												tool_calls: [
-													{
-														index: 0,
-														id: "call_stop_ap2",
-														function: { name: "test_tool", arguments: '{"arg":' },
-													},
-												],
-											},
-										},
-									],
-								},
-							})
-							.mockResolvedValueOnce({
-								done: false,
-								value: {
-									choices: [
-										{
-											delta: {
-												tool_calls: [
-													{
-														index: 0,
-														function: { arguments: '"value"}' },
-													},
-												],
-											},
-										},
-									],
-								},
-							})
-							.mockResolvedValueOnce({
-								done: false,
-								value: {
-									choices: [
-										{
-											delta: {},
-											finish_reason: "stop",
-										},
-									],
-								},
-							})
-							.mockResolvedValueOnce({ done: true }),
-					}),
-				}
-			})
-
-			const stream = handler.createMessage("system prompt", [])
-			const chunks = []
-			for await (const chunk of stream) {
-				chunks.push(chunk)
-			}
-
-			// AP-2: Even with finish_reason "stop" (not "tool_calls"), the provider
-			// must yield a finish_reason chunk so TaskStreamProcessor can finalize
-			const partialChunks = chunks.filter((chunk) => chunk.type === "tool_call_partial")
-			const finishReasonChunks = chunks.filter((chunk) => chunk.type === "finish_reason")
-
-			expect(partialChunks).toHaveLength(2)
-			expect(finishReasonChunks).toHaveLength(1)
-			expect(finishReasonChunks[0]).toEqual({ type: "finish_reason", finishReason: "stop" })
-		})
-
-		it("should NOT yield finish_reason chunk when finish_reason is null", async () => {
-			mockCreate.mockImplementationOnce(() => {
-				return {
-					[Symbol.asyncIterator]: () => ({
-						next: vi
-							.fn()
-							.mockResolvedValueOnce({
-								done: false,
-								value: {
-									choices: [
-										{
-											delta: { content: "Some text" },
-											finish_reason: null,
-										},
-									],
-								},
-							})
-							.mockResolvedValueOnce({ done: true }),
-					}),
-				}
-			})
-
-			const stream = handler.createMessage("system prompt", [])
-			const chunks = []
-			for await (const chunk of stream) {
-				chunks.push(chunk)
-			}
-
-			const finishReasonChunks = chunks.filter((chunk) => chunk.type === "finish_reason")
-			expect(finishReasonChunks).toHaveLength(0)
-		})
-	})
-
-	describe("abort / cancelRequest", () => {
-		it("should pass an AbortSignal as the second argument to chat.completions.create", async () => {
-			mockCreate.mockImplementationOnce(() => ({
-				[Symbol.asyncIterator]: () => ({
-					next: vi.fn().mockResolvedValueOnce({ done: true }),
-				}),
-			}))
-
-			const messageGenerator = handler.createMessage("system prompt", [])
-			await messageGenerator.next()
-
-			expect(mockCreate).toHaveBeenCalledTimes(1)
-			const secondArg = mockCreate.mock.calls[0][1]
-			expect(secondArg).toBeDefined()
-			expect(secondArg.signal).toBeInstanceOf(AbortSignal)
-		})
-
-		it("should abort the signal when cancelRequest() is called", async () => {
-			// Mock a stream that yields one chunk then blocks
-			mockCreate.mockImplementationOnce(() => ({
-				[Symbol.asyncIterator]: () => ({
-					next: vi
-						.fn()
-						.mockResolvedValueOnce({
-							done: false,
-							value: { choices: [{ delta: { content: "chunk1" } }] },
-						})
-						// This next call would normally resolve after a long time
-						.mockImplementationOnce(
-							() => new Promise(() => {}), // never resolves
-						),
-				}),
-			}))
-
-			const stream = handler.createMessage("system prompt", [])
-			const iterator = stream[Symbol.asyncIterator]()
-
-			// Get first chunk
-			const first = await iterator.next()
-			expect(first.done).toBe(false)
-
-			// Now cancel
-			handler.cancelRequest()
-
-			// The abort controller should be cleared
-			expect((handler as any).abortController).toBeUndefined()
-		})
-
-		it("should create a fresh AbortController per request", async () => {
-			mockCreate.mockImplementation(() => ({
-				[Symbol.asyncIterator]: () => ({
-					next: vi.fn().mockResolvedValueOnce({ done: true }),
-				}),
-			}))
-
-			// First request
-			const stream1 = handler.createMessage("system prompt", [])
-			await stream1.next()
-			const signal1 = mockCreate.mock.calls[0][1].signal as AbortSignal
-
-			// Second request
-			const stream2 = handler.createMessage("system prompt", [])
-			await stream2.next()
-			const signal2 = mockCreate.mock.calls[1][1].signal as AbortSignal
-
-			// Signals should be different instances
-			expect(signal1).not.toBe(signal2)
-		})
-
-		it("should not destroy the client when cancelRequest(false)", async () => {
-			mockCreate.mockImplementationOnce(() => ({
-				choices: [{ message: { content: "test" } }],
-			}))
-
-			await handler.completePrompt("test")
-			expect((handler as any).client).toBeDefined()
-
-			handler.cancelRequest(false)
-			expect((handler as any).client).toBeDefined()
-		})
-
-		it("should destroy the client when cancelRequest(true)", async () => {
-			mockCreate.mockImplementationOnce(() => ({
-				choices: [{ message: { content: "test" } }],
-			}))
-
-			await handler.completePrompt("test")
-			expect((handler as any).client).toBeDefined()
-
-			handler.cancelRequest(true)
-			// Client should be null after destroy
-			expect((handler as any).client).toBeNull()
-		})
-
-		it("should pass signal in completePrompt too", async () => {
-			mockCreate.mockResolvedValueOnce({
-				choices: [{ message: { content: "test response" } }],
-			})
-
-			await handler.completePrompt("test prompt")
-
-			expect(mockCreate).toHaveBeenCalledTimes(1)
-			const secondArg = mockCreate.mock.calls[0][1]
-			expect(secondArg).toBeDefined()
-			expect(secondArg.signal).toBeInstanceOf(AbortSignal)
-		})
+	it.each([
+		[false, 1],
+		[true, 2],
+	])("with destroyClient %s has built %i client(s) after the next request", async (destroyClient, clients) => {
+		const handler = new TestProvider()
+		handler.cancelRequest(destroyClient)
+		await handler.completePrompt("p")
+		expect(OpenAI).toHaveBeenCalledTimes(clients)
 	})
 })
