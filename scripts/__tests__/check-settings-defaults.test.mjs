@@ -11,6 +11,7 @@ const settingsDefaults = {
 \tkeyA: true,
 \tkeyB: 100,
 \tkeyC: "default",
+\tcurrentApiConfigName: "default",
 } satisfies Shape
 export const SETTINGS_DEFAULTS = deepFreeze(settingsDefaults)
 `
@@ -30,7 +31,7 @@ test("parses the table keys", () => {
 		assert.ok(keys.has("keyA"))
 		assert.ok(keys.has("keyB"))
 		assert.ok(keys.has("keyC"))
-		assert.equal(keys.size, 3)
+		assert.equal(keys.size, 4)
 	} finally {
 		rmSync(root, { recursive: true, force: true })
 	}
@@ -104,6 +105,31 @@ test("scans the webview-ui workspace too", () => {
 		assert.equal(violations.length, 1)
 		assert.equal(violations[0].key, "keyA")
 		assert.match(violations[0].file, /webview-ui\/src\/components\/a\.ts$/)
+	} finally {
+		rmSync(root, { recursive: true, force: true })
+	}
+})
+
+// An allowlisted exception of the real ALLOWED table.
+const TOOLBAR = "webview-ui/src/components/chat/ComposerToolbar.tsx"
+const TOOLBAR_EXCEPTION = '\t\t\tdisplayName: currentApiConfigName || "",\n'
+
+function writeToolbar(root, body) {
+	mkdirSync(join(root, "webview-ui/src/components/chat"), { recursive: true })
+	writeFileSync(join(root, TOOLBAR), body)
+}
+
+test("an allowlisted exception survives edits above it, a second occurrence in the file is flagged", () => {
+	const root = makeTree()
+	try {
+		writeToolbar(root, "// added\n// lines\n" + TOOLBAR_EXCEPTION)
+		assert.deepEqual(checkSettingsDefaults({ root }).violations, [])
+
+		writeToolbar(root, TOOLBAR_EXCEPTION + "\n" + TOOLBAR_EXCEPTION)
+		const { violations } = checkSettingsDefaults({ root })
+		assert.equal(violations.length, 1)
+		assert.equal(violations[0].line, 3)
+		assert.equal(violations[0].expression, 'currentApiConfigName || ""')
 	} finally {
 		rmSync(root, { recursive: true, force: true })
 	}
