@@ -1,1208 +1,311 @@
-vi.mock("../utils/timeout-config", () => ({
-	getApiRequestTimeout: vi.fn().mockReturnValue(600_000),
-}))
+// cd src && ./node_modules/.bin/vitest run api/providers/__tests__/lite-llm.spec.ts
+// Stream reading is pinned for the LiteLLM loop by chat-completions-characterization and the
+// usage field names by the completion-usage spec. This spec covers what LiteLLMHandler adds:
+// prompt cache marks, the max tokens field per model, temperature, the Gemini thought
+// signature, tool id normalization, the price with the fetched model info and its errors.
 
-import { Anthropic } from "@anthropic-ai/sdk"
+const mocks = vi.hoisted(() => ({ create: vi.fn() }))
 
-import { LiteLLMHandler } from "../lite-llm"
-import { ApiHandlerOptions } from "@tumble-code/core/browser"
-import { litellmDefaultModelId, litellmDefaultModelInfo } from "@tumble-code/types"
-
-// Mock vscode first to avoid import errors
-vi.mock("vscode", () => ({}))
-
-// Mock OpenAI
-const mockCreate = vi.hoisted(() => vi.fn())
-
+vi.mock("../utils/timeout-config", () => ({ getApiRequestTimeout: vi.fn().mockReturnValue(600_000) }))
 vi.mock("openai", async () => {
 	const { openAiModuleMock } = await import("./provider-test-helpers")
-	return openAiModuleMock(mockCreate)
+	return openAiModuleMock(mocks.create)
+})
+vi.mock("../fetchers/modelCache", async () => {
+	const { litellmDefaultModelInfo } = await import("@tumble-code/types")
+	// Every id the tests ask for is listed.
+	const special: Record<string, unknown> = {
+		// What the LiteLLM fetcher builds for DeepSeek: no cache write price.
+		"deepseek-chat": {
+			maxTokens: 8192,
+			contextWindow: 128_000,
+			supportsPromptCache: true,
+			inputPrice: 0.27,
+			outputPrice: 1.1,
+			cacheReadsPrice: 0.07,
+		},
+	}
+	// An id containing "no-max" has no max tokens in its info.
+	const models = new Proxy(special, {
+		get: (target, id: string) =>
+			target[id] ?? { ...litellmDefaultModelInfo, maxTokens: id.includes("no-max") ? undefined : 8192 },
+	})
+	return { getModels: vi.fn(async () => models), getModelsFromCache: vi.fn(() => undefined) }
 })
 
-// Mock model fetching
-vi.mock("../fetchers/modelCache", () => ({
-	getModels: vi.fn().mockImplementation(() => {
-		return Promise.resolve({
-			[litellmDefaultModelId]: litellmDefaultModelInfo,
-			"gpt-5": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			gpt5: { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			"GPT-5": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			"gpt-5-turbo": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			"gpt5-preview": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			"gpt-5o": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			"gpt-5.1": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			"gpt-5-mini": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			"gpt-4": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			"claude-3-opus": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			"llama-3": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			"gpt-4-turbo": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			// Gemini models for thought signature injection tests
-			"gemini-3-pro": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			"gemini-3-flash": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			"gemini-2.5-pro": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			"google/gemini-3-pro": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			"vertex_ai/gemini-3-pro": { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			// What the LiteLLM model fetcher builds for DeepSeek: LiteLLM lists no
-			// cache_creation_input_token_cost for it, so there is no write price.
-			"deepseek-chat": {
-				maxTokens: 8192,
-				contextWindow: 128_000,
-				supportsImages: false,
-				supportsPromptCache: true,
-				inputPrice: 0.27,
-				outputPrice: 1.1,
-				cacheReadsPrice: 0.07,
+import OpenAI from "openai"
+import { Anthropic } from "@anthropic-ai/sdk"
+
+import type { ApiHandlerOptions } from "@tumble-code/core/browser"
+import { litellmDefaultModelId } from "@tumble-code/types"
+
+import { LiteLLMHandler } from "../lite-llm"
+import { getModels } from "../fetchers/modelCache"
+import { sanitizeOpenAiCallId } from "../../../utils/tool-id"
+
+function handlerFor(options: Partial<ApiHandlerOptions> = {}) {
+	return new LiteLLMHandler({
+		litellmApiKey: "test-key",
+		litellmBaseUrl: "http://litellm.local:4000",
+		litellmModelId: litellmDefaultModelId,
+		...options,
+	})
+}
+
+function streamOf(chunks: unknown[]) {
+	return {
+		withResponse: vi.fn().mockResolvedValue({
+			data: {
+				async *[Symbol.asyncIterator]() {
+					yield* chunks
+				},
 			},
+		}),
+	}
+}
+
+async function drain(stream: AsyncIterable<any>) {
+	const chunks: any[] = []
+	for await (const chunk of stream) {
+		chunks.push(chunk)
+	}
+	return chunks
+}
+
+async function requestOf(
+	options: Partial<ApiHandlerOptions>,
+	messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Hello" }],
+	metadata?: Parameters<LiteLLMHandler["createMessage"]>[2],
+) {
+	await drain(handlerFor(options).createMessage("System", messages, metadata))
+	const [body, requestOptions] = mocks.create.mock.calls.at(-1)!
+	return { body, requestOptions }
+}
+
+beforeEach(() => {
+	vi.clearAllMocks()
+	mocks.create.mockImplementation((body: { stream?: boolean }) =>
+		body.stream ? streamOf([]) : Promise.resolve({ choices: [{ message: { content: "answer" } }] }),
+	)
+})
+
+describe("client and model list", () => {
+	it.each([
+		["the configured server and key", {}, "http://litellm.local:4000", "test-key"],
+		[
+			"the local default server and a dummy key",
+			{ litellmBaseUrl: "", litellmApiKey: "" },
+			"http://localhost:4000",
+			"dummy-key",
+		],
+	])("uses %s", async (_label, options, baseURL, apiKey) => {
+		await drain(handlerFor(options).createMessage("s", []))
+		expect(vi.mocked(OpenAI).mock.calls.at(-1)![0]).toMatchObject({ baseURL, apiKey })
+		expect(getModels).toHaveBeenCalledWith(expect.objectContaining({ provider: "litellm" }))
+	})
+})
+
+describe("createMessage request", () => {
+	it("streams with usage, the tools and the task signal, without cache marks by default", async () => {
+		const signal = new AbortController().signal
+		const tools = [{ type: "function" as const, function: { name: "read_file", parameters: {} } }]
+		const { body, requestOptions } = await requestOf({}, undefined, {
+			taskId: "t",
+			signal,
+			tools,
+			tool_choice: "auto",
 		})
-	}),
-	getModelsFromCache: vi.fn().mockReturnValue(undefined),
-}))
-
-describe("LiteLLMHandler", () => {
-	let handler: LiteLLMHandler
-	let mockOptions: ApiHandlerOptions
-
-	beforeEach(() => {
-		vi.clearAllMocks()
-		mockOptions = {
-			litellmApiKey: "test-key",
-			litellmBaseUrl: "http://localhost:4000",
-			litellmModelId: litellmDefaultModelId,
-		}
-		handler = new LiteLLMHandler(mockOptions)
+		expect(body).toMatchObject({
+			model: litellmDefaultModelId,
+			messages: [
+				{ role: "system", content: "System" },
+				{ role: "user", content: "Hello" },
+			],
+			stream: true,
+			stream_options: { include_usage: true },
+			tool_choice: "auto",
+			max_tokens: 8192,
+			temperature: 0,
+		})
+		expect(body.tools.map((tool: any) => tool.function.name)).toEqual(["read_file"])
+		expect(requestOptions).toEqual({ signal })
 	})
 
-	describe("prompt caching", () => {
-		it("should add cache control headers when litellmUsePromptCache is enabled", async () => {
-			const optionsWithCache: ApiHandlerOptions = {
-				...mockOptions,
-				litellmUsePromptCache: true,
-			}
-			handler = new LiteLLMHandler(optionsWithCache)
-
-			const systemPrompt = "You are a helpful assistant"
-			const messages: Anthropic.Messages.MessageParam[] = [
-				{ role: "user", content: "Hello" },
-				{ role: "assistant", content: "Hi there!" },
-				{ role: "user", content: "How are you?" },
-			]
-
-			// Mock the stream response
-			const mockStream = {
-				async *[Symbol.asyncIterator]() {
-					yield {
-						choices: [{ delta: { content: "I'm doing well!" } }],
-						usage: {
-							prompt_tokens: 100,
-							completion_tokens: 50,
-							cache_creation_input_tokens: 20,
-							cache_read_input_tokens: 30,
-						},
-					}
-				},
-			}
-
-			mockCreate.mockReturnValue({
-				withResponse: vi.fn().mockResolvedValue({ data: mockStream }),
-			})
-
-			const generator = handler.createMessage(systemPrompt, messages)
-			const results = []
-			for await (const chunk of generator) {
-				results.push(chunk)
-			}
-
-			// Verify that create was called with cache control headers
-			const createCall = mockCreate.mock.calls[0][0]
-
-			// Check system message has cache control in the proper format
-			expect(createCall.messages[0]).toMatchObject({
-				role: "system",
-				content: [
-					{
-						type: "text",
-						text: systemPrompt,
-						cache_control: { type: "ephemeral" },
-					},
-				],
-			})
-
-			// Check that the last two user messages have cache control
-			const userMessageIndices = createCall.messages
-				.map((msg: any, idx: number) => (msg.role === "user" ? idx : -1))
-				.filter((idx: number) => idx !== -1)
-
-			const lastUserIdx = userMessageIndices[userMessageIndices.length - 1]
-			const secondLastUserIdx = userMessageIndices[userMessageIndices.length - 2]
-
-			// Check last user message has proper structure with cache control
-			expect(createCall.messages[lastUserIdx]).toMatchObject({
+	it("marks the system prompt and the last two user messages when prompt caching is on", async () => {
+		const ephemeral = { type: "ephemeral" }
+		const { body } = await requestOf({ litellmUsePromptCache: true }, [
+			{ role: "user", content: "first" },
+			{ role: "assistant", content: "answer" },
+			{
 				role: "user",
 				content: [
-					{
-						type: "text",
-						text: "How are you?",
-						cache_control: { type: "ephemeral" },
-					},
+					{ type: "text", text: "second" },
+					{ type: "text", text: "details" },
 				],
-			})
-
-			// Check second last user message (first user message in this case)
-			if (secondLastUserIdx !== -1) {
-				expect(createCall.messages[secondLastUserIdx]).toMatchObject({
-					role: "user",
-					content: [
-						{
-							type: "text",
-							text: "Hello",
-							cache_control: { type: "ephemeral" },
-						},
-					],
-				})
-			}
-
-			// Verify usage includes cache tokens
-			const usageChunk = results.find((chunk) => chunk.type === "usage")
-			expect(usageChunk).toMatchObject({
-				type: "usage",
-				inputTokens: 100,
-				outputTokens: 50,
-				cacheWriteTokens: 20,
-				cacheReadTokens: 30,
-			})
-		})
+			},
+			{ role: "assistant", content: "answer" },
+			{ role: "user", content: "third" },
+		])
+		expect(body.messages).toEqual([
+			{ role: "system", content: [{ type: "text", text: "System", cache_control: ephemeral }] },
+			{ role: "user", content: "first" },
+			{ role: "assistant", content: "answer" },
+			{
+				role: "user",
+				content: [
+					{ type: "text", text: "second" },
+					{ type: "text", text: "details", cache_control: ephemeral },
+				],
+			},
+			{ role: "assistant", content: "answer" },
+			{ role: "user", content: [{ type: "text", text: "third", cache_control: ephemeral }] },
+		])
 	})
 
-	describe("usage and cost (DEF-C40)", () => {
-		async function usageChunkFor(modelId: string, usage: Record<string, unknown>) {
-			handler = new LiteLLMHandler({ ...mockOptions, litellmModelId: modelId })
-			mockCreate.mockReturnValue({
-				withResponse: vi.fn().mockResolvedValue({
-					data: {
-						async *[Symbol.asyncIterator]() {
-							yield { choices: [{ delta: { content: "ok" } }], usage }
-						},
-					},
-				}),
-			})
-			const results: any[] = []
-			for await (const chunk of handler.createMessage("system", [{ role: "user", content: "hi" }])) {
-				results.push(chunk)
-			}
-			return results.find((chunk) => chunk.type === "usage")
+	// GPT-5 rejects the deprecated max_tokens; gpt-50 and the like are not GPT-5.
+	it.each([
+		["gpt-5", "max_completion_tokens"],
+		["gpt5", "max_completion_tokens"],
+		["GPT-5", "max_completion_tokens"],
+		["gpt-5-turbo", "max_completion_tokens"],
+		["gpt5-preview", "max_completion_tokens"],
+		["gpt-5.1", "max_completion_tokens"],
+		["openai/gpt-5-mini", "max_completion_tokens"],
+		["gpt-50", "max_tokens"],
+		["gpt-4", "max_tokens"],
+	])("%s gets its limit as %s on both request kinds", async (litellmModelId, field) => {
+		const { body } = await requestOf({ litellmModelId })
+		await handlerFor({ litellmModelId }).completePrompt("p")
+		const completion = mocks.create.mock.calls.at(-1)![0]
+		for (const request of [body, completion]) {
+			expect(request[field]).toBe(8192)
+			expect(Object.keys(request).filter((key) => key.startsWith("max_"))).toEqual([field])
 		}
-
-		// LiteLLM's `Usage.__init__` copies DeepSeek's `prompt_cache_hit_tokens` into
-		// `prompt_tokens_details.cached_tokens` and then `setattr`s every raw field,
-		// so `prompt_cache_miss_tokens` reaches the client too (LiteLLM's own DeepSeek
-		// test asserts prompt_tokens == miss + hit). A miss is ordinary input.
-		const deepSeekViaLiteLLM = {
-			prompt_tokens: 1000,
-			completion_tokens: 50,
-			total_tokens: 1050,
-			prompt_tokens_details: { cached_tokens: 800 },
-			prompt_cache_hit_tokens: 800,
-			prompt_cache_miss_tokens: 200,
-		}
-
-		it("does not report DeepSeek cache misses as cache writes", async () => {
-			const chunk = await usageChunkFor("deepseek-chat", deepSeekViaLiteLLM)
-
-			expect(chunk.cacheReadTokens).toBe(800)
-			expect(chunk.cacheWriteTokens).toBeUndefined()
-		})
-
-		it("prices DeepSeek cache misses at the input price, not as free cache writes", async () => {
-			const chunk = await usageChunkFor("deepseek-chat", deepSeekViaLiteLLM)
-
-			// 200 misses at 0.27, 800 hits at 0.07, 50 output at 1.1 (per million).
-			const expected = (200 * 0.27 + 800 * 0.07 + 50 * 1.1) / 1_000_000
-			expect(chunk.totalCost).toBeCloseTo(expected, 12)
-		})
-
-		it("does not price DeepSeek cache misses at a cache write price", async () => {
-			// The default model info carries Claude's prices, including a write price.
-			const chunk = await usageChunkFor(litellmDefaultModelId, deepSeekViaLiteLLM)
-
-			const expected = (200 * 3.0 + 800 * 0.3 + 50 * 15.0) / 1_000_000
-			expect(chunk.totalCost).toBeCloseTo(expected, 12)
-		})
-
-		it("reads cache writes that LiteLLM reports only under prompt_tokens_details", async () => {
-			// LiteLLM's canonical name is prompt_tokens_details.cache_write_tokens,
-			// mirrored as cache_creation_tokens.
-			const chunk = await usageChunkFor(litellmDefaultModelId, {
-				prompt_tokens: 100,
-				completion_tokens: 50,
-				prompt_tokens_details: { cached_tokens: 30, cache_write_tokens: 20, cache_creation_tokens: 20 },
-			})
-
-			expect(chunk).toMatchObject({ cacheWriteTokens: 20, cacheReadTokens: 30 })
-			const expected = (50 * 3.0 + 20 * 3.75 + 30 * 0.3 + 50 * 15.0) / 1_000_000
-			expect(chunk.totalCost).toBeCloseTo(expected, 12)
-		})
-
-		it("still reads LiteLLM's Anthropic-style top-level cache fields", async () => {
-			const chunk = await usageChunkFor(litellmDefaultModelId, {
-				prompt_tokens: 100,
-				completion_tokens: 50,
-				prompt_tokens_details: { cached_tokens: 30, cache_write_tokens: 20 },
-				cache_creation_input_tokens: 20,
-				cache_read_input_tokens: 30,
-			})
-
-			expect(chunk).toMatchObject({ cacheWriteTokens: 20, cacheReadTokens: 30 })
-		})
 	})
 
-	describe("GPT-5 model handling", () => {
-		it("should use max_completion_tokens instead of max_tokens for GPT-5 models", async () => {
-			const optionsWithGPT5: ApiHandlerOptions = {
-				...mockOptions,
-				litellmModelId: "gpt-5",
-			}
-			handler = new LiteLLMHandler(optionsWithGPT5)
+	it.each(["gpt-5-no-max", "llama-no-max"])(
+		"sends no limit when the model info has none (%s)",
+		async (litellmModelId) => {
+			const { body } = await requestOf({ litellmModelId })
+			expect(Object.keys(body).filter((key) => key.startsWith("max_"))).toEqual([])
+		},
+	)
 
-			const systemPrompt = "You are a helpful assistant"
-			const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Hello" }]
-
-			// Mock the stream response
-			const mockStream = {
-				async *[Symbol.asyncIterator]() {
-					yield {
-						choices: [{ delta: { content: "Hello!" } }],
-						usage: {
-							prompt_tokens: 10,
-							completion_tokens: 5,
-						},
-					}
-				},
-			}
-
-			mockCreate.mockReturnValue({
-				withResponse: vi.fn().mockResolvedValue({ data: mockStream }),
-			})
-
-			const generator = handler.createMessage(systemPrompt, messages)
-			const results = []
-			for await (const chunk of generator) {
-				results.push(chunk)
-			}
-
-			// Verify that create was called with max_completion_tokens instead of max_tokens
-			const createCall = mockCreate.mock.calls[0][0]
-
-			// Should have max_completion_tokens, not max_tokens
-			expect(createCall.max_completion_tokens).toBeDefined()
-			expect(createCall.max_tokens).toBeUndefined()
-		})
-
-		it("should use max_completion_tokens for various GPT-5 model variations", async () => {
-			const gpt5Variations = [
-				"gpt-5",
-				"gpt5",
-				"GPT-5",
-				"gpt-5-turbo",
-				"gpt5-preview",
-				"gpt-5o",
-				"gpt-5.1",
-				"gpt-5-mini",
-			]
-
-			for (const modelId of gpt5Variations) {
-				vi.clearAllMocks()
-
-				const optionsWithGPT5: ApiHandlerOptions = {
-					...mockOptions,
-					litellmModelId: modelId,
-				}
-				handler = new LiteLLMHandler(optionsWithGPT5)
-
-				const systemPrompt = "You are a helpful assistant"
-				const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Test" }]
-
-				// Mock the stream response
-				const mockStream = {
-					async *[Symbol.asyncIterator]() {
-						yield {
-							choices: [{ delta: { content: "Response" } }],
-							usage: {
-								prompt_tokens: 10,
-								completion_tokens: 5,
-							},
-						}
-					},
-				}
-
-				mockCreate.mockReturnValue({
-					withResponse: vi.fn().mockResolvedValue({ data: mockStream }),
-				})
-
-				const generator = handler.createMessage(systemPrompt, messages)
-				for await (const _chunk of generator) {
-					// Consume the generator
-				}
-
-				// Verify that create was called with max_completion_tokens for this model variation
-				const createCall = mockCreate.mock.calls[0][0]
-
-				expect(createCall.max_completion_tokens).toBeDefined()
-				expect(createCall.max_tokens).toBeUndefined()
-			}
-		})
-
-		it("should still use max_tokens for non-GPT-5 models", async () => {
-			const nonGPT5Models = ["gpt-4", "claude-3-opus", "llama-3", "gpt-4-turbo"]
-
-			for (const modelId of nonGPT5Models) {
-				vi.clearAllMocks()
-
-				const options: ApiHandlerOptions = {
-					...mockOptions,
-					litellmModelId: modelId,
-				}
-				handler = new LiteLLMHandler(options)
-
-				const systemPrompt = "You are a helpful assistant"
-				const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Test" }]
-
-				// Mock the stream response
-				const mockStream = {
-					async *[Symbol.asyncIterator]() {
-						yield {
-							choices: [{ delta: { content: "Response" } }],
-							usage: {
-								prompt_tokens: 10,
-								completion_tokens: 5,
-							},
-						}
-					},
-				}
-
-				mockCreate.mockReturnValue({
-					withResponse: vi.fn().mockResolvedValue({ data: mockStream }),
-				})
-
-				const generator = handler.createMessage(systemPrompt, messages)
-				for await (const _chunk of generator) {
-					// Consume the generator
-				}
-
-				// Verify that create was called with max_tokens for non-GPT-5 models
-				const createCall = mockCreate.mock.calls[0][0]
-
-				expect(createCall.max_tokens).toBeDefined()
-				expect(createCall.max_completion_tokens).toBeUndefined()
-			}
-		})
-
-		it("should use max_completion_tokens in completePrompt for GPT-5 models", async () => {
-			const optionsWithGPT5: ApiHandlerOptions = {
-				...mockOptions,
-				litellmModelId: "gpt-5",
-			}
-			handler = new LiteLLMHandler(optionsWithGPT5)
-
-			mockCreate.mockResolvedValue({
-				choices: [{ message: { content: "Test response" } }],
-			})
-
-			await handler.completePrompt("Test prompt")
-
-			// Verify that create was called with max_completion_tokens
-			const createCall = mockCreate.mock.calls[0][0]
-
-			expect(createCall.max_completion_tokens).toBeDefined()
-			expect(createCall.max_tokens).toBeUndefined()
-		})
-
-		it("should not set any max token fields when maxTokens is undefined (GPT-5 streaming)", async () => {
-			const optionsWithGPT5: ApiHandlerOptions = {
-				...mockOptions,
-				litellmModelId: "gpt-5",
-			}
-			handler = new LiteLLMHandler(optionsWithGPT5)
-
-			// Force fetchModel to return undefined maxTokens
-			vi.spyOn(handler as any, "fetchModel").mockResolvedValue({
-				id: "gpt-5",
-				info: { ...litellmDefaultModelInfo, maxTokens: undefined },
-			})
-
-			// Mock the stream response
-			const mockStream = {
-				async *[Symbol.asyncIterator]() {
-					yield {
-						choices: [{ delta: { content: "Hello!" } }],
-						usage: {
-							prompt_tokens: 10,
-							completion_tokens: 5,
-						},
-					}
-				},
-			}
-
-			mockCreate.mockReturnValue({
-				withResponse: vi.fn().mockResolvedValue({ data: mockStream }),
-			})
-
-			const generator = handler.createMessage("You are a helpful assistant", [
-				{ role: "user", content: "Hello" } as unknown as Anthropic.Messages.MessageParam,
-			])
-			for await (const _chunk of generator) {
-				// consume
-			}
-
-			// Should not include either token field
-			const createCall = mockCreate.mock.calls[0][0]
-			expect(createCall.max_tokens).toBeUndefined()
-			expect(createCall.max_completion_tokens).toBeUndefined()
-		})
-
-		it("should not set any max token fields when maxTokens is undefined (GPT-5 completePrompt)", async () => {
-			const optionsWithGPT5: ApiHandlerOptions = {
-				...mockOptions,
-				litellmModelId: "gpt-5",
-			}
-			handler = new LiteLLMHandler(optionsWithGPT5)
-
-			// Force fetchModel to return undefined maxTokens
-			vi.spyOn(handler as any, "fetchModel").mockResolvedValue({
-				id: "gpt-5",
-				info: { ...litellmDefaultModelInfo, maxTokens: undefined },
-			})
-
-			mockCreate.mockResolvedValue({
-				choices: [{ message: { content: "Ok" } }],
-			})
-
-			await handler.completePrompt("Test prompt")
-
-			const createCall = mockCreate.mock.calls[0][0]
-			expect(createCall.max_tokens).toBeUndefined()
-			expect(createCall.max_completion_tokens).toBeUndefined()
-		})
+	it.each([
+		["the user's temperature", "gpt-4", { modelTemperature: 0.7 }, 0.7],
+		["none to o3-mini", "openai/o3-mini", { modelTemperature: 0.7 }, undefined],
+	])("sends %s", async (_label, litellmModelId, options, temperature) => {
+		const { body } = await requestOf({ litellmModelId, ...options })
+		expect(body.temperature).toBe(temperature)
 	})
 
-	describe("Gemini thought signature injection", () => {
-		describe("isGeminiModel detection", () => {
-			// Gemini 2.5 and later validate thought signatures, under any LiteLLM prefix or model group name.
-			it.each([
-				["gemini-2.5-pro", true],
-				["gemini-3-pro-preview", true],
-				["gemini-3.8-flash", true],
-				["gemini-4-argon", true],
-				["gemini-10-ultra", true],
-				["gemini/gemini-4-argon", true],
-				["vertex_ai/gemini-4-argon", true],
-				["vertex/gemini-2.5-pro", true],
-				["openrouter/google/gemini-3.1-pro-preview", true],
-				["Gemini 3 Pro", true],
-				["google/gemini 2.5 pro", true],
-				["gemini-2.0-flash", false],
-				["gemini/gemini-1.5-pro", false],
-				["gemini-flash-latest", false],
-				["gemini/gemini-embedding-001", false],
-				["gemma-3-27b-it", false],
-				["notgemini-4", false],
-				["gpt-4", false],
-				["claude-3-opus", false],
-			])("%s -> %s", (modelId, expected) => {
-				const handler = new LiteLLMHandler(mockOptions)
-
-				expect((handler as any).isGeminiModel(modelId)).toBe(expected)
-			})
-		})
-
-		describe("injectThoughtSignatureForGemini", () => {
-			// Base64 encoded "skip_thought_signature_validator"
-			const dummySignature = Buffer.from("skip_thought_signature_validator").toString("base64")
-
-			it("should inject provider_specific_fields.thought_signature for assistant messages with tool_calls", () => {
-				const handler = new LiteLLMHandler(mockOptions)
-				const injectThoughtSignature = (handler as any).injectThoughtSignatureForGemini.bind(handler)
-
-				const messages = [
-					{ role: "user", content: "Hello" },
-					{
-						role: "assistant",
-						content: "",
-						tool_calls: [
-							{ id: "call_123", type: "function", function: { name: "test_tool", arguments: "{}" } },
-						],
-					},
-					{ role: "tool", tool_call_id: "call_123", content: "result" },
-				]
-
-				const result = injectThoughtSignature(messages)
-
-				// The first tool call should have provider_specific_fields.thought_signature injected
-				expect(result[1].tool_calls[0].provider_specific_fields).toBeDefined()
-				expect(result[1].tool_calls[0].provider_specific_fields.thought_signature).toBe(dummySignature)
-			})
-
-			it("should not inject if assistant message has no tool_calls", () => {
-				const handler = new LiteLLMHandler(mockOptions)
-				const injectThoughtSignature = (handler as any).injectThoughtSignatureForGemini.bind(handler)
-
-				const messages = [
-					{ role: "user", content: "Hello" },
-					{ role: "assistant", content: "Hi there!" },
-				]
-
-				const result = injectThoughtSignature(messages)
-
-				// No changes should be made
-				expect(result[1].tool_calls).toBeUndefined()
-			})
-
-			it("should always overwrite existing thought_signature", () => {
-				const handler = new LiteLLMHandler(mockOptions)
-				const injectThoughtSignature = (handler as any).injectThoughtSignatureForGemini.bind(handler)
-
-				const existingSignature = "existing_signature_base64"
-
-				const messages = [
-					{ role: "user", content: "Hello" },
-					{
-						role: "assistant",
-						content: "",
-						tool_calls: [
-							{
-								id: "call_123",
-								type: "function",
-								function: { name: "test_tool", arguments: "{}" },
-								provider_specific_fields: { thought_signature: existingSignature },
-							},
-						],
-					},
-				]
-
-				const result = injectThoughtSignature(messages)
-
-				// Should overwrite with dummy signature (always inject to ensure compatibility)
-				expect(result[1].tool_calls[0].provider_specific_fields.thought_signature).toBe(dummySignature)
-			})
-
-			it("should inject signature into ALL tool calls for parallel calls", () => {
-				const handler = new LiteLLMHandler(mockOptions)
-				const injectThoughtSignature = (handler as any).injectThoughtSignatureForGemini.bind(handler)
-
-				const messages = [
-					{ role: "user", content: "Hello" },
-					{
-						role: "assistant",
-						content: "",
-						tool_calls: [
-							{ id: "call_first", type: "function", function: { name: "tool1", arguments: "{}" } },
-							{ id: "call_second", type: "function", function: { name: "tool2", arguments: "{}" } },
-							{ id: "call_third", type: "function", function: { name: "tool3", arguments: "{}" } },
-						],
-					},
-				]
-
-				const result = injectThoughtSignature(messages)
-
-				// ALL tool calls should have the signature
-				expect(result[1].tool_calls[0].provider_specific_fields.thought_signature).toBe(dummySignature)
-				expect(result[1].tool_calls[1].provider_specific_fields.thought_signature).toBe(dummySignature)
-				expect(result[1].tool_calls[2].provider_specific_fields.thought_signature).toBe(dummySignature)
-			})
-
-			it("should preserve existing provider_specific_fields when adding thought_signature", () => {
-				const handler = new LiteLLMHandler(mockOptions)
-				const injectThoughtSignature = (handler as any).injectThoughtSignatureForGemini.bind(handler)
-
-				const messages = [
-					{ role: "user", content: "Hello" },
-					{
-						role: "assistant",
-						content: "",
-						tool_calls: [
-							{
-								id: "call_123",
-								type: "function",
-								function: { name: "test_tool", arguments: "{}" },
-								provider_specific_fields: { other_field: "value" },
-							},
-						],
-					},
-				]
-
-				const result = injectThoughtSignature(messages)
-
-				// Should have both existing field and new thought_signature
-				expect(result[1].tool_calls[0].provider_specific_fields.other_field).toBe("value")
-				expect(result[1].tool_calls[0].provider_specific_fields.thought_signature).toBe(dummySignature)
-			})
-		})
-
-		describe("createMessage integration with Gemini models", () => {
-			// Base64 encoded "skip_thought_signature_validator"
-			const dummySignature = Buffer.from("skip_thought_signature_validator").toString("base64")
-
-			it("should inject thought signatures for Gemini 3 models with native tools", async () => {
-				const optionsWithGemini: ApiHandlerOptions = {
-					...mockOptions,
-					litellmModelId: "gemini-3-pro",
-				}
-				handler = new LiteLLMHandler(optionsWithGemini)
-
-				// Mock fetchModel to return a Gemini model
-				vi.spyOn(handler as any, "fetchModel").mockResolvedValue({
-					id: "gemini-3-pro",
-					info: { ...litellmDefaultModelInfo, maxTokens: 8192 },
-				})
-
-				const systemPrompt = "You are a helpful assistant"
-				// Simulate conversation history with a tool call from a previous model (Claude)
-				const messages: Anthropic.Messages.MessageParam[] = [
-					{ role: "user", content: "Hello" },
-					{
-						role: "assistant",
-						content: [
-							{ type: "text", text: "I'll help you with that." },
-							{ type: "tool_use", id: "toolu_123", name: "read_file", input: { path: "test.txt" } },
-						],
-					},
-					{
-						role: "user",
-						content: [{ type: "tool_result", tool_use_id: "toolu_123", content: "file contents" }],
-					},
-					{ role: "user", content: "Thanks!" },
-				]
-
-				// Mock the stream response
-				const mockStream = {
-					async *[Symbol.asyncIterator]() {
-						yield {
-							choices: [{ delta: { content: "You're welcome!" } }],
-							usage: {
-								prompt_tokens: 100,
-								completion_tokens: 20,
-							},
-						}
-					},
-				}
-
-				mockCreate.mockReturnValue({
-					withResponse: vi.fn().mockResolvedValue({ data: mockStream }),
-				})
-
-				// Provide tools and native protocol to trigger the injection
-				const metadata = {
-					tools: [
-						{
-							type: "function",
-							function: { name: "read_file", description: "Read a file", parameters: {} },
-						},
-					],
-				}
-
-				const generator = handler.createMessage(systemPrompt, messages, metadata as any)
-				for await (const _chunk of generator) {
-					// Consume the generator
-				}
-
-				// Verify that the assistant message with tool_calls has thought_signature injected
-				const createCall = mockCreate.mock.calls[0][0]
-				const assistantMessage = createCall.messages.find(
-					(msg: any) => msg.role === "assistant" && msg.tool_calls && msg.tool_calls.length > 0,
-				)
-
-				expect(assistantMessage).toBeDefined()
-				// First tool call should have the thought signature
-				expect(assistantMessage.tool_calls[0].provider_specific_fields).toBeDefined()
-				expect(assistantMessage.tool_calls[0].provider_specific_fields.thought_signature).toBe(dummySignature)
-			})
-
-			it("should not inject thought signatures for non-Gemini models", async () => {
-				const optionsWithGPT4: ApiHandlerOptions = {
-					...mockOptions,
-					litellmModelId: "gpt-4",
-				}
-				handler = new LiteLLMHandler(optionsWithGPT4)
-
-				vi.spyOn(handler as any, "fetchModel").mockResolvedValue({
-					id: "gpt-4",
-					info: { ...litellmDefaultModelInfo, maxTokens: 8192 },
-				})
-
-				const systemPrompt = "You are a helpful assistant"
-				const messages: Anthropic.Messages.MessageParam[] = [
-					{ role: "user", content: "Hello" },
-					{
-						role: "assistant",
-						content: [
-							{ type: "text", text: "I'll help you with that." },
-							{ type: "tool_use", id: "toolu_123", name: "read_file", input: { path: "test.txt" } },
-						],
-					},
-					{
-						role: "user",
-						content: [{ type: "tool_result", tool_use_id: "toolu_123", content: "file contents" }],
-					},
-				]
-
-				const mockStream = {
-					async *[Symbol.asyncIterator]() {
-						yield {
-							choices: [{ delta: { content: "Response" } }],
-							usage: { prompt_tokens: 100, completion_tokens: 20 },
-						}
-					},
-				}
-
-				mockCreate.mockReturnValue({
-					withResponse: vi.fn().mockResolvedValue({ data: mockStream }),
-				})
-
-				const metadata = {
-					tools: [
-						{
-							type: "function",
-							function: { name: "read_file", description: "Read a file", parameters: {} },
-						},
-					],
-				}
-
-				const generator = handler.createMessage(systemPrompt, messages, metadata as any)
-				for await (const _chunk of generator) {
-					// Consume
-				}
-
-				// Verify that thought_signature was NOT injected for non-Gemini model
-				const createCall = mockCreate.mock.calls[0][0]
-				const assistantMessage = createCall.messages.find(
-					(msg: any) => msg.role === "assistant" && msg.tool_calls && msg.tool_calls.length > 0,
-				)
-
-				expect(assistantMessage).toBeDefined()
-				// Tool calls should not have provider_specific_fields added
-				expect(assistantMessage.tool_calls[0].provider_specific_fields).toBeUndefined()
-			})
-		})
+	it("normalizes tool call ids to OpenAI's limit", async () => {
+		const longId = "toolu_" + "x".repeat(80)
+		const { body } = await requestOf({}, [
+			{ role: "user", content: "go" },
+			{ role: "assistant", content: [{ type: "tool_use", id: longId, name: "read_file", input: {} }] },
+			{ role: "user", content: [{ type: "tool_result", tool_use_id: longId, content: "ok" }] },
+		])
+		expect(body.messages[2].tool_calls[0].id).toBe(sanitizeOpenAiCallId(longId))
+		expect(body.messages[3].tool_call_id).toBe(sanitizeOpenAiCallId(longId))
 	})
 
-	describe("reasoning field handling", () => {
-		it("should yield reasoning chunks from reasoning_content delta", async () => {
-			const mockStream = {
-				async *[Symbol.asyncIterator]() {
-					yield {
-						choices: [{ delta: { reasoning_content: "Let me think..." } }],
-						usage: null,
-					}
-					yield {
-						choices: [{ delta: { content: "The answer is 42." } }],
-						usage: { prompt_tokens: 20, completion_tokens: 10 },
-					}
-				},
-			}
+	describe("Gemini thought signature", () => {
+		const signature = Buffer.from("skip_thought_signature_validator").toString("base64")
+		const history: Anthropic.Messages.MessageParam[] = [
+			{ role: "user", content: "go" },
+			{
+				role: "assistant",
+				content: [
+					{ type: "tool_use", id: "call_1", name: "read_file", input: {} },
+					{ type: "tool_use", id: "call_2", name: "list_files", input: {} },
+				],
+			},
+			{
+				role: "user",
+				content: [
+					{ type: "tool_result", tool_use_id: "call_1", content: "a" },
+					{ type: "tool_result", tool_use_id: "call_2", content: "b" },
+				],
+			},
+		]
 
-			mockCreate.mockReturnValue({
-				withResponse: vi.fn().mockResolvedValue({ data: mockStream }),
-			})
-
-			const generator = handler.createMessage("system", [{ role: "user", content: "What is the answer?" }])
-			const results = []
-			for await (const chunk of generator) {
-				results.push(chunk)
-			}
-
-			const reasoningChunk = results.find((c) => c.type === "reasoning")
-			expect(reasoningChunk).toBeDefined()
-			expect(reasoningChunk).toMatchObject({ type: "reasoning", text: "Let me think..." })
-
-			const textChunk = results.find((c) => c.type === "text")
-			expect(textChunk).toMatchObject({ type: "text", text: "The answer is 42." })
-		})
-
-		it("should yield reasoning before text when one delta carries both", async () => {
-			const mockStream = {
-				async *[Symbol.asyncIterator]() {
-					yield {
-						choices: [{ delta: { reasoning_content: "thinking...", content: "answer" } }],
-						usage: { prompt_tokens: 10, completion_tokens: 10 },
-					}
-				},
-			}
-
-			mockCreate.mockReturnValue({
-				withResponse: vi.fn().mockResolvedValue({ data: mockStream }),
-			})
-
-			const results = []
-			for await (const chunk of handler.createMessage("system", [{ role: "user", content: "Hi" }])) {
-				results.push(chunk)
-			}
-
-			expect(results.filter((c) => c.type === "reasoning" || c.type === "text")).toEqual([
-				{ type: "reasoning", text: "thinking..." },
-				{ type: "text", text: "answer" },
-			])
-		})
-
-		it("should yield reasoning chunks from reasoning delta field", async () => {
-			const mockStream = {
-				async *[Symbol.asyncIterator]() {
-					yield {
-						choices: [{ delta: { reasoning: "Analyzing the problem..." } }],
-						usage: null,
-					}
-					yield {
-						choices: [{ delta: { content: "Done." } }],
-						usage: { prompt_tokens: 10, completion_tokens: 5 },
-					}
-				},
-			}
-
-			mockCreate.mockReturnValue({
-				withResponse: vi.fn().mockResolvedValue({ data: mockStream }),
-			})
-
-			const generator = handler.createMessage("system", [{ role: "user", content: "Solve this." }])
-			const results = []
-			for await (const chunk of generator) {
-				results.push(chunk)
-			}
-
-			const reasoningChunk = results.find((c) => c.type === "reasoning")
-			expect(reasoningChunk).toBeDefined()
-			expect(reasoningChunk).toMatchObject({ type: "reasoning", text: "Analyzing the problem..." })
-		})
-
-		it("should prefer reasoning_content over reasoning when both are present", async () => {
-			const mockStream = {
-				async *[Symbol.asyncIterator]() {
-					yield {
-						choices: [
-							{ delta: { reasoning_content: "from_reasoning_content", reasoning: "from_reasoning" } },
-						],
-						usage: { prompt_tokens: 5, completion_tokens: 5 },
-					}
-				},
-			}
-
-			mockCreate.mockReturnValue({
-				withResponse: vi.fn().mockResolvedValue({ data: mockStream }),
-			})
-
-			const generator = handler.createMessage("system", [{ role: "user", content: "Test." }])
-			const results = []
-			for await (const chunk of generator) {
-				results.push(chunk)
-			}
-
-			const reasoningChunks = results.filter((c) => c.type === "reasoning")
-			expect(reasoningChunks).toHaveLength(1)
-			expect(reasoningChunks[0]).toMatchObject({ type: "reasoning", text: "from_reasoning_content" })
-		})
-
-		it("should not yield reasoning chunk when reasoning field is present but falsy", async () => {
-			const mockStream = {
-				async *[Symbol.asyncIterator]() {
-					yield {
-						choices: [{ delta: { reasoning_content: undefined } }],
-						usage: null,
-					}
-					yield {
-						choices: [{ delta: { reasoning: "" } }],
-						usage: null,
-					}
-					yield {
-						choices: [{ delta: { content: "Hello" } }],
-						usage: { prompt_tokens: 5, completion_tokens: 5 },
-					}
-				},
-			}
-
-			mockCreate.mockReturnValue({
-				withResponse: vi.fn().mockResolvedValue({ data: mockStream }),
-			})
-
-			const generator = handler.createMessage("system", [{ role: "user", content: "Hi" }])
-			const results = []
-			for await (const chunk of generator) {
-				results.push(chunk)
-			}
-
-			const reasoningChunks = results.filter((c) => c.type === "reasoning")
-			expect(reasoningChunks).toHaveLength(0)
-		})
-
-		it("should preserve whitespace-only reasoning chunks so streamed boundaries survive concatenation", async () => {
-			const mockStream = {
-				async *[Symbol.asyncIterator]() {
-					yield {
-						choices: [{ delta: { reasoning_content: "Let's" } }],
-						usage: null,
-					}
-					yield {
-						choices: [{ delta: { reasoning_content: " " } }],
-						usage: null,
-					}
-					yield {
-						choices: [{ delta: { reasoning_content: "think" } }],
-						usage: null,
-					}
-					yield {
-						choices: [{ delta: { reasoning_content: "\n\n" } }],
-						usage: null,
-					}
-					yield {
-						choices: [{ delta: { reasoning_content: "next" } }],
-						usage: null,
-					}
-					yield {
-						choices: [{ delta: { content: "Hello" } }],
-						usage: { prompt_tokens: 5, completion_tokens: 5 },
-					}
-				},
-			}
-
-			mockCreate.mockReturnValue({
-				withResponse: vi.fn().mockResolvedValue({ data: mockStream }),
-			})
-
-			const generator = handler.createMessage("system", [{ role: "user", content: "Hi" }])
-			const results = []
-			for await (const chunk of generator) {
-				results.push(chunk)
-			}
-
-			const reasoningChunks = results.filter((c) => c.type === "reasoning")
-			expect(reasoningChunks.map((c) => (c as { text: string }).text).join("")).toBe("Let's think\n\nnext")
-		})
-
-		it("should fall back to reasoning when reasoning_content is null on the same delta", async () => {
-			const mockStream = {
-				async *[Symbol.asyncIterator]() {
-					yield {
-						choices: [{ delta: { reasoning_content: null, reasoning: "fallback thinking" } }],
-						usage: null,
-					}
-					yield {
-						choices: [{ delta: { content: "Answer." } }],
-						usage: { prompt_tokens: 5, completion_tokens: 5 },
-					}
-				},
-			}
-
-			mockCreate.mockReturnValue({
-				withResponse: vi.fn().mockResolvedValue({ data: mockStream }),
-			})
-
-			const generator = handler.createMessage("system", [{ role: "user", content: "Test." }])
-			const results = []
-			for await (const chunk of generator) {
-				results.push(chunk)
-			}
-
-			const reasoningChunks = results.filter((c) => c.type === "reasoning")
-			expect(reasoningChunks).toHaveLength(1)
-			expect(reasoningChunks[0]).toMatchObject({ type: "reasoning", text: "fallback thinking" })
-		})
-	})
-
-	describe("tool ID normalization", () => {
-		it("should truncate tool IDs longer than 64 characters", async () => {
-			const optionsWithBedrock: ApiHandlerOptions = {
-				...mockOptions,
-				litellmModelId: "bedrock/anthropic.claude-3-sonnet",
-			}
-			handler = new LiteLLMHandler(optionsWithBedrock)
-
-			vi.spyOn(handler as any, "fetchModel").mockResolvedValue({
-				id: "bedrock/anthropic.claude-3-sonnet",
-				info: { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			})
-
-			// Create a tool ID longer than 64 characters
-			const longToolId = "toolu_" + "a".repeat(70) // 76 characters total
-
-			const systemPrompt = "You are a helpful assistant"
-			const messages: Anthropic.Messages.MessageParam[] = [
-				{ role: "user", content: "Hello" },
-				{
-					role: "assistant",
-					content: [
-						{ type: "text", text: "I'll help you with that." },
-						{ type: "tool_use", id: longToolId, name: "read_file", input: { path: "test.txt" } },
-					],
-				},
-				{
-					role: "user",
-					content: [{ type: "tool_result", tool_use_id: longToolId, content: "file contents" }],
-				},
-			]
-
-			const mockStream = {
-				async *[Symbol.asyncIterator]() {
-					yield {
-						choices: [{ delta: { content: "Response" } }],
-						usage: { prompt_tokens: 100, completion_tokens: 20 },
-					}
-				},
-			}
-
-			mockCreate.mockReturnValue({
-				withResponse: vi.fn().mockResolvedValue({ data: mockStream }),
-			})
-
-			const generator = handler.createMessage(systemPrompt, messages)
-			for await (const _chunk of generator) {
-				// Consume
-			}
-
-			// Verify that tool IDs are truncated to 64 characters or less
-			const createCall = mockCreate.mock.calls[0][0]
-			const assistantMessage = createCall.messages.find(
-				(msg: any) => msg.role === "assistant" && msg.tool_calls && msg.tool_calls.length > 0,
+		// Gemini 2.5 and later validate thought signatures, under any LiteLLM prefix or model group name.
+		it.each([
+			["gemini-2.5-pro", true],
+			["gemini-3-pro-preview", true],
+			["gemini-3.8-flash", true],
+			["gemini-10-ultra", true],
+			["vertex_ai/gemini-4-argon", true],
+			["openrouter/google/gemini-3.1-pro-preview", true],
+			["Gemini 3 Pro", true],
+			["google/gemini 2.5 pro", true],
+			["gemini-2.0-flash", false],
+			["gemini/gemini-1.5-pro", false],
+			["gemini-flash-latest", false],
+			["gemma-3-27b-it", false],
+			["notgemini-4", false],
+			["claude-3-opus", false],
+		])("%s gets the skip signature on every tool call: %s", async (litellmModelId, injected) => {
+			const { body } = await requestOf({ litellmModelId }, history)
+			const toolCalls = body.messages.find((message: any) => message.tool_calls).tool_calls
+			expect(toolCalls.map((call: any) => call.provider_specific_fields?.thought_signature)).toEqual(
+				injected ? [signature, signature] : [undefined, undefined],
 			)
-			const toolMessage = createCall.messages.find((msg: any) => msg.role === "tool")
-
-			expect(assistantMessage).toBeDefined()
-			expect(assistantMessage.tool_calls[0].id.length).toBeLessThanOrEqual(64)
-
-			expect(toolMessage).toBeDefined()
-			expect(toolMessage.tool_call_id.length).toBeLessThanOrEqual(64)
 		})
+	})
+})
 
-		it("should not modify tool IDs that are already within 64 characters", async () => {
-			const optionsWithBedrock: ApiHandlerOptions = {
-				...mockOptions,
-				litellmModelId: "bedrock/anthropic.claude-3-sonnet",
-			}
-			handler = new LiteLLMHandler(optionsWithBedrock)
-
-			vi.spyOn(handler as any, "fetchModel").mockResolvedValue({
-				id: "bedrock/anthropic.claude-3-sonnet",
-				info: { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			})
-
-			// Create a tool ID within 64 characters
-			const shortToolId = "toolu_01ABC123" // Well under 64 characters
-
-			const systemPrompt = "You are a helpful assistant"
-			const messages: Anthropic.Messages.MessageParam[] = [
-				{ role: "user", content: "Hello" },
+describe("createMessage usage", () => {
+	// LiteLLM copies DeepSeek's prompt_cache_hit_tokens into cached_tokens and also forwards
+	// prompt_cache_miss_tokens; a miss is ordinary input, never a cache write (DEF-C40).
+	it("prices the usage with the fetched model info", async () => {
+		mocks.create.mockReturnValueOnce(
+			streamOf([
 				{
-					role: "assistant",
-					content: [
-						{ type: "text", text: "I'll help you with that." },
-						{ type: "tool_use", id: shortToolId, name: "read_file", input: { path: "test.txt" } },
-					],
+					choices: [{ delta: { content: "ok" } }],
+					usage: {
+						prompt_tokens: 1000,
+						completion_tokens: 50,
+						prompt_tokens_details: { cached_tokens: 800 },
+						prompt_cache_hit_tokens: 800,
+						prompt_cache_miss_tokens: 200,
+					},
 				},
-				{
-					role: "user",
-					content: [{ type: "tool_result", tool_use_id: shortToolId, content: "file contents" }],
-				},
-			]
+			]),
+		)
+		const chunks = await drain(handlerFor({ litellmModelId: "deepseek-chat" }).createMessage("s", []))
+		const usage = chunks.find((chunk) => chunk.type === "usage")
+		expect(usage).toMatchObject({ inputTokens: 1000, outputTokens: 50, cacheReadTokens: 800 })
+		expect(usage.cacheWriteTokens).toBeUndefined()
+		// 200 misses at 0.27, 800 hits at 0.07, 50 output at 1.1 (per million).
+		expect(usage.totalCost).toBeCloseTo((200 * 0.27 + 800 * 0.07 + 50 * 1.1) / 1_000_000, 12)
+	})
 
-			const mockStream = {
-				async *[Symbol.asyncIterator]() {
-					yield {
-						choices: [{ delta: { content: "Response" } }],
-						usage: { prompt_tokens: 100, completion_tokens: 20 },
-					}
-				},
-			}
+	it("prefixes a failed stream", async () => {
+		mocks.create.mockReturnValueOnce({ withResponse: vi.fn().mockRejectedValue(new Error("proxy down")) })
+		await expect(drain(handlerFor().createMessage("s", []))).rejects.toThrow("LiteLLM streaming error: proxy down")
+	})
+})
 
-			mockCreate.mockReturnValue({
-				withResponse: vi.fn().mockResolvedValue({ data: mockStream }),
-			})
-
-			const generator = handler.createMessage(systemPrompt, messages)
-			for await (const _chunk of generator) {
-				// Consume
-			}
-
-			// Verify that tool IDs are unchanged
-			const createCall = mockCreate.mock.calls[0][0]
-			const assistantMessage = createCall.messages.find(
-				(msg: any) => msg.role === "assistant" && msg.tool_calls && msg.tool_calls.length > 0,
-			)
-			const toolMessage = createCall.messages.find((msg: any) => msg.role === "tool")
-
-			expect(assistantMessage).toBeDefined()
-			expect(assistantMessage.tool_calls[0].id).toBe(shortToolId)
-
-			expect(toolMessage).toBeDefined()
-			expect(toolMessage.tool_call_id).toBe(shortToolId)
+describe("completePrompt", () => {
+	it("sends the prompt as one user message and returns the text", async () => {
+		expect(await handlerFor({ modelTemperature: 0.4 }).completePrompt("Test prompt")).toBe("answer")
+		expect(mocks.create.mock.calls.at(-1)![0]).toEqual({
+			model: litellmDefaultModelId,
+			messages: [{ role: "user", content: "Test prompt" }],
+			temperature: 0.4,
+			max_tokens: 8192,
 		})
+	})
 
-		it("should maintain uniqueness with hash suffix when truncating", async () => {
-			const optionsWithBedrock: ApiHandlerOptions = {
-				...mockOptions,
-				litellmModelId: "bedrock/anthropic.claude-3-sonnet",
-			}
-			handler = new LiteLLMHandler(optionsWithBedrock)
+	it("returns empty text for an answer without content", async () => {
+		mocks.create.mockResolvedValueOnce({ choices: [] })
+		expect(await handlerFor().completePrompt("p")).toBe("")
+	})
 
-			vi.spyOn(handler as any, "fetchModel").mockResolvedValue({
-				id: "bedrock/anthropic.claude-3-sonnet",
-				info: { ...litellmDefaultModelInfo, maxTokens: 8192 },
-			})
-
-			// Create two tool IDs that differ only near the end
-			const longToolId1 = "toolu_" + "a".repeat(60) + "_suffix1"
-			const longToolId2 = "toolu_" + "a".repeat(60) + "_suffix2"
-
-			const systemPrompt = "You are a helpful assistant"
-			const messages: Anthropic.Messages.MessageParam[] = [
-				{ role: "user", content: "Hello" },
-				{
-					role: "assistant",
-					content: [
-						{ type: "text", text: "I'll help." },
-						{ type: "tool_use", id: longToolId1, name: "read_file", input: { path: "test1.txt" } },
-						{ type: "tool_use", id: longToolId2, name: "read_file", input: { path: "test2.txt" } },
-					],
-				},
-				{
-					role: "user",
-					content: [
-						{ type: "tool_result", tool_use_id: longToolId1, content: "file1 contents" },
-						{ type: "tool_result", tool_use_id: longToolId2, content: "file2 contents" },
-					],
-				},
-			]
-
-			const mockStream = {
-				async *[Symbol.asyncIterator]() {
-					yield {
-						choices: [{ delta: { content: "Response" } }],
-						usage: { prompt_tokens: 100, completion_tokens: 20 },
-					}
-				},
-			}
-
-			mockCreate.mockReturnValue({
-				withResponse: vi.fn().mockResolvedValue({ data: mockStream }),
-			})
-
-			const generator = handler.createMessage(systemPrompt, messages)
-			for await (const _chunk of generator) {
-				// Consume
-			}
-
-			// Verify that truncated tool IDs are unique (hash suffix ensures this)
-			const createCall = mockCreate.mock.calls[0][0]
-			const assistantMessage = createCall.messages.find(
-				(msg: any) => msg.role === "assistant" && msg.tool_calls && msg.tool_calls.length > 0,
-			)
-
-			expect(assistantMessage).toBeDefined()
-			expect(assistantMessage.tool_calls).toHaveLength(2)
-
-			const id1 = assistantMessage.tool_calls[0].id
-			const id2 = assistantMessage.tool_calls[1].id
-
-			// Both should be truncated to 64 characters
-			expect(id1.length).toBeLessThanOrEqual(64)
-			expect(id2.length).toBeLessThanOrEqual(64)
-
-			// They should be different (hash suffix ensures uniqueness)
-			expect(id1).not.toBe(id2)
-		})
+	it("prefixes a failure", async () => {
+		mocks.create.mockRejectedValueOnce(new Error("bad gateway"))
+		await expect(handlerFor().completePrompt("p")).rejects.toThrow("LiteLLM completion error: bad gateway")
 	})
 })
