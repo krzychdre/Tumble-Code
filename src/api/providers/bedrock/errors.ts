@@ -138,39 +138,6 @@ Please try:
 2. Or, create an inference profile and then leverage the "Use custom ARN..." option of the model selector in settings.`,
 		logLevel: "error",
 	},
-	ABORT: {
-		patterns: ["aborterror"], // This will match error.name.toLowerCase() for AbortError
-		messageTemplate: `Request was aborted: The operation timed out or was manually cancelled. Please try again or check your network connection.`,
-		logLevel: "info",
-	},
-	INVALID_ARN_FORMAT: {
-		patterns: ["invalid_arn_format:", "invalid arn format"],
-		messageTemplate: `Invalid ARN format. ARN should follow the pattern: arn:aws:bedrock:region:account-id:resource-type/resource-name`,
-		logLevel: "error",
-	},
-	VALIDATION_ERROR: {
-		patterns: [
-			"input tag",
-			"does not match any of the expected tags",
-			"field required",
-			"validation",
-			"invalid parameter",
-		],
-		messageTemplate: `Parameter validation error: {errorMessage}
-
-This error indicates that the request parameters don't match Amazon Bedrock's expected format.
-
-Common causes:
-1. Extended thinking parameter format is incorrect
-2. Model-specific parameters are not supported by this model
-3. API parameter structure has changed
-
-Please check:
-- Model supports the requested features (extended thinking, etc.)
-- Parameter format matches Amazon Bedrock specification
-- Model ID is correct for the requested features`,
-		logLevel: "error",
-	},
 	// Default/generic error
 	GENERIC: {
 		patterns: [], // Empty patterns array means this is the default
@@ -303,19 +270,16 @@ export async function* bedrockStreamFailure(
 	const apiError = new ApiProviderError(errorMessage, providerName, modelId, "createMessage")
 	TelemetryService.instance.captureException(apiError)
 
+	// THROTTLING is only ever the type of an Error.
 	if (getBedrockErrorType(error) === "THROTTLING") {
-		if (error instanceof Error) {
-			// The AWS SDK keeps the HTTP status in $metadata.httpStatusCode only;
-			// the retry loop and the background-model fallback read `status`.
-			const status = getApiErrorStatus(error)
-			const fields: Error & ProviderErrorFields = error
-			if (status !== undefined && fields.status === undefined) {
-				fields.status = status
-			}
-			throw error
-		} else {
-			throw new Error("Throttling error occurred")
+		// The AWS SDK keeps the HTTP status in $metadata.httpStatusCode only;
+		// the retry loop and the background-model fallback read `status`.
+		const fields = error as Error & ProviderErrorFields
+		const status = getApiErrorStatus(fields)
+		if (status !== undefined && fields.status === undefined) {
+			fields.status = status
 		}
+		throw fields
 	}
 
 	const errorChunks = handleBedrockError(error, true, context) as ApiStreamChunk[]

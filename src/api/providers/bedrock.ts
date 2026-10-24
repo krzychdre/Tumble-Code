@@ -105,7 +105,6 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 			}
 
 			this.options.apiModelId = this.arnInfo.modelId
-			if (this.arnInfo.awsUseCrossRegionInference) this.options.awsUseCrossRegionInference = true
 		}
 
 		if (!this.options.modelTemperature) {
@@ -482,26 +481,16 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 				modelType?: string
 				modelId?: string
 				errorMessage?: string
-				crossRegionInference: boolean
 			} = {
 				isValid: true,
-				crossRegionInference: false, // Default to false
 			}
 
 			result.modelType = match[3]
-			const originalModelId = match[4]
-			result.modelId = this.parseBaseModelId(originalModelId)
+			result.modelId = this.parseBaseModelId(match[4])
 
 			// Extract the region from the first capture group
 			const arnRegion = match[1]
 			result.region = arnRegion
-
-			// Check if the original model ID had a region prefix
-			if (originalModelId && result.modelId !== originalModelId) {
-				// If the model ID changed after parsing, it had a region prefix
-				const prefix = originalModelId.replace(result.modelId, "")
-				result.crossRegionInference = AwsBedrockHandler.isSystemInferenceProfile(prefix)
-			}
 
 			// Check if region in ARN matches provided region (if specified)
 			if (region && arnRegion !== region) {
@@ -519,7 +508,6 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 			modelType: undefined,
 			modelId: undefined,
 			errorMessage: "Invalid ARN format. ARN should follow the Amazon Bedrock ARN pattern.",
-			crossRegionInference: false,
 		}
 	}
 
@@ -748,16 +736,6 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 		}
 
 		return undefined
-	}
-
-	private static isSystemInferenceProfile(prefix: string): boolean {
-		// Check if the prefix is defined in AWS_INFERENCE_PROFILE_MAPPING
-		for (const [_, inferenceProfile] of AWS_INFERENCE_PROFILE_MAPPING) {
-			if (prefix === inferenceProfile) {
-				return true
-			}
-		}
-		return false
 	}
 
 	/************************************************************************************
