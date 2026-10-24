@@ -1,9 +1,11 @@
+// One bullet per changeset; scripts/format-changelog.mjs groups the bullets by their leading label.
 const getReleaseLine = async (changeset) => {
-	const lines = changeset.summary
+	const text = changeset.summary
 		.split("\n")
 		.map((l) => l.trim())
 		.filter(Boolean)
-	return lines.map((line) => (line.startsWith("- ") ? line : `- ${line}`)).join("\n")
+		.join(" ")
+	return `- ${text}`
 }
 
 const getDependencyReleaseLine = async () => {

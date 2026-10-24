@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Guard: no changeset may mix ignored and released packages.
+ * Guard: no changeset may mix ignored and released packages, and every
+ * changeset of the extension starts with a changelog label.
  *
  * `changeset version` refuses a changeset file that names a package from the
  * `ignore` list of .changeset/config.json (today `@tumble-code/cli`), or a
@@ -10,12 +11,17 @@
  * mixed file passed every PR check and broke the release on main. A change
  * that ships in both the extension and the CLI needs two changeset files.
  *
+ * scripts/format-changelog.mjs, also run only on release, fails on an
+ * extension changeset without a "New:"-style label (.changeset/README.md).
+ *
  * Usage: node scripts/check-changesets.mjs [--root <dir>]
- * Exit 0 = clean, 1 = mixed files listed on stdout.
+ * Exit 0 = clean, 1 = offending files listed on stdout.
  */
 
 import { existsSync, readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
+
+import { LABELS } from "./format-changelog.mjs"
 
 // The globs of pnpm-workspace.yaml: two packages by path, two directories of packages.
 const WORKSPACE_PACKAGES = ["src", "webview-ui"]
@@ -50,30 +56,45 @@ function changesetPackages(text) {
 	return [...match[1].matchAll(/^\s*["']?([^"':]+)["']?\s*:/gm)].map((m) => m[1].trim())
 }
 
+/** The text after a changeset's front matter. */
+function changesetSummary(text) {
+	return text.replace(/^---\r?\n[\s\S]*?\r?\n---/, "").trim()
+}
+
 export function checkChangesets({ root }) {
 	const ignored = ignoredPackages(root)
+	const extension = readJson(join(root, "src/package.json")).name
+	const labeled = new RegExp(`^(${LABELS.join("|")}): `)
 	const dir = join(root, ".changeset")
 	const mixed = []
+	const unlabeled = []
 	for (const file of readdirSync(dir).sort()) {
 		if (!file.endsWith(".md") || file === "README.md") continue
-		const packages = changesetPackages(readFileSync(join(dir, file), "utf8"))
+		const text = readFileSync(join(dir, file), "utf8")
+		const packages = changesetPackages(text)
 		const skipped = packages.filter((name) => ignored.has(name))
 		if (skipped.length > 0 && skipped.length < packages.length) {
 			mixed.push({ file, ignored: skipped, released: packages.filter((name) => !ignored.has(name)) })
 		}
+		if (packages.includes(extension) && !labeled.test(changesetSummary(text))) unlabeled.push(file)
 	}
-	return { mixed }
+	return { mixed, unlabeled }
 }
 
 const isMain = process.argv[1] && process.argv[1].endsWith("check-changesets.mjs")
 
 if (isMain) {
 	const root = process.argv.includes("--root") ? process.argv[process.argv.indexOf("--root") + 1] : process.cwd()
-	const { mixed } = checkChangesets({ root })
+	const { mixed, unlabeled } = checkChangesets({ root })
 	for (const { file, ignored, released } of mixed) {
 		console.log(
 			`.changeset/${file}: ${ignored.join(", ")} cannot share a changeset with ${released.join(", ")}; split it into one file per side`,
 		)
 	}
-	process.exit(mixed.length > 0 ? 1 : 0)
+	for (const file of unlabeled) {
+		console.log(
+			`.changeset/${file}: start the summary with ${LABELS.map((l) => `"${l}: "`).join(", ")} (see .changeset/README.md)`,
+		)
+	}
+	process.exit(mixed.length + unlabeled.length > 0 ? 1 : 0)
 }

@@ -83,9 +83,9 @@ jobs:
         run: |
           current_package_version=$(node -p "require('./src/package.json').version")
 
-          # The section of this version, headed "## 1.2.3" (changesets) or "## [1.2.3]".
+          # The section of this version, headed "## 1.2.3 (2026-11-02)" (scripts/format-changelog.mjs) or "## [1.2.3]".
           awk -v v="$current_package_version" \
-            '$0 == "## " v || $0 == "## [" v "]" { on = 1; next } on && /^## / { exit } on' \
+            '$1 == "##" && ($2 == v || $2 == "[" v "]") { on = 1; next } on && /^## / { exit } on' \
             CHANGELOG.md > /tmp/release-notes.md
           if [ ! -s /tmp/release-notes.md ]; then
             echo "Release v${current_package_version}" > /tmp/release-notes.md

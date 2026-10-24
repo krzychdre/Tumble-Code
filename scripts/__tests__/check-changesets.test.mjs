@@ -6,7 +6,7 @@ import { join } from "node:path"
 
 import { checkChangesets } from "../check-changesets.mjs"
 
-function makeTree(changesets) {
+function makeTree(changesets, summary = "Fixed: Text.") {
 	const root = mkdtempSync(join(tmpdir(), "check-changesets-"))
 	mkdirSync(join(root, ".changeset"), { recursive: true })
 	writeFileSync(join(root, ".changeset/config.json"), JSON.stringify({ ignore: ["@x/cli"] }))
@@ -22,15 +22,15 @@ function makeTree(changesets) {
 	}
 	for (const [file, packages] of Object.entries(changesets)) {
 		const header = packages.map((name) => `"${name}": patch`).join("\n")
-		writeFileSync(join(root, ".changeset", file), `---\n${header}\n---\n\nText.\n`)
+		writeFileSync(join(root, ".changeset", file), `---\n${header}\n---\n\n${summary}\n`)
 	}
 	return root
 }
 
-test("accepts one-sided changesets", () => {
+test("accepts one-sided, labeled changesets", () => {
 	const root = makeTree({ "a.md": ["ext"], "b.md": ["@x/cli"], "c.md": ["@x/webview"], "d.md": ["ext", "@x/types"] })
 	try {
-		assert.deepEqual(checkChangesets({ root }).mixed, [])
+		assert.deepEqual(checkChangesets({ root }), { mixed: [], unlabeled: [] })
 	} finally {
 		rmSync(root, { recursive: true, force: true })
 	}
@@ -51,6 +51,15 @@ test("treats a package without a version as ignored", () => {
 		assert.deepEqual(checkChangesets({ root }).mixed, [
 			{ file: "a.md", ignored: ["@x/webview"], released: ["ext"] },
 		])
+	} finally {
+		rmSync(root, { recursive: true, force: true })
+	}
+})
+
+test("flags an extension changeset whose summary has no changelog label", () => {
+	const root = makeTree({ "a.md": ["ext"], "b.md": ["@x/cli"], "c.md": ["@x/types"] }, "Text.")
+	try {
+		assert.deepEqual(checkChangesets({ root }).unlabeled, ["a.md"])
 	} finally {
 		rmSync(root, { recursive: true, force: true })
 	}
