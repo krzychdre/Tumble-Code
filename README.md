@@ -5,39 +5,98 @@
 
 # Tumble Code
 
-> Your AI-Powered Dev Team, Right in Your Editor
+> An AI coding agent for VS Code and the terminal, at home with the models you run yourself
 
-Tumble Code is a community-maintained fork of [Roo Code](https://github.com/RooCodeInc/Roo-Code). The original Roo Code project is no longer actively maintained by its authors; Tumble Code carries the codebase forward under independent stewardship. See the [Lineage](#lineage) section below for full attribution.
+Tumble Code plans, writes, runs and reviews code in your editor or your terminal. It works with any major cloud
+provider, but it is built first for local and self-hosted models (Ollama, LM Studio, llama.cpp, vLLM and other
+OpenAI-compatible servers), so your code can stay on your own hardware and you pay nothing per token.
 
-**What's new in this release:**
+Tumble Code grew out of [Roo Code](https://github.com/RooCodeInc/Roo-Code). When the Roo Code team stepped away from
+the project in April 2026, Tumble Code took over the codebase at Roo Code 3.53.0. It has come a long way since: more
+than a thousand changes later it has its own memory, background and parallel agents, a full terminal client, a
+self-hosted cloud and a redesigned interface, described [below](#whats-new-since-roo-code). See
+[Lineage and credits](#lineage-and-credits) for what it owes to the original authors.
 
-- Add GPT-5.5 support via the OpenAI Codex provider.
-- Add Claude Opus 4.7 support on Vertex AI.
-- Add previous checkpoint navigation controls in chat so you can step back through prior checkpoints more easily.
+## What Tumble Code does
 
----
+- Turns a description or a spec into working code, and refactors, debugs and documents existing code
+- Answers questions about your codebase, with semantic search over an index of it
+- Runs commands, reads their output and fixes what fails, with a checkpoint before every change so you can roll back
+- Works in modes, each with its own tools, rules and model: **Code**, **Architect**, **Ask**, **Debug**,
+  **Orchestrator** (splits a large job into subtasks) and **Vision** (describes images for models that cannot see
+  them), plus custom modes and modes from the marketplace
+- Extends itself with MCP servers and skills
+- Lets you choose how much it may do on its own, from approving every step to fully autonomous runs
 
-## What Can Tumble Code Do For YOU?
+## What's new since Roo Code
 
-- Generate Code from natural language descriptions and specs
-- Adapt with Modes: Code, Architect, Ask, Debug, Vision, and Custom Modes
-- Refactor & Debug existing code
-- Write & Update documentation
-- Answer Questions about your codebase
-- Automate repetitive tasks
-- Utilize MCP Servers
-- Run with **local inference engines** (Ollama, LM Studio, llama.cpp) so your code never leaves your machine and you pay nothing per token
+Everything below was added after the fork.
 
-## Modes
+**Built for local and smaller models**
 
-Tumble Code adapts to how you work:
+- **Model size per profile.** A profile runs in standard, slim or compact mode; compact gives a small-context model a
+  short system prompt and a minimal toolset.
+- **Tolerant of weak models.** Malformed tool calls and imperfect diffs are repaired instead of failing, a model is
+  told which tools it lacks and how to delegate, and the system prompt carries engineering defaults.
+- **Return reasoning to the model** for reasoning models on OpenAI-compatible servers (GLM, DeepSeek, local vLLM),
+  with old reasoning shortened when the context fills up.
+- **Concurrent requests per profile**, so parallel work never sends a local server more requests than it serves.
+- **Fewer wasted tokens.** A lighter, non-destructive compaction, a separate cheaper model for compaction and memory,
+  and context estimates for servers that do not report usage.
 
-- Code Mode: everyday coding, edits, and file ops
-- Architect Mode: plan systems, specs, and migrations
-- Ask Mode: fast answers, explanations, and docs
-- Debug Mode: trace issues, add logs, isolate root causes
-- Vision Mode: describe screenshots, diagrams and charts for models that cannot see images (pin a vision-capable model to it)
-- Custom Modes: build specialized modes for your team or workflow
+**Agents that keep working**
+
+- **Background tasks.** A task keeps running when you open another one; the history shows which tasks work and which
+  wait for you.
+- **Parallel subagents.** A task hands self-contained jobs to subagents that run side by side, each in its own git
+  worktree. A subagent's whole transcript can be opened, followed live, answered and stopped.
+- **Several editor tabs**, opened from the editor title bar or the status bar.
+
+**Memory and context**
+
+- **Memory.** After a task, Tumble Code writes down what is worth keeping (your preferences, project decisions) and
+  recalls it in later tasks; a background pass merges duplicates and drops what is out of date.
+- **Artifacts.** Large tool outputs are saved to disk and read back in pieces instead of filling the context.
+- **Task history search.** The agent can look up what was done in earlier tasks.
+- **Web search and web pages** as built-in tools.
+- **MCP tools on demand.** Tools of large MCP servers are loaded when needed, and each mode can be limited to the MCP
+  tools it may use.
+
+**Plans**
+
+- **Plan approval.** Architect mode writes a plan you review and approve, with notes, before any work starts.
+
+**Works with Claude Code**
+
+- **Agent interchange.** Tumble Code and Claude Code on the same machine hand tasks to each other and read each
+  other's plans and sessions, so work started in one continues in the other.
+
+**Your own cloud**
+
+- **Self-hosted cloud** ([`self-hosted-cloudapi/`](https://github.com/krzychdre/tumble-code/tree/main/self-hosted-cloudapi)):
+  one Docker Compose stack with Authentik sign-in. Its web panel lists your tasks with costs and token usage, shows
+  usage metrics, shares tasks and controls a running task remotely (messages, approvals, stop, resume). Telemetry goes
+  only there.
+
+**A rebuilt terminal client**
+
+- **The CLI** inherited from Roo Code is rebuilt: the same providers as the extension, a transcript in the terminal's
+  own scrollback, MCP servers, and images, diagrams and math in terminals that can draw them. It ships in every
+  release, under the extension's version.
+
+**Interface and safety**
+
+- **A redesigned chat** with one calm look, full keyboard access and screen-reader labels, and smooth streaming even
+  in long tasks.
+- **Safer auto-approval.** Commands are split the way bash parses them before they are matched against your allow and
+  deny lists.
+
+**Models and providers**
+
+- Model lists, prices and defaults kept current across Anthropic, OpenAI, Google, xAI, DeepSeek, Moonshot, Z.ai and
+  the other providers; prompt caching and cost reporting fixed for several of them; seven redundant providers retired.
+
+The [changelog](https://github.com/krzychdre/tumble-code/blob/main/CHANGELOG.md) lists every release.
 
 ## Command-line client
 
@@ -55,7 +114,8 @@ It reads its settings from `~/.roo/cli-settings.json`. Start from the
 
 ## Resources
 
-- **Documentation:** Tumble Code documentation is a work in progress; the architecture notes for contributors live in [docs/](./docs/).
+- **Documentation:** the architecture notes for contributors live in [docs/](./docs/); user documentation is a work
+  in progress.
 
 <!-- External community channels are intentionally hidden until they're set up.
 - **[GitHub Issues](https://github.com/krzychdre/tumble-code/issues):** Report bugs and track development.
@@ -166,7 +226,8 @@ If task history or settings misbehave in an SSH window, check the server side fi
 
 ---
 
-We use [changesets](https://github.com/changesets/changesets) for versioning and publishing. Check our `CHANGELOG.md` for release notes.
+Releases are versioned with [changesets](https://github.com/changesets/changesets); [`.changeset/README.md`](.changeset/README.md)
+describes how a change gets into the changelog and how a release is cut.
 
 ---
 
@@ -184,40 +245,40 @@ New to the code? Read the one-page [architecture map](docs/architecture.md) befo
 
 ---
 
-## Lineage
+## Lineage and credits
 
-Tumble Code is a community-maintained fork of [Roo Code](https://github.com/RooCodeInc/Roo-Code), originally authored by Roo Veterinary Inc. and published on the VS Code Marketplace as `RooVeterinaryInc.roo-cline`. In early 2026 the upstream team [announced](https://x.com/mattrubens/status/2046636598859559114) that they were stepping away from Roo Code to focus on their new product, Roomote. With the original maintainers no longer actively developing the extension, this fork was started to keep the codebase alive and shift the focus toward **local inference engines** — running with Ollama, LM Studio, llama.cpp, and other locally-hosted LLMs as first-class providers so users can use AI coding assistance without paying per-token or sending their code to a cloud provider.
+Tumble Code began as a fork of [Roo Code](https://github.com/RooCodeInc/Roo-Code), originally authored by Roo
+Veterinary Inc. and published on the VS Code Marketplace as `RooVeterinaryInc.roo-cline`; Roo Code itself grew out of
+Cline. In April 2026 the Roo Code team [announced](https://x.com/mattrubens/status/2046636598859559114) that they were
+stepping away from the project to focus on their new product, Roomote. Tumble Code took over the codebase at Roo Code
+3.53.0 to keep it alive and to steer it toward local and self-hosted models.
 
-**What we kept from Roo Code:**
+**What Tumble Code owes to Roo Code**
 
-- The entire codebase, Apache 2.0 licensed (see [LICENSE](./LICENSE) for the full notice including the original Roo Code copyright)
-- The agent architecture, mode system, MCP integration, provider abstractions, and webview UI
-- Internal identifiers (`roo-cline.*` command IDs, view IDs, file names) so the rebrand stays additive rather than disruptive
-- The original release history in [CHANGELOG.md](./CHANGELOG.md), preserved verbatim with a header note distinguishing the upstream and fork eras
-- The translation work of the Roo Code community across 18 locales
+- The foundation it still stands on: the agent loop, the mode system, MCP integration, the provider layer, checkpoints,
+  codebase indexing, skills and the chat interface, all Apache 2.0 licensed (see [LICENSE](./LICENSE) for the full
+  notice, including the original Roo Code copyright)
+- The translation work of the Roo Code community across 18 languages
+- Years of commits by many contributors, which remain in this repository's history. If you contributed to Roo Code,
+  your work is still here: Tumble Code carries it forward under a new name, it is not a clean-room rewrite.
 
-**What's different in Tumble Code:**
+**What changed with the fork**
 
-- New marketplace identity: `QUB-IT.tumble-code` — install path is independent from the upstream extension
-- The agent persona in chat copy is renamed from "Roo" to "Tumble"; the logo is a tumbleweed instead of a kangaroo
-- Cloud features (auth, share links, telemetry, the LLM proxy) point at a self-hosted backend (see [`self-hosted-cloudapi/`](./self-hosted-cloudapi/) in this repo) instead of the upstream project's servers. Default URLs are configurable via env vars
-- Independent direction with a focus on **local inference**: Ollama, LM Studio, llama.cpp, and similar locally-hosted LLMs are treated as first-class providers, not afterthoughts. Cloud providers (Anthropic, OpenAI, OpenRouter, etc.) still work; they're just no longer the default expectation
-- A first-launch settings migration bridge offers to copy your existing Roo Code configuration so you don't lose work
+- A new Marketplace identity, `QUB-IT.tumble-code`, independent from the Roo Code extension. On first launch Tumble
+  Code offers to copy your Roo Code settings.
+- The agent is called Tumble, and the logo is a tumbleweed instead of a kangaroo.
+- Internal identifiers (`roo-cline.*` command and view IDs, `.roo` folders, `.roomodes`) are kept, so keybindings, rules
+  and custom modes keep working.
+- Cloud features (sign-in, task sharing, telemetry, remote control) talk to a backend you run yourself instead of Roo
+  Code's servers.
+- Version numbers start again at 1.0.0. Roo Code's releases are in the
+  [Roo Code changelog](https://github.com/RooCodeInc/Roo-Code/blob/main/CHANGELOG.md).
 
-**Credit:**
-
-The Roo Code project was the work of many contributors over multiple years; their commits remain in this repository's git history. If you contributed to upstream Roo Code, your work is still here. The fork carries forward your effort under a new name, not a clean-room reimplementation.
-
-<!-- For questions about lineage, licensing, or attribution, please open a [GitHub issue](https://github.com/krzychdre/tumble-code/issues). -->
-
-For questions about lineage, licensing, or attribution, please reach out through whichever contact channel Tumble Code publishes once it has one set up.
+For questions about lineage, licensing or attribution, please reach out through whichever contact channel Tumble Code
+publishes once it has one set up.
 
 ---
 
 ## License
 
-[Apache 2.0 © 2025 Roo Code, Inc. — community fork © 2026 Tumble Code contributors](./LICENSE)
-
----
-
-**Enjoy Tumble Code!**
+[Apache 2.0, © 2025 Roo Code, Inc.; community fork © 2026 Tumble Code contributors](./LICENSE)
