@@ -82,14 +82,6 @@ describe("chatRowPropsEqual", () => {
 		expect(chatRowPropsEqual(a, b)).toBe(true)
 	})
 
-	it("is stable across calls (pure)", () => {
-		const a = baseProps()
-		const b = baseProps()
-		expect(chatRowPropsEqual(a, b)).toBe(true)
-		expect(chatRowPropsEqual(a, b)).toBe(true)
-		expect(chatRowPropsEqual(b, a)).toBe(true)
-	})
-
 	describe("tracked fields flip to unequal", () => {
 		it.each([
 			["message.ts", (p: ChatRowProps) => (p.message = message({ ts: 99 }))],

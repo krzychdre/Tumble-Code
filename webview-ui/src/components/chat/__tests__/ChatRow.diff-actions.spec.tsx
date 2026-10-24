@@ -67,169 +67,63 @@ function renderChatRow(message: ClineMessage, isExpanded = false) {
 	)
 }
 
-describe("ChatRow - inline diff stats and actions", () => {
+// The golden renders pin the headers and diff stats of every edit tool; these
+// cases cover what a snapshot cannot: the header choice by payload flag, and
+// the message a click on the created file's link posts.
+describe("ChatRow - edit tool rows", () => {
 	beforeEach(() => {
-		vi.clearAllMocks()
 		mockPostMessage.mockClear()
 	})
 
-	it("uses appliedDiff edit treatment (header/icon/diff stats)", () => {
-		const diff = "@@ -1,1 +1,1 @@\n-old\n+new\n"
-		const message = createToolAskMessage({
-			tool: "appliedDiff",
-			path: "src/file.ts",
-			diff,
-			diffStats: { added: 1, removed: 1 },
-		})
+	it.each([
+		["a plain edit", {}, "Roo wants to edit this file"],
+		["an edit outside the workspace", { isOutsideWorkspace: true }, "Roo wants to edit outside workspace"],
+		["a protected edit", { isProtected: true, isOutsideWorkspace: true }, "Roo wants to edit a protected file"],
+	])("titles %s", (_name, flags, title) => {
+		renderChatRow(
+			createToolAskMessage({ tool: "searchAndReplace", path: "src/file.ts", diff: "-a\n+b\n", ...flags }),
+		)
 
-		const { container } = renderChatRow(message, false)
-
-		expect(screen.getByText("Roo wants to edit this file")).toBeInTheDocument()
-		expect(container.querySelector(".codicon-diff")).toBeInTheDocument()
-		expect(screen.getByText("+1")).toBeInTheDocument()
-		expect(screen.getByText("-1")).toBeInTheDocument()
+		expect(screen.getByText(title)).toBeInTheDocument()
 	})
 
-	it("uses same edit treatment for editedExistingFile", () => {
-		const diff = "@@ -1,1 +1,1 @@\n-old\n+new\n"
-		const message = createToolAskMessage({
-			tool: "editedExistingFile",
-			path: "src/file.ts",
-			diff,
-			diffStats: { added: 1, removed: 1 },
-		})
+	// No "./" prefix for an absolute Windows path: the extension must see it as is.
+	it.each([
+		["src/new-file.ts", "./src/new-file.ts"],
+		["C:\\project\\src\\new-file.ts", "C:\\project\\src\\new-file.ts"],
+	])("opens the created file %s", (path, text) => {
+		const { container } = renderChatRow(
+			createToolAskMessage({
+				tool: "newFileCreated",
+				path,
+				content: "+new file",
+				diffStats: { added: 1, removed: 0 },
+			}),
+		)
 
-		const { container } = renderChatRow(message)
+		fireEvent.click(container.querySelector(".codicon-link-external")!)
 
-		expect(screen.getByText("Roo wants to edit this file")).toBeInTheDocument()
-		expect(container.querySelector(".codicon-diff")).toBeInTheDocument()
-		expect(screen.getByText("+1")).toBeInTheDocument()
-		expect(screen.getByText("-1")).toBeInTheDocument()
+		expect(mockPostMessage).toHaveBeenCalledWith({ type: "openFile", text })
 	})
 
-	it("uses same edit treatment for searchAndReplace", () => {
-		const diff = "-a\n-b\n+c\n"
-		const message = createToolAskMessage({
-			tool: "searchAndReplace",
-			path: "src/file.ts",
-			diff,
-			diffStats: { added: 1, removed: 2 },
-		})
+	it("offers no file link for an edit of an existing file", () => {
+		const { container } = renderChatRow(
+			createToolAskMessage({
+				tool: "appliedDiff",
+				path: "src/a.ts",
+				diff: "-a\n+b\n",
+				diffStats: { added: 1, removed: 1 },
+			}),
+		)
 
-		const { container } = renderChatRow(message)
-
-		expect(screen.getByText("Roo wants to edit this file")).toBeInTheDocument()
-		expect(container.querySelector(".codicon-diff")).toBeInTheDocument()
-		expect(screen.getByText("+1")).toBeInTheDocument()
-		expect(screen.getByText("-2")).toBeInTheDocument()
+		expect(container.querySelector(".codicon-link-external")).toBeNull()
 	})
 
-	it("uses same edit treatment for newFileCreated", () => {
-		const content = "a\nb\nc"
-		const message = createToolAskMessage({
-			tool: "newFileCreated",
-			path: "src/new-file.ts",
-			content,
-			diffStats: { added: 3, removed: 0 },
-		})
+	it("opens a markdown file in plan review", () => {
+		renderChatRow(createToolAskMessage({ tool: "newFileCreated", path: "plans/p.md", content: "# Plan" }))
 
-		const { container } = renderChatRow(message)
+		fireEvent.click(screen.getByText("chat:planReview.reviewFile"))
 
-		expect(screen.getByText("Roo wants to edit this file")).toBeInTheDocument()
-		expect(container.querySelector(".codicon-diff")).toBeInTheDocument()
-		expect(screen.getByText("+3")).toBeInTheDocument()
-		expect(screen.getByText("-0")).toBeInTheDocument()
-	})
-
-	it("preserves jump-to-file affordance for newFileCreated", () => {
-		const message = createToolAskMessage({
-			tool: "newFileCreated",
-			path: "src/new-file.ts",
-			content: "+new file",
-			diffStats: { added: 1, removed: 0 },
-		})
-
-		const { container } = renderChatRow(message)
-		const openFileIcon = container.querySelector(".codicon-link-external") as HTMLElement | null
-
-		expect(openFileIcon).toBeInTheDocument()
-		if (!openFileIcon) {
-			throw new Error("Expected external link icon for newFileCreated")
-		}
-
-		fireEvent.click(openFileIcon)
-
-		expect(mockPostMessage).toHaveBeenCalledWith({
-			type: "openFile",
-			text: "./src/new-file.ts",
-		})
-	})
-
-	it("sends a Windows absolute new-file path untouched to openFile", () => {
-		const message = createToolAskMessage({
-			tool: "newFileCreated",
-			path: "C:\\project\\src\\new-file.ts",
-			content: "+new file",
-			diffStats: { added: 1, removed: 0 },
-		})
-
-		const { container } = renderChatRow(message)
-		const openFileIcon = container.querySelector(".codicon-link-external") as HTMLElement | null
-
-		expect(openFileIcon).toBeInTheDocument()
-		if (!openFileIcon) {
-			throw new Error("Expected external link icon for newFileCreated")
-		}
-
-		fireEvent.click(openFileIcon)
-
-		// No "./" prefix: the extension must see the absolute Windows path.
-		expect(mockPostMessage).toHaveBeenCalledWith({
-			type: "openFile",
-			text: "C:\\project\\src\\new-file.ts",
-		})
-	})
-
-	it("preserves protected and outside-workspace messaging in unified branch", () => {
-		const outsideWorkspaceMessage = createToolAskMessage({
-			tool: "searchAndReplace",
-			path: "../outside/file.ts",
-			diff: "-a\n+b\n",
-			isOutsideWorkspace: true,
-			diffStats: { added: 1, removed: 1 },
-		})
-		renderChatRow(outsideWorkspaceMessage)
-		expect(screen.getByText("Roo wants to edit outside workspace")).toBeInTheDocument()
-
-		const protectedMessage = createToolAskMessage({
-			tool: "appliedDiff",
-			path: "src/protected.ts",
-			diff: "-a\n+b\n",
-			isProtected: true,
-			diffStats: { added: 1, removed: 1 },
-		})
-		const { container } = renderChatRow(protectedMessage)
-		expect(screen.getByText("Roo wants to edit a protected file")).toBeInTheDocument()
-		expect(container.querySelector(".codicon-lock")).toBeInTheDocument()
-	})
-
-	it("keeps batch diff handling for unified edit tools", () => {
-		const message = createToolAskMessage({
-			tool: "searchAndReplace",
-			batchDiffs: [
-				{
-					path: "src/a.ts",
-					changeCount: 1,
-					key: "a",
-					content: "@@ -1,1 +1,1 @@\n-a\n+b\n",
-					diffStats: { added: 1, removed: 1 },
-				},
-			],
-		})
-
-		renderChatRow(message)
-
-		expect(screen.getByText("Roo wants to apply batch changes")).toBeInTheDocument()
-		expect(screen.getByText((text) => text.includes("src/a.ts"))).toBeInTheDocument()
+		expect(mockPostMessage).toHaveBeenCalledWith({ type: "openPlanReview", text: "plans/p.md" })
 	})
 })
