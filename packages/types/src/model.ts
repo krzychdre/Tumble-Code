@@ -12,14 +12,6 @@ export const reasoningEffortsSchema = z.enum(reasoningEfforts)
 export type ReasoningEffort = z.infer<typeof reasoningEffortsSchema>
 
 /**
- * ReasoningEffortWithMinimal
- */
-
-export const reasoningEffortWithMinimalSchema = z.union([reasoningEffortsSchema, z.literal("minimal")])
-
-export type ReasoningEffortWithMinimal = z.infer<typeof reasoningEffortWithMinimalSchema>
-
-/**
  * Extended Reasoning Effort (includes "none" and "minimal")
  * Note: "disable" is a UI/control value, not a value sent as effort
  */

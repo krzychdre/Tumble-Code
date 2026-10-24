@@ -65,7 +65,6 @@ export const allowlist = [
 	"packages/types/src/provider-settings.ts: getModelIdKeyForProvider",
 	"packages/types/src/provider-settings.ts: modelIdKeysByProvider",
 	"packages/types/src/provider-settings.ts: providerNamesWithRetired",
-	"packages/types/src/model.ts: ReasoningEffortWithMinimal",
 
 	// CLI settings validation contract: providers a run may start without an
 	// API key; pinned by the CLI provider-types spec.
