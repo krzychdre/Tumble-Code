@@ -3,6 +3,7 @@ name = "tumble-cloud-api"
 version = "0.1.0"
 description = "Self-hosted Tumble Code Cloud API"
 authors = [{name = "Tumble Code Community"}]
+license = "Apache-2.0"
 readme = "README.md"
 requires-python = ">=3.12"
 

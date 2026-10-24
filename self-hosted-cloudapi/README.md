@@ -3,41 +3,125 @@
 The cloud service for the Tumble Code extension, run on your own machine: sign-in through Authentik, task sharing,
 telemetry and cost metrics, the live remote-control bridge and a web panel for your tasks.
 
-## Quick Start
+## What it does
 
-### Running the full stack with Docker Compose (recommended)
+The extension and the CLI work fully without it. Run it and sign in, and you also get:
 
-`docker compose up` brings up **everything**: this API and its Postgres, plus a
-bundled **Authentik** (server, worker, Postgres). The Authentik OAuth2
-provider and application are **auto-provisioned from a blueprint**
-([`authentik/blueprints/tumble-code.yaml`](authentik/blueprints/tumble-code.yaml)),
-so there is no manual Authentik OAuth setup.
+- **Your tasks in a browser.** The web panel at `/app` lists every task from VS Code and the CLI, with subtasks as a
+  tree, filters, cost, tokens and duration, and shows each conversation the way the chat does.
+- **Remote control.** Open a task while it runs, from any machine or your phone, and follow it live: send it a
+  message, approve or deny what it asks, switch auto-approval, stop it and resume it.
+- **Sharing.** "Share task" in the extension gives a read-only link, `/shared/<task id>`.
+- **Metrics.** Tokens, cost and time per model, mode and client (VS Code or CLI) over a period you choose.
+- **Problem report.** Errors the extension ran into (`/app/diagnostics`), with the model, the context size and the end
+  of the request and the response, plus a Markdown brief you can hand to an agent to fix them.
+- **LLM exchange dataset**, off until you switch it on at `/app/dataset`: records what the agent sent to the model
+  and got back, and exports it anonymized as JSONL.
+- **Retention.** At `/app/settings` you choose after how many days old tasks and telemetry are deleted (by default
+  nothing is).
 
-```bash
+Everything stays in this stack: the extension sends its telemetry only to the cloud you sign in to.
+
+## Run it on your machine, step by step
+
+This brings up the whole stack on one machine with Docker Compose: the API with its PostgreSQL, and Authentik (the
+sign-in server) with its own PostgreSQL. Authentik is configured automatically from a blueprint
+([`authentik/blueprints/tumble-code.yaml`](authentik/blueprints/tumble-code.yaml)).
+
+**1. Check the prerequisites.** Docker with the Compose plugin (`docker compose version`), git and openssl. Ports
+8085 (API and web panel), 9000 and 9443 (Authentik) and 5544 (Authentik's database) must be free. Authentik asks for
+at least 2 CPU cores and 2 GB of RAM.
+
+**2. Get the code.**
+
+```sh
+git clone https://github.com/krzychdre/tumble-code.git
+cd tumble-code/self-hosted-cloudapi
+```
+
+**3. Create `.env` and its secrets.** Copy the template, then fill the five secrets with random values:
+
+```sh
 cp .env.example .env
+for name in SECRET_KEY JWT_SECRET AUTHENTIK_CLIENT_SECRET AUTH_PG_PASS AUTHENTIK_SECRET_KEY; do
+  sed -i.bak "s|^$name=.*|$name=$(openssl rand -hex 32)|" .env
+done
+rm .env.bak
+```
 
-# Fill in the REQUIRED secrets in .env:
-#   SECRET_KEY, JWT_SECRET            — openssl rand -hex 32
-#   AUTHENTIK_CLIENT_SECRET           — openssl rand -hex 32 (shared with the blueprint)
-#   AUTH_PG_PASS                      — openssl rand -hex 32 (Authentik's DB)
-#   AUTHENTIK_SECRET_KEY              — openssl rand -base64 60
-#   AUTHENTIK_BOOTSTRAP_PASSWORD      — the akadmin password you'll log in with
+Then open `.env` and set `AUTHENTIK_BOOTSTRAP_PASSWORD` to the password you want for the administrator account
+`akadmin`, and `AUTHENTIK_BOOTSTRAP_EMAIL` to its e-mail address. You sign in to Tumble Code with this account. The
+other values can stay as they are for a local stack; `DATABASE_URL` in `.env` is not used by Compose.
 
+**4. Start the stack.**
+
+```sh
 docker compose up -d --build
 ```
 
-Services and ports:
+The first start downloads the images, builds the API and lets Authentik set up its database, which takes a few
+minutes. The API creates its own tables on start.
 
-| Service       | URL / port            | Purpose                              |
-| ------------- | --------------------- | ------------------------------------ |
-| `api`         | http://localhost:8085 | The cloud API the extension talks to |
-| `auth_server` | http://localhost:9000 | Authentik (login UI + OAuth)         |
-| `postgres`    | in-network only       | API database                         |
-| `auth_db`     | localhost:5544        | Authentik database                   |
+**5. Check that it runs.**
 
-Log in to Authentik at http://localhost:9000 with `akadmin` /
-`AUTHENTIK_BOOTSTRAP_PASSWORD`. The same account is what you sign in with during
-the extension's OAuth flow.
+```sh
+docker compose ps                                 # every service "running", the api "healthy"
+curl http://localhost:8085/health/ready           # {"status":"ready",...} once the database answers
+docker compose logs auth_worker | grep -i blueprint   # the Tumble Code blueprint was applied
+```
+
+**6. Sign in to the web panel.** Open http://localhost:8085/app. It sends you to Authentik on port 9000; sign in as
+`akadmin` with the password from step 3. You come back to an empty task list.
+
+**7. Connect VS Code.** In VS Code settings set `tumble-code.cloudApiUrl` to `http://localhost:8085`. Without it the
+extension looks for a cloud that does not exist. Then click the cloud icon in the title bar of the Tumble Code panel,
+choose **Connect to Tumble Code Cloud**, sign in as `akadmin` in the browser that opens, and allow the browser to
+open VS Code. If it cannot, use **Having trouble?** and paste the address the browser ended on. The Cloud view then
+shows your account, with **Task sync** on.
+
+In a Remote SSH window the extension runs on the server: set `tumble-code.cloudApiUrl` in the "Remote [SSH: ...]"
+settings tab, and remember that `localhost` there means the server.
+
+**8. See a task arrive.** Start any task in Tumble Code and reload http://localhost:8085/app: the task is listed, and
+its page shows the conversation live, with the message box and the Stop, Resume, Approve and Deny controls.
+
+**9. Optional: open the panel from other machines.** Out of the box every address is `localhost`. To use the panel
+from a laptop or a phone on your network, see [Opening the web panel from other machines](#opening-the-web-panel-from-other-machines).
+
+## Connect the CLI
+
+Add the cloud to `~/.roo/cli-settings.json`:
+
+```json
+{
+	"cloudApiUrl": "http://localhost:8085"
+}
+```
+
+Then sign in with `tumble auth cloud login` (it opens the browser; on a machine without one, open the printed address
+elsewhere and paste back the address the browser ends on), and check with `tumble auth cloud status`. Inside the
+interactive CLI, `/login` and `/logout` do the same. While signed in, the status line shows `● cloud`, and CLI tasks
+appear in the panel with a "CLI" badge.
+
+## Everyday operation
+
+- **Logs:** `docker compose logs -f api` (the API), `docker compose logs -f auth_server auth_worker` (Authentik).
+- **Stop and start:** `docker compose stop` and `docker compose start`. `docker compose down` removes the containers
+  but keeps the data.
+- **Where the data is:** in `./.vol/` next to this file (`postgres` for the API, `auth` for Authentik). Deleting that
+  folder deletes every task and account.
+- **Update:** `git pull`, then `docker compose up -d --build`. The API migrates its database on start. Authentik is
+  pinned to a version; to move it, follow [Upgrading the bundled Authentik](#upgrading-the-bundled-authentik).
+- **Back up the API's database:**
+  `docker compose exec -T postgres pg_dump -U roo -Fc roo_cloud > tumble-cloud-$(date +%F).dump`
+- **More users:** in Authentik (http://localhost:9000, as `akadmin`) create the user under Directory > Users and add
+  them to the group **Tumble Code Users**; only members of that group may sign in. Each user sees their own tasks.
+- **Address clash:** the stack's network is pinned to `10.99.0.0/24`. If your network already uses that range, change
+  the subnet at the end of `docker-compose.yml`.
+
+## Configuration reference
+
+### Authentik addresses
 
 > **Front-channel vs back-channel URLs.** `AUTHENTIK_BASE_URL`
 > (`http://localhost:9000`) is what the _browser_ is redirected to;
@@ -58,7 +142,7 @@ the extension's OAuth flow.
 > harmless. If back-channel token exchange ever 404s, this is the mechanism to
 > look at (see [`config/auth.py`](config/auth.py) → `get_back_channel_host_header`).
 
-#### Production example (public address)
+### Production example (public address)
 
 For a public deployment where the API is served at `https://app.tumblecode.dev`
 and Authentik at `https://auth.tumblecode.dev`, set in `.env`:
@@ -76,7 +160,7 @@ every back-channel call, so Authentik resolves the brand correctly even though
 the connection targets the internal service name. The provider's `client_type`
 is `confidential`, so a matching `AUTHENTIK_CLIENT_SECRET` is mandatory.
 
-#### Opening the web panel from other machines
+### Opening the web panel from other machines
 
 Out of the box every URL in the sign-in round trip is `localhost`, which on
 another machine means that machine. To open the panel from, say, a laptop on
@@ -133,7 +217,7 @@ blueprint`, or in the Authentik UI under **System → Blueprints**. The blueprin
 > schema is Authentik-version-sensitive; if it errors, adjust
 > `authentik/blueprints/tumble-code.yaml` for your `AUTHENTIK_TAG`.
 
-### Running the API locally (without Docker)
+## Running the API without Docker
 
 Requires Python 3.12+, [uv](https://docs.astral.sh/uv/getting-started/installation/),
 a PostgreSQL 16+ you control, and an Authentik instance.
@@ -311,4 +395,4 @@ sign-in flow, the data model, how task rows arrive, background work, the databas
 
 ## License
 
-MIT
+Apache 2.0, like the rest of the repository: see [LICENSE](../LICENSE).
