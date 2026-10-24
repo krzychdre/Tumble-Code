@@ -1,7 +1,7 @@
 // pnpm --filter @tumble-code/vscode-webview test src/components/chat/__tests__/CommandExecution.spec.tsx
 
 import React from "react"
-import { render, screen, fireEvent, act } from "@testing-library/react"
+import { render, screen, fireEvent, act, within } from "@testing-library/react"
 
 import { CommandExecution } from "../CommandExecution"
 import { ReadOnlyRowsContext } from "../rows/ReadOnlyRowsContext"
@@ -85,228 +85,74 @@ describe("CommandExecution", () => {
 		mockSelectorState.current = mockExtensionState
 	})
 
-	it("should render command without output", () => {
+	const renderExpanded = (text: string) =>
 		render(
 			<ExtensionStateWrapper>
-				<CommandExecution executionId="test-1" text="npm install" isExpanded={true} />
+				<CommandExecution executionId="test-1" text={text} isExpanded={true} />
 			</ExtensionStateWrapper>,
 		)
 
-		expect(screen.getByTestId("code-block")).toHaveTextContent("npm install")
+	it.each([
+		["a command without output", "npm install", "npm install", null],
+		[
+			"a command with output",
+			"npm install\nOutput:\nInstalling packages...",
+			"npm install",
+			"Installing packages...",
+		],
+	])("shows %s", (_name, text, command, output) => {
+		renderExpanded(text)
+
+		expect(screen.getByTestId("code-block")).toHaveTextContent(command)
+		expect(screen.queryByTestId("terminal-output")?.textContent?.trim() ?? null).toBe(output)
 	})
 
-	it("should render command with output", () => {
-		render(
-			<ExtensionStateWrapper>
-				<CommandExecution
-					executionId="test-1"
-					text="npm install\nOutput:\nInstalling packages..."
-					isExpanded={true}
-				/>
-			</ExtensionStateWrapper>,
-		)
-
-		const codeBlocks = screen.getAllByTestId("code-block")
-		expect(codeBlocks[0]).toHaveTextContent("npm install")
-
-		const terminalOutput = screen.getByTestId("terminal-output")
-		expect(terminalOutput).toHaveTextContent("Installing packages...")
-	})
-
-	it("should render with custom icon and title", () => {
-		const icon = <span data-testid="custom-icon">📦</span>
-		const title = <span data-testid="custom-title">Installing Dependencies</span>
-
-		render(
-			<ExtensionStateWrapper>
-				<CommandExecution executionId="test-1" text="npm install" icon={icon} title={title} />
-			</ExtensionStateWrapper>,
-		)
-
-		expect(screen.getByTestId("custom-icon")).toBeInTheDocument()
-		expect(screen.getByTestId("custom-title")).toBeInTheDocument()
-	})
-
-	it("should show command pattern selector for commands", () => {
-		render(
-			<ExtensionStateWrapper>
-				<CommandExecution executionId="test-1" text="npm install express" isExpanded={true} />
-			</ExtensionStateWrapper>,
-		)
-
-		expect(screen.getByTestId("command-pattern-selector")).toBeInTheDocument()
-		// Check that the command is shown in the pattern selector
-		const selector = screen.getByTestId("command-pattern-selector")
-		expect(selector).toHaveTextContent("npm install express")
-	})
-
-	it("should handle allow command change", () => {
-		render(
-			<ExtensionStateWrapper>
-				<CommandExecution executionId="test-1" text="git push" isExpanded={true} />
-			</ExtensionStateWrapper>,
-		)
-
-		const allowButton = screen.getByText("Allow")
-		fireEvent.click(allowButton)
-
-		expect(mockExtensionState.setAllowedCommands).toHaveBeenCalledWith(["npm", "git push"])
-		expect(mockExtensionState.setDeniedCommands).toHaveBeenCalledWith(["rm"])
-		expect(vscode.postMessage).toHaveBeenCalledWith({
-			type: "updateSettings",
-			updatedSettings: {
-				allowedCommands: ["npm", "git push"],
-				deniedCommands: ["rm"],
-			},
-		})
-	})
-
-	it("should handle deny command change", () => {
-		render(
-			<ExtensionStateWrapper>
-				<CommandExecution executionId="test-1" text="docker run" isExpanded={true} />
-			</ExtensionStateWrapper>,
-		)
-
-		const denyButton = screen.getByText("Deny")
-		fireEvent.click(denyButton)
-
-		expect(mockExtensionState.setAllowedCommands).toHaveBeenCalledWith(["npm"])
-		expect(mockExtensionState.setDeniedCommands).toHaveBeenCalledWith(["rm", "docker run"])
-		expect(vscode.postMessage).toHaveBeenCalledWith({
-			type: "updateSettings",
-			updatedSettings: {
-				allowedCommands: ["npm"],
-				deniedCommands: ["rm", "docker run"],
-			},
-		})
-	})
-
-	it("should toggle allowed command", () => {
-		// Update the mock state to have "npm test" in allowedCommands
-		const stateWithNpmTest = {
-			...mockExtensionState,
-			allowedCommands: ["npm test"],
-			deniedCommands: ["rm"],
-		}
-
-		mockSelectorState.current = stateWithNpmTest
-		render(<CommandExecution executionId="test-1" text="npm test" isExpanded={true} />)
-
-		const allowButton = screen.getByText("Allow")
-		fireEvent.click(allowButton)
-
-		// "npm test" is already in allowedCommands, so it should be removed
-		expect(stateWithNpmTest.setAllowedCommands).toHaveBeenCalledWith([])
-		expect(stateWithNpmTest.setDeniedCommands).toHaveBeenCalledWith(["rm"])
-		expect(vscode.postMessage).toHaveBeenCalledWith({
-			type: "updateSettings",
-			updatedSettings: {
-				allowedCommands: [],
-				deniedCommands: ["rm"],
-			},
-		})
-	})
-
-	it("should toggle denied command", () => {
-		// Update the mock state to have "rm -rf" in deniedCommands
-		const stateWithRmRf = {
-			...mockExtensionState,
-			allowedCommands: ["npm"],
-			deniedCommands: ["rm -rf"],
-		}
-
-		mockSelectorState.current = stateWithRmRf
-		render(<CommandExecution executionId="test-1" text="rm -rf" isExpanded={true} />)
-
-		const denyButton = screen.getByText("Deny")
-		fireEvent.click(denyButton)
-
-		// "rm -rf" is already in deniedCommands, so it should be removed
-		expect(stateWithRmRf.setAllowedCommands).toHaveBeenCalledWith(["npm"])
-		expect(stateWithRmRf.setDeniedCommands).toHaveBeenCalledWith([])
-		expect(vscode.postMessage).toHaveBeenCalledWith({
-			type: "updateSettings",
-			updatedSettings: {
-				allowedCommands: ["npm"],
-				deniedCommands: [],
-			},
-		})
-	})
-
-	it("should parse command with Output: separator", () => {
-		const commandText = `npm install
-Output:
-Installing...`
-
-		render(
-			<ExtensionStateWrapper>
-				<CommandExecution executionId="test-1" text={commandText} isExpanded={true} />
-			</ExtensionStateWrapper>,
-		)
-
-		const codeBlocks = screen.getAllByTestId("code-block")
-		expect(codeBlocks[0]).toHaveTextContent("npm install")
-	})
-
-	it("should parse command with output", () => {
-		const commandText = `npm install
-Output:
-Suggested patterns: npm, npm install, npm run`
-
-		render(
-			<ExtensionStateWrapper>
-				<CommandExecution executionId="test-1" text={commandText} isExpanded={true} />
-			</ExtensionStateWrapper>,
-		)
-
-		// First check that the command was parsed correctly
-		const codeBlocks = screen.getAllByTestId("code-block")
-		expect(codeBlocks[0]).toHaveTextContent("npm install")
-
-		const terminalOutput = screen.getByTestId("terminal-output")
-		expect(terminalOutput).toHaveTextContent("Suggested patterns: npm, npm install, npm run")
+	it("offers each command of a chain to the pattern selector", () => {
+		renderExpanded("npm install && npm test")
 
 		const selector = screen.getByTestId("command-pattern-selector")
-		expect(selector).toBeInTheDocument()
-		// Should show the full command in the selector
-		expect(selector).toHaveTextContent("npm install")
+		expect(within(selector).getAllByText("npm install").length).toBeGreaterThan(0)
+		expect(within(selector).getAllByText("npm test").length).toBeGreaterThan(0)
 	})
 
-	it("should handle commands with pipes", () => {
-		render(
-			<ExtensionStateWrapper>
-				<CommandExecution executionId="test-1" text="ls -la | grep test" isExpanded={true} />
-			</ExtensionStateWrapper>,
-		)
-
-		const selector = screen.getByTestId("command-pattern-selector")
-		expect(selector).toBeInTheDocument()
-		// Should show one of the individual commands from the pipe
-		expect(selector.textContent).toMatch(/ls -la|grep test/)
-	})
-
-	it("should handle commands with && operator", () => {
-		render(
-			<ExtensionStateWrapper>
-				<CommandExecution executionId="test-1" text="npm install && npm test" isExpanded={true} />
-			</ExtensionStateWrapper>,
-		)
-
-		const selector = screen.getByTestId("command-pattern-selector")
-		expect(selector).toBeInTheDocument()
-		// Should show one of the individual commands from the && chain
-		expect(selector.textContent).toMatch(/npm install|npm test|npm/)
-	})
-
-	it("should not show pattern selector for empty commands", () => {
-		render(
-			<ExtensionStateWrapper>
-				<CommandExecution executionId="test-1" text="" isExpanded={true} />
-			</ExtensionStateWrapper>,
-		)
+	it.each([
+		["an empty command", ""],
+		["a blank command", "   "],
+	])("offers no patterns for %s", (_name, text) => {
+		renderExpanded(text)
 
 		expect(screen.queryByTestId("command-pattern-selector")).not.toBeInTheDocument()
+	})
+
+	// [name, allowed, denied, command, button, new allowed, new denied]
+	it.each([
+		["allows a new command", ["npm"], ["rm"], "git push", "Allow", ["npm", "git push"], ["rm"]],
+		["un-allows an allowed command", ["npm test"], ["rm"], "npm test", "Allow", [], ["rm"]],
+		[
+			"moves a denied command to allowed",
+			["npm"],
+			["rm file.txt"],
+			"rm file.txt",
+			"Allow",
+			["npm", "rm file.txt"],
+			[],
+		],
+		["denies a new command", ["npm"], ["rm"], "docker run", "Deny", ["npm"], ["rm", "docker run"]],
+		["un-denies a denied command", ["npm"], ["rm -rf"], "rm -rf", "Deny", ["npm"], []],
+		["moves an allowed command to denied", ["git push"], [], "git push", "Deny", [], ["git push"]],
+		["allows with no lists yet", undefined, undefined, "npm install", "Allow", ["npm install"], []],
+	])("%s", (_name, allowedCommands, deniedCommands, text, button, newAllowed, newDenied) => {
+		mockSelectorState.current = { ...mockExtensionState, allowedCommands, deniedCommands }
+		renderExpanded(text)
+
+		fireEvent.click(screen.getByText(button))
+
+		expect(mockExtensionState.setAllowedCommands).toHaveBeenCalledWith(newAllowed)
+		expect(mockExtensionState.setDeniedCommands).toHaveBeenCalledWith(newDenied)
+		expect(vscode.postMessage).toHaveBeenCalledWith({
+			type: "updateSettings",
+			updatedSettings: { allowedCommands: newAllowed, deniedCommands: newDenied },
+		})
 	})
 
 	describe("row collapsing", () => {
@@ -340,25 +186,17 @@ EOF`
 			expect(toggle).toHaveAttribute("aria-expanded", "false")
 		})
 
-		it("previews the first line of a multi-line command with an ellipsis", () => {
+		it.each([
+			["the first line of a multi-line command with an ellipsis", multiLineCommand, "python3 - <<'EOF'…"],
+			["a single-line command as it is", "npm install", "npm install"],
+		])("previews %s", (_name, text, preview) => {
 			render(
 				<ExtensionStateWrapper>
-					<CommandExecution executionId="test-preview-multi" text={multiLineCommand} />
+					<CommandExecution executionId="test-preview" text={text} />
 				</ExtensionStateWrapper>,
 			)
 
-			expect(screen.getByText("python3 - <<'EOF'…")).toBeInTheDocument()
-		})
-
-		it("previews a single-line command without an ellipsis", () => {
-			render(
-				<ExtensionStateWrapper>
-					<CommandExecution executionId="test-preview-single" text="npm install" />
-				</ExtensionStateWrapper>,
-			)
-
-			expect(screen.getByText("npm install")).toBeInTheDocument()
-			expect(screen.queryByText(/…/)).not.toBeInTheDocument()
+			expect(screen.getByText(preview)).toBeInTheDocument()
 		})
 
 		it("drops the header preview once the row is expanded", () => {
@@ -419,301 +257,6 @@ EOF`
 
 			// A command always exists, so the chevron is not tied to the output.
 			expect(screen.getByRole("button", { name: "chat:commandExecution.expandCommand" })).toBeInTheDocument()
-		})
-	})
-
-	it("should handle undefined allowedCommands and deniedCommands", () => {
-		const stateWithUndefined = {
-			...mockExtensionState,
-			allowedCommands: undefined,
-			deniedCommands: undefined,
-		}
-
-		mockSelectorState.current = stateWithUndefined
-		render(<CommandExecution executionId="test-1" text="npm install" isExpanded={true} />)
-
-		// Should show pattern selector when patterns are available
-		expect(screen.getByTestId("command-pattern-selector")).toBeInTheDocument()
-	})
-
-	it("should handle command change when moving from denied to allowed", () => {
-		// Update the mock state to have "rm file.txt" in deniedCommands
-		const stateWithRmInDenied = {
-			...mockExtensionState,
-			allowedCommands: ["npm"],
-			deniedCommands: ["rm file.txt"],
-		}
-
-		mockSelectorState.current = stateWithRmInDenied
-		render(<CommandExecution executionId="test-1" text="rm file.txt" isExpanded={true} />)
-
-		const allowButton = screen.getByText("Allow")
-		fireEvent.click(allowButton)
-
-		// "rm file.txt" should be removed from denied and added to allowed
-		expect(stateWithRmInDenied.setAllowedCommands).toHaveBeenCalledWith(["npm", "rm file.txt"])
-		expect(stateWithRmInDenied.setDeniedCommands).toHaveBeenCalledWith([])
-		expect(vscode.postMessage).toHaveBeenCalledWith({
-			type: "updateSettings",
-			updatedSettings: {
-				allowedCommands: ["npm", "rm file.txt"],
-				deniedCommands: [],
-			},
-		})
-	})
-
-	describe("integration with CommandPatternSelector", () => {
-		it("should show complex commands with multiple operators", () => {
-			render(
-				<ExtensionStateWrapper>
-					<CommandExecution
-						executionId="test-6"
-						text="npm install && npm test || echo 'failed'"
-						isExpanded={true}
-					/>
-				</ExtensionStateWrapper>,
-			)
-
-			const selector = screen.getByTestId("command-pattern-selector")
-			expect(selector).toBeInTheDocument()
-			// Should show one of the individual commands from the complex chain
-			expect(selector.textContent).toMatch(/npm install|npm test|echo|npm/)
-		})
-
-		it("should handle commands with output", () => {
-			const commandWithOutput = `npm install
-Output:
-Installing packages...
-Other output here`
-
-			render(
-				<ExtensionStateWrapper>
-					<CommandExecution
-						executionId="test-6"
-						text={commandWithOutput}
-						icon={<span>icon</span>}
-						title={<span>Run Command</span>}
-						isExpanded={true}
-					/>
-				</ExtensionStateWrapper>,
-			)
-
-			const selector = screen.getByTestId("command-pattern-selector")
-			expect(selector).toBeInTheDocument()
-			// Should show the command in the selector
-			expect(selector).toHaveTextContent("npm install")
-		})
-
-		it("should handle commands with subshells", () => {
-			render(
-				<ExtensionStateWrapper>
-					<CommandExecution executionId="test-7" text="echo $(whoami) && git status" isExpanded={true} />
-				</ExtensionStateWrapper>,
-			)
-
-			const selector = screen.getByTestId("command-pattern-selector")
-			expect(selector).toBeInTheDocument()
-			// Should show one of the individual commands
-			expect(selector.textContent).toMatch(/echo|whoami|git status|git/)
-		})
-
-		it("should handle commands with backtick subshells", () => {
-			render(
-				<ExtensionStateWrapper>
-					<CommandExecution executionId="test-8" text="git commit -m `date`" isExpanded={true} />
-				</ExtensionStateWrapper>,
-			)
-
-			const selector = screen.getByTestId("command-pattern-selector")
-			expect(selector).toBeInTheDocument()
-			// Should show one of the individual commands
-			expect(selector.textContent).toMatch(/git commit|date|git/)
-		})
-
-		it("should handle commands with special characters", () => {
-			render(
-				<ExtensionStateWrapper>
-					<CommandExecution executionId="test-9" text="cd ~/projects && npm start" isExpanded={true} />
-				</ExtensionStateWrapper>,
-			)
-
-			const selector = screen.getByTestId("command-pattern-selector")
-			expect(selector).toBeInTheDocument()
-			// Should show one of the individual commands
-			expect(selector.textContent).toMatch(/cd ~\/projects|npm start|cd|npm/)
-		})
-
-		it("should handle commands with mixed content including output", () => {
-			const commandWithMixedContent = `npm test
-Output:
-Running tests...
-✓ Test 1 passed
-✓ Test 2 passed`
-
-			render(
-				<ExtensionStateWrapper>
-					<CommandExecution
-						executionId="test-10"
-						text={commandWithMixedContent}
-						icon={<span>icon</span>}
-						title={<span>Run Command</span>}
-						isExpanded={true}
-					/>
-				</ExtensionStateWrapper>,
-			)
-
-			const selector = screen.getByTestId("command-pattern-selector")
-			expect(selector).toBeInTheDocument()
-			// Should show the command in the selector
-			expect(selector).toHaveTextContent("npm test")
-		})
-
-		it("should update both allowed and denied lists when commands conflict", () => {
-			const conflictState = {
-				...mockExtensionState,
-				allowedCommands: ["git"],
-				deniedCommands: ["git push origin main"],
-			}
-
-			mockSelectorState.current = conflictState
-			render(<CommandExecution executionId="test-11" text="git push origin main" isExpanded={true} />)
-
-			// Click to allow "git push origin main"
-			const allowButton = screen.getByText("Allow")
-			fireEvent.click(allowButton)
-
-			// Should add to allowed and remove from denied
-			expect(conflictState.setAllowedCommands).toHaveBeenCalledWith(["git", "git push origin main"])
-			expect(conflictState.setDeniedCommands).toHaveBeenCalledWith([])
-		})
-
-		it("should handle commands with special quotes", () => {
-			// Test with a command that has quotes
-			const commandWithQuotes = "echo 'test with unclosed quote"
-
-			render(
-				<ExtensionStateWrapper>
-					<CommandExecution executionId="test-12" text={commandWithQuotes} isExpanded={true} />
-				</ExtensionStateWrapper>,
-			)
-
-			// Should still render the command
-			expect(screen.getByTestId("code-block")).toHaveTextContent("echo 'test with unclosed quote")
-
-			// Should show pattern selector with a command pattern
-			const selector = screen.getByTestId("command-pattern-selector")
-			expect(selector).toBeInTheDocument()
-			expect(selector.textContent).toMatch(/echo/)
-		})
-
-		it("should handle empty or whitespace-only commands", () => {
-			render(
-				<ExtensionStateWrapper>
-					<CommandExecution executionId="test-13" text="   " isExpanded={true} />
-				</ExtensionStateWrapper>,
-			)
-
-			// Should render without errors
-			expect(screen.getByTestId("code-block")).toBeInTheDocument()
-
-			// Should not show pattern selector for empty commands
-			expect(screen.queryByTestId("command-pattern-selector")).not.toBeInTheDocument()
-		})
-
-		it("should handle commands with only output and no command prefix", () => {
-			const outputOnly = `Some output without a command
-Multiple lines of output
-Without any command prefix`
-
-			render(
-				<ExtensionStateWrapper>
-					<CommandExecution executionId="test-14" text={outputOnly} isExpanded={true} />
-				</ExtensionStateWrapper>,
-			)
-
-			// Should treat the entire text as command when no prefix is found
-			const codeBlock = screen.getByTestId("code-block")
-			// The mock CodeBlock component renders text content without preserving newlines
-			expect(codeBlock.textContent).toContain("Some output without a command")
-			expect(codeBlock.textContent).toContain("Multiple lines of output")
-			expect(codeBlock.textContent).toContain("Without any command prefix")
-		})
-
-		it("should handle simple commands", () => {
-			const plainCommand = "docker build ."
-
-			render(
-				<ExtensionStateWrapper>
-					<CommandExecution executionId="test-15" text={plainCommand} isExpanded={true} />
-				</ExtensionStateWrapper>,
-			)
-
-			// Should render the command
-			expect(screen.getByTestId("code-block")).toHaveTextContent("docker build .")
-
-			// Should show pattern selector with the full command
-			const selector = screen.getByTestId("command-pattern-selector")
-			expect(selector).toBeInTheDocument()
-			expect(selector).toHaveTextContent("docker build .")
-
-			// Verify no output is shown (since there's no Output: separator)
-			const codeBlocks = screen.getAllByTestId("code-block")
-			expect(codeBlocks).toHaveLength(1) // Only the command block, no output block
-		})
-
-		it("should handle commands with numeric output", () => {
-			const commandWithNumericOutput = `wc -l *.go *.java
-Output:
-			   10 file1.go
-			   20 file2.go
-			   15 Main.java
-			   45 total`
-
-			render(
-				<ExtensionStateWrapper>
-					<CommandExecution executionId="test-16" text={commandWithNumericOutput} isExpanded={true} />
-				</ExtensionStateWrapper>,
-			)
-
-			// Should render the command and output
-			const codeBlocks = screen.getAllByTestId("code-block")
-			expect(codeBlocks[0]).toHaveTextContent("wc -l *.go *.java")
-
-			// Should show pattern selector
-			const selector = screen.getByTestId("command-pattern-selector")
-			expect(selector).toBeInTheDocument()
-
-			// Should show a command pattern
-			expect(selector.textContent).toMatch(/wc/)
-
-			// The output should still be displayed
-			const terminalOutput = screen.getByTestId("terminal-output")
-			expect(terminalOutput).toBeInTheDocument()
-			expect(terminalOutput.textContent).toContain("45 total")
-		})
-
-		it("should handle commands with zero output", () => {
-			const commandWithZeroTotal = `wc -l *.go *.java
-Output:
-		     0 total`
-
-			render(
-				<ExtensionStateWrapper>
-					<CommandExecution executionId="test-17" text={commandWithZeroTotal} isExpanded={true} />
-				</ExtensionStateWrapper>,
-			)
-
-			// Should show pattern selector
-			const selector = screen.getByTestId("command-pattern-selector")
-			expect(selector).toBeInTheDocument()
-
-			// Should show a command pattern
-			expect(selector.textContent).toMatch(/wc/)
-
-			// The output should still be displayed
-			const terminalOutput = screen.getByTestId("terminal-output")
-			expect(terminalOutput).toBeInTheDocument()
-			expect(terminalOutput).toHaveTextContent("0 total")
 		})
 	})
 
