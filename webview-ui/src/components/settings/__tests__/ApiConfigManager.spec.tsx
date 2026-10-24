@@ -197,6 +197,21 @@ describe("ApiConfigManager", () => {
 		expect(mockOnRenameConfig).toHaveBeenCalledWith("Default Config", "New Name")
 	})
 
+	it("switching profiles ends a rename and closes the new-profile dialog", () => {
+		const { rerender } = render(<ApiConfigManager {...defaultProps} />)
+		fireEvent.click(screen.getByTestId("rename-profile-button"))
+		expect(getRenameForm()).toBeInTheDocument()
+
+		rerender(<ApiConfigManager {...defaultProps} currentApiConfigName="Another Config" />)
+		expect(screen.queryByTestId("rename-form")).not.toBeInTheDocument()
+
+		fireEvent.click(screen.getByTestId("add-profile-button"))
+		expect(screen.getByTestId("dialog")).toBeVisible()
+
+		rerender(<ApiConfigManager {...defaultProps} />)
+		expect(screen.getByTestId("dialog")).not.toBeVisible()
+	})
+
 	it("shows error when renaming to existing config name", () => {
 		render(<ApiConfigManager {...defaultProps} />)
 

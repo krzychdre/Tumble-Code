@@ -37,11 +37,17 @@ export const CustomToolsSettings = ({ enabled, onChange }: CustomToolsSettingsPr
 	const [isRefreshing, setIsRefreshing] = useState(false)
 	const [refreshError, setRefreshError] = useState<string | null>(null)
 
+	// Turning the tools off drops the list; turning them on asks for it again.
+	const [wasEnabled, setWasEnabled] = useState(enabled)
+	if (enabled !== wasEnabled) {
+		setWasEnabled(enabled)
+		if (!enabled) {
+			setTools([])
+		}
+	}
 	useEffect(() => {
 		if (enabled) {
 			vscode.postMessage({ type: "refreshCustomTools" })
-		} else {
-			setTools([])
 		}
 	}, [enabled])
 

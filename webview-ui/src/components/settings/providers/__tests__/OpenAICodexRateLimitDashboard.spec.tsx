@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@/utils/test-utils"
+import { act, fireEvent, render, screen, waitFor } from "@/utils/test-utils"
 
 import { OpenAICodexRateLimitDashboard } from "../OpenAICodexRateLimitDashboard"
 
@@ -97,5 +97,32 @@ describe("OpenAICodexRateLimitDashboard", () => {
 
 		expect(await screen.findByText(/resets in 1h 30m/)).toBeInTheDocument()
 		vi.mocked(Date.now).mockRestore()
+	})
+	const LOADING = "settings:providers.openAiCodexRateLimits.loading"
+	const requests = () => postMessageMock.mock.calls.filter(([m]) => m.type === "requestOpenAiCodexRateLimits").length
+
+	it("signing in requests the limits and shows loading until they arrive", () => {
+		const { rerender } = render(<OpenAICodexRateLimitDashboard isAuthenticated={false} />)
+		expect(requests()).toBe(0)
+
+		rerender(<OpenAICodexRateLimitDashboard isAuthenticated={true} />)
+
+		expect(requests()).toBe(1)
+		expect(screen.getByText(LOADING)).toBeInTheDocument()
+	})
+
+	it("retry after an error requests the limits again and shows loading", () => {
+		render(<OpenAICodexRateLimitDashboard isAuthenticated={true} />)
+		act(() => {
+			window.dispatchEvent(
+				new MessageEvent("message", { data: { type: "openAiCodexRateLimits", error: "boom" } }),
+			)
+		})
+		expect(screen.getByText("boom")).toBeInTheDocument()
+
+		fireEvent.click(screen.getByText("settings:providers.openAiCodexRateLimits.retry"))
+
+		expect(requests()).toBe(2)
+		expect(screen.getByText(LOADING)).toBeInTheDocument()
 	})
 })
