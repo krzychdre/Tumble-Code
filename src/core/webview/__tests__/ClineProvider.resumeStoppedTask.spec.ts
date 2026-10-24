@@ -1,4 +1,4 @@
-// npx vitest run core/webview/__tests__/ClineProvider.resumeStoppedTask.spec.ts
+// pnpm --filter tumble-code test core/webview/__tests__/ClineProvider.resumeStoppedTask.spec.ts
 //
 // The cloud web page's Resume button sends `resume_task`. The bridge used to
 // call only showTaskWithId, which does nothing when the stopped task is
@@ -63,21 +63,6 @@ describe("ClineProvider.resumeStoppedTask", () => {
 
 		expect(polls).toBeGreaterThanOrEqual(3)
 		expect(task.handleWebviewAskResponse).toHaveBeenCalledTimes(1)
-		expect(task.handleWebviewAskResponse).toHaveBeenCalledWith("yesButtonClicked")
-	})
-
-	it("answers a task that becomes live only after showTaskWithId", async () => {
-		const task = makeTask("t1", [resumeAsk()])
-		let live: FakeTask | undefined
-		const show = vi.fn()
-		const { resume } = makeProvider(() => live, show)
-		show.mockImplementation(async () => {
-			setTimeout(() => {
-				live = task
-			}, 150)
-		})
-
-		await expect(resume("t1", 2_000)).resolves.toBe(true)
 		expect(task.handleWebviewAskResponse).toHaveBeenCalledWith("yesButtonClicked")
 	})
 

@@ -305,23 +305,52 @@ describe("BackgroundTaskRunner.createBackgroundTask", () => {
 		expect(host.getApiConfigurationForMode).not.toHaveBeenCalled()
 	})
 
-	it("refuses a profile outside the organization allow list before creating anything", async () => {
-		const { host, register } = makeHost({
-			getState: vi.fn(async () => ({
-				apiConfiguration: { apiProvider: "openrouter" } as ProviderSettings,
-				currentApiConfigName: "active",
-				experiments: {},
-				organizationAllowList: { allowAll: false, providers: { anthropic: { allowAll: true } } },
-				mode: "code",
-			})),
-		})
-		const runner = new BackgroundTaskRunner(host)
+	// The allow list is checked against the profile the task really runs on (DEF-C6).
+	const DISALLOWED: ProviderSettings = { apiProvider: "openrouter" }
+	it.each<[string, ProviderSettings, ProviderSettings | undefined, Record<string, unknown>]>([
+		["the active profile of a subagent", DISALLOWED, undefined, { subagentInfo: SUBAGENT_INFO }],
+		[
+			"the profile pinned to a subagent's mode",
+			ACTIVE,
+			DISALLOWED,
+			{ taskMode: "code", subagentInfo: SUBAGENT_INFO },
+		],
+		["an explicit profile (the memory writer path)", ACTIVE, undefined, { apiConfiguration: DISALLOWED }],
+	])(
+		"refuses %s outside the organization allow list before creating anything",
+		async (_name, active, pinned, options) => {
+			const { host, register } = makeHost({
+				getState: vi.fn(async () => ({
+					apiConfiguration: active,
+					currentApiConfigName: "active",
+					experiments: {},
+					organizationAllowList: { allowAll: false, providers: { anthropic: { allowAll: true } } },
+					mode: "code",
+				})),
+				getApiConfigurationForMode: vi.fn(async () => pinned && { apiConfiguration: pinned, name: "pinned" }),
+			})
+			const runner = new BackgroundTaskRunner(host)
 
-		await expect(runner.createBackgroundTask("x", { subagentInfo: SUBAGENT_INFO })).rejects.toBeInstanceOf(
-			OrganizationAllowListViolationError,
-		)
-		expect(Task).not.toHaveBeenCalled()
-		expect(register).not.toHaveBeenCalled()
+			await expect(runner.createBackgroundTask("x", options)).rejects.toBeInstanceOf(
+				OrganizationAllowListViolationError,
+			)
+			expect(Task).not.toHaveBeenCalled()
+			expect(register).not.toHaveBeenCalled()
+		},
+	)
+
+	it("takes the consecutive-mistake limit from the profile pinned to the subagent's mode", async () => {
+		const pinned: ProviderSettings = { ...ACTIVE, consecutiveMistakeLimit: 11 }
+		const { host } = makeHost({
+			getApiConfigurationForMode: vi.fn(async () => ({ apiConfiguration: pinned, name: "pinned" })),
+		})
+
+		await new BackgroundTaskRunner(host).createBackgroundTask("x", {
+			taskMode: "code",
+			subagentInfo: SUBAGENT_INFO,
+		})
+
+		expect(lastTask().options.consecutiveMistakeLimit).toBe(11)
 	})
 })
 

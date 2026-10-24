@@ -7,7 +7,6 @@ import { TelemetryService } from "@tumble-code/telemetry"
 import { createMockContext, createMockWebviewView, createTestProvider } from "./helpers/providerHarness"
 import { TaskHistoryStore, type TaskHistoryStoreHandle } from "../../task-persistence"
 
-// Mock setup (mirrors ClineProvider.storageError.spec.ts)
 vi.mock("p-wait-for", () => ({
 	__esModule: true,
 	default: vi.fn().mockResolvedValue(undefined),
@@ -212,22 +211,14 @@ afterAll(() => {
 	vi.restoreAllMocks()
 })
 
+// The acquire, cooldown and banner mechanics are pinned in TaskHistoryGateway.spec; this pins
+// what reaches the webview through the provider.
 describe("ClineProvider TaskHistoryStore reacquire", () => {
 	let mockContext: vscode.ExtensionContext
 	let mockWebviewView: vscode.WebviewView
 	let mockPostMessage: ReturnType<typeof vi.fn>
 
 	const flush = (ms = 20) => new Promise((resolve) => setTimeout(resolve, ms))
-
-	const deferred = <T>() => {
-		let resolve!: (value: T) => void
-		let reject!: (reason?: unknown) => void
-		const promise = new Promise<T>((res, rej) => {
-			resolve = res
-			reject = rej
-		})
-		return { promise, resolve, reject }
-	}
 
 	const makeHandle = (): TaskHistoryStoreHandle => {
 		const records = new Map<string, any>()
@@ -311,24 +302,6 @@ describe("ClineProvider TaskHistoryStore reacquire", () => {
 		acquire.mockRestore()
 	})
 
-	it("rethrows the remembered error within the cooldown window without a second acquire", async () => {
-		const acquire = vi.spyOn(TaskHistoryStore, "acquire").mockRejectedValueOnce(new Error("storage path broken"))
-		const provider = createTestProvider(mockContext)
-		await flush()
-
-		// The eager constructor acquire consumed the only mock rejection.
-		expect(acquire).toHaveBeenCalledTimes(1)
-
-		// Still inside the cooldown window (real elapsed time is only a few
-		// ms): the remembered error is rethrown and no new acquire runs.
-		await expect((provider as any).getTaskHistoryStore()).rejects.toThrow("storage path broken")
-		await expect((provider as any).getTaskHistoryStore()).rejects.toThrow("storage path broken")
-		expect(acquire).toHaveBeenCalledTimes(1)
-
-		await provider.dispose()
-		acquire.mockRestore()
-	})
-
 	it("degrades getStateToPostToWebview to an empty history instead of throwing", async () => {
 		const acquire = vi.spyOn(TaskHistoryStore, "acquire").mockRejectedValue(new Error("storage down"))
 		const provider = createTestProvider(mockContext)
@@ -344,45 +317,6 @@ describe("ClineProvider TaskHistoryStore reacquire", () => {
 		expect(acquire).toHaveBeenCalledTimes(1)
 
 		await provider.dispose()
-		acquire.mockRestore()
-	})
-
-	it("shares one acquire promise between parallel callers", async () => {
-		const pending = deferred<TaskHistoryStoreHandle>()
-		const handle = makeHandle()
-		const acquire = vi.spyOn(TaskHistoryStore, "acquire").mockReturnValueOnce(pending.promise)
-		const provider = createTestProvider(mockContext)
-
-		// Three parallel callers (including the eager constructor acquire)
-		// must share a single acquire attempt.
-		const first = (provider as any).getTaskHistoryStore()
-		const second = (provider as any).getTaskHistoryStore()
-		const third = provider.getTaskHistory()
-
-		pending.resolve(handle)
-		const [store1, store2, history] = await Promise.all([first, second, third])
-
-		expect(acquire).toHaveBeenCalledTimes(1)
-		expect(store1).toBe(handle.store)
-		expect(store2).toBe(handle.store)
-		expect(history).toEqual([])
-
-		await provider.dispose()
-		acquire.mockRestore()
-	})
-
-	it("releases a store resolved after dispose without subscribing", async () => {
-		const pending = deferred<TaskHistoryStoreHandle>()
-		const handle = makeHandle()
-		const acquire = vi.spyOn(TaskHistoryStore, "acquire").mockReturnValueOnce(pending.promise)
-		const provider = createTestProvider(mockContext)
-
-		await provider.dispose()
-		pending.resolve(handle)
-
-		await vi.waitFor(() => expect(handle.dispose).toHaveBeenCalledTimes(1))
-		expect(handle.store.onChange).not.toHaveBeenCalled()
-
 		acquire.mockRestore()
 	})
 })

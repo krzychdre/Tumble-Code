@@ -697,21 +697,19 @@ export class DelegationService {
 		}
 
 		// 8) Inject restored histories into the in-memory instance before resuming
-		if (parentInstance) {
-			try {
-				await parentInstance.overwriteClineMessages(parentClineMessages)
-			} catch {
-				// non-fatal
-			}
-			try {
-				await parentInstance.overwriteApiConversationHistory(parentApiMessages)
-			} catch {
-				// non-fatal
-			}
-
-			// Auto-resume parent without ask("resume_task")
-			await parentInstance.resumeAfterDelegation()
+		try {
+			await parentInstance.overwriteClineMessages(parentClineMessages)
+		} catch {
+			// non-fatal
 		}
+		try {
+			await parentInstance.overwriteApiConversationHistory(parentApiMessages)
+		} catch {
+			// non-fatal
+		}
+
+		// Auto-resume parent without ask("resume_task")
+		await parentInstance.resumeAfterDelegation()
 
 		// 9) Emit TaskDelegationResumed (provider-level)
 		try {
