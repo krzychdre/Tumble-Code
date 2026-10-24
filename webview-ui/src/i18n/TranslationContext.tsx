@@ -71,11 +71,9 @@ export const TranslationProvider: React.FC<{ children: ReactNode }> = ({ childre
 
 	const hydratedInLanguage = !!didHydrateState && i18n.language === language
 
-	useEffect(() => {
-		if (hydratedInLanguage) {
-			setHasShownHydratedUi(true)
-		}
-	}, [hydratedInLanguage])
+	if (hydratedInLanguage && !hasShownHydratedUi) {
+		setHasShownHydratedUi(true)
+	}
 
 	// Memoize the translation function to prevent unnecessary re-renders
 	const translate = useCallback(

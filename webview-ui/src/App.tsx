@@ -114,7 +114,6 @@ const App = () => {
 
 	const settingsRef = useRef<SettingsViewRef>(null)
 	const chatViewRef = useRef<ChatViewRef>(null)
-	const handledImportRef = useRef<number | undefined>(undefined)
 
 	const [currentSection, setCurrentSection] = useState<string | undefined>(undefined)
 	const [currentMarketplaceTab, setCurrentMarketplaceTab] = useState<string | undefined>(undefined)
@@ -193,28 +192,35 @@ const App = () => {
 
 	useExtensionMessage(["action", "showDeleteMessageDialog", "showEditMessageDialog", "acceptInput"], onMessage)
 
-	useEffect(() => {
-		if (shouldShowAnnouncement && tab === "chat") {
+	// The announcement opens each time it becomes due on the chat tab.
+	const isAnnouncementDue = !!shouldShowAnnouncement && tab === "chat"
+	const [wasAnnouncementDue, setWasAnnouncementDue] = useState(false)
+	if (isAnnouncementDue !== wasAnnouncementDue) {
+		setWasAnnouncementDue(isAnnouncementDue)
+		if (isAnnouncementDue) {
 			setShowAnnouncement(true)
+		}
+	}
+
+	useEffect(() => {
+		if (isAnnouncementDue) {
 			vscode.postMessage({ type: "didShowAnnouncement" })
 		}
-	}, [shouldShowAnnouncement, tab])
+	}, [isAnnouncementDue])
 
 	// When settings are imported while the welcome screen is still gating the UI
 	// (e.g. the import cleared the provider config), make sure the user is not
 	// stranded. Recover by routing them into Settings unless they are already on a
-	// reachable tab (settings or marketplace). Runs once per import via the ref guard.
-	useEffect(() => {
-		const isRecoverableTab = tab === "settings" || tab === "marketplace"
-		if (showWelcome && settingsImportedAt && settingsImportedAt !== handledImportRef.current) {
-			handledImportRef.current = settingsImportedAt
-			if (!isRecoverableTab) {
-				setCurrentSection("providers")
-				setCurrentMarketplaceTab(undefined)
-				setTab("settings")
-			}
+	// reachable tab (settings or marketplace). Runs once per import.
+	const [handledImportAt, setHandledImportAt] = useState<number | undefined>(undefined)
+	if (showWelcome && settingsImportedAt && settingsImportedAt !== handledImportAt) {
+		setHandledImportAt(settingsImportedAt)
+		if (tab !== "settings" && tab !== "marketplace") {
+			setCurrentSection("providers")
+			setCurrentMarketplaceTab(undefined)
+			setTab("settings")
 		}
-	}, [showWelcome, settingsImportedAt, tab])
+	}
 
 	// Initialize source map support for better error reporting
 	useEffect(() => {

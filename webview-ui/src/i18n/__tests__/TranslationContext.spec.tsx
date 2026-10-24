@@ -100,6 +100,21 @@ describe("TranslationContext", () => {
 			expect(committedTexts).not.toContain("common:answers.yes")
 		})
 
+		it("keeps the shown language visible while a later switch loads", async () => {
+			const { rerender } = renderProvider()
+
+			extensionState.language = "fr"
+			rerender(
+				<TranslationProvider>
+					<TestComponent />
+				</TranslationProvider>,
+			)
+
+			expect(screen.getByTestId("translation-test")).toBeVisible()
+			expect(screen.getByTestId("translation-test")).toHaveTextContent("Yes")
+			await waitFor(() => expect(screen.getByTestId("translation-test")).toHaveTextContent("Oui"))
+		})
+
 		it("applies the last requested language when switches overlap", async () => {
 			const { rerender } = renderProvider()
 

@@ -34,7 +34,6 @@ export const ShareButton = ({ item, disabled = false }: ShareButtonProps) => {
 	// P1: narrow slice.
 	const cloudUserInfo = useExtensionSelector((s) => s.cloudUserInfo)
 
-	// Use enhanced cloud upsell hook with auto-open on auth success
 	const {
 		isOpen: connectModalOpen,
 		openUpsell,
@@ -43,21 +42,13 @@ export const ShareButton = ({ item, disabled = false }: ShareButtonProps) => {
 		isAuthenticated: cloudIsAuthenticated,
 		sharingEnabled,
 		publicSharingEnabled,
-	} = useCloudUpsell({
-		onAuthSuccess: () => {
-			// Auto-open share dropdown after successful authentication
-			setShareDropdownOpen(true)
-			setWasConnectInitiatedFromShare(false)
-		},
-	})
+	} = useCloudUpsell()
 
-	// Auto-open popover when user becomes authenticated after clicking Connect from share button
-	useEffect(() => {
-		if (wasConnectInitiatedFromShare && cloudIsAuthenticated) {
-			setShareDropdownOpen(true)
-			setWasConnectInitiatedFromShare(false)
-		}
-	}, [wasConnectInitiatedFromShare, cloudIsAuthenticated])
+	// Open the popover once a sign-in started from the share button completes.
+	if (wasConnectInitiatedFromShare && cloudIsAuthenticated) {
+		setShareDropdownOpen(true)
+		setWasConnectInitiatedFromShare(false)
+	}
 
 	// Listen for share success messages from the extension
 	useEffect(() => {
