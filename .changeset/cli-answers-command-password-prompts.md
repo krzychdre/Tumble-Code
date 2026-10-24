@@ -1,5 +1,0 @@
----
-"tumble-code": patch
----
-
-A command that needs a password can now ask for it inside the CLI. Cloning a private repository, pushing over HTTPS or using an ssh key with a passphrase used to be impossible from a task: the command had no terminal to prompt on, so it simply failed. It now asks in the interface, in a bordered prompt that names the command and repeats its question, and the answer goes straight back to the waiting command. Typing is hidden for anything that is a secret, and left visible for questions that are not, so ssh's "continue connecting (yes/no)?" can be answered without typing blind. Esc refuses the prompt, which lets the command fail instead of hanging. The prompt takes over the keyboard while it is up, so esc cannot cancel the whole task by accident. The answer is never written to the transcript, never saved with the conversation and never sent to the model. In a headless run, where nobody is watching, a command that asks for a password still fails immediately rather than waiting.
