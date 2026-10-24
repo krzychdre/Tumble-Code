@@ -793,13 +793,17 @@ describe("abortTask and dispose", () => {
 		task = newTask(makeProvider())
 	})
 
-	it("sets the abort flag, emits TaskAborted and disposes", async () => {
+	it("sets the abort flag, resets the error streaks, emits TaskAborted and disposes", async () => {
 		const emit = vi.spyOn(task, "emit")
 		const dispose = vi.spyOn(task.lifecycle, "dispose").mockImplementation(() => {})
+		task.consecutiveNoAssistantMessagesCount = 3
+		task.consecutiveNoToolUseCount = 4
 
 		await task.abortTask()
 
 		expect(task.abort).toBe(true)
+		expect(task.consecutiveNoAssistantMessagesCount).toBe(0)
+		expect(task.consecutiveNoToolUseCount).toBe(0)
 		expect(emit).toHaveBeenCalledWith("taskAborted")
 		expect(dispose).toHaveBeenCalled()
 	})
