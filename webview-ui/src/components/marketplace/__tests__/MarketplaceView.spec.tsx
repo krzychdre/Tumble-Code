@@ -149,6 +149,17 @@ describe("MarketplaceView", () => {
 				type: "fetchMarketplaceData",
 			})
 		})
+
+		// Signed out (-1) and back: each change fetches again.
+		for (const organizationSettingsVersion of [-1, 1]) {
+			vi.mocked(vscode.postMessage).mockClear()
+			rerender(
+				<ExtensionStateContext.Provider value={{ ...mockExtensionState, organizationSettingsVersion }}>
+					<MarketplaceView stateManager={stateManager} />
+				</ExtensionStateContext.Provider>,
+			)
+			expect(vscode.postMessage).toHaveBeenCalledWith({ type: "fetchMarketplaceData" })
+		}
 	})
 
 	it("should not trigger fetchMarketplaceData when organization settings version remains the same", async () => {
@@ -171,5 +182,20 @@ describe("MarketplaceView", () => {
 				type: "fetchMarketplaceData",
 			})
 		})
+	})
+	it("fetches the marketplace data once on open when it has no items yet", () => {
+		const emptyManager = new MarketplaceViewStateManager()
+		const { rerender } = render(
+			<ExtensionStateContext.Provider value={mockExtensionState}>
+				<MarketplaceView stateManager={emptyManager} />
+			</ExtensionStateContext.Provider>,
+		)
+		rerender(
+			<ExtensionStateContext.Provider value={{ ...mockExtensionState }}>
+				<MarketplaceView stateManager={emptyManager} />
+			</ExtensionStateContext.Provider>,
+		)
+
+		expect(vi.mocked(vscode.postMessage).mock.calls).toEqual([[{ type: "fetchMarketplaceData" }]])
 	})
 })

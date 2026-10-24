@@ -49,6 +49,19 @@ describe("PromptsView", () => {
 		expect(selectTrigger).toHaveTextContent("Code")
 	})
 
+	it("follows a mode switch made outside the view", () => {
+		const view = (mode: string) => (
+			<ExtensionStateContext.Provider value={{ ...mockExtensionState, mode } as any}>
+				<ModesView onSelectApiConfiguration={vitest.fn()} />
+			</ExtensionStateContext.Provider>
+		)
+		const { rerender } = render(view("code"))
+
+		rerender(view("architect"))
+
+		expect(screen.getByTestId("mode-select-trigger")).toHaveTextContent("Architect")
+	})
+
 	it("opens the mode selection popover when the trigger is clicked", async () => {
 		renderPromptsView()
 		const selectTrigger = screen.getByTestId("mode-select-trigger")

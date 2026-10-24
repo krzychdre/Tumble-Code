@@ -238,4 +238,19 @@ describe("CloudView", () => {
 			vi.useRealTimers()
 		}
 	})
+	it("a completed sign-in ends the sign-in progress and the manual URL entry", () => {
+		const view = (isAuthenticated: boolean) => (
+			<CloudView userInfo={null} isAuthenticated={isAuthenticated} cloudApiUrl="https://app.tumblecode.dev" />
+		)
+		const { rerender } = render(view(false))
+		fireEvent.click(screen.getByRole("button", { name: "Get started" }))
+		fireEvent.click(screen.getByText("cloud:havingTrouble"))
+		expect(screen.getByPlaceholderText(/auth\/clerk\/callback/)).toBeInTheDocument()
+
+		rerender(view(true))
+		rerender(view(false))
+
+		expect(screen.queryByPlaceholderText(/auth\/clerk\/callback/)).not.toBeInTheDocument()
+		expect(screen.queryByText("cloud:havingTrouble")).not.toBeInTheDocument()
+	})
 })
