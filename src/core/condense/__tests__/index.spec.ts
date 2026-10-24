@@ -193,6 +193,17 @@ describe("getEffectiveApiHistory", () => {
 			["a", "b"],
 		],
 		[
+			"only the latest of nested summaries and what follows it",
+			[
+				condensed("task"),
+				{ ...summary("c1"), content: "S1", condenseParent: "c2" },
+				{ role: "assistant", content: "after S1", condenseParent: "c2" },
+				{ ...summary("c2"), content: "S2" },
+				{ role: "assistant", content: "current" },
+			],
+			["S2", "current"],
+		],
+		[
 			"no message hidden by a truncation marker after the summary",
 			[
 				summary(),
@@ -252,6 +263,28 @@ describe("cleanupAfterTruncation", () => {
 		])
 		expect(result[1]).toBe(messages[1])
 		expect(result.slice(6)).toEqual(messages.slice(6))
+	})
+})
+
+describe("rewind after condense (upstream #8295)", () => {
+	// Two nested condenses; a rewind then deletes everything from `cut` on.
+	const history: ApiMessage[] = [
+		{ role: "user", content: "task", ts: 1, condenseParent: "c1" },
+		{ role: "assistant", content: "a1", ts: 2, condenseParent: "c1" },
+		{ role: "user", content: [text("S1")], ts: 3, isSummary: true, condenseId: "c1", condenseParent: "c2" },
+		{ role: "assistant", content: "a2", ts: 4, condenseParent: "c2" },
+		{ role: "user", content: [text("S2")], ts: 5, isSummary: true, condenseId: "c2" },
+		{ role: "assistant", content: "a3", ts: 6 },
+	]
+
+	it.each<[string, number, string[]]>([
+		["the latest summary brings back the earlier summary and its tail", 4, ["S1", "a2"]],
+		["both summaries brings back the whole conversation", 2, ["task", "a1"]],
+	])("deleting %s", (_label, cut, expected) => {
+		const cleaned = cleanupAfterTruncation(history.slice(0, cut))
+
+		expect(labels(getEffectiveApiHistory(cleaned))).toEqual(expected)
+		expect(cleaned.filter((m) => m.condenseParent && m.condenseParent !== "c1")).toEqual([])
 	})
 })
 
