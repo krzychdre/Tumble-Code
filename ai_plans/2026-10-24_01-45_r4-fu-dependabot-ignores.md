@@ -1,4 +1,4 @@
-# r4 follow-up: Dependabot #1023 to #1026
+# r4 follow-up: Dependabot #1023 to #1029
 
 ## Status
 
@@ -19,6 +19,11 @@ Done.
   `main`, no source difference) grows `src/dist/extension.js` from 24,465,022 to 25,617,470 bytes (+1.1 MB)
   and bundles `systeminformation`, which `main` does not contain. The only user is `src/extension.ts`, which
   loads an optional development `.env`.
+- #1029, `@dotenvx/dotenvx` 1.74.3: the same growth (24,472,416 to 25,592,703 bytes, `systeminformation`
+  bundled). `npm view` shows `systeminformation`, `conf`, `open` and `undici` among the dependencies from 1.72.0
+  on; 1.71.3 is the newest release without them.
+- #1028, `web-tree-sitter` 0.25.10: still ships `tree-sitter.wasm`; the tree-sitter, code-index processor and
+  `dist_assets` specs against a fresh bundle pass (421 passed, 12 static Swift skips). Merged.
 - #1024, `web-tree-sitter` 0.25.6 to 0.27.1: the bundle fails, because the runtime is now
   `web-tree-sitter.wasm` instead of `tree-sitter.wasm` (`packages/build/src/esbuild.ts`). With the copy
   pointed at the new name for a trial run, 59 of the 69 tree-sitter and code-index parser spec files fail in
@@ -31,8 +36,8 @@ Done.
 
 ## Change
 
-`.github/dependabot.yml` ignores `@dotenvx/dotenvx` `>=1.75.0` and `web-tree-sitter` `>=0.26.0`. #1023 and
-#1024 are closed with a comment.
+`.github/dependabot.yml` ignores `@dotenvx/dotenvx` `>=1.72.0` and `web-tree-sitter` `>=0.26.0`. #1023, #1024
+and #1029 are closed with a comment.
 
 ## Tests
 

@@ -16,10 +16,10 @@ updates:
           # Follows engines.vscode in src/package.json (the oldest VS Code we support);
           # vsce package refuses a newer @types/vscode.
           - dependency-name: "@types/vscode"
-          # 1.75 and later move onto @dotenvx/primitives and pull systeminformation into
+          # 1.72 and later pull systeminformation (and conf, open, undici) into
           # dist/extension.js (+1.1 MB) for a loader of an optional development .env.
           - dependency-name: "@dotenvx/dotenvx"
-            versions: [">=1.75.0"]
+            versions: [">=1.72.0"]
           # 0.26 and later reject the legacy dylink section of every tree-sitter-wasms grammar.
           - dependency-name: "web-tree-sitter"
             versions: [">=0.26.0"]
