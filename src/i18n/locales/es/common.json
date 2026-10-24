@@ -45,7 +45,6 @@
 		"condense_failed": "Error al condensar el contexto",
 		"condense_not_enough_messages": "No hay suficientes mensajes para condensar el contexto",
 		"condensed_recently": "El contexto se condensó recientemente; se omite este intento",
-		"condense_handler_invalid": "El manejador de API para condensar el contexto no es válido",
 		"condense_api_failed": "La llamada API de condensación falló: {{message}}",
 		"share_task_failed": "Error al compartir la tarea. Por favor, inténtalo de nuevo.",
 		"share_no_active_task": "No hay tarea activa para compartir",

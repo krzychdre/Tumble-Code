@@ -45,7 +45,6 @@
 		"condense_failed": "Failed to condense context",
 		"condense_not_enough_messages": "Not enough messages to condense context",
 		"condensed_recently": "Context was condensed recently; skipping this attempt",
-		"condense_handler_invalid": "API handler for condensing context is invalid",
 		"condense_api_failed": "Condensing API call failed: {{message}}",
 		"share_task_failed": "Failed to share task. Please try again.",
 		"share_no_active_task": "No active task to share",

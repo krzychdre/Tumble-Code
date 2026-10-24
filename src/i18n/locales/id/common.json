@@ -45,7 +45,6 @@
 		"condense_failed": "Gagal mengompres konteks",
 		"condense_not_enough_messages": "Tidak cukup pesan untuk mengompres konteks",
 		"condensed_recently": "Konteks baru saja dikompres; melewati percobaan ini",
-		"condense_handler_invalid": "Handler API untuk mengompres konteks tidak valid",
 		"condense_api_failed": "Panggilan API pengompresan gagal: {{message}}",
 		"share_task_failed": "Gagal membagikan tugas. Silakan coba lagi.",
 		"share_no_active_task": "Tidak ada tugas aktif untuk dibagikan",

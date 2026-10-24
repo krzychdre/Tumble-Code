@@ -355,13 +355,6 @@ export async function summarizeConversation(options: SummarizeConversationOption
 	// Note: this doesn't need to be a stream, consider using something like apiHandler.completePrompt
 	const promptToUse = SUMMARY_PROMPT
 
-	// Validate that the API handler supports message creation
-	if (!apiHandler || typeof apiHandler.createMessage !== "function") {
-		logger.error("API handler is invalid for condensing. Cannot proceed.")
-		const error = t("common:errors.condense_handler_invalid")
-		return { ...response, error }
-	}
-
 	let summary = ""
 	let cost = 0
 	let outputTokens = 0

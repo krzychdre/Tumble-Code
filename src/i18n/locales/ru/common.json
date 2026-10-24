@@ -45,7 +45,6 @@
 		"condense_failed": "Не удалось сжать контекст",
 		"condense_not_enough_messages": "Недостаточно сообщений для сжатия контекста",
 		"condensed_recently": "Контекст был недавно сжат; пропускаем эту попытку",
-		"condense_handler_invalid": "Обработчик API для сжатия контекста недействителен",
 		"condense_api_failed": "Ошибка вызова API сжатия: {{message}}",
 		"share_task_failed": "Не удалось поделиться задачей",
 		"share_no_active_task": "Нет активной задачи для совместного использования",

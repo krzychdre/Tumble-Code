@@ -45,7 +45,6 @@
 		"condense_failed": "コンテキストの圧縮に失敗しました",
 		"condense_not_enough_messages": "コンテキストを圧縮するのに十分なメッセージがありません",
 		"condensed_recently": "コンテキストは最近圧縮されました；この試行をスキップします",
-		"condense_handler_invalid": "コンテキストを圧縮するためのAPIハンドラーが無効です",
 		"condense_api_failed": "圧縮API呼び出しが失敗しました：{{message}}",
 		"share_task_failed": "タスクの共有に失敗しました",
 		"share_no_active_task": "共有するアクティブなタスクがありません",

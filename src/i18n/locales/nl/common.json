@@ -45,7 +45,6 @@
 		"condense_failed": "Comprimeren van context mislukt",
 		"condense_not_enough_messages": "Niet genoeg berichten om context te comprimeren",
 		"condensed_recently": "Context is recent gecomprimeerd; deze poging wordt overgeslagen",
-		"condense_handler_invalid": "API-handler voor het comprimeren van context is ongeldig",
 		"condense_api_failed": "Comprimeer API-oproep mislukt: {{message}}",
 		"share_task_failed": "Delen van taak mislukt",
 		"share_no_active_task": "Geen actieve taak om te delen",

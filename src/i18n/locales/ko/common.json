@@ -45,7 +45,6 @@
 		"condense_failed": "컨텍스트 압축에 실패했습니다",
 		"condense_not_enough_messages": "컨텍스트를 압축할 메시지가 충분하지 않습니다",
 		"condensed_recently": "컨텍스트가 최근 압축되었습니다; 이 시도를 건너뜁니다",
-		"condense_handler_invalid": "컨텍스트 압축을 위한 API 핸들러가 유효하지 않습니다",
 		"condense_api_failed": "압축 API 호출 실패: {{message}}",
 		"share_task_failed": "작업 공유에 실패했습니다",
 		"share_no_active_task": "공유할 활성 작업이 없습니다",
