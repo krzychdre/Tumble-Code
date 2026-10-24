@@ -144,7 +144,7 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 			: {}
 	}
 
-	protected createStream(
+	protected async createStream(
 		systemPrompt: string,
 		messages: Anthropic.Messages.MessageParam[],
 		metadata?: ApiHandlerCreateMessageMetadata,
@@ -167,7 +167,7 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 		this.abortController = createRequestAbortController(metadata?.signal)
 
 		try {
-			return this.getClient().chat.completions.create(params, { signal: this.abortController.signal })
+			return await this.getClient().chat.completions.create(params, { signal: this.abortController.signal })
 		} catch (error) {
 			this.abortController = undefined
 			throw handleProviderError(error, this.providerName)
