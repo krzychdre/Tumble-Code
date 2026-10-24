@@ -7,15 +7,16 @@
 # Options:
 #   --install      Install locally after building
 #   --skip-verify  Skip end-to-end verification tests (faster builds)
+#   --release      Version the tarball as in apps/cli/package.json, without the
+#                  "-local.<hash>" suffix (the release workflow)
 #
 # Examples:
 #   ./apps/cli/scripts/build.sh              # Build for local testing
 #   ./apps/cli/scripts/build.sh --install    # Build and install locally
 #   ./apps/cli/scripts/build.sh --skip-verify  # Fast local build
 #
-# This script builds the CLI for your current platform. For official releases
-# with multi-platform support, use the GitHub Actions workflow instead:
-#   .github/workflows/cli-release.yml
+# This script builds the CLI for your current platform. Official releases run
+# it on each platform from .github/workflows/marketplace-publish.yml.
 #
 # Prerequisites:
 #   - pnpm installed
@@ -26,6 +27,7 @@ set -e
 # Parse arguments
 LOCAL_INSTALL=false
 SKIP_VERIFY=false
+RELEASE=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -35,6 +37,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --skip-verify)
             SKIP_VERIFY=true
+            shift
+            ;;
+        --release)
+            RELEASE=true
             shift
             ;;
         -*)
@@ -106,8 +112,10 @@ check_prerequisites() {
 # Get version
 get_version() {
     VERSION=$(node -p "require('$CLI_DIR/package.json').version")
-    GIT_SHORT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-    VERSION="${VERSION}-local.${GIT_SHORT_HASH}"
+    if [ "$RELEASE" = false ]; then
+        GIT_SHORT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+        VERSION="${VERSION}-local.${GIT_SHORT_HASH}"
+    fi
 
     info "Version: $VERSION"
 }
@@ -306,8 +314,8 @@ print_summary() {
         echo "    ./apps/cli/scripts/build.sh --install"
     fi
     echo ""
-    echo "  For official multi-platform releases, use the GitHub Actions workflow:"
-    echo "    .github/workflows/cli-release.yml"
+    echo "  Official releases ship the CLI with the extension:"
+    echo "    .github/workflows/marketplace-publish.yml"
     echo ""
 }
 
