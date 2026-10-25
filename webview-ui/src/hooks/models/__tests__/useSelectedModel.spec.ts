@@ -1,4 +1,6 @@
-// npx vitest src/hooks/models/__tests__/useSelectedModel.spec.ts
+// The parts of useSelectedModel the resolution table (useSelectedModel.resolution.spec.ts) does not
+// pin: which fetches the selected provider waits for, the OpenRouter endpoint without a list entry,
+// Bedrock's 1M tier, the unknown-model warning and the Z.ai line's model list.
 
 import React from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
@@ -6,30 +8,13 @@ import { renderHook } from "@testing-library/react"
 import type { Mock } from "vitest"
 
 import {
-	ProviderSettings,
-	ModelInfo,
+	type ModelInfo,
+	type ProviderSettings,
 	BEDROCK_1M_CONTEXT_MODEL_IDS,
-	litellmDefaultModelInfo,
-	openAiModelInfoSaneDefaults,
-	minimaxDefaultModelId,
-	minimaxModels,
-	geminiDefaultModelId,
-	geminiModels,
-	mistralDefaultModelId,
-	mistralModels,
-	moonshotDefaultModelId,
-	moonshotModels,
-	openAiCodexDefaultModelId,
-	openAiCodexModels,
-	openAiNativeDefaultModelId,
-	openAiNativeModels,
-	qwenCodeDefaultModelId,
-	qwenCodeModels,
-	xaiDefaultModelId,
-	xaiModels,
+	anthropicDefaultModelId,
 	internationalZAiModels,
 	mainlandZAiModels,
-	zaiModelCatalog,
+	openRouterDefaultModelId,
 } from "@tumble-code/types"
 
 import { useSelectedModel } from "../useSelectedModel"
@@ -39,693 +24,117 @@ import { useOpenRouterModelProviders } from "../useOpenRouterModelProviders"
 vi.mock("../useProviderModels")
 vi.mock("../useOpenRouterModelProviders")
 
-const mockUseRouterModels = useProviderModels as Mock<typeof useProviderModels>
+const mockUseProviderModels = useProviderModels as Mock<typeof useProviderModels>
 const mockUseOpenRouterModelProviders = useOpenRouterModelProviders as Mock<typeof useOpenRouterModelProviders>
 
 const createWrapper = () => {
-	const queryClient = new QueryClient({
-		defaultOptions: {
-			queries: {
-				retry: false,
-			},
-		},
-	})
+	const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 	return ({ children }: { children: React.ReactNode }) =>
 		React.createElement(QueryClientProvider, { client: queryClient }, children)
 }
 
+const select = (apiConfiguration?: ProviderSettings) =>
+	renderHook(() => useSelectedModel(apiConfiguration), { wrapper: createWrapper() }).result.current
+
+const providerModels = (state: { models?: Record<string, ModelInfo>; isLoading?: boolean; error?: string }) =>
+	mockUseProviderModels.mockReturnValue({
+		models: state.models,
+		modelIds: state.models ? Object.keys(state.models) : undefined,
+		isLoading: state.isLoading ?? false,
+		error: state.error,
+	} as any)
+
+const openRouterProviders = (state: { data?: Record<string, ModelInfo>; isLoading?: boolean; isError?: boolean }) =>
+	mockUseOpenRouterModelProviders.mockReturnValue({
+		data: state.data,
+		isLoading: state.isLoading ?? false,
+		isError: state.isError ?? false,
+	} as any)
+
+beforeEach(() => {
+	providerModels({})
+	openRouterProviders({ data: {} })
+})
+
 describe("useSelectedModel", () => {
-	describe("OpenRouter provider merging", () => {
-		it("should merge base model info with specific provider info when both exist", () => {
-			const baseModelInfo: ModelInfo = {
-				maxTokens: 4096,
-				contextWindow: 8192,
-				supportsImages: false,
-				supportsPromptCache: false,
-			}
-
-			const specificProviderInfo: ModelInfo = {
-				maxTokens: 8192, // Different value that should override
-				contextWindow: 16384, // Different value that should override
-				supportsImages: true, // Different value that should override
-				supportsPromptCache: true, // Different value that should override
-				inputPrice: 0.001,
-				outputPrice: 0.002,
-				description: "Provider-specific description",
-			}
-
-			mockUseRouterModels.mockReturnValue({
-				models: {
-					"test-model": baseModelInfo,
-				},
-				modelIds: ["test-model"],
-				isLoading: false,
-				error: undefined,
-			} as any)
-
-			mockUseOpenRouterModelProviders.mockReturnValue({
-				data: {
-					"test-provider": specificProviderInfo,
-				},
-				isLoading: false,
-				isError: false,
-			} as any)
-
-			const apiConfiguration: ProviderSettings = {
-				apiProvider: "openrouter",
-				openRouterModelId: "test-model",
-				openRouterSpecificProvider: "test-provider",
-			}
-
-			const wrapper = createWrapper()
-			const { result } = renderHook(() => useSelectedModel(apiConfiguration), { wrapper })
-
-			expect(result.current.id).toBe("test-model")
-			expect(result.current.info).toEqual({
-				maxTokens: 8192, // From specific provider (overrides base)
-				contextWindow: 16384, // From specific provider (overrides base)
-				supportsImages: true, // From specific provider (overrides base)
-				supportsPromptCache: true, // From specific provider (overrides base)
-				inputPrice: 0.001,
-				outputPrice: 0.002,
-				description: "Provider-specific description",
-			})
-		})
-
-		// Owner decision 5: the configured id is kept (requests send it as is)
-		// and flagged as unknown so the settings show a warning.
-		it("keeps a configured model that is not in the available models and flags it as unknown", () => {
-			const specificProviderInfo: ModelInfo = {
-				maxTokens: 8192,
-				contextWindow: 16384,
-				supportsImages: true,
-				supportsPromptCache: true,
-				inputPrice: 0.001,
-				outputPrice: 0.002,
-				description: "Provider-specific description",
-			}
-
-			mockUseRouterModels.mockReturnValue({
-				models: {
-					"anthropic/claude-sonnet-4.5": {
-						maxTokens: 8192,
-						contextWindow: 200_000,
-						supportsImages: true,
-						supportsPromptCache: true,
-						inputPrice: 3.0,
-						outputPrice: 15.0,
-						cacheWritesPrice: 3.75,
-						cacheReadsPrice: 0.3,
-					},
-				},
-				modelIds: ["anthropic/claude-sonnet-4.5"],
-				isLoading: false,
-				error: undefined,
-			} as any)
-
-			mockUseOpenRouterModelProviders.mockReturnValue({
-				data: {
-					"test-provider": specificProviderInfo,
-				},
-				isLoading: false,
-				isError: false,
-			} as any)
-
-			const apiConfiguration: ProviderSettings = {
-				apiProvider: "openrouter",
-				openRouterModelId: "test-model", // This model doesn't exist in available models
-				openRouterSpecificProvider: "test-provider",
-			}
-
-			const wrapper = createWrapper()
-			const { result } = renderHook(() => useSelectedModel(apiConfiguration), { wrapper })
-
-			expect(result.current.id).toBe("test-model")
-			// No list entry for the model, so only the specific provider's info is known
-			expect(result.current.info).toEqual(specificProviderInfo)
-			expect(result.current.isUnknownModel).toBe(true)
-		})
-
-		it("should demonstrate the merging behavior validates the comment about missing fields", () => {
-			const baseModelInfo: ModelInfo = {
-				maxTokens: 4096,
-				contextWindow: 8192,
-				supportsImages: false,
-				supportsPromptCache: false,
-				cacheWritesPrice: 0.1,
-				cacheReadsPrice: 0.01,
-			}
-
-			const specificProviderInfo: Partial<ModelInfo> = {
-				inputPrice: 0.001,
-				outputPrice: 0.002,
-				description: "Provider-specific description",
-				maxTokens: 8192, // Override this one
-				supportsImages: true, // Override this one
-			}
-
-			mockUseRouterModels.mockReturnValue({
-				models: {
-					"test-model": baseModelInfo,
-				},
-				modelIds: ["test-model"],
-				isLoading: false,
-				error: undefined,
-			} as any)
-
-			mockUseOpenRouterModelProviders.mockReturnValue({
-				data: { "test-provider": specificProviderInfo as ModelInfo },
-				isLoading: false,
-				isError: false,
-			} as any)
-
-			const apiConfiguration: ProviderSettings = {
-				apiProvider: "openrouter",
-				openRouterModelId: "test-model",
-				openRouterSpecificProvider: "test-provider",
-			}
-
-			const wrapper = createWrapper()
-			const { result } = renderHook(() => useSelectedModel(apiConfiguration), { wrapper })
-
-			expect(result.current.id).toBe("test-model")
-			expect(result.current.info).toEqual({
-				// Fields from base model that provider doesn't have
-				contextWindow: 8192, // From base (provider doesn't override)
-				supportsPromptCache: false, // From base (provider doesn't override)
-				cacheWritesPrice: 0.1, // From base (provider doesn't have)
-				cacheReadsPrice: 0.01, // From base (provider doesn't have)
-
-				// Fields overridden by provider
-				maxTokens: 8192, // From provider (overrides base)
-				supportsImages: true, // From provider (overrides base)
-
-				// Fields only in provider
-				inputPrice: 0.001, // From provider (base doesn't have)
-				outputPrice: 0.002, // From provider (base doesn't have)
-				description: "Provider-specific description", // From provider (base doesn't have)
-			})
-		})
-
-		it("should use base model info when no specific provider is configured", () => {
-			const baseModelInfo: ModelInfo = {
-				maxTokens: 4096,
-				contextWindow: 8192,
-				supportsImages: false,
-				supportsPromptCache: false,
-			}
-
-			mockUseRouterModels.mockReturnValue({
-				models: { "test-model": baseModelInfo },
-				modelIds: ["test-model"],
-				isLoading: false,
-				error: undefined,
-			} as any)
-
-			mockUseOpenRouterModelProviders.mockReturnValue({
-				data: {},
-				isLoading: false,
-				isError: false,
-			} as any)
-
-			const apiConfiguration: ProviderSettings = {
-				apiProvider: "openrouter",
-				openRouterModelId: "test-model",
-			}
-
-			const wrapper = createWrapper()
-			const { result } = renderHook(() => useSelectedModel(apiConfiguration), { wrapper })
-
-			expect(result.current.id).toBe("test-model")
-			expect(result.current.info).toEqual(baseModelInfo)
-		})
-
-		it("keeps a configured model when neither it nor its provider exists", () => {
-			mockUseRouterModels.mockReturnValue({
-				models: {
-					"anthropic/claude-sonnet-4.5": {
-						// Default model - using correct default model name
-						maxTokens: 8192,
-						contextWindow: 200_000,
-						supportsImages: true,
-						supportsPromptCache: true,
-						inputPrice: 3.0,
-						outputPrice: 15.0,
-						cacheWritesPrice: 3.75,
-						cacheReadsPrice: 0.3,
-					},
-				},
-				modelIds: ["anthropic/claude-sonnet-4.5"],
-				isLoading: false,
-				error: undefined,
-			} as any)
-
-			mockUseOpenRouterModelProviders.mockReturnValue({
-				data: {},
-				isLoading: false,
-				isError: false,
-			} as any)
-
-			const apiConfiguration: ProviderSettings = {
-				apiProvider: "openrouter",
-				openRouterModelId: "non-existent-model",
-				openRouterSpecificProvider: "non-existent-provider",
-			}
-
-			const wrapper = createWrapper()
-			const { result } = renderHook(() => useSelectedModel(apiConfiguration), { wrapper })
-
-			expect(result.current.id).toBe("non-existent-model")
-			expect(result.current.info).toBeUndefined()
-			expect(result.current.isUnknownModel).toBe(true)
-		})
+	it("returns the Anthropic default without a configuration", () => {
+		expect(select()).toMatchObject({ provider: "anthropic", id: anthropicDefaultModelId, isUnknownModel: false })
 	})
 
 	describe("loading and error states", () => {
-		it("should NOT set loading when router models are loading but provider is static (anthropic)", () => {
-			mockUseRouterModels.mockReturnValue({ data: undefined, isLoading: true, error: undefined } as any)
+		// A static provider ignores the fetches it does not need.
+		it.each([
+			{ name: "loading model list", models: { isLoading: true }, endpoints: {} },
+			{ name: "failed model list", models: { error: "boom" }, endpoints: {} },
+			{ name: "loading OpenRouter endpoints", models: {}, endpoints: { isLoading: true } },
+			{ name: "failed OpenRouter endpoints", models: {}, endpoints: { isError: true } },
+		])("a static provider ignores a $name", ({ models, endpoints }) => {
+			providerModels(models)
+			openRouterProviders(endpoints)
 
-			mockUseOpenRouterModelProviders.mockReturnValue({
-				data: undefined,
-				isLoading: false,
-				isError: false,
-			} as any)
-
-			const wrapper = createWrapper()
-			const { result } = renderHook(() => useSelectedModel(), { wrapper })
-
-			// With static provider default (anthropic), useSelectedModel gates router fetches, so loading should be false
-			expect(result.current.isLoading).toBe(false)
+			expect(select({ apiProvider: "anthropic" })).toMatchObject({ isLoading: false, isError: false })
 		})
 
-		it("should NOT set loading when openrouter provider metadata is loading but provider is static (anthropic)", () => {
-			mockUseRouterModels.mockReturnValue({
-				models: undefined,
-				modelIds: undefined,
-				isLoading: false,
-				error: undefined,
-			} as any)
+		it("OpenRouter waits for its model list: the default id, no info and no warning meanwhile", () => {
+			providerModels({ isLoading: true })
 
-			mockUseOpenRouterModelProviders.mockReturnValue({
-				data: undefined,
+			expect(select({ apiProvider: "openrouter", openRouterModelId: "vendor/model" })).toEqual({
+				provider: "openrouter",
+				id: openRouterDefaultModelId,
+				info: undefined,
 				isLoading: true,
 				isError: false,
-			} as any)
-
-			const wrapper = createWrapper()
-			const { result } = renderHook(() => useSelectedModel(), { wrapper })
-
-			// With static provider default (anthropic), openrouter providers are irrelevant, so loading should be false
-			expect(result.current.isLoading).toBe(false)
+				isUnknownModel: false,
+			})
 		})
 
-		it("should NOT set error when hooks error but provider is static (anthropic)", () => {
-			mockUseRouterModels.mockReturnValue({ data: undefined, isLoading: false, error: "error" } as any)
+		it.each([
+			{ name: "model list", models: { error: "boom" }, endpoints: { data: {} } },
+			{ name: "endpoint list", models: { models: {} }, endpoints: { data: {}, isError: true } },
+		])("OpenRouter reports a failed $name and no unknown-model warning", ({ models, endpoints }) => {
+			providerModels(models)
+			openRouterProviders(endpoints)
 
-			mockUseOpenRouterModelProviders.mockReturnValue({
-				data: {},
-				isLoading: false,
-				isError: false,
-			} as any)
-
-			const wrapper = createWrapper()
-			const { result } = renderHook(() => useSelectedModel(), { wrapper })
-
-			// Error from gated routerModels should not bubble for static provider default
-			expect(result.current.isError).toBe(false)
+			expect(select({ apiProvider: "openrouter", openRouterModelId: "vendor/model" })).toMatchObject({
+				isError: true,
+				isUnknownModel: false,
+			})
 		})
 	})
 
-	describe("default behavior", () => {
-		it("should return anthropic default when no configuration is provided", () => {
-			mockUseRouterModels.mockReturnValue({ data: undefined, isLoading: false, error: undefined } as any)
+	// Owner decision 5: the configured id is kept (requests send it as is) and flagged as unknown.
+	it("OpenRouter: an unlisted model with a chosen endpoint shows the endpoint's info and is flagged", () => {
+		const endpoint: ModelInfo = { maxTokens: 8192, contextWindow: 16384, supportsPromptCache: true }
+		providerModels({ models: { "listed/model": { maxTokens: 1, contextWindow: 2, supportsPromptCache: false } } })
+		openRouterProviders({ data: { endpoint } })
 
-			mockUseOpenRouterModelProviders.mockReturnValue({
-				data: undefined,
-				isLoading: false,
-				isError: false,
-			} as any)
-
-			const wrapper = createWrapper()
-			const { result } = renderHook(() => useSelectedModel(), { wrapper })
-
-			expect(result.current.provider).toBe("anthropic")
-			expect(result.current.id).toBe("claude-opus-5")
-			expect(result.current.info).toBeUndefined()
-		})
+		expect(
+			select({
+				apiProvider: "openrouter",
+				openRouterModelId: "test-model",
+				openRouterSpecificProvider: "endpoint",
+			}),
+		).toMatchObject({ id: "test-model", info: endpoint, isUnknownModel: true })
 	})
 
-	describe("anthropic provider with 1M context", () => {
-		beforeEach(() => {
-			mockUseRouterModels.mockReturnValue({ data: undefined, isLoading: false, error: undefined } as any)
+	describe("Bedrock 1M context", () => {
+		const [oneMillionModel] = BEDROCK_1M_CONTEXT_MODEL_IDS
 
-			mockUseOpenRouterModelProviders.mockReturnValue({
-				data: undefined,
-				isLoading: false,
-				isError: false,
-			} as any)
-		})
+		it.each([
+			{ name: "a 1M model with the beta", id: oneMillionModel, beta: true, window: 1_000_000, input: 6.0 },
+			{ name: "a 1M model without the beta", id: oneMillionModel, beta: false, window: 200_000, input: 3.0 },
+			{
+				name: "another model with the beta",
+				id: "anthropic.claude-opus-4-20250514-v1:0",
+				beta: true,
+				window: 200_000,
+				input: 15.0,
+			},
+		])("$name: window $window", ({ id, beta, window, input }) => {
+			const { info } = select({ apiProvider: "bedrock", apiModelId: id, awsBedrock1MContext: beta })
 
-		it("should keep standard prices for the native 1M window of Claude Sonnet 4.6", () => {
-			const apiConfiguration: ProviderSettings = {
-				apiProvider: "anthropic",
-				apiModelId: "claude-sonnet-4-6",
-				anthropicBeta1MContext: true,
-			}
-
-			const wrapper = createWrapper()
-			const { result } = renderHook(() => useSelectedModel(apiConfiguration), { wrapper })
-
-			expect(result.current.id).toBe("claude-sonnet-4-6")
-			expect(result.current.info?.contextWindow).toBe(1_000_000)
-			expect(result.current.info?.inputPrice).toBe(3.0)
-			expect(result.current.info?.outputPrice).toBe(15.0)
-		})
-	})
-
-	describe("bedrock provider with 1M context", () => {
-		beforeEach(() => {
-			mockUseRouterModels.mockReturnValue({
-				models: undefined,
-				modelIds: undefined,
-				isLoading: false,
-				error: undefined,
-			} as any)
-
-			mockUseOpenRouterModelProviders.mockReturnValue({
-				data: {},
-				isLoading: false,
-				isError: false,
-			} as any)
-		})
-
-		it("should enable 1M context window for Bedrock Claude Sonnet 4 when awsBedrock1MContext is true", () => {
-			const apiConfiguration: ProviderSettings = {
-				apiProvider: "bedrock",
-				apiModelId: BEDROCK_1M_CONTEXT_MODEL_IDS[0],
-				awsBedrock1MContext: true,
-			}
-
-			const wrapper = createWrapper()
-			const { result } = renderHook(() => useSelectedModel(apiConfiguration), { wrapper })
-
-			expect(result.current.id).toBe(BEDROCK_1M_CONTEXT_MODEL_IDS[0])
-			expect(result.current.info?.contextWindow).toBe(1_000_000)
-			expect(result.current.info?.inputPrice).toBe(6.0)
-			expect(result.current.info?.outputPrice).toBe(22.5)
-		})
-
-		it("should use default context window for Bedrock Claude Sonnet 4 when awsBedrock1MContext is false", () => {
-			const apiConfiguration: ProviderSettings = {
-				apiProvider: "bedrock",
-				apiModelId: BEDROCK_1M_CONTEXT_MODEL_IDS[0],
-				awsBedrock1MContext: false,
-			}
-
-			const wrapper = createWrapper()
-			const { result } = renderHook(() => useSelectedModel(apiConfiguration), { wrapper })
-
-			expect(result.current.id).toBe(BEDROCK_1M_CONTEXT_MODEL_IDS[0])
-			expect(result.current.info?.contextWindow).toBe(200_000)
-		})
-
-		it("should not affect context window for non-Claude Sonnet 4 Bedrock models", () => {
-			const apiConfiguration: ProviderSettings = {
-				apiProvider: "bedrock",
-				apiModelId: "anthropic.claude-opus-4-20250514-v1:0",
-				awsBedrock1MContext: true,
-			}
-
-			const wrapper = createWrapper()
-			const { result } = renderHook(() => useSelectedModel(apiConfiguration), { wrapper })
-
-			expect(result.current.id).toBe("anthropic.claude-opus-4-20250514-v1:0")
-			expect(result.current.info?.contextWindow).toBe(200_000)
-		})
-	})
-
-	describe("bedrock provider with custom ARN", () => {
-		beforeEach(() => {
-			mockUseRouterModels.mockReturnValue({
-				models: undefined,
-				modelIds: undefined,
-				isLoading: false,
-				error: undefined,
-			} as any)
-
-			mockUseOpenRouterModelProviders.mockReturnValue({
-				data: {},
-				isLoading: false,
-				isError: false,
-			} as any)
-		})
-
-		it("should enable supportsPromptCache for custom-arn model", () => {
-			const apiConfiguration: ProviderSettings = {
-				apiProvider: "bedrock",
-				apiModelId: "custom-arn",
-			}
-
-			const wrapper = createWrapper()
-			const { result } = renderHook(() => useSelectedModel(apiConfiguration), { wrapper })
-
-			expect(result.current.id).toBe("custom-arn")
-			expect(result.current.info?.supportsPromptCache).toBe(true)
-		})
-
-		it("should enable supportsImages for custom-arn model", () => {
-			const apiConfiguration: ProviderSettings = {
-				apiProvider: "bedrock",
-				apiModelId: "custom-arn",
-			}
-
-			const wrapper = createWrapper()
-			const { result } = renderHook(() => useSelectedModel(apiConfiguration), { wrapper })
-
-			expect(result.current.id).toBe("custom-arn")
-			expect(result.current.info?.supportsImages).toBe(true)
-		})
-	})
-
-	describe("litellm provider", () => {
-		beforeEach(() => {
-			mockUseOpenRouterModelProviders.mockReturnValue({
-				data: {},
-				isLoading: false,
-				isError: false,
-			} as any)
-		})
-
-		it("should use litellmDefaultModelInfo as fallback when routerModels.litellm is empty", () => {
-			// `models: {}` represents "loaded but empty" (distinct from
-			// `undefined` = not loaded). The empty-but-loaded case must still
-			// route through getSelectedModel so litellmDefaultModelInfo is
-			// applied as the fallback model info.
-			mockUseRouterModels.mockReturnValue({
-				models: {},
-				modelIds: [],
-				isLoading: false,
-				error: undefined,
-			} as any)
-
-			const apiConfiguration: ProviderSettings = {
-				apiProvider: "litellm",
-				litellmModelId: "some-model",
-			}
-
-			const wrapper = createWrapper()
-			const { result } = renderHook(() => useSelectedModel(apiConfiguration), { wrapper })
-
-			expect(result.current.provider).toBe("litellm")
-			// The configured id is kept (owner decision 5); an empty list flags nothing
-			expect(result.current.id).toBe("some-model")
-			// Should use litellmDefaultModelInfo as fallback
-			expect(result.current.info).toEqual(litellmDefaultModelInfo)
-			expect(result.current.isUnknownModel).toBe(false)
-		})
-
-		it("should use litellmDefaultModelInfo when selected model not found in routerModels", () => {
-			mockUseRouterModels.mockReturnValue({
-				models: {
-					"existing-model": {
-						maxTokens: 4096,
-						contextWindow: 8192,
-						supportsImages: false,
-						supportsPromptCache: false,
-					},
-				},
-				modelIds: ["existing-model"],
-				isLoading: false,
-				error: undefined,
-			} as any)
-
-			const apiConfiguration: ProviderSettings = {
-				apiProvider: "litellm",
-				litellmModelId: "non-existing-model",
-			}
-
-			const wrapper = createWrapper()
-			const { result } = renderHook(() => useSelectedModel(apiConfiguration), { wrapper })
-
-			expect(result.current.provider).toBe("litellm")
-			// The configured id is kept (owner decision 5) and flagged as unknown
-			expect(result.current.id).toBe("non-existing-model")
-			// Should use litellmDefaultModelInfo as fallback since the model is not in router models
-			expect(result.current.info).toEqual(litellmDefaultModelInfo)
-			expect(result.current.isUnknownModel).toBe(true)
-		})
-
-		it("should return routerModels info when model exists", () => {
-			const customModelInfo: ModelInfo = {
-				maxTokens: 16384,
-				contextWindow: 128000,
-				supportsImages: true,
-				supportsPromptCache: true,
-				description: "Custom LiteLLM model",
-			}
-
-			mockUseRouterModels.mockReturnValue({
-				models: {
-					"custom-model": customModelInfo,
-				},
-				modelIds: ["custom-model"],
-				isLoading: false,
-				error: undefined,
-			} as any)
-
-			const apiConfiguration: ProviderSettings = {
-				apiProvider: "litellm",
-				litellmModelId: "custom-model",
-			}
-
-			const wrapper = createWrapper()
-			const { result } = renderHook(() => useSelectedModel(apiConfiguration), { wrapper })
-
-			expect(result.current.provider).toBe("litellm")
-			expect(result.current.id).toBe("custom-model")
-			expect(result.current.info).toEqual(customModelInfo)
-		})
-	})
-
-	describe("openai provider", () => {
-		beforeEach(() => {
-			mockUseRouterModels.mockReturnValue({
-				models: undefined,
-				modelIds: undefined,
-				isLoading: false,
-				error: undefined,
-			} as any)
-
-			mockUseOpenRouterModelProviders.mockReturnValue({
-				data: {},
-				isLoading: false,
-				isError: false,
-			} as any)
-		})
-
-		it("should use openAiModelInfoSaneDefaults when no custom model info is provided", () => {
-			const apiConfiguration: ProviderSettings = {
-				apiProvider: "openai",
-				openAiModelId: "gpt-4o",
-			}
-
-			const wrapper = createWrapper()
-			const { result } = renderHook(() => useSelectedModel(apiConfiguration), { wrapper })
-
-			expect(result.current.provider).toBe("openai")
-			expect(result.current.id).toBe("gpt-4o")
-			expect(result.current.info).toEqual(openAiModelInfoSaneDefaults)
-		})
-
-		it("should return custom model info when provided", () => {
-			const customModelInfo: ModelInfo = {
-				maxTokens: 16384,
-				contextWindow: 128000,
-				supportsImages: true,
-				supportsPromptCache: false,
-				inputPrice: 0.01,
-				outputPrice: 0.03,
-				description: "Custom OpenAI-compatible model",
-			}
-
-			const apiConfiguration: ProviderSettings = {
-				apiProvider: "openai",
-				openAiModelId: "custom-model",
-				openAiCustomModelInfo: customModelInfo,
-			}
-
-			const wrapper = createWrapper()
-			const { result } = renderHook(() => useSelectedModel(apiConfiguration), { wrapper })
-
-			expect(result.current.provider).toBe("openai")
-			expect(result.current.id).toBe("custom-model")
-			expect(result.current.info).toEqual(customModelInfo)
-		})
-
-		it("should return custom model info as-is", () => {
-			const customModelInfo: ModelInfo = {
-				maxTokens: 8192,
-				contextWindow: 32000,
-				supportsImages: false,
-				supportsPromptCache: false,
-			}
-
-			const apiConfiguration: ProviderSettings = {
-				apiProvider: "openai",
-				openAiModelId: "custom-model-no-tools",
-				openAiCustomModelInfo: customModelInfo,
-			}
-
-			const wrapper = createWrapper()
-			const { result } = renderHook(() => useSelectedModel(apiConfiguration), { wrapper })
-
-			expect(result.current.provider).toBe("openai")
-			expect(result.current.id).toBe("custom-model-no-tools")
-			expect(result.current.info).toEqual(customModelInfo)
-		})
-	})
-
-	describe("minimax provider", () => {
-		beforeEach(() => {
-			mockUseRouterModels.mockReturnValue({
-				models: undefined,
-				modelIds: undefined,
-				isLoading: false,
-				error: undefined,
-			} as any)
-
-			mockUseOpenRouterModelProviders.mockReturnValue({
-				data: {},
-				isLoading: false,
-				isError: false,
-			} as any)
-		})
-
-		it("should return default minimax model when no custom model is specified", () => {
-			const apiConfiguration: ProviderSettings = {
-				apiProvider: "minimax",
-			}
-
-			const wrapper = createWrapper()
-			const { result } = renderHook(() => useSelectedModel(apiConfiguration), { wrapper })
-
-			expect(result.current.provider).toBe("minimax")
-			expect(result.current.id).toBe(minimaxDefaultModelId)
-			expect(result.current.info).toEqual(minimaxModels[minimaxDefaultModelId])
-		})
-
-		it("should use custom model ID and info when model exists in minimaxModels", () => {
-			const apiConfiguration: ProviderSettings = {
-				apiProvider: "minimax",
-				apiModelId: "MiniMax-M2.7",
-			}
-
-			const wrapper = createWrapper()
-			const { result } = renderHook(() => useSelectedModel(apiConfiguration), { wrapper })
-
-			expect(result.current.provider).toBe("minimax")
-			expect(result.current.id).toBe("MiniMax-M2.7")
-			expect(result.current.info).toEqual(minimaxModels["MiniMax-M2.7"])
+			expect(info?.contextWindow).toBe(window)
+			expect(info?.inputPrice).toBe(input)
 		})
 	})
 
@@ -745,89 +154,22 @@ describe("useSelectedModel", () => {
 			["no model id", { apiProvider: "gemini" }, false],
 			["OpenAI Compatible (no list)", { apiProvider: "openai", openAiModelId: "anything" }, false],
 		] as const)("%s: isUnknownModel is %s", (_, apiConfiguration, expected) => {
-			mockUseRouterModels.mockReturnValue({ models: undefined, isLoading: false, error: undefined } as any)
+			const selected = select(apiConfiguration as ProviderSettings)
 
-			const { result } = renderHook(() => useSelectedModel(apiConfiguration as ProviderSettings), {
-				wrapper: createWrapper(),
-			})
-
-			expect(result.current.isUnknownModel).toBe(expected)
+			expect(selected.isUnknownModel).toBe(expected)
 			if (!expected && String((apiConfiguration as ProviderSettings).apiModelId).startsWith("deepseek-")) {
-				expect(result.current.id).toBe((apiConfiguration as ProviderSettings).apiModelId)
-				expect(result.current.info).toBeDefined()
+				expect(selected.id).toBe((apiConfiguration as ProviderSettings).apiModelId)
+				expect(selected.info).toBeDefined()
 			}
 			if (expected) {
-				expect(result.current.id).toBe((apiConfiguration as ProviderSettings).apiModelId)
+				expect(selected.id).toBe((apiConfiguration as ProviderSettings).apiModelId)
 			}
 		})
 	})
 
-	// Characterization (S4): the providers whose selected model is a plain entry of their static
-	// list, pinned before their switch cases were folded into one lookup.
-	describe("plain static-list providers", () => {
-		beforeEach(() => {
-			mockUseRouterModels.mockReturnValue({
-				models: undefined,
-				modelIds: undefined,
-				isLoading: false,
-				error: undefined,
-			} as any)
-			mockUseOpenRouterModelProviders.mockReturnValue({ data: {}, isLoading: false, isError: false } as any)
-		})
-
-		const lists: [ProviderSettings["apiProvider"], string, Record<string, ModelInfo>][] = [
-			["xai", xaiDefaultModelId, xaiModels],
-			["gemini", geminiDefaultModelId, geminiModels],
-			["moonshot", moonshotDefaultModelId, moonshotModels],
-			["minimax", minimaxDefaultModelId, minimaxModels],
-			["openai-native", openAiNativeDefaultModelId, openAiNativeModels],
-			["mistral", mistralDefaultModelId, mistralModels],
-			["qwen-code", qwenCodeDefaultModelId, qwenCodeModels],
-			["openai-codex", openAiCodexDefaultModelId, openAiCodexModels],
-		]
-
-		const select = (apiConfiguration: ProviderSettings) =>
-			renderHook(() => useSelectedModel(apiConfiguration), { wrapper: createWrapper() }).result.current
-
-		it.each(lists)("%s: no model id selects the default model", (apiProvider, defaultId, models) => {
-			const selected = select({ apiProvider })
-			expect(selected).toMatchObject({ provider: apiProvider, id: defaultId, isUnknownModel: false })
-			expect(selected.info).toEqual(models[defaultId])
-		})
-
-		it.each(lists)("%s: a listed model id selects that model", (apiProvider, _defaultId, models) => {
-			const listed = Object.keys(models).at(-1)!
-			const selected = select({ apiProvider, apiModelId: listed })
-			expect(selected).toMatchObject({ id: listed, isUnknownModel: false })
-			expect(selected.info).toEqual(models[listed])
-		})
-
-		it.each(lists)("%s: an unknown id is kept with no info and flagged", (apiProvider) => {
-			const selected = select({ apiProvider, apiModelId: "not-a-listed-model" })
-			expect(selected).toMatchObject({ id: "not-a-listed-model", info: undefined, isUnknownModel: true })
-		})
-
-		it.each(lists)("%s: an empty id is kept (the ?? default does not replace it)", (apiProvider) => {
-			const selected = select({ apiProvider, apiModelId: "" })
-			expect(selected).toMatchObject({ id: "", info: undefined, isUnknownModel: false })
-		})
-	})
-
-	// Regression (Z.ai China API): the settings must show the model list the request uses. The
-	// handler picks it with `zaiModelCatalog` (mainland list for every China line); the hook used
-	// to treat only `china_coding` as China, so `china_api` showed international prices, context
-	// windows and known-model checks.
+	// Regression (Z.ai China API): the settings must check the model list the request uses; the
+	// hook used to treat only `china_coding` as China, so `china_api` showed the international list.
 	describe("Z.ai API lines use the request's model list", () => {
-		beforeEach(() => {
-			mockUseRouterModels.mockReturnValue({
-				models: undefined,
-				modelIds: undefined,
-				isLoading: false,
-				error: undefined,
-			} as any)
-			mockUseOpenRouterModelProviders.mockReturnValue({ data: {}, isLoading: false, isError: false } as any)
-		})
-
 		const lines = [
 			[undefined, internationalZAiModels],
 			["international_coding", internationalZAiModels],
@@ -836,27 +178,15 @@ describe("useSelectedModel", () => {
 			["china_api", mainlandZAiModels],
 		] as const
 
-		const select = (apiConfiguration: ProviderSettings) =>
-			renderHook(() => useSelectedModel(apiConfiguration), { wrapper: createWrapper() }).result.current
-
-		it.each(lines)("%s: the default model has the info the request uses", (zaiApiLine, models) => {
-			const settings: ProviderSettings = { apiProvider: "zai", zaiApiLine }
-			const selected = select(settings)
-			expect(selected.info).toEqual(models[selected.id as keyof typeof models])
-			expect(selected.info).toEqual(zaiModelCatalog(settings).models[selected.id])
-		})
-
-		it.each(lines)("%s: a model priced per line has the request's prices", (zaiApiLine, models) => {
-			const settings: ProviderSettings = { apiProvider: "zai", zaiApiLine, apiModelId: "glm-4.5" }
-			const selected = select(settings)
-			expect(selected.info).toEqual(models["glm-4.5"])
-			expect(selected.info).toEqual(zaiModelCatalog(settings).models["glm-4.5"])
+		it.each(lines)("%s: a model priced per line has that line's prices", (zaiApiLine, models) => {
+			expect(select({ apiProvider: "zai", zaiApiLine, apiModelId: "glm-4.5" }).info).toEqual(models["glm-4.5"])
 		})
 
 		it.each(lines)(
 			"%s: a model only the international list has is unknown on China lines",
 			(zaiApiLine, models) => {
 				const selected = select({ apiProvider: "zai", zaiApiLine, apiModelId: "glm-4-32b-0414-128k" })
+
 				expect(selected.isUnknownModel).toBe(!("glm-4-32b-0414-128k" in models))
 			},
 		)
