@@ -453,6 +453,26 @@ describe("WebAuthService", () => {
 			}
 		})
 
+		it("stays active and logs when the user info cannot be read, without an unhandled rejection", async () => {
+			routes["/v1/me"] = () => reply(502)
+			const service = await signedIn()
+			const unhandled: unknown[] = []
+			const onUnhandled = (reason: unknown) => unhandled.push(reason)
+			process.on("unhandledRejection", onUnhandled)
+
+			try {
+				await refresh()
+				await vi.waitFor(() =>
+					expect(log).toHaveBeenCalledWith("[auth] Failed to fetch user info", expect.any(Error)),
+				)
+				await new Promise((resolve) => setImmediate(resolve))
+				expect(unhandled).toHaveLength(0)
+				expect(service.hasActiveSession()).toBe(true)
+			} finally {
+				process.off("unhandledRejection", onUnhandled)
+			}
+		})
+
 		it("goes inactive on the first failed attempt only", async () => {
 			routes["/tokens"] = () => reply(500)
 			const service = await signedIn()
