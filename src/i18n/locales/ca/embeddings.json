@@ -1,5 +1,4 @@
 {
-	"unknownError": "Error desconegut",
 	"authenticationFailed": "No s'han pogut crear les incrustacions: ha fallat l'autenticació. Comproveu la vostra clau d'API.",
 	"failedWithStatus": "No s'han pogut crear les incrustacions després de {{attempts}} intents: HTTP {{statusCode}} - {{errorMessage}}",
 	"failedWithError": "No s'han pogut crear les incrustacions després de {{attempts}} intents: {{errorMessage}}",
@@ -52,7 +51,6 @@
 		"mistralConfigMissing": "Falta la configuració de Mistral per crear l'embedder",
 		"openRouterConfigMissing": "Falta la configuració d'OpenRouter per crear l'embedder",
 		"bedrockConfigMissing": "Falta la configuració d'Amazon Bedrock per crear l'embedder",
-		"invalidEmbedderType": "Tipus d'embedder configurat no vàlid: {{embedderProvider}}",
 		"vectorDimensionNotDeterminedOpenAiCompatible": "No s'ha pogut determinar la dimensió del vector per al model '{{modelId}}' amb el proveïdor '{{provider}}'. Assegura't que la 'Dimensió d'incrustació' estigui configurada correctament als paràmetres del proveïdor compatible amb OpenAI.",
 		"vectorDimensionNotDetermined": "No s'ha pogut determinar la dimensió del vector per al model '{{modelId}}' amb el proveïdor '{{provider}}'. Comprova els perfils del model o la configuració.",
 		"qdrantUrlMissing": "Falta l'URL de Qdrant per crear l'emmagatzematge de vectors",

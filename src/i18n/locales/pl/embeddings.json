@@ -1,5 +1,4 @@
 {
-	"unknownError": "Nieznany błąd",
 	"authenticationFailed": "Nie udało się utworzyć osadzeń: Uwierzytelnianie nie powiodło się. Sprawdź swój klucz API.",
 	"failedWithStatus": "Nie udało się utworzyć osadzeń po {{attempts}} próbach: HTTP {{statusCode}} - {{errorMessage}}",
 	"failedWithError": "Nie udało się utworzyć osadzeń po {{attempts}} próbach: {{errorMessage}}",
@@ -52,7 +51,6 @@
 		"mistralConfigMissing": "Brak konfiguracji Mistral do utworzenia embeddera",
 		"openRouterConfigMissing": "Brak konfiguracji OpenRouter do utworzenia embeddera",
 		"bedrockConfigMissing": "Brak konfiguracji Amazon Bedrock do utworzenia embeddera",
-		"invalidEmbedderType": "Skonfigurowano nieprawidłowy typ embeddera: {{embedderProvider}}",
 		"vectorDimensionNotDeterminedOpenAiCompatible": "Nie można określić wymiaru wektora dla modelu '{{modelId}}' z dostawcą '{{provider}}'. Upewnij się, że 'Wymiar osadzania' jest poprawnie ustawiony w ustawieniach dostawcy kompatybilnego z OpenAI.",
 		"vectorDimensionNotDetermined": "Nie można określić wymiaru wektora dla modelu '{{modelId}}' z dostawcą '{{provider}}'. Sprawdź profile modelu lub konfigurację.",
 		"qdrantUrlMissing": "Brak adresu URL Qdrant do utworzenia magazynu wektorów",

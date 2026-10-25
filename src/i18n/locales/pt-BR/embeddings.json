@@ -1,5 +1,4 @@
 {
-	"unknownError": "Erro desconhecido",
 	"authenticationFailed": "Falha ao criar embeddings: Falha na autenticação. Verifique sua chave de API.",
 	"failedWithStatus": "Falha ao criar embeddings após {{attempts}} tentativas: HTTP {{statusCode}} - {{errorMessage}}",
 	"failedWithError": "Falha ao criar embeddings após {{attempts}} tentativas: {{errorMessage}}",
@@ -52,7 +51,6 @@
 		"mistralConfigMissing": "Configuração do Mistral ausente para a criação do embedder",
 		"openRouterConfigMissing": "Configuração do OpenRouter ausente para a criação do embedder",
 		"bedrockConfigMissing": "Configuração do Amazon Bedrock ausente para a criação do embedder",
-		"invalidEmbedderType": "Tipo de embedder configurado inválido: {{embedderProvider}}",
 		"vectorDimensionNotDeterminedOpenAiCompatible": "Não foi possível determinar a dimensão do vetor para o modelo '{{modelId}}' com o provedor '{{provider}}'. Certifique-se de que a 'Dimensão de Embedding' esteja configurada corretamente nas configurações do provedor compatível com OpenAI.",
 		"vectorDimensionNotDetermined": "Não foi possível determinar a dimensão do vetor para o modelo '{{modelId}}' com o provedor '{{provider}}'. Verifique os perfis do modelo ou a configuração.",
 		"qdrantUrlMissing": "URL do Qdrant ausente para criação do armazenamento de vetores",

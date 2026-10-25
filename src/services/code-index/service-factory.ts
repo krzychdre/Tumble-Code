@@ -12,13 +12,20 @@ import { Package } from "../../shared/package"
 
 import { RooIgnoreController } from "../../core/ignore/RooIgnoreController"
 
-import { findEmbedderDescriptor } from "./embedders/descriptors"
+import { EMBEDDER_DESCRIPTORS } from "./embedders/descriptors"
 import { QdrantVectorStore } from "./vector-store/qdrant-client"
 import { codeParser, DirectoryScanner, FileWatcher } from "./processors"
 import { ICodeParser, IEmbedder, IFileWatcher, IVectorStore } from "./interfaces"
 import { CodeIndexConfigManager } from "./config-manager"
 import { CacheManager } from "./cache-manager"
 import { BATCH_SEGMENT_THRESHOLD } from "./constants"
+
+/** The configurable number of code segments embedded per request. */
+function embeddingBatchSize(): number {
+	return vscode.workspace
+		.getConfiguration(Package.name)
+		.get<number>("codeIndex.embeddingBatchSize", BATCH_SEGMENT_THRESHOLD)
+}
 
 /**
  * Factory class responsible for creating and configuring code indexing service dependencies.
@@ -36,19 +43,13 @@ export class CodeIndexServiceFactory {
 	public createEmbedder(): IEmbedder {
 		const config = this.configManager.getConfig()
 
-		const descriptor = findEmbedderDescriptor(config.embedderProvider)
-
-		if (descriptor) {
-			const options = config[descriptor.optionsKey]
-			if (!options || !descriptor.isConfigured(options)) {
-				throw new Error(t(descriptor.missingConfigMessage))
-			}
-			return descriptor.create(options, config.modelId)
+		// The config manager reads an unknown saved provider as "openai" (unconfigured).
+		const descriptor = EMBEDDER_DESCRIPTORS[config.embedderProvider]
+		const options = config[descriptor.optionsKey]
+		if (!options || !descriptor.isConfigured(options)) {
+			throw new Error(t(descriptor.missingConfigMessage))
 		}
-
-		throw new Error(
-			t("embeddings:serviceFactory.invalidEmbedderType", { embedderProvider: config.embedderProvider }),
-		)
+		return descriptor.create(options, config.modelId)
 	}
 
 	/**
@@ -184,17 +185,14 @@ export class CodeIndexServiceFactory {
 		parser: ICodeParser,
 		ignoreInstance: Ignore,
 	): DirectoryScanner {
-		// Get the configurable batch size from VSCode settings
-		let batchSize: number
-		try {
-			batchSize = vscode.workspace
-				.getConfiguration(Package.name)
-				.get<number>("codeIndex.embeddingBatchSize", BATCH_SEGMENT_THRESHOLD)
-		} catch {
-			// In test environment, vscode.workspace might not be available
-			batchSize = BATCH_SEGMENT_THRESHOLD
-		}
-		return new DirectoryScanner(embedder, vectorStore, parser, this.cacheManager, ignoreInstance, batchSize)
+		return new DirectoryScanner(
+			embedder,
+			vectorStore,
+			parser,
+			this.cacheManager,
+			ignoreInstance,
+			embeddingBatchSize(),
+		)
 	}
 
 	/**
@@ -208,16 +206,6 @@ export class CodeIndexServiceFactory {
 		ignoreInstance: Ignore,
 		rooIgnoreController?: RooIgnoreController,
 	): IFileWatcher {
-		// Get the configurable batch size from VSCode settings
-		let batchSize: number
-		try {
-			batchSize = vscode.workspace
-				.getConfiguration(Package.name)
-				.get<number>("codeIndex.embeddingBatchSize", BATCH_SEGMENT_THRESHOLD)
-		} catch {
-			// In test environment, vscode.workspace might not be available
-			batchSize = BATCH_SEGMENT_THRESHOLD
-		}
 		return new FileWatcher(
 			this.workspacePath,
 			context,
@@ -226,7 +214,7 @@ export class CodeIndexServiceFactory {
 			vectorStore,
 			ignoreInstance,
 			rooIgnoreController,
-			batchSize,
+			embeddingBatchSize(),
 		)
 	}
 
