@@ -3,17 +3,20 @@
  * Rewrites the release section that `changeset version` just added to the
  * extension changelog into the published layout:
  *
- *   ## 1.2.0 (2026-11-02)
+ *   ## 1.2.0
+ *
+ *   Released 2026-11-02
  *
  *   <highlights paragraphs>
  *
  *   ### New / ### Improved / ### Fixed
  *
  * changesets heads the section "## 1.2.0" and groups it by semver bump
- * ("Minor Changes", "Patch Changes"); those headings are dropped. Every
- * bullet starts with the label its changeset summary starts with (see
- * .changeset/README.md). A first section that already carries a date is a
- * formatted release: no new extension changesets, nothing to do.
+ * ("Minor Changes", "Patch Changes"); those headings are dropped. The heading
+ * stays the bare version: changesets/action finds the entry for the version
+ * bump PR by it. Every bullet starts with the label its changeset summary
+ * starts with (see .changeset/README.md). A first section without bump
+ * headings is a formatted release: no new extension changesets, nothing to do.
  *
  * Usage: node scripts/format-changelog.mjs <CHANGELOG.md>
  */
@@ -24,14 +27,14 @@ export const LABELS = ["Highlights", "New", "Improved", "Fixed"]
 
 const ENTRY = new RegExp(`^- (${LABELS.join("|")}): (.*)$`)
 
+const BUMP_HEADING = /^### (Major|Minor|Patch) Changes$/
+
 export function formatChangelog(text, date) {
 	const lines = text.split("\n")
 	const start = lines.findIndex((line) => line.startsWith("## "))
-	const version = lines[start].slice(3)
-	if (!/^\d+\.\d+\.\d+$/.test(version)) return text
-
 	const next = lines.findIndex((line, i) => i > start && line.startsWith("## "))
 	const end = next === -1 ? lines.length : next
+	if (!lines.slice(start + 1, end).some((line) => BUMP_HEADING.test(line))) return text
 	const entries = Object.fromEntries(LABELS.map((label) => [label, []]))
 	for (const line of lines.slice(start + 1, end)) {
 		if (!line.startsWith("- ")) continue
@@ -40,7 +43,7 @@ export function formatChangelog(text, date) {
 		entries[match[1]].push(match[2])
 	}
 
-	const section = [`## ${version} (${date})`, ""]
+	const section = [lines[start], "", `Released ${date}`, ""]
 	for (const paragraph of entries.Highlights) section.push(paragraph, "")
 	for (const label of LABELS.slice(1)) {
 		if (entries[label].length === 0) continue

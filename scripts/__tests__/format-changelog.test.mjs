@@ -3,7 +3,9 @@ import assert from "node:assert/strict"
 
 import { formatChangelog } from "../format-changelog.mjs"
 
-const OLDER = `## 1.1.0 (2026-10-24)
+const OLDER = `## 1.1.0
+
+Released 2026-10-24
 
 ### Fixed
 
@@ -32,7 +34,9 @@ ${OLDER}`
 		formatChangelog(text, "2026-11-02"),
 		`# Tumble Code Changelog
 
-## 1.2.0 (2026-11-02)
+## 1.2.0
+
+Released 2026-11-02
 
 Tabs and pins.
 

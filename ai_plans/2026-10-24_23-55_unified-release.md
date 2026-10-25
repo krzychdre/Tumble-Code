@@ -5,7 +5,7 @@
 **Touched:** `scripts/sync-cli-version.mjs` (new), `package.json` (`changeset:version`), `scripts/check-changesets.mjs`,
 `.github/workflows/marketplace-publish.yml`, `apps/cli/scripts/build.sh`, `apps/cli/install.sh`,
 `apps/cli/src/commands/cli/upgrade.ts`, `apps/cli/package.json`, `.changeset/*`, `AGENTS.md`, `apps/cli/README.md`,
-tests; deleted `.github/workflows/cli-release.yml`, `apps/cli/CHANGELOG.md`, `.roo/commands/cli-release.md`
+tests; deleted `.github/workflows/cli-release.yml`, `.roo/commands/cli-release.md`
 
 ## Symptom
 
@@ -24,7 +24,9 @@ webview changesets in `.changeset/` named packages that changesets ignores, so t
   ignore list, so changesets writes no second changelog.
 - **One changelog.** CLI changes are changesets of `"tumble-code"` with a `CLI:` title. `check-changesets.mjs` now
   rejects every changeset that names an ignored or unversioned package (the CLI, the webview), which replaces the old
-  "mixed packages" check. `apps/cli/CHANGELOG.md` is deleted.
+  "mixed packages" check. `apps/cli/CHANGELOG.md` is a two-line pointer to the root changelog: changesets/action
+  reads the CHANGELOG.md of every package whose version changed to write the version bump PR, and the sync gives the
+  CLI a new version on every release.
 - **One release.** `marketplace-publish.yml` ("Publish Release") gets a `build-cli` matrix job (macOS arm64, Linux
   x64, Linux arm64) that runs `apps/cli/scripts/build.sh --release` and a checksum; `publish-extension` needs it,
   so a failed CLI build stops the release before the tag, the Marketplace and the GitHub release. Both jobs run only
