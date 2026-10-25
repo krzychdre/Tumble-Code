@@ -439,7 +439,9 @@ export class WebAuthService extends EventEmitter<AuthServiceEvents> implements A
 
 			if (previousState !== "active-session") {
 				this.changeState("active-session")
-				this.fetchUserInfo()
+				// In the background: the session does not wait for the profile. A failure must not
+				// become an unhandled rejection (the CLI exits on one).
+				this.fetchUserInfo().catch((error) => this.log("[auth] Failed to fetch user info", error))
 			} else {
 				this.state = "active-session"
 			}
