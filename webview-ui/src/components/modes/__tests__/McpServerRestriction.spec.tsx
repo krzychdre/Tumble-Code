@@ -111,12 +111,17 @@ describe("McpServerRestriction", () => {
 		expect(server("b").checked).toBe(true)
 	})
 
-	it("reseeds from the props on a mode switch without persisting", () => {
+	// Regression: switching to a mode with an allowlist turned the restrict box on through its
+	// prop, which the old toolkit checkbox reported as a click and persisted an empty list.
+	it.each([
+		{ name: "restricted to unrestricted", from: ["a"], to: undefined, restricted: false },
+		{ name: "unrestricted to restricted", from: undefined, to: ["a", "b"], restricted: true },
+	])("reseeds from the props on a mode switch ($name) without persisting", ({ from, to, restricted }) => {
 		const onChange = vi.fn()
-		const { rerender } = render(view({ slug: "code", value: ["a"], onChange }))
+		const { rerender } = render(view({ slug: "code", value: from, onChange }))
 
-		rerender(view({ slug: "architect", value: undefined, onChange }))
-		expect(toggle().checked).toBe(false)
+		rerender(view({ slug: "architect", value: to, onChange }))
+		expect(toggle().checked).toBe(restricted)
 		act(() => vi.advanceTimersByTime(1000))
 		expect(onChange).not.toHaveBeenCalled()
 	})
