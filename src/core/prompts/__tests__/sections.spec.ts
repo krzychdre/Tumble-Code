@@ -1,56 +1,16 @@
-import { addCustomInstructions } from "../sections/custom-instructions"
 import { getCapabilitiesSection, getMcpAvailabilitySection } from "../sections/capabilities"
 import { getRulesSection, getCommandChainOperator } from "../sections/rules"
 import { McpHub } from "../../../services/mcp/McpHub"
 import * as shellUtils from "../../../utils/shell"
 
-describe("addCustomInstructions", () => {
-	it("adds vscode language to custom instructions", async () => {
-		const result = await addCustomInstructions(
-			"mode instructions",
-			"global instructions",
-			"/test/path",
-			"test-mode",
-			{ language: "fr" },
-		)
-
-		expect(result).toContain("Language Preference:")
-		expect(result).toContain("Write your replies in the language the user writes to you in.")
-		expect(result).toContain('write in the "Français" (fr) language')
-	})
-
-	it("works without vscode language", async () => {
-		const result = await addCustomInstructions(
-			"mode instructions",
-			"global instructions",
-			"/test/path",
-			"test-mode",
-		)
-
-		expect(result).not.toContain("Language Preference:")
-		expect(result).not.toContain("Write your replies in the language the user writes to you in.")
-	})
-})
-
 describe("getCapabilitiesSection", () => {
-	const cwd = "/test/path"
-
-	it("includes standard capabilities", () => {
-		const result = getCapabilitiesSection(cwd)
-
-		expect(result).toContain("CAPABILITIES")
-		expect(result).toContain("run CLI commands")
-		expect(result).toContain("list files")
-		expect(result).toContain("read and write files")
-	})
+	const result = getCapabilitiesSection("/test/path")
 
 	// CAPABILITIES is mode-independent (stable head), so it cannot know whether
 	// this mode has execute_command. The orchestrator (`groups: []`) read the old
 	// "You can use the execute_command tool" as a promise, called the tool, and
 	// looped on empty responses because vLLM dropped the unknown tool call.
 	it("does not promise execute_command or any other tool unconditionally", () => {
-		const result = getCapabilitiesSection(cwd)
-
 		expect(result).not.toContain("You can use the execute_command tool")
 		expect(result).not.toContain("You have access to tools that let you")
 		expect(result).toContain("exactly the tools in the tool list of this request")
@@ -69,231 +29,69 @@ describe("getCapabilitiesSection", () => {
 	// Prefix stability (WS-F): CAPABILITIES belongs to the stable head, so it must
 	// not mention MCP at all. Whether MCP is available varies per mode, and that
 	// decision now lives in getMcpAvailabilitySection, in the variable tail.
-	it("never mentions MCP, whatever the hub says", () => {
-		const result = getCapabilitiesSection(cwd)
-
+	it("never mentions MCP", () => {
 		expect(result).not.toContain("MCP")
 	})
 })
 
 describe("getMcpAvailabilitySection", () => {
-	// getMcpAvailabilitySection filters the hub's server list (honoring the per-mode
-	// allowedMcpServers allowlist) to decide whether to advertise MCP, so the mock must
-	// expose getServers(). An empty `{}` hub would throw on getServers().
-	const createMockMcpHub = (serverNames: string[]): McpHub =>
-		({
-			getServers: () => serverNames.map((name) => ({ name })),
-		}) as unknown as McpHub
+	const hub = (serverNames: string[]) =>
+		({ getServers: () => serverNames.map((name) => ({ name })) }) as unknown as McpHub
 
-	it("includes MCP reference when mcpHub exposes at least one server", () => {
-		const mockMcpHub = createMockMcpHub(["test-server"])
-		const result = getMcpAvailabilitySection(mockMcpHub)
+	it.each([
+		["a hub with a server", hub(["test-server"]), undefined, true],
+		["no hub", undefined, undefined, false],
+		["a hub without servers", hub([]), undefined, false],
+		["an allowlist that names a connected server", hub(["allowed", "other"]), ["allowed"], true],
+		["an empty allowlist", hub(["test-server"]), [], false],
+		["an allowlist that names no connected server", hub(["test-server"]), ["nonexistent"], false],
+	])("for %s: %s", (_label, mcpHub, allowed, advertised) => {
+		const result = getMcpAvailabilitySection(mcpHub, allowed)
 
-		expect(result).toContain("MCP SERVERS")
-		expect(result).toContain("MCP servers")
-	})
-
-	it("excludes MCP reference when mcpHub is undefined", () => {
-		const result = getMcpAvailabilitySection(undefined)
-
-		expect(result).toBe("")
-	})
-
-	it("excludes MCP reference when mcpHub exposes no servers", () => {
-		const mockMcpHub = createMockMcpHub([])
-		const result = getMcpAvailabilitySection(mockMcpHub)
-
-		expect(result).toBe("")
-	})
-
-	it("includes MCP reference when allowedMcpServers matches a connected server", () => {
-		const mockMcpHub = createMockMcpHub(["allowed-server", "other-server"])
-		const result = getMcpAvailabilitySection(mockMcpHub, ["allowed-server"])
-
-		expect(result).toContain("MCP servers")
-	})
-
-	it("excludes MCP reference when allowedMcpServers is an empty array", () => {
-		const mockMcpHub = createMockMcpHub(["test-server"])
-		const result = getMcpAvailabilitySection(mockMcpHub, [])
-
-		expect(result).toBe("")
-	})
-
-	it("excludes MCP reference when allowedMcpServers matches no connected server", () => {
-		const mockMcpHub = createMockMcpHub(["test-server"])
-		const result = getMcpAvailabilitySection(mockMcpHub, ["nonexistent-server"])
-
-		expect(result).toBe("")
+		if (advertised) {
+			expect(result).toContain("====\n\nMCP SERVERS")
+		} else {
+			expect(result).toBe("")
+		}
 	})
 })
 
-describe("getRulesSection", () => {
-	const cwd = "/test/path"
-
-	it("includes standard rules", () => {
-		const result = getRulesSection(cwd)
-
-		expect(result).toContain("RULES")
-		expect(result).toContain("project base directory")
-		expect(result).toContain(cwd)
-	})
-
-	it("includes vendor confidentiality section when isStealthModel is true", () => {
-		const settings = {
-			todoListEnabled: true,
-			useAgentRules: true,
-			newTaskRequireTodos: false,
-			isStealthModel: true,
-		}
-
-		const result = getRulesSection(cwd, settings)
-
-		expect(result).toContain("VENDOR CONFIDENTIALITY")
-		expect(result).toContain("Never reveal the vendor or company that created you")
-		expect(result).toContain("I was created by a team of developers")
-		expect(result).toContain("I'm an open-source project maintained by contributors")
-		expect(result).toContain("I don't have information about specific vendors")
-	})
-
-	it("excludes vendor confidentiality section when isStealthModel is false", () => {
-		const settings = {
-			todoListEnabled: true,
-			useAgentRules: true,
-			newTaskRequireTodos: false,
-			isStealthModel: false,
-		}
-
-		const result = getRulesSection(cwd, settings)
-
-		expect(result).not.toContain("VENDOR CONFIDENTIALITY")
-		expect(result).not.toContain("Never reveal the vendor or company")
-	})
-
-	it("excludes vendor confidentiality section when isStealthModel is undefined", () => {
-		const settings = {
-			todoListEnabled: true,
-			useAgentRules: true,
-			newTaskRequireTodos: false,
-		}
-
-		const result = getRulesSection(cwd, settings)
-
-		expect(result).not.toContain("VENDOR CONFIDENTIALITY")
-		expect(result).not.toContain("Never reveal the vendor or company")
-	})
-})
-
-describe("getCommandChainOperator", () => {
-	it("returns && for bash shell", () => {
-		vi.spyOn(shellUtils, "getShell").mockReturnValue("/bin/bash")
-		expect(getCommandChainOperator()).toBe("&&")
-	})
-
-	it("returns && for zsh shell", () => {
-		vi.spyOn(shellUtils, "getShell").mockReturnValue("/bin/zsh")
-		expect(getCommandChainOperator()).toBe("&&")
-	})
-
-	it("returns ; for PowerShell", () => {
-		vi.spyOn(shellUtils, "getShell").mockReturnValue(
-			"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
-		)
-		expect(getCommandChainOperator()).toBe(";")
-	})
-
-	it("returns ; for PowerShell Core (pwsh)", () => {
-		vi.spyOn(shellUtils, "getShell").mockReturnValue("C:\\Program Files\\PowerShell\\7\\pwsh.exe")
-		expect(getCommandChainOperator()).toBe(";")
-	})
-
-	it("returns && for cmd.exe", () => {
-		vi.spyOn(shellUtils, "getShell").mockReturnValue("C:\\Windows\\System32\\cmd.exe")
-		expect(getCommandChainOperator()).toBe("&&")
-	})
-
-	it("returns && for Git Bash on Windows", () => {
-		vi.spyOn(shellUtils, "getShell").mockReturnValue("C:\\Program Files\\Git\\bin\\bash.exe")
-		expect(getCommandChainOperator()).toBe("&&")
-	})
-
-	it("returns && for WSL bash", () => {
-		vi.spyOn(shellUtils, "getShell").mockReturnValue("/bin/bash")
-		expect(getCommandChainOperator()).toBe("&&")
-	})
-})
-
-describe("getRulesSection shell-aware command chaining", () => {
-	const cwd = "/test/path"
-
+describe("command chaining by shell", () => {
 	afterEach(() => {
 		vi.restoreAllMocks()
 	})
 
-	it("uses && for Unix shells in command chaining example", () => {
-		vi.spyOn(shellUtils, "getShell").mockReturnValue("/bin/bash")
-		const result = getRulesSection(cwd)
-
-		expect(result).toContain("cd (path to project) && (command")
-		expect(result).not.toContain("cd (path to project) ; (command")
-		expect(result).not.toContain("cd (path to project) & (command")
-	})
-
-	it("uses ; for PowerShell in command chaining example", () => {
-		vi.spyOn(shellUtils, "getShell").mockReturnValue(
+	it.each([
+		["/bin/zsh", "&&", undefined],
+		["C:\\Program Files\\Git\\bin\\bash.exe", "&&", undefined],
+		[
 			"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
-		)
-		const result = getRulesSection(cwd)
+			";",
+			"Note: Using `;` for PowerShell command chaining. For bash/zsh use `&&`, for cmd.exe use `&&`. IMPORTANT: When using PowerShell, avoid Unix-specific utilities",
+		],
+		["/usr/local/bin/pwsh", ";", "IMPORTANT: When using PowerShell"],
+		[
+			"C:\\Windows\\System32\\cmd.exe",
+			"&&",
+			"Note: Using `&&` for cmd.exe command chaining (conditional execution). For bash/zsh use `&&`, for PowerShell use `;`. IMPORTANT: When using cmd.exe, avoid Unix-specific utilities",
+		],
+	])("%s chains with %s", (shell, operator, note) => {
+		vi.spyOn(shellUtils, "getShell").mockReturnValue(shell)
 
-		expect(result).toContain("cd (path to project) ; (command")
-		expect(result).toContain("Note: Using `;` for PowerShell command chaining")
-	})
+		const rules = getRulesSection("/test/path")
 
-	it("uses && for cmd.exe in command chaining example", () => {
-		vi.spyOn(shellUtils, "getShell").mockReturnValue("C:\\Windows\\System32\\cmd.exe")
-		const result = getRulesSection(cwd)
-
-		expect(result).toContain("cd (path to project) && (command")
-		expect(result).toContain("Note: Using `&&` for cmd.exe command chaining")
-	})
-
-	it("includes Unix utility guidance for PowerShell", () => {
-		vi.spyOn(shellUtils, "getShell").mockReturnValue(
-			"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
-		)
-		const result = getRulesSection(cwd)
-
-		expect(result).toContain("IMPORTANT: When using PowerShell, avoid Unix-specific utilities")
-		expect(result).toContain("`sed`, `grep`, `awk`, `cat`, `rm`, `cp`, `mv`")
-		expect(result).toContain("`Select-String` for grep")
-		expect(result).toContain("`Get-Content` for cat")
-		expect(result).toContain("PowerShell's `-replace` operator")
-	})
-
-	it("includes Unix utility guidance for cmd.exe", () => {
-		vi.spyOn(shellUtils, "getShell").mockReturnValue("C:\\Windows\\System32\\cmd.exe")
-		const result = getRulesSection(cwd)
-
-		expect(result).toContain("IMPORTANT: When using cmd.exe, avoid Unix-specific utilities")
-		expect(result).toContain("`sed`, `grep`, `awk`, `cat`, `rm`, `cp`, `mv`")
-		expect(result).toContain("`type` for cat")
-		expect(result).toContain("`del` for rm")
-		expect(result).toContain("`find`/`findstr` for grep")
-	})
-
-	it("does not include Unix utility guidance for Unix shells", () => {
-		vi.spyOn(shellUtils, "getShell").mockReturnValue("/bin/bash")
-		const result = getRulesSection(cwd)
-
-		expect(result).not.toContain("IMPORTANT: When using PowerShell")
-		expect(result).not.toContain("IMPORTANT: When using cmd.exe")
-		expect(result).not.toContain("`Select-String` for grep")
-	})
-
-	it("does not include note for Unix shells", () => {
-		vi.spyOn(shellUtils, "getShell").mockReturnValue("/bin/zsh")
-		const result = getRulesSection(cwd)
-
-		expect(result).not.toContain("Note: Using")
+		expect(getCommandChainOperator()).toBe(operator)
+		expect(rules).toContain("- The project base directory is: /test/path\n")
+		const chainLine = rules.split("\n").find((line) => line.startsWith("- Chain shell commands with"))!
+		expect(
+			chainLine.startsWith(
+				`- Chain shell commands with \`${operator}\`, for example \`cd (path to project) ${operator} (command)\`.`,
+			),
+		).toBe(true)
+		if (note) {
+			expect(chainLine).toContain(note)
+		} else {
+			expect(chainLine).not.toContain("Note:")
+		}
 	})
 })

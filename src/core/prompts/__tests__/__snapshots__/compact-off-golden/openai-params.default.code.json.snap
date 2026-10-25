@@ -1,9 +1,0 @@
-{
-  "model": "qwen3.5-4b-q4_k_m",
-  "stream": true,
-  "stream_options": {
-    "include_usage": true
-  },
-  "tool_choice": "auto",
-  "parallel_tool_calls": true
-}

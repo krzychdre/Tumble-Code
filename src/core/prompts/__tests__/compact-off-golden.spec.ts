@@ -364,13 +364,20 @@ describe("compact profile off: golden bytes", () => {
 	})
 
 	describe.each(PROFILE_CASES)("profile $label", ({ shape, snapshot }) => {
-		it.each(BUILT_IN_MODES)("(a) system prompt, %s mode", async (mode) => {
+		// The slim toolset changes nothing in the prompts of the modes without tools to slim.
+		const promptModes =
+			snapshot === "slim"
+				? BUILT_IN_MODES.filter((mode) => !["orchestrator", "vision"].includes(mode))
+				: BUILT_IN_MODES
+
+		it.each(promptModes)("(a) system prompt, %s mode", async (mode) => {
 			const prompt = await buildLiveSystemPrompt(shape, mode)
 
 			await expect(pinnable(prompt)).toMatchFileSnapshot(`${SNAPSHOT_DIR}/system-prompt.${snapshot}.${mode}.snap`)
 		})
 
-		it.each(BUILT_IN_MODES)("(b) native tools array, %s mode", async (mode) => {
+		// debug has the same tool groups as code.
+		it.each(BUILT_IN_MODES.filter((mode) => mode !== "debug"))("(b) native tools array, %s mode", async (mode) => {
 			const { allTools, allowedFunctionNames } = await buildLiveTools(shape, mode)
 
 			// The OpenAI-compatible provider has no allowedFunctionNames restriction.
@@ -384,9 +391,8 @@ describe("compact profile off: golden bytes", () => {
 			const { tools, params } = await sendThroughOpenAiHandler(shape, mode)
 
 			await expect(json(tools)).toMatchFileSnapshot(`${SNAPSHOT_DIR}/openai-tools.${snapshot}.${mode}.json.snap`)
-			await expect(json(params)).toMatchFileSnapshot(
-				`${SNAPSHOT_DIR}/openai-params.${snapshot}.${mode}.json.snap`,
-			)
+			// The same parameters for every mode and profile.
+			await expect(json(params)).toMatchFileSnapshot(`${SNAPSHOT_DIR}/openai-params.json.snap`)
 		})
 	})
 })

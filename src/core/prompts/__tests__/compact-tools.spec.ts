@@ -174,14 +174,17 @@ function json(value: unknown): string {
 	return text
 }
 
+// debug has the same tool groups as code.
+const TOOL_MODES = BUILT_IN_MODES.filter((mode) => mode !== "debug")
+
 describe("compact profile: tool arrays on the live path", () => {
-	it.each(BUILT_IN_MODES)("native tools array, %s mode", async (mode) => {
+	it.each(TOOL_MODES)("native tools array, %s mode", async (mode) => {
 		const { native } = await buildTools(COMPACT, mode)
 
 		await expect(json(native)).toMatchFileSnapshot(`${SNAPSHOT_DIR}/native-tools.${mode}.json.snap`)
 	})
 
-	it.each(BUILT_IN_MODES)("tools after OpenAI conversion, %s mode", async (mode) => {
+	it.each(TOOL_MODES)("tools after OpenAI conversion, %s mode", async (mode) => {
 		const { sent } = await buildTools(COMPACT, mode)
 
 		await expect(json(sent)).toMatchFileSnapshot(`${SNAPSHOT_DIR}/openai-tools.${mode}.json.snap`)
