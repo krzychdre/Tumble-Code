@@ -1,5 +1,4 @@
 {
-	"unknownError": "未知错误",
 	"authenticationFailed": "创建嵌入失败：身份验证失败。请检查您的 API 密钥。",
 	"failedWithStatus": "尝试 {{attempts}} 次后创建嵌入失败：HTTP {{statusCode}} - {{errorMessage}}",
 	"failedWithError": "尝试 {{attempts}} 次后创建嵌入失败：{{errorMessage}}",
@@ -52,7 +51,6 @@
 		"mistralConfigMissing": "创建嵌入器时缺少 Mistral 配置",
 		"openRouterConfigMissing": "创建嵌入器时缺少 OpenRouter 配置",
 		"bedrockConfigMissing": "创建嵌入器时缺少 Amazon Bedrock 配置",
-		"invalidEmbedderType": "配置的嵌入器类型无效：{{embedderProvider}}",
 		"vectorDimensionNotDeterminedOpenAiCompatible": "无法确定提供商 '{{provider}}' 的模型 '{{modelId}}' 的向量维度。请确保在 OpenAI 兼容提供商设置中正确设置了「嵌入维度」。",
 		"vectorDimensionNotDetermined": "无法确定提供商 '{{provider}}' 的模型 '{{modelId}}' 的向量维度。请检查模型配置文件或配置。",
 		"qdrantUrlMissing": "创建向量存储缺少 Qdrant URL",

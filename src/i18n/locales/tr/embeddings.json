@@ -1,5 +1,4 @@
 {
-	"unknownError": "Bilinmeyen hata",
 	"authenticationFailed": "Gömülmeler oluşturulamadı: Kimlik doğrulama başarısız oldu. Lütfen API anahtarınızı kontrol edin.",
 	"failedWithStatus": "{{attempts}} denemeden sonra gömülmeler oluşturulamadı: HTTP {{statusCode}} - {{errorMessage}}",
 	"failedWithError": "{{attempts}} denemeden sonra gömülmeler oluşturulamadı: {{errorMessage}}",
@@ -52,7 +51,6 @@
 		"mistralConfigMissing": "Gömücü oluşturmak için Mistral yapılandırması eksik",
 		"openRouterConfigMissing": "Gömücü oluşturmak için OpenRouter yapılandırması eksik",
 		"bedrockConfigMissing": "Gömücü oluşturmak için Amazon Bedrock yapılandırması eksik",
-		"invalidEmbedderType": "Geçersiz gömücü türü yapılandırıldı: {{embedderProvider}}",
 		"vectorDimensionNotDeterminedOpenAiCompatible": "'{{provider}}' sağlayıcısı ile '{{modelId}}' modeli için vektör boyutu belirlenemedi. OpenAI uyumlu sağlayıcı ayarlarında 'Gömme Boyutu'nun doğru ayarlandığından emin ol.",
 		"vectorDimensionNotDetermined": "'{{provider}}' sağlayıcısı ile '{{modelId}}' modeli için vektör boyutu belirlenemedi. Model profillerini veya yapılandırmayı kontrol et.",
 		"qdrantUrlMissing": "Vektör deposu oluşturmak için Qdrant URL'si eksik",

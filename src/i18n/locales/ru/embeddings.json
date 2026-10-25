@@ -1,5 +1,4 @@
 {
-	"unknownError": "Неизвестная ошибка",
 	"authenticationFailed": "Не удалось создать вложения: Ошибка аутентификации. Проверьте свой ключ API.",
 	"failedWithStatus": "Не удалось создать вложения после {{attempts}} попыток: HTTP {{statusCode}} - {{errorMessage}}",
 	"failedWithError": "Не удалось создать вложения после {{attempts}} попыток: {{errorMessage}}",
@@ -52,7 +51,6 @@
 		"mistralConfigMissing": "Конфигурация Mistral отсутствует для создания эмбеддера",
 		"openRouterConfigMissing": "Конфигурация OpenRouter отсутствует для создания эмбеддера",
 		"bedrockConfigMissing": "Конфигурация Amazon Bedrock отсутствует для создания эмбеддера",
-		"invalidEmbedderType": "Настроен недопустимый тип эмбеддера: {{embedderProvider}}",
 		"vectorDimensionNotDeterminedOpenAiCompatible": "Не удалось определить размерность вектора для модели '{{modelId}}' с провайдером '{{provider}}'. Убедитесь, что 'Размерность эмбеддинга' правильно установлена в настройках провайдера, совместимого с OpenAI.",
 		"vectorDimensionNotDetermined": "Не удалось определить размерность вектора для модели '{{modelId}}' с провайдером '{{provider}}'. Проверьте профили модели или конфигурацию.",
 		"qdrantUrlMissing": "Отсутствует URL Qdrant для создания векторного хранилища",
