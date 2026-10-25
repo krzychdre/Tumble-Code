@@ -66,7 +66,7 @@ describe("diagnosticsToProblemsString", () => {
 				],
 				[b, [diag(0, "warn b", Warning)]],
 			],
-			[...ALL, 9],
+			[...ALL, 9 as vscode.DiagnosticSeverity],
 		)
 
 		expect(result).toBe(
