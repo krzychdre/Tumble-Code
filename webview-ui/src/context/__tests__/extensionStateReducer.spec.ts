@@ -4,7 +4,7 @@
  * produce the state the provider exposes, without posting to the host and
  * without mutating its input.
  */
-import type { ExtensionMessage } from "@tumble-code/types"
+import { SETTINGS_DEFAULTS, type ExtensionMessage } from "@tumble-code/types"
 
 import { vscode } from "@src/utils/vscode"
 
@@ -39,6 +39,15 @@ const flattenExtensionStore = ({
 }: ExtensionStore) => ({
 	...extensionState,
 	...slices,
+})
+
+it("starts every setting at the extension's default until the host state arrives", () => {
+	const initial: Record<string, unknown> = createInitialExtensionStore().extensionState
+	// customModePrompts starts with the built-in prompts; its default is "no overrides".
+	const shared = Object.keys(SETTINGS_DEFAULTS).filter((key) => key in initial && key !== "customModePrompts")
+	const pick = (source: Record<string, unknown>) => Object.fromEntries(shared.map((key) => [key, source[key]]))
+
+	expect(pick(initial)).toEqual(pick(SETTINGS_DEFAULTS))
 })
 
 describe("applyExtensionMessage", () => {

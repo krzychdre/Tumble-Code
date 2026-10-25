@@ -103,7 +103,7 @@ const createInitialExtensionState = (): ExtensionState => ({
 	maxOpenTabsContext: 20,
 	maxWorkspaceFiles: 200,
 	cwd: "",
-	showRooIgnoredFiles: true, // Default to showing .rooignore'd files with lock symbol (current behavior).
+	showRooIgnoredFiles: SETTINGS_DEFAULTS.showRooIgnoredFiles,
 	enableSubfolderRules: false, // Default to disabled - must be enabled to load rules from subdirectories
 	renderContext: "sidebar",
 	// Persistent storage failure reported by the extension host. The
