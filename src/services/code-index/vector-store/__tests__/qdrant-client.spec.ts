@@ -1,1829 +1,633 @@
-import { QdrantClient } from "@qdrant/js-client-rest"
-import { createHash } from "crypto"
+// QdrantVectorStore runs the REAL `@qdrant/js-client-rest` client (no module mock) against a fake
+// Qdrant HTTP server on 127.0.0.1 and pins the exact requests we send and how we read the answers.
+//
+// The real client matters: it passes its own undici `Agent` as `dispatcher` to Node's built-in fetch,
+// and an undici major that the built-in fetch cannot drive (undici 8 on Node 22/24) breaks every
+// request. Its errors are real `ApiError`s whose message is only the status text, with Qdrant's
+// reason on `error.data`.
 
-import { QdrantVectorStore } from "../qdrant-client"
-import { getWorkspacePath } from "../../../../utils/path"
-import { DEFAULT_MAX_SEARCH_RESULTS, DEFAULT_SEARCH_MIN_SCORE } from "../../constants"
+import * as http from "node:http"
+import type { AddressInfo } from "node:net"
+import { createHash } from "crypto"
+import * as path from "path"
+import nock from "nock"
+import { v5 as uuidv5 } from "uuid"
+
+import { QdrantVectorStore, describeQdrantError } from "../qdrant-client"
+import { DEFAULT_MAX_SEARCH_RESULTS, DEFAULT_SEARCH_MIN_SCORE, QDRANT_CODE_BLOCK_NAMESPACE } from "../../constants"
 import { logger } from "../../../../utils/logging"
 
-// Mocks
-vitest.mock("@qdrant/js-client-rest")
-vitest.mock("crypto")
-vitest.mock("../../../../utils/path")
 vitest.mock("../../../../i18n", () => ({
-	t: (key: string, params?: any) => {
-		// Mock translation function that includes parameters for testing
-		if (key === "embeddings:vectorStore.vectorDimensionMismatch" && params?.errorMessage) {
-			return `Failed to update vector index for new model. Please try clearing the index and starting again. Details: ${params.errorMessage}`
-		}
-		if (key === "embeddings:vectorStore.qdrantConnectionFailed" && params?.qdrantUrl && params?.errorMessage) {
-			return `Failed to connect to Qdrant vector database. Please ensure Qdrant is running and accessible at ${params.qdrantUrl}. Error: ${params.errorMessage}`
-		}
-		return key // Just return the key for other cases
-	},
+	t: (key: string, params?: Record<string, unknown>) =>
+		params?.errorMessage !== undefined ? `${key} | ${String(params.errorMessage)}` : key,
 }))
-vitest.mock("path", async () => {
-	const actual = await vitest.importActual("path")
-	return {
-		...actual,
-		sep: "/",
-		posix: actual.posix,
-	}
+
+interface RecordedRequest {
+	method: string
+	path: string
+	headers: http.IncomingHttpHeaders
+	body: unknown
+}
+
+interface FakeResponse {
+	status: number
+	body: unknown
+}
+
+type Handler = (req: RecordedRequest) => FakeResponse | undefined
+
+const ok = (result: unknown): FakeResponse => ({ status: 200, body: { result, status: "ok", time: 0.001 } })
+const qdrantError = (status: number, reason: string): FakeResponse => ({
+	status,
+	body: { status: { error: reason }, time: 0.001 },
 })
 
-const mockQdrantClientInstance = {
-	getCollection: vitest.fn(),
-	createCollection: vitest.fn(),
-	deleteCollection: vitest.fn(),
-	createPayloadIndex: vitest.fn(),
-	upsert: vitest.fn(),
-	query: vitest.fn(),
-	delete: vitest.fn(),
+const NOMIC_CODE_QUERY_PREFIX = "Represent this query for searching relevant code: "
+const workspacePath = path.resolve(path.sep, "work", "repo")
+const collectionName = `ws-${createHash("sha256").update(workspacePath).digest("hex").substring(0, 16)}`
+const collectionPath = `/collections/${collectionName}`
+const pointsPath = `${collectionPath}/points`
+const metadataId = uuidv5("__indexing_metadata__", QDRANT_CODE_BLOCK_NAMESPACE)
+
+const collectionInfo = (size: unknown, pointsCount = 0) => ({
+	status: "green",
+	optimizer_status: "ok",
+	points_count: pointsCount,
+	indexed_vectors_count: 0,
+	segments_count: 1,
+	config: { params: { vectors: typeof size === "number" ? { size, distance: "Cosine" } : size } },
+	payload_schema: {},
+})
+
+const metadataPoint = (payload: Record<string, unknown>) =>
+	ok([{ id: metadataId, payload: { type: "metadata", ...payload } }])
+
+let server: http.Server
+let baseUrl: string
+let recorded: RecordedRequest[] = []
+let handler: Handler = () => undefined
+
+/** Requests our code made, without the client's own background version probe (`GET /`). */
+function apiRequests() {
+	return recorded.filter((r) => !(r.method === "GET" && r.path === "/"))
 }
 
-const mockCreateHashInstance = {
-	update: vitest.fn().mockReturnThis(),
-	digest: vitest.fn(),
+function calls() {
+	return apiRequests().map((r) => ({ method: r.method, path: r.path, body: r.body }))
 }
 
-describe("QdrantVectorStore", () => {
-	let vectorStore: QdrantVectorStore
-	const mockWorkspacePath = "/test/workspace"
-	const mockQdrantUrl = "http://mock-qdrant:6333"
-	const mockApiKey = "test-api-key"
-	const mockVectorSize = 1536
-	const mockHashedPath = "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6" // Needs to be long enough
-	const expectedCollectionName = `ws-${mockHashedPath.substring(0, 16)}`
+function createStore(vectorSize = 768, legacyDocumentPrefix?: string) {
+	return new QdrantVectorStore(workspacePath, baseUrl, vectorSize, "secret-key", { legacyDocumentPrefix })
+}
 
-	beforeEach(() => {
-		vitest.clearAllMocks()
+/**
+ * An existing collection: GET answers `info` until a DELETE succeeds, then 404; index and create
+ * PUTs succeed; `routes` answers everything else (and may override the defaults).
+ */
+function existingCollection(info: object, routes: Handler = () => undefined): Handler {
+	let deleted = false
+	return (req) => {
+		const routed = routes(req)
+		if (routed) {
+			if (req.method === "DELETE" && routed.status === 200) deleted = true
+			return routed
+		}
+		if (req.method === "GET" && req.path === collectionPath) {
+			return deleted ? qdrantError(404, "Not found") : ok(info)
+		}
+		if (req.method === "DELETE" && req.path === collectionPath) {
+			deleted = true
+			return ok(true)
+		}
+		if (req.method === "PUT") return ok(true)
+		return undefined
+	}
+}
 
-		// Mock QdrantClient constructor
-		;(QdrantClient as any).mockImplementation(function () {
-			return mockQdrantClientInstance
-		})
+const failure = (promise: Promise<unknown>) =>
+	promise.then(
+		() => undefined,
+		(e: unknown) => e as Error & { status?: number; cause?: unknown },
+	)
 
-		// Mock crypto.createHash
-		;(createHash as any).mockReturnValue(mockCreateHashInstance)
-		mockCreateHashInstance.update.mockReturnValue(mockCreateHashInstance) // Ensure it returns 'this'
-		mockCreateHashInstance.digest.mockReturnValue(mockHashedPath)
+beforeAll(async () => {
+	// vitest.setup.ts activates nock, which replaces globalThis.fetch with an interceptor that rebuilds
+	// the request and drops the `dispatcher` option. Restore the real fetch so the client drives its
+	// own undici Agent exactly as it does inside VS Code.
+	nock.restore()
 
-		// Mock getWorkspacePath
-		;(getWorkspacePath as any).mockReturnValue(mockWorkspacePath)
-
-		vectorStore = new QdrantVectorStore(mockWorkspacePath, mockQdrantUrl, mockVectorSize, mockApiKey)
-	})
-
-	it("should correctly initialize QdrantClient and collectionName in constructor", () => {
-		expect(QdrantClient).toHaveBeenCalledTimes(1)
-		expect(QdrantClient).toHaveBeenCalledWith({
-			host: "mock-qdrant",
-			https: false,
-			port: 6333,
-			apiKey: mockApiKey,
-			headers: {
-				"User-Agent": "Tumble-Code",
-			},
-		})
-		expect(createHash).toHaveBeenCalledWith("sha256")
-		expect(mockCreateHashInstance.update).toHaveBeenCalledWith(mockWorkspacePath)
-		expect(mockCreateHashInstance.digest).toHaveBeenCalledWith("hex")
-		// Access private member for testing constructor logic (not ideal, but necessary here)
-		expect((vectorStore as any).collectionName).toBe(expectedCollectionName)
-		expect((vectorStore as any).vectorSize).toBe(mockVectorSize)
-	})
-	it("should handle constructor with default URL when none provided", () => {
-		const vectorStoreWithDefaults = new QdrantVectorStore(mockWorkspacePath, undefined as any, mockVectorSize)
-
-		expect(QdrantClient).toHaveBeenLastCalledWith({
-			host: "localhost",
-			https: false,
-			port: 6333,
-			apiKey: undefined,
-			headers: {
-				"User-Agent": "Tumble-Code",
-			},
-		})
-	})
-
-	it("should handle constructor without API key", () => {
-		const vectorStoreWithoutKey = new QdrantVectorStore(mockWorkspacePath, mockQdrantUrl, mockVectorSize)
-
-		expect(QdrantClient).toHaveBeenLastCalledWith({
-			host: "mock-qdrant",
-			https: false,
-			port: 6333,
-			apiKey: undefined,
-			headers: {
-				"User-Agent": "Tumble-Code",
-			},
-		})
-	})
-
-	describe("URL Parsing and Explicit Port Handling", () => {
-		describe("HTTPS URL handling", () => {
-			it("should use explicit port 443 for HTTPS URLs without port (fixes the main bug)", () => {
-				const vectorStore = new QdrantVectorStore(
-					mockWorkspacePath,
-					"https://qdrant.ashbyfam.com",
-					mockVectorSize,
-				)
-				expect(QdrantClient).toHaveBeenLastCalledWith({
-					host: "qdrant.ashbyfam.com",
-					https: true,
-					port: 443,
-					prefix: undefined, // No prefix for root path
-					apiKey: undefined,
-					headers: {
-						"User-Agent": "Tumble-Code",
-					},
-				})
-				expect((vectorStore as any).qdrantUrl).toBe("https://qdrant.ashbyfam.com")
-			})
-
-			it("should use explicit port for HTTPS URLs with explicit port", () => {
-				const vectorStore = new QdrantVectorStore(mockWorkspacePath, "https://example.com:9000", mockVectorSize)
-				expect(QdrantClient).toHaveBeenLastCalledWith({
-					host: "example.com",
-					https: true,
-					port: 9000,
-					prefix: undefined, // No prefix for root path
-					apiKey: undefined,
-					headers: {
-						"User-Agent": "Tumble-Code",
-					},
-				})
-				expect((vectorStore as any).qdrantUrl).toBe("https://example.com:9000")
-			})
-
-			it("should use port 443 for HTTPS URLs with paths and query parameters", () => {
-				const vectorStore = new QdrantVectorStore(
-					mockWorkspacePath,
-					"https://example.com/api/v1?key=value",
-					mockVectorSize,
-				)
-				expect(QdrantClient).toHaveBeenLastCalledWith({
-					host: "example.com",
-					https: true,
-					port: 443,
-					prefix: "/api/v1", // Should have prefix
-					apiKey: undefined,
-					headers: {
-						"User-Agent": "Tumble-Code",
-					},
-				})
-				expect((vectorStore as any).qdrantUrl).toBe("https://example.com/api/v1?key=value")
-			})
-		})
-
-		describe("HTTP URL handling", () => {
-			it("should use explicit port 80 for HTTP URLs without port", () => {
-				const vectorStore = new QdrantVectorStore(mockWorkspacePath, "http://example.com", mockVectorSize)
-				expect(QdrantClient).toHaveBeenLastCalledWith({
-					host: "example.com",
-					https: false,
-					port: 80,
-					prefix: undefined, // No prefix for root path
-					apiKey: undefined,
-					headers: {
-						"User-Agent": "Tumble-Code",
-					},
-				})
-				expect((vectorStore as any).qdrantUrl).toBe("http://example.com")
-			})
-
-			it("should use explicit port for HTTP URLs with explicit port", () => {
-				const vectorStore = new QdrantVectorStore(mockWorkspacePath, "http://localhost:8080", mockVectorSize)
-				expect(QdrantClient).toHaveBeenLastCalledWith({
-					host: "localhost",
-					https: false,
-					port: 8080,
-					prefix: undefined, // No prefix for root path
-					apiKey: undefined,
-					headers: {
-						"User-Agent": "Tumble-Code",
-					},
-				})
-				expect((vectorStore as any).qdrantUrl).toBe("http://localhost:8080")
-			})
-
-			it("should use port 80 for HTTP URLs while preserving paths and query parameters", () => {
-				const vectorStore = new QdrantVectorStore(
-					mockWorkspacePath,
-					"http://example.com/api/v1?key=value",
-					mockVectorSize,
-				)
-				expect(QdrantClient).toHaveBeenLastCalledWith({
-					host: "example.com",
-					https: false,
-					port: 80,
-					prefix: "/api/v1", // Should have prefix
-					apiKey: undefined,
-					headers: {
-						"User-Agent": "Tumble-Code",
-					},
-				})
-				expect((vectorStore as any).qdrantUrl).toBe("http://example.com/api/v1?key=value")
-			})
-		})
-
-		describe("Hostname handling", () => {
-			it("should convert hostname to http with port 80", () => {
-				const vectorStore = new QdrantVectorStore(mockWorkspacePath, "qdrant.example.com", mockVectorSize)
-				expect(QdrantClient).toHaveBeenLastCalledWith({
-					host: "qdrant.example.com",
-					https: false,
-					port: 80,
-					apiKey: undefined,
-					headers: {
-						"User-Agent": "Tumble-Code",
-					},
-				})
-				expect((vectorStore as any).qdrantUrl).toBe("http://qdrant.example.com")
-			})
-
-			it("should handle hostname:port format with explicit port", () => {
-				const vectorStore = new QdrantVectorStore(mockWorkspacePath, "localhost:6333", mockVectorSize)
-				expect(QdrantClient).toHaveBeenLastCalledWith({
-					host: "localhost",
-					https: false,
-					port: 6333,
-					apiKey: undefined,
-					headers: {
-						"User-Agent": "Tumble-Code",
-					},
-				})
-				expect((vectorStore as any).qdrantUrl).toBe("http://localhost:6333")
-			})
-
-			it("should handle explicit HTTP URLs correctly", () => {
-				const vectorStore = new QdrantVectorStore(mockWorkspacePath, "http://localhost:9000", mockVectorSize)
-				expect(QdrantClient).toHaveBeenLastCalledWith({
-					host: "localhost",
-					https: false,
-					port: 9000,
-					apiKey: undefined,
-					headers: {
-						"User-Agent": "Tumble-Code",
-					},
-				})
-				expect((vectorStore as any).qdrantUrl).toBe("http://localhost:9000")
-			})
-		})
-
-		describe("IP address handling", () => {
-			it("should convert IP address to http with port 80", () => {
-				const vectorStore = new QdrantVectorStore(mockWorkspacePath, "192.168.1.100", mockVectorSize)
-				expect(QdrantClient).toHaveBeenLastCalledWith({
-					host: "192.168.1.100",
-					https: false,
-					port: 80,
-					apiKey: undefined,
-					headers: {
-						"User-Agent": "Tumble-Code",
-					},
-				})
-				expect((vectorStore as any).qdrantUrl).toBe("http://192.168.1.100")
-			})
-
-			it("should handle IP:port format with explicit port", () => {
-				const vectorStore = new QdrantVectorStore(mockWorkspacePath, "192.168.1.100:6333", mockVectorSize)
-				expect(QdrantClient).toHaveBeenLastCalledWith({
-					host: "192.168.1.100",
-					https: false,
-					port: 6333,
-					apiKey: undefined,
-					headers: {
-						"User-Agent": "Tumble-Code",
-					},
-				})
-				expect((vectorStore as any).qdrantUrl).toBe("http://192.168.1.100:6333")
-			})
-		})
-
-		describe("Edge cases", () => {
-			it("should handle undefined URL with host-based config", () => {
-				const vectorStore = new QdrantVectorStore(mockWorkspacePath, undefined as any, mockVectorSize)
-				expect(QdrantClient).toHaveBeenLastCalledWith({
-					host: "localhost",
-					https: false,
-					port: 6333,
-					apiKey: undefined,
-					headers: {
-						"User-Agent": "Tumble-Code",
-					},
-				})
-				expect((vectorStore as any).qdrantUrl).toBe("http://localhost:6333")
-			})
-
-			it("should handle empty string URL with host-based config", () => {
-				const vectorStore = new QdrantVectorStore(mockWorkspacePath, "", mockVectorSize)
-				expect(QdrantClient).toHaveBeenLastCalledWith({
-					host: "localhost",
-					https: false,
-					port: 6333,
-					apiKey: undefined,
-					headers: {
-						"User-Agent": "Tumble-Code",
-					},
-				})
-				expect((vectorStore as any).qdrantUrl).toBe("http://localhost:6333")
-			})
-
-			it("should handle whitespace-only URL with host-based config", () => {
-				const vectorStore = new QdrantVectorStore(mockWorkspacePath, "   ", mockVectorSize)
-				expect(QdrantClient).toHaveBeenLastCalledWith({
-					host: "localhost",
-					https: false,
-					port: 6333,
-					apiKey: undefined,
-					headers: {
-						"User-Agent": "Tumble-Code",
-					},
-				})
-				expect((vectorStore as any).qdrantUrl).toBe("http://localhost:6333")
-			})
-		})
-
-		describe("Invalid URL fallback", () => {
-			it("should treat invalid URLs as hostnames with port 80", () => {
-				const vectorStore = new QdrantVectorStore(mockWorkspacePath, "invalid-url-format", mockVectorSize)
-				expect(QdrantClient).toHaveBeenLastCalledWith({
-					host: "invalid-url-format",
-					https: false,
-					port: 80,
-					apiKey: undefined,
-					headers: {
-						"User-Agent": "Tumble-Code",
-					},
-				})
-				expect((vectorStore as any).qdrantUrl).toBe("http://invalid-url-format")
-			})
-		})
-	})
-
-	describe("URL Prefix Handling", () => {
-		it("should pass the URL pathname as prefix to QdrantClient if not root", () => {
-			const vectorStoreWithPrefix = new QdrantVectorStore(
-				mockWorkspacePath,
-				"http://localhost:6333/some/path",
-				mockVectorSize,
-			)
-			expect(QdrantClient).toHaveBeenLastCalledWith({
-				host: "localhost",
-				https: false,
-				port: 6333,
-				prefix: "/some/path",
-				apiKey: undefined,
-				headers: {
-					"User-Agent": "Tumble-Code",
-				},
-			})
-			expect((vectorStoreWithPrefix as any).qdrantUrl).toBe("http://localhost:6333/some/path")
-		})
-
-		it("should not pass prefix if the URL pathname is root ('/')", () => {
-			const vectorStoreWithoutPrefix = new QdrantVectorStore(
-				mockWorkspacePath,
-				"http://localhost:6333/",
-				mockVectorSize,
-			)
-			expect(QdrantClient).toHaveBeenLastCalledWith({
-				host: "localhost",
-				https: false,
-				port: 6333,
-				prefix: undefined,
-				apiKey: undefined,
-				headers: {
-					"User-Agent": "Tumble-Code",
-				},
-			})
-			expect((vectorStoreWithoutPrefix as any).qdrantUrl).toBe("http://localhost:6333/")
-		})
-
-		it("should handle HTTPS URL with path as prefix", () => {
-			const vectorStoreWithHttpsPrefix = new QdrantVectorStore(
-				mockWorkspacePath,
-				"https://qdrant.ashbyfam.com/api",
-				mockVectorSize,
-			)
-			expect(QdrantClient).toHaveBeenLastCalledWith({
-				host: "qdrant.ashbyfam.com",
-				https: true,
-				port: 443,
-				prefix: "/api",
-				apiKey: undefined,
-				headers: {
-					"User-Agent": "Tumble-Code",
-				},
-			})
-			expect((vectorStoreWithHttpsPrefix as any).qdrantUrl).toBe("https://qdrant.ashbyfam.com/api")
-		})
-
-		it("should normalize URL pathname by removing trailing slash for prefix", () => {
-			const vectorStoreWithTrailingSlash = new QdrantVectorStore(
-				mockWorkspacePath,
-				"http://localhost:6333/api/",
-				mockVectorSize,
-			)
-			expect(QdrantClient).toHaveBeenLastCalledWith({
-				host: "localhost",
-				https: false,
-				port: 6333,
-				prefix: "/api", // Trailing slash should be removed
-				apiKey: undefined,
-				headers: {
-					"User-Agent": "Tumble-Code",
-				},
-			})
-			expect((vectorStoreWithTrailingSlash as any).qdrantUrl).toBe("http://localhost:6333/api/")
-		})
-
-		it("should normalize URL pathname by removing multiple trailing slashes for prefix", () => {
-			const vectorStoreWithMultipleTrailingSlashes = new QdrantVectorStore(
-				mockWorkspacePath,
-				"http://localhost:6333/api///",
-				mockVectorSize,
-			)
-			expect(QdrantClient).toHaveBeenLastCalledWith({
-				host: "localhost",
-				https: false,
-				port: 6333,
-				prefix: "/api", // All trailing slashes should be removed
-				apiKey: undefined,
-				headers: {
-					"User-Agent": "Tumble-Code",
-				},
-			})
-			expect((vectorStoreWithMultipleTrailingSlashes as any).qdrantUrl).toBe("http://localhost:6333/api///")
-		})
-
-		it("should handle multiple path segments correctly for prefix", () => {
-			const vectorStoreWithMultiSegment = new QdrantVectorStore(
-				mockWorkspacePath,
-				"http://localhost:6333/api/v1/qdrant",
-				mockVectorSize,
-			)
-			expect(QdrantClient).toHaveBeenLastCalledWith({
-				host: "localhost",
-				https: false,
-				port: 6333,
-				prefix: "/api/v1/qdrant",
-				apiKey: undefined,
-				headers: {
-					"User-Agent": "Tumble-Code",
-				},
-			})
-			expect((vectorStoreWithMultiSegment as any).qdrantUrl).toBe("http://localhost:6333/api/v1/qdrant")
-		})
-
-		it("should handle complex URL with multiple segments, multiple trailing slashes, query params, and fragment", () => {
-			const complexUrl = "https://example.com/ollama/api/v1///?key=value#pos"
-			const vectorStoreComplex = new QdrantVectorStore(mockWorkspacePath, complexUrl, mockVectorSize)
-			expect(QdrantClient).toHaveBeenLastCalledWith({
-				host: "example.com",
-				https: true,
-				port: 443,
-				prefix: "/ollama/api/v1", // Trailing slash removed, query/fragment ignored
-				apiKey: undefined,
-				headers: {
-					"User-Agent": "Tumble-Code",
-				},
-			})
-			expect((vectorStoreComplex as any).qdrantUrl).toBe(complexUrl)
-		})
-
-		it("should ignore query parameters and fragments when determining prefix", () => {
-			const vectorStoreWithQueryParams = new QdrantVectorStore(
-				mockWorkspacePath,
-				"http://localhost:6333/api/path?key=value#fragment",
-				mockVectorSize,
-			)
-			expect(QdrantClient).toHaveBeenLastCalledWith({
-				host: "localhost",
-				https: false,
-				port: 6333,
-				prefix: "/api/path", // Query params and fragment should be ignored
-				apiKey: undefined,
-				headers: {
-					"User-Agent": "Tumble-Code",
-				},
-			})
-			expect((vectorStoreWithQueryParams as any).qdrantUrl).toBe(
-				"http://localhost:6333/api/path?key=value#fragment",
-			)
-		})
-	})
-
-	describe("initialize", () => {
-		it("should create a new collection if none exists and return true", async () => {
-			// Mock getCollection to throw a 404-like error
-			mockQdrantClientInstance.getCollection.mockRejectedValue({
-				response: { status: 404 },
-				message: "Not found",
-			})
-			mockQdrantClientInstance.createCollection.mockResolvedValue(true as any) // Cast to any to satisfy QdrantClient types if strict
-			mockQdrantClientInstance.createPayloadIndex.mockResolvedValue({} as any) // Mock successful index creation
-
-			const result = await vectorStore.initialize()
-
-			expect(result).toBe(true)
-			expect(mockQdrantClientInstance.getCollection).toHaveBeenCalledTimes(1)
-			expect(mockQdrantClientInstance.getCollection).toHaveBeenCalledWith(expectedCollectionName)
-			expect(mockQdrantClientInstance.createCollection).toHaveBeenCalledTimes(1)
-			expect(mockQdrantClientInstance.createCollection).toHaveBeenCalledWith(expectedCollectionName, {
-				vectors: {
-					size: mockVectorSize,
-					distance: "Cosine", // Assuming 'Cosine' is the DISTANCE_METRIC
-					on_disk: true,
-				},
-				hnsw_config: {
-					m: 64,
-					ef_construct: 512,
-					on_disk: true,
-				},
-			})
-			expect(mockQdrantClientInstance.deleteCollection).not.toHaveBeenCalled()
-
-			// Verify payload index creation - 'type' field first, then pathSegments
-			expect(mockQdrantClientInstance.createPayloadIndex).toHaveBeenCalledWith(expectedCollectionName, {
-				field_name: "type",
-				field_schema: "keyword",
-			})
-			for (let i = 0; i <= 4; i++) {
-				expect(mockQdrantClientInstance.createPayloadIndex).toHaveBeenCalledWith(expectedCollectionName, {
-					field_name: `pathSegments.${i}`,
-					field_schema: "keyword",
-				})
+	server = http.createServer((req, res) => {
+		const chunks: Buffer[] = []
+		req.on("data", (chunk: Buffer) => chunks.push(chunk))
+		req.on("end", () => {
+			const raw = Buffer.concat(chunks).toString("utf8")
+			const entry: RecordedRequest = {
+				method: req.method ?? "",
+				path: req.url ?? "",
+				headers: req.headers,
+				body: raw ? JSON.parse(raw) : undefined,
 			}
-			expect(mockQdrantClientInstance.createPayloadIndex).toHaveBeenCalledTimes(6)
-		})
-		it("should not create a new collection if one exists with matching vectorSize and return false", async () => {
-			// Mock getCollection to return existing collection info with matching vector size
-			mockQdrantClientInstance.getCollection.mockResolvedValue({
-				config: {
-					params: {
-						vectors: {
-							size: mockVectorSize, // Matching vector size
-						},
-					},
-				},
-			} as any) // Cast to any to satisfy QdrantClient types
-			mockQdrantClientInstance.createPayloadIndex.mockResolvedValue({} as any)
+			recorded.push(entry)
 
-			const result = await vectorStore.initialize()
+			const response =
+				entry.method === "GET" && entry.path === "/"
+					? { status: 200, body: { title: "qdrant - vector search engine", version: "1.15.0" } }
+					: (handler(entry) ?? qdrantError(404, `fake server: no route for ${entry.method} ${entry.path}`))
 
-			expect(result).toBe(false)
-			expect(mockQdrantClientInstance.getCollection).toHaveBeenCalledTimes(1)
-			expect(mockQdrantClientInstance.getCollection).toHaveBeenCalledWith(expectedCollectionName)
-			expect(mockQdrantClientInstance.createCollection).not.toHaveBeenCalled()
-			expect(mockQdrantClientInstance.deleteCollection).not.toHaveBeenCalled()
-
-			// Verify payload index creation still happens - 'type' field first, then pathSegments
-			expect(mockQdrantClientInstance.createPayloadIndex).toHaveBeenCalledWith(expectedCollectionName, {
-				field_name: "type",
-				field_schema: "keyword",
-			})
-			for (let i = 0; i <= 4; i++) {
-				expect(mockQdrantClientInstance.createPayloadIndex).toHaveBeenCalledWith(expectedCollectionName, {
-					field_name: `pathSegments.${i}`,
-					field_schema: "keyword",
-				})
-			}
-			expect(mockQdrantClientInstance.createPayloadIndex).toHaveBeenCalledTimes(6)
-		})
-		it("should recreate collection if it exists but vectorSize mismatches and return true", async () => {
-			const differentVectorSize = 768
-			// Mock getCollection to return existing collection info with different vector size first,
-			// then return 404 to confirm deletion
-			mockQdrantClientInstance.getCollection
-				.mockResolvedValueOnce({
-					config: {
-						params: {
-							vectors: {
-								size: differentVectorSize, // Mismatching vector size
-							},
-						},
-					},
-				} as any)
-				.mockRejectedValueOnce({
-					response: { status: 404 },
-					message: "Not found",
-				})
-			mockQdrantClientInstance.deleteCollection.mockResolvedValue(true as any)
-			mockQdrantClientInstance.createCollection.mockResolvedValue(true as any)
-			mockQdrantClientInstance.createPayloadIndex.mockResolvedValue({} as any)
-			vitest.spyOn(logger, "warn").mockImplementation(() => {}) // Suppress logger.warn
-
-			const result = await vectorStore.initialize()
-
-			expect(result).toBe(true)
-			expect(mockQdrantClientInstance.getCollection).toHaveBeenCalledTimes(2) // Once to check, once to verify deletion
-			expect(mockQdrantClientInstance.getCollection).toHaveBeenCalledWith(expectedCollectionName)
-			expect(mockQdrantClientInstance.deleteCollection).toHaveBeenCalledTimes(1)
-			expect(mockQdrantClientInstance.deleteCollection).toHaveBeenCalledWith(expectedCollectionName)
-			expect(mockQdrantClientInstance.createCollection).toHaveBeenCalledTimes(1)
-			expect(mockQdrantClientInstance.createCollection).toHaveBeenCalledWith(expectedCollectionName, {
-				vectors: {
-					size: mockVectorSize, // Should use the new, correct vector size
-					distance: "Cosine",
-					on_disk: true,
-				},
-				hnsw_config: {
-					m: 64,
-					ef_construct: 512,
-					on_disk: true,
-				},
-			})
-
-			// Verify payload index creation - 'type' field first, then pathSegments
-			expect(mockQdrantClientInstance.createPayloadIndex).toHaveBeenCalledWith(expectedCollectionName, {
-				field_name: "type",
-				field_schema: "keyword",
-			})
-			for (let i = 0; i <= 4; i++) {
-				expect(mockQdrantClientInstance.createPayloadIndex).toHaveBeenCalledWith(expectedCollectionName, {
-					field_name: `pathSegments.${i}`,
-					field_schema: "keyword",
-				})
-			}
-			expect(mockQdrantClientInstance.createPayloadIndex).toHaveBeenCalledTimes(6)
-			;(logger.warn as any).mockRestore() // Restore logger.warn
-		})
-		it("should log warning for non-404 errors but still create collection", async () => {
-			const genericError = new Error("Generic Qdrant Error")
-			mockQdrantClientInstance.getCollection.mockRejectedValue(genericError)
-			vitest.spyOn(logger, "warn").mockImplementation(() => {}) // Suppress logger.warn
-
-			const result = await vectorStore.initialize()
-
-			expect(result).toBe(true) // Collection was created
-			expect(mockQdrantClientInstance.getCollection).toHaveBeenCalledTimes(1)
-			expect(mockQdrantClientInstance.createCollection).toHaveBeenCalledTimes(1)
-			expect(mockQdrantClientInstance.deleteCollection).not.toHaveBeenCalled()
-			expect(mockQdrantClientInstance.createPayloadIndex).toHaveBeenCalledTimes(6)
-			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining(`Warning during getCollectionInfo for "${expectedCollectionName}"`),
-				genericError.message,
-			)
-			;(logger.warn as any).mockRestore()
-		})
-		it("should re-throw error from createCollection when no collection initially exists", async () => {
-			mockQdrantClientInstance.getCollection.mockRejectedValue({
-				response: { status: 404 },
-				message: "Not found",
-			})
-			const createError = new Error("Create Collection Failed")
-			mockQdrantClientInstance.createCollection.mockRejectedValue(createError)
-			vitest.spyOn(logger, "error").mockImplementation(() => {}) // Suppress logger.error
-
-			// The actual error message includes the URL and error details
-			await expect(vectorStore.initialize()).rejects.toThrow(
-				/Failed to connect to Qdrant vector database|vectorStore\.qdrantConnectionFailed/,
-			)
-
-			expect(mockQdrantClientInstance.getCollection).toHaveBeenCalledTimes(1)
-			expect(mockQdrantClientInstance.createCollection).toHaveBeenCalledTimes(1)
-			expect(mockQdrantClientInstance.deleteCollection).not.toHaveBeenCalled()
-			expect(mockQdrantClientInstance.createPayloadIndex).not.toHaveBeenCalled() // Should not be called if createCollection fails
-			expect(logger.error).toHaveBeenCalledTimes(1) // Only the outer try/catch
-			;(logger.error as any).mockRestore()
-		})
-		it("should log but not fail if payload index creation errors occur", async () => {
-			// Mock successful collection creation
-			mockQdrantClientInstance.getCollection.mockRejectedValue({
-				response: { status: 404 },
-				message: "Not found",
-			})
-			mockQdrantClientInstance.createCollection.mockResolvedValue(true as any)
-
-			// Mock payload index creation to fail
-			const indexError = new Error("Index creation failed")
-			mockQdrantClientInstance.createPayloadIndex.mockRejectedValue(indexError)
-			vitest.spyOn(logger, "warn").mockImplementation(() => {}) // Suppress logger.warn
-
-			const result = await vectorStore.initialize()
-
-			// Should still return true since main collection setup succeeded
-			expect(result).toBe(true)
-			expect(mockQdrantClientInstance.createCollection).toHaveBeenCalledTimes(1)
-
-			// Verify all payload index creations were attempted (6: type + 5 pathSegments)
-			expect(mockQdrantClientInstance.createPayloadIndex).toHaveBeenCalledTimes(6)
-
-			// Verify warnings were logged for each failed index (now 6)
-			expect(logger.warn).toHaveBeenCalledTimes(6)
-			// Verify warning for 'type' index
-			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining(`Could not create payload index for type`),
-				indexError.message,
-			)
-			for (let i = 0; i <= 4; i++) {
-				expect(logger.warn).toHaveBeenCalledWith(
-					expect.stringContaining(`Could not create payload index for pathSegments.${i}`),
-					indexError.message,
-				)
-			}
-
-			;(logger.warn as any).mockRestore()
-		})
-
-		it("should throw vectorDimensionMismatch error when deleteCollection fails during recreation", async () => {
-			const differentVectorSize = 768
-			mockQdrantClientInstance.getCollection.mockResolvedValue({
-				config: {
-					params: {
-						vectors: {
-							size: differentVectorSize,
-						},
-					},
-				},
-			} as any)
-
-			const deleteError = new Error("Delete Collection Failed")
-			mockQdrantClientInstance.deleteCollection.mockRejectedValue(deleteError)
-			vitest.spyOn(logger, "error").mockImplementation(() => {})
-			vitest.spyOn(logger, "warn").mockImplementation(() => {})
-
-			// The error should have a cause property set to the original error
-			let caughtError: any
-			try {
-				await vectorStore.initialize()
-			} catch (error: any) {
-				caughtError = error
-			}
-
-			expect(caughtError).toBeDefined()
-			expect(caughtError.message).toContain("Failed to update vector index for new model")
-			expect(caughtError.cause).toBe(deleteError)
-
-			expect(mockQdrantClientInstance.getCollection).toHaveBeenCalledTimes(1)
-			expect(mockQdrantClientInstance.deleteCollection).toHaveBeenCalledTimes(1)
-			expect(mockQdrantClientInstance.createCollection).not.toHaveBeenCalled()
-			expect(mockQdrantClientInstance.createPayloadIndex).not.toHaveBeenCalled()
-			// Should log both the warning and the critical error
-			expect(logger.warn).toHaveBeenCalledTimes(1)
-			expect(logger.error).toHaveBeenCalledTimes(2) // One for the critical error, one for the outer catch
-			;(logger.error as any).mockRestore()
-			;(logger.warn as any).mockRestore()
-		})
-
-		it("should throw vectorDimensionMismatch error when createCollection fails during recreation", async () => {
-			const differentVectorSize = 768
-			mockQdrantClientInstance.getCollection
-				.mockResolvedValueOnce({
-					config: {
-						params: {
-							vectors: {
-								size: differentVectorSize,
-							},
-						},
-					},
-				} as any)
-				// Second call should return 404 to confirm deletion
-				.mockRejectedValueOnce({
-					response: { status: 404 },
-					message: "Not found",
-				})
-
-			// Delete succeeds but create fails
-			mockQdrantClientInstance.deleteCollection.mockResolvedValue(true as any)
-			const createError = new Error("Create Collection Failed")
-			mockQdrantClientInstance.createCollection.mockRejectedValue(createError)
-			vitest.spyOn(logger, "error").mockImplementation(() => {})
-			vitest.spyOn(logger, "warn").mockImplementation(() => {})
-
-			// Should throw an error with cause property set to the original error
-			let caughtError: any
-			try {
-				await vectorStore.initialize()
-			} catch (error: any) {
-				caughtError = error
-			}
-
-			expect(caughtError).toBeDefined()
-			expect(caughtError.message).toContain("Failed to update vector index for new model")
-			expect(caughtError.cause).toBe(createError)
-
-			expect(mockQdrantClientInstance.getCollection).toHaveBeenCalledTimes(2)
-			expect(mockQdrantClientInstance.deleteCollection).toHaveBeenCalledTimes(1)
-			expect(mockQdrantClientInstance.createCollection).toHaveBeenCalledTimes(1)
-			expect(mockQdrantClientInstance.createPayloadIndex).not.toHaveBeenCalled()
-			// Should log warning, critical error, and outer error
-			expect(logger.warn).toHaveBeenCalledTimes(1)
-			expect(logger.error).toHaveBeenCalledTimes(2)
-			;(logger.error as any).mockRestore()
-			;(logger.warn as any).mockRestore()
-		})
-
-		it("should verify collection deletion before proceeding with recreation", async () => {
-			const differentVectorSize = 768
-			mockQdrantClientInstance.getCollection
-				.mockResolvedValueOnce({
-					config: {
-						params: {
-							vectors: {
-								size: differentVectorSize,
-							},
-						},
-					},
-				} as any)
-				// Second call should return 404 to confirm deletion
-				.mockRejectedValueOnce({
-					response: { status: 404 },
-					message: "Not found",
-				})
-
-			mockQdrantClientInstance.deleteCollection.mockResolvedValue(true as any)
-			mockQdrantClientInstance.createCollection.mockResolvedValue(true as any)
-			mockQdrantClientInstance.createPayloadIndex.mockResolvedValue({} as any)
-			vitest.spyOn(logger, "warn").mockImplementation(() => {})
-
-			const result = await vectorStore.initialize()
-
-			expect(result).toBe(true)
-			// Should call getCollection twice: once to check existing, once to verify deletion
-			expect(mockQdrantClientInstance.getCollection).toHaveBeenCalledTimes(2)
-			expect(mockQdrantClientInstance.deleteCollection).toHaveBeenCalledTimes(1)
-			expect(mockQdrantClientInstance.createCollection).toHaveBeenCalledTimes(1)
-			expect(mockQdrantClientInstance.createPayloadIndex).toHaveBeenCalledTimes(6)
-			;(logger.warn as any).mockRestore()
-		})
-
-		it("should throw error if collection still exists after deletion attempt", async () => {
-			const differentVectorSize = 768
-			mockQdrantClientInstance.getCollection
-				.mockResolvedValueOnce({
-					config: {
-						params: {
-							vectors: {
-								size: differentVectorSize,
-							},
-						},
-					},
-				} as any)
-				// Second call should still return the collection (deletion failed)
-				.mockResolvedValueOnce({
-					config: {
-						params: {
-							vectors: {
-								size: differentVectorSize,
-							},
-						},
-					},
-				} as any)
-
-			mockQdrantClientInstance.deleteCollection.mockResolvedValue(true as any)
-			vitest.spyOn(logger, "error").mockImplementation(() => {})
-			vitest.spyOn(logger, "warn").mockImplementation(() => {})
-
-			let caughtError: any
-			try {
-				await vectorStore.initialize()
-			} catch (error: any) {
-				caughtError = error
-			}
-
-			expect(caughtError).toBeDefined()
-			expect(caughtError.message).toContain("Failed to update vector index for new model")
-			// The error message should contain the contextual error details
-			expect(caughtError.message).toContain("Deleted existing collection but failed verification step")
-
-			expect(mockQdrantClientInstance.getCollection).toHaveBeenCalledTimes(2)
-			expect(mockQdrantClientInstance.deleteCollection).toHaveBeenCalledTimes(1)
-			expect(mockQdrantClientInstance.createCollection).not.toHaveBeenCalled()
-			expect(mockQdrantClientInstance.createPayloadIndex).not.toHaveBeenCalled()
-			;(logger.error as any).mockRestore()
-			;(logger.warn as any).mockRestore()
-		})
-
-		it("should handle dimension mismatch scenario from 2048 to 768 dimensions", async () => {
-			// Simulate the exact scenario from the issue: switching from 2048 to 768 dimensions
-			const oldVectorSize = 2048
-			const newVectorSize = 768
-
-			// Create a new vector store with the new dimension
-			const newVectorStore = new QdrantVectorStore(mockWorkspacePath, mockQdrantUrl, newVectorSize, mockApiKey)
-
-			mockQdrantClientInstance.getCollection
-				.mockResolvedValueOnce({
-					config: {
-						params: {
-							vectors: {
-								size: oldVectorSize, // Existing collection has 2048 dimensions
-							},
-						},
-					},
-				} as any)
-				// Second call should return 404 to confirm deletion
-				.mockRejectedValueOnce({
-					response: { status: 404 },
-					message: "Not found",
-				})
-
-			mockQdrantClientInstance.deleteCollection.mockResolvedValue(true as any)
-			mockQdrantClientInstance.createCollection.mockResolvedValue(true as any)
-			mockQdrantClientInstance.createPayloadIndex.mockResolvedValue({} as any)
-			vitest.spyOn(logger, "warn").mockImplementation(() => {})
-
-			const result = await newVectorStore.initialize()
-
-			expect(result).toBe(true)
-			expect(mockQdrantClientInstance.getCollection).toHaveBeenCalledTimes(2)
-			expect(mockQdrantClientInstance.deleteCollection).toHaveBeenCalledTimes(1)
-			expect(mockQdrantClientInstance.createCollection).toHaveBeenCalledWith(expectedCollectionName, {
-				vectors: {
-					size: newVectorSize, // Should create with new 768 dimensions
-					distance: "Cosine",
-					on_disk: true,
-				},
-				hnsw_config: {
-					m: 64,
-					ef_construct: 512,
-					on_disk: true,
-				},
-			})
-			expect(mockQdrantClientInstance.createPayloadIndex).toHaveBeenCalledTimes(6)
-			;(logger.warn as any).mockRestore()
-		})
-
-		it("should provide detailed error context for different failure scenarios", async () => {
-			const differentVectorSize = 768
-			mockQdrantClientInstance.getCollection.mockResolvedValue({
-				config: {
-					params: {
-						vectors: {
-							size: differentVectorSize,
-						},
-					},
-				},
-			} as any)
-
-			// Test deletion failure with specific error message
-			const deleteError = new Error("Qdrant server unavailable")
-			mockQdrantClientInstance.deleteCollection.mockRejectedValue(deleteError)
-			vitest.spyOn(logger, "error").mockImplementation(() => {})
-			vitest.spyOn(logger, "warn").mockImplementation(() => {})
-
-			let caughtError: any
-			try {
-				await vectorStore.initialize()
-			} catch (error: any) {
-				caughtError = error
-			}
-
-			expect(caughtError).toBeDefined()
-			expect(caughtError.message).toContain("Failed to update vector index for new model")
-			// The error message should contain the contextual error details
-			expect(caughtError.message).toContain("Failed to delete existing collection with vector size")
-			expect(caughtError.message).toContain("Qdrant server unavailable")
-			expect(caughtError.cause).toBe(deleteError)
-			;(logger.error as any).mockRestore()
-			;(logger.warn as any).mockRestore()
+			res.writeHead(response.status, { "content-type": "application/json" })
+			res.end(JSON.stringify(response.body))
 		})
 	})
 
-	it("should return true when collection exists", async () => {
-		mockQdrantClientInstance.getCollection.mockResolvedValue({
-			config: {/* collection data */},
-		} as any)
+	await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve))
+	baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
+})
 
-		const result = await vectorStore.collectionExists()
+afterAll(async () => {
+	server.closeAllConnections()
+	await new Promise<void>((resolve) => server.close(() => resolve()))
+	nock.activate()
+})
 
-		expect(result).toBe(true)
-		expect(mockQdrantClientInstance.getCollection).toHaveBeenCalledTimes(1)
-		expect(mockQdrantClientInstance.getCollection).toHaveBeenCalledWith(expectedCollectionName)
-	})
+beforeEach(() => {
+	recorded = []
+	handler = () => undefined
+	vitest.spyOn(logger, "info").mockImplementation(() => {})
+	vitest.spyOn(logger, "warn").mockImplementation(() => {})
+	vitest.spyOn(logger, "error").mockImplementation(() => {})
+})
 
-	it("should return false when collection does not exist (404 error)", async () => {
-		mockQdrantClientInstance.getCollection.mockRejectedValue({
-			response: { status: 404 },
-			message: "Not found",
-		})
+afterEach(() => {
+	vitest.restoreAllMocks()
+})
 
-		const result = await vectorStore.collectionExists()
+const expectedCreateBody = (size: number) => ({
+	vectors: { size, distance: "Cosine", on_disk: true },
+	hnsw_config: { m: 64, ef_construct: 512, on_disk: true },
+})
 
-		expect(result).toBe(false)
-		expect(mockQdrantClientInstance.getCollection).toHaveBeenCalledTimes(1)
-		expect(mockQdrantClientInstance.getCollection).toHaveBeenCalledWith(expectedCollectionName)
-	})
+const expectedIndexCalls = [
+	"type",
+	"pathSegments.0",
+	"pathSegments.1",
+	"pathSegments.2",
+	"pathSegments.3",
+	"pathSegments.4",
+].map((field) => ({
+	method: "PUT",
+	path: `${collectionPath}/index`,
+	body: { field_name: field, field_schema: "keyword" },
+}))
 
-	it("should return false and log warning for non-404 errors", async () => {
-		const genericError = new Error("Network error")
-		mockQdrantClientInstance.getCollection.mockRejectedValue(genericError)
-		vitest.spyOn(logger, "warn").mockImplementation(() => {})
+const recreateCalls = (size: number) => [
+	{ method: "DELETE", path: collectionPath, body: undefined },
+	{ method: "GET", path: collectionPath, body: undefined },
+	{ method: "PUT", path: collectionPath, body: expectedCreateBody(size) },
+]
 
-		const result = await vectorStore.collectionExists()
+const deletedCollection = () => calls().some((c) => c.method === "DELETE")
 
-		expect(result).toBe(false)
-		expect(mockQdrantClientInstance.getCollection).toHaveBeenCalledTimes(1)
-		expect(logger.warn).toHaveBeenCalledWith(
-			expect.stringContaining(`Warning during getCollectionInfo for "${expectedCollectionName}"`),
-			genericError.message,
-		)
-		;(logger.warn as any).mockRestore()
-	})
-	describe("deleteCollection", () => {
-		it("should delete collection when it exists", async () => {
-			// Mock collectionExists to return true
-			vitest.spyOn(vectorStore, "collectionExists").mockResolvedValue(true)
-			mockQdrantClientInstance.deleteCollection.mockResolvedValue(true as any)
-
-			await vectorStore.deleteCollection()
-
-			expect(vectorStore.collectionExists).toHaveBeenCalledTimes(1)
-			expect(mockQdrantClientInstance.deleteCollection).toHaveBeenCalledTimes(1)
-			expect(mockQdrantClientInstance.deleteCollection).toHaveBeenCalledWith(expectedCollectionName)
-		})
-
-		it("should not attempt to delete collection when it does not exist", async () => {
-			// Mock collectionExists to return false
-			vitest.spyOn(vectorStore, "collectionExists").mockResolvedValue(false)
-
-			await vectorStore.deleteCollection()
-
-			expect(vectorStore.collectionExists).toHaveBeenCalledTimes(1)
-			expect(mockQdrantClientInstance.deleteCollection).not.toHaveBeenCalled()
-		})
-
-		it("should log and re-throw error when deletion fails", async () => {
-			vitest.spyOn(vectorStore, "collectionExists").mockResolvedValue(true)
-			const deleteError = new Error("Deletion failed")
-			mockQdrantClientInstance.deleteCollection.mockRejectedValue(deleteError)
-			vitest.spyOn(logger, "error").mockImplementation(() => {})
-
-			await expect(vectorStore.deleteCollection()).rejects.toThrow(deleteError)
-
-			expect(vectorStore.collectionExists).toHaveBeenCalledTimes(1)
-			expect(mockQdrantClientInstance.deleteCollection).toHaveBeenCalledTimes(1)
-			expect(logger.error).toHaveBeenCalledWith(
-				`[QdrantVectorStore] Failed to delete collection ${expectedCollectionName}:`,
-				"Deletion failed",
-				deleteError,
-			)
-			;(logger.error as any).mockRestore()
-		})
-	})
-
-	describe("Qdrant error detail", () => {
-		// The REST client builds its errors as `new Error(response.statusText)`, so the message is
-		// only "Bad Request" and the reason Qdrant refused the request sits on `data`.
-		const apiError = (statusText: string, data: unknown) => {
-			const error = new Error(statusText) as Error & { status: number; data: unknown }
-			error.status = 400
-			error.data = data
-			return error
+describe("QdrantVectorStore.initialize", () => {
+	it("creates a missing collection with the configured vector size and the payload indexes", async () => {
+		handler = (req) => {
+			if (req.method === "GET" && req.path === collectionPath) {
+				return qdrantError(404, `Not found: Collection \`${collectionName}\` doesn't exist!`)
+			}
+			if (req.method === "PUT") return ok(true)
+			return undefined
 		}
 
-		it("surfaces the reason Qdrant rejected an upsert instead of just the status text", async () => {
-			mockQdrantClientInstance.upsert.mockRejectedValue(
-				apiError("Bad Request", {
-					status: { error: "Wrong input: Vector dimension error: expected dim: 1024, got 768" },
-				}),
-			)
+		await expect(createStore(768).initialize()).resolves.toBe(true)
 
-			await expect(vectorStore.upsertPoints([{ id: "test-id", vector: [0.1], payload: {} }])).rejects.toThrow(
-				/Vector dimension error: expected dim: 1024, got 768/,
-			)
-		})
+		expect(calls()).toEqual([
+			{ method: "GET", path: collectionPath, body: undefined },
+			{ method: "PUT", path: collectionPath, body: expectedCreateBody(768) },
+			...expectedIndexCalls,
+		])
 
-		it("keeps the status code so upstream error handling still sees it", async () => {
-			mockQdrantClientInstance.upsert.mockRejectedValue(
-				apiError("Bad Request", { status: { error: "Wrong input: something" } }),
-			)
-
-			await expect(
-				vectorStore.upsertPoints([{ id: "test-id", vector: [0.1], payload: {} }]),
-			).rejects.toMatchObject({ status: 400 })
-		})
-
-		it("surfaces the reason a search was rejected", async () => {
-			mockQdrantClientInstance.query.mockRejectedValue(
-				apiError("Bad Request", { status: { error: "Index required but not found" } }),
-			)
-
-			await expect(vectorStore.search([0.1, 0.2])).rejects.toThrow(/Index required but not found/)
-		})
-
-		it("passes through errors that carry no Qdrant payload", async () => {
-			mockQdrantClientInstance.upsert.mockRejectedValue(new Error("fetch failed"))
-
-			await expect(vectorStore.upsertPoints([{ id: "test-id", vector: [0.1], payload: {} }])).rejects.toThrow(
-				"fetch failed",
-			)
-		})
+		for (const req of apiRequests()) {
+			expect(req.headers["user-agent"]).toBe("Tumble-Code")
+			expect(req.headers["api-key"]).toBe("secret-key")
+		}
+		expect(apiRequests()[1].headers["content-type"]).toMatch(/^application\/json/)
 	})
 
-	describe("upsertPoints", () => {
-		it("should correctly call qdrantClient.upsert with processed points", async () => {
-			const mockPoints = [
-				{
-					id: "test-id-1",
-					vector: [0.1, 0.2, 0.3],
-					payload: {
-						filePath: "src/components/Button.tsx",
-						content: "export const Button = () => {}",
-						startLine: 1,
-						endLine: 3,
-					},
-				},
-				{
-					id: "test-id-2",
-					vector: [0.4, 0.5, 0.6],
-					payload: {
-						filePath: "src/utils/helpers.ts",
-						content: "export function helper() {}",
-						startLine: 5,
-						endLine: 7,
-					},
-				},
-			]
-
-			mockQdrantClientInstance.upsert.mockResolvedValue({} as any)
-
-			await vectorStore.upsertPoints(mockPoints)
-
-			expect(mockQdrantClientInstance.upsert).toHaveBeenCalledTimes(1)
-			expect(mockQdrantClientInstance.upsert).toHaveBeenCalledWith(expectedCollectionName, {
-				points: [
-					{
-						id: "test-id-1",
-						vector: [0.1, 0.2, 0.3],
-						payload: {
-							filePath: "src/components/Button.tsx",
-							content: "export const Button = () => {}",
-							startLine: 1,
-							endLine: 3,
-							pathSegments: {
-								"0": "src",
-								"1": "components",
-								"2": "Button.tsx",
-							},
-						},
-					},
-					{
-						id: "test-id-2",
-						vector: [0.4, 0.5, 0.6],
-						payload: {
-							filePath: "src/utils/helpers.ts",
-							content: "export function helper() {}",
-							startLine: 5,
-							endLine: 7,
-							pathSegments: {
-								"0": "src",
-								"1": "utils",
-								"2": "helpers.ts",
-							},
-						},
-					},
-				],
-				wait: true,
-			})
+	it("keeps an existing collection whose vector size matches and treats 'already exists' index errors as success", async () => {
+		handler = existingCollection(collectionInfo(768, 3), (req) => {
+			if (req.method === "POST" && req.path === pointsPath) return metadataPoint({ document_prefix: "" })
+			if (req.method === "PUT") return qdrantError(400, "Bad request: Index already exists")
+			return undefined
 		})
 
-		it("should handle points without filePath in payload", async () => {
-			const mockPoints = [
-				{
-					id: "test-id-1",
-					vector: [0.1, 0.2, 0.3],
-					payload: {
-						content: "some content without filePath",
-						startLine: 1,
-						endLine: 3,
-					},
-				},
-			]
+		await expect(createStore(768).initialize()).resolves.toBe(false)
 
-			mockQdrantClientInstance.upsert.mockResolvedValue({} as any)
-
-			await vectorStore.upsertPoints(mockPoints)
-
-			expect(mockQdrantClientInstance.upsert).toHaveBeenCalledWith(expectedCollectionName, {
-				points: [
-					{
-						id: "test-id-1",
-						vector: [0.1, 0.2, 0.3],
-						payload: {
-							content: "some content without filePath",
-							startLine: 1,
-							endLine: 3,
-						},
-					},
-				],
-				wait: true,
-			})
-		})
-
-		it("should handle empty input arrays", async () => {
-			mockQdrantClientInstance.upsert.mockResolvedValue({} as any)
-
-			await vectorStore.upsertPoints([])
-
-			expect(mockQdrantClientInstance.upsert).toHaveBeenCalledWith(expectedCollectionName, {
-				points: [],
-				wait: true,
-			})
-		})
-
-		it("should correctly process pathSegments for nested file paths", async () => {
-			const mockPoints = [
-				{
-					id: "test-id-1",
-					vector: [0.1, 0.2, 0.3],
-					payload: {
-						filePath: "src/components/ui/forms/InputField.tsx",
-						content: "export const InputField = () => {}",
-						startLine: 1,
-						endLine: 3,
-					},
-				},
-			]
-
-			mockQdrantClientInstance.upsert.mockResolvedValue({} as any)
-
-			await vectorStore.upsertPoints(mockPoints)
-
-			expect(mockQdrantClientInstance.upsert).toHaveBeenCalledWith(expectedCollectionName, {
-				points: [
-					{
-						id: "test-id-1",
-						vector: [0.1, 0.2, 0.3],
-						payload: {
-							filePath: "src/components/ui/forms/InputField.tsx",
-							content: "export const InputField = () => {}",
-							startLine: 1,
-							endLine: 3,
-							pathSegments: {
-								"0": "src",
-								"1": "components",
-								"2": "ui",
-								"3": "forms",
-								"4": "InputField.tsx",
-							},
-						},
-					},
-				],
-				wait: true,
-			})
-		})
-
-		it("should handle error scenarios when qdrantClient.upsert fails", async () => {
-			const mockPoints = [
-				{
-					id: "test-id-1",
-					vector: [0.1, 0.2, 0.3],
-					payload: {
-						filePath: "src/test.ts",
-						content: "test content",
-						startLine: 1,
-						endLine: 1,
-					},
-				},
-			]
-
-			const upsertError = new Error("Upsert failed")
-			mockQdrantClientInstance.upsert.mockRejectedValue(upsertError)
-			vitest.spyOn(logger, "error").mockImplementation(() => {})
-
-			await expect(vectorStore.upsertPoints(mockPoints)).rejects.toThrow(upsertError)
-
-			expect(mockQdrantClientInstance.upsert).toHaveBeenCalledTimes(1)
-			expect(logger.error).toHaveBeenCalledWith("Failed to upsert points:", "Upsert failed", upsertError)
-			;(logger.error as any).mockRestore()
-		})
+		expect(calls()).toEqual([
+			{ method: "GET", path: collectionPath, body: undefined },
+			// A non-empty collection: which document prefix were its vectors embedded with?
+			{ method: "POST", path: pointsPath, body: { ids: [metadataId], with_payload: true } },
+			...expectedIndexCalls,
+		])
+		// The "already exists" reason lives only on error.data, so being silent proves we read it.
+		expect(logger.warn).not.toHaveBeenCalledWith(
+			expect.stringContaining("Could not create payload index"),
+			expect.anything(),
+		)
 	})
 
-	describe("search", () => {
-		it("should correctly call qdrantClient.query and transform results", async () => {
-			const queryVector = [0.1, 0.2, 0.3]
-			const mockQdrantResults = {
-				points: [
-					{
-						id: "test-id-1",
-						score: 0.85,
-						payload: {
-							filePath: "src/test.ts",
-							codeChunk: "test code",
-							startLine: 1,
-							endLine: 5,
-							pathSegments: { "0": "src", "1": "test.ts" },
-						},
-					},
-					{
-						id: "test-id-2",
-						score: 0.75,
-						payload: {
-							filePath: "src/utils.ts",
-							codeChunk: "utility code",
-							startLine: 10,
-							endLine: 15,
-							pathSegments: { "0": "src", "1": "utils.ts" },
-						},
-					},
-				],
+	it("logs other payload index errors and still finishes", async () => {
+		handler = existingCollection(collectionInfo(768), (req) =>
+			req.path.endsWith("/index") ? qdrantError(500, "Service internal error: disk full") : undefined,
+		)
+
+		await expect(createStore(768).initialize()).resolves.toBe(false)
+
+		expect(logger.warn).toHaveBeenCalledWith(
+			expect.stringContaining("Could not create payload index for type"),
+			"Internal Server Error: Service internal error: disk full",
+		)
+		expect(logger.warn).toHaveBeenCalledWith(
+			expect.stringContaining("Could not create payload index for pathSegments.4"),
+			"Internal Server Error: Service internal error: disk full",
+		)
+	})
+
+	it.each([
+		["a different size", collectionInfo(1024, 10), true],
+		["the same size given as a bare number", collectionInfo(768), false],
+		["named vectors (size unknown, read as 0)", collectionInfo({ dense: { size: 768, distance: "Cosine" } }), true],
+	])("an existing collection with %s is recreated: %s", async (_, info, recreated) => {
+		handler = existingCollection(info)
+
+		await expect(createStore(768).initialize()).resolves.toBe(recreated)
+
+		expect(calls()).toEqual([
+			{ method: "GET", path: collectionPath, body: undefined },
+			...(recreated ? recreateCalls(768) : []),
+			...expectedIndexCalls,
+		])
+	})
+
+	it("recreates a same-size collection whose code chunks were embedded with the legacy query prefix", async () => {
+		// Legacy marker: written before document_prefix existed
+		handler = existingCollection(collectionInfo(768, 10), (req) =>
+			req.method === "POST" && req.path === pointsPath ? metadataPoint({ indexing_complete: true }) : undefined,
+		)
+
+		await expect(createStore(768, NOMIC_CODE_QUERY_PREFIX).initialize()).resolves.toBe(true)
+
+		expect(calls()).toEqual([
+			{ method: "GET", path: collectionPath, body: undefined },
+			{ method: "POST", path: pointsPath, body: { ids: [metadataId], with_payload: true } },
+			...recreateCalls(768),
+			...expectedIndexCalls,
+		])
+	})
+
+	// The index remembers which prefix its code chunks were embedded with (`document_prefix` on the
+	// metadata point; a legacy index has none and the factory says which prefix its vectors used).
+	it.each([
+		["no metadata point at all (pre-marker index)", 10, ok([]), NOMIC_CODE_QUERY_PREFIX, true],
+		[
+			"a marker with a different document prefix",
+			10,
+			metadataPoint({ document_prefix: "search_document: " }),
+			undefined,
+			true,
+		],
+		[
+			"a marker with the current document prefix",
+			10,
+			metadataPoint({ document_prefix: "" }),
+			NOMIC_CODE_QUERY_PREFIX,
+			false,
+		],
+		[
+			"a legacy marker of a model that never had a prefix",
+			10,
+			metadataPoint({ indexing_complete: true }),
+			undefined,
+			false,
+		],
+		["a marker that cannot be read", 10, qdrantError(503, "unavailable"), NOMIC_CODE_QUERY_PREFIX, false],
+	])("a same-size collection with %s is recreated: %s", async (_, points, marker, legacyPrefix, recreated) => {
+		handler = existingCollection(collectionInfo(768, points), (req) =>
+			req.method === "POST" && req.path === pointsPath ? marker : undefined,
+		)
+
+		await expect(createStore(768, legacyPrefix).initialize()).resolves.toBe(recreated)
+		expect(deletedCollection()).toBe(recreated)
+	})
+
+	it("does not read the marker of an empty collection", async () => {
+		handler = existingCollection(collectionInfo(768, 0))
+
+		await expect(createStore(768, NOMIC_CODE_QUERY_PREFIX).initialize()).resolves.toBe(false)
+		expect(calls()).toEqual([{ method: "GET", path: collectionPath, body: undefined }, ...expectedIndexCalls])
+	})
+
+	it("surfaces Qdrant's reason when creating the collection fails", async () => {
+		handler = (req) => {
+			if (req.method === "GET" && req.path === collectionPath) return qdrantError(404, "Not found")
+			if (req.method === "PUT" && req.path === collectionPath) {
+				return qdrantError(400, "Wrong input: Vector size 0 is not allowed")
 			}
+			return undefined
+		}
 
-			mockQdrantClientInstance.query.mockResolvedValue(mockQdrantResults)
+		await expect(createStore(768).initialize()).rejects.toThrow(
+			"embeddings:vectorStore.qdrantConnectionFailed | Bad Request: Wrong input: Vector size 0 is not allowed",
+		)
+	})
 
-			const results = await vectorStore.search(queryVector)
+	it.each([
+		[
+			"the delete fails",
+			(req: RecordedRequest) => (req.method === "DELETE" ? qdrantError(500, "delete refused") : undefined),
+			"Failed to delete existing collection with vector size 1024. Internal Server Error: delete refused",
+		],
+		[
+			"the collection is still there after the delete",
+			(req: RecordedRequest) => (req.method === "GET" ? ok(collectionInfo(1024)) : undefined),
+			"Deleted existing collection but failed verification step. Collection still exists after deletion attempt",
+		],
+		[
+			"creating the new collection fails",
+			(req: RecordedRequest) =>
+				req.method === "PUT" && req.path === collectionPath ? qdrantError(400, "bad size") : undefined,
+			"Deleted existing collection but failed to create new collection with vector size 768. Bad Request: bad size",
+		],
+	])("a dimension change fails with the stage named when %s", async (_, routes, context) => {
+		handler = existingCollection(collectionInfo(1024, 10), routes)
 
-			expect(mockQdrantClientInstance.query).toHaveBeenCalledTimes(1)
-			const callArgs = mockQdrantClientInstance.query.mock.calls[0][1]
-			expect(callArgs).toMatchObject({
-				query: queryVector,
-				score_threshold: DEFAULT_SEARCH_MIN_SCORE,
-				limit: DEFAULT_MAX_SEARCH_RESULTS,
-				params: {
-					hnsw_ef: 128,
-					exact: false,
-				},
-				with_payload: {
-					include: ["filePath", "codeChunk", "startLine", "endLine", "pathSegments"],
-				},
-			})
-			expect(callArgs.filter).toEqual({
-				must_not: [{ key: "type", match: { value: "metadata" } }],
-			})
+		const error = await failure(createStore(768).initialize())
 
-			expect(results).toEqual(mockQdrantResults.points)
-		})
+		// Thrown as is, not wrapped into the connection error.
+		expect(error?.message).toBe(`embeddings:vectorStore.vectorDimensionMismatch | ${context}`)
+		expect(error?.cause).toBeInstanceOf(Error)
+	})
+})
 
-		it("should apply filePathPrefix filter correctly", async () => {
-			const queryVector = [0.1, 0.2, 0.3]
-			const directoryPrefix = "src/components"
-			const mockQdrantResults = {
-				points: [
-					{
-						id: "test-id-1",
-						score: 0.85,
-						payload: {
-							filePath: "src/components/Button.tsx",
-							codeChunk: "button code",
-							startLine: 1,
-							endLine: 5,
-							pathSegments: { "0": "src", "1": "components", "2": "Button.tsx" },
-						},
-					},
-				],
-			}
+describe("QdrantVectorStore points", () => {
+	it("upserts points with path segments (when they have a file path) and waits for the write", async () => {
+		handler = (req) => (req.method === "PUT" ? ok({ operation_id: 1, status: "completed" }) : undefined)
 
-			mockQdrantClientInstance.query.mockResolvedValue(mockQdrantResults)
+		const filePath = path.join("src", "services", "a.ts")
+		await createStore().upsertPoints([
+			{ id: "p1", vector: [0.1, 0.2], payload: { filePath, codeChunk: "x", startLine: 1, endLine: 2 } },
+			{ id: "p2", vector: [0.3, 0.4], payload: { codeChunk: "y" } },
+		])
 
-			const results = await vectorStore.search(queryVector, directoryPrefix)
-
-			const callArgs2 = mockQdrantClientInstance.query.mock.calls[0][1]
-			expect(callArgs2).toMatchObject({
-				query: queryVector,
-				score_threshold: DEFAULT_SEARCH_MIN_SCORE,
-				limit: DEFAULT_MAX_SEARCH_RESULTS,
-				params: { hnsw_ef: 128, exact: false },
-				with_payload: { include: ["filePath", "codeChunk", "startLine", "endLine", "pathSegments"] },
-			})
-			expect(callArgs2.filter).toEqual({
-				must: [
-					{ key: "pathSegments.0", match: { value: "src" } },
-					{ key: "pathSegments.1", match: { value: "components" } },
-				],
-				must_not: [{ key: "type", match: { value: "metadata" } }],
-			})
-
-			expect(results).toEqual(mockQdrantResults.points)
-		})
-
-		it("should use custom minScore when provided", async () => {
-			const queryVector = [0.1, 0.2, 0.3]
-			const customMinScore = 0.8
-			const mockQdrantResults = { points: [] }
-
-			mockQdrantClientInstance.query.mockResolvedValue(mockQdrantResults)
-
-			await vectorStore.search(queryVector, undefined, customMinScore)
-
-			const callArgs3 = mockQdrantClientInstance.query.mock.calls[0][1]
-			expect(callArgs3).toMatchObject({
-				query: queryVector,
-				score_threshold: customMinScore,
-				limit: DEFAULT_MAX_SEARCH_RESULTS,
-				params: {
-					hnsw_ef: 128,
-					exact: false,
-				},
-				with_payload: {
-					include: ["filePath", "codeChunk", "startLine", "endLine", "pathSegments"],
-				},
-			})
-			expect(callArgs3.filter).toEqual({
-				must_not: [{ key: "type", match: { value: "metadata" } }],
-			})
-		})
-
-		it("should use custom maxResults when provided", async () => {
-			const queryVector = [0.1, 0.2, 0.3]
-			const customMaxResults = 100
-			const mockQdrantResults = { points: [] }
-
-			mockQdrantClientInstance.query.mockResolvedValue(mockQdrantResults)
-
-			await vectorStore.search(queryVector, undefined, undefined, customMaxResults)
-
-			const callArgs4 = mockQdrantClientInstance.query.mock.calls[0][1]
-			expect(callArgs4).toMatchObject({
-				query: queryVector,
-				score_threshold: DEFAULT_SEARCH_MIN_SCORE,
-				limit: customMaxResults,
-				params: {
-					hnsw_ef: 128,
-					exact: false,
-				},
-				with_payload: {
-					include: ["filePath", "codeChunk", "startLine", "endLine", "pathSegments"],
-				},
-			})
-			expect(callArgs4.filter).toEqual({
-				must_not: [{ key: "type", match: { value: "metadata" } }],
-			})
-		})
-
-		it("should filter out results with invalid payloads", async () => {
-			const queryVector = [0.1, 0.2, 0.3]
-			const mockQdrantResults = {
-				points: [
-					{
-						id: "valid-result",
-						score: 0.85,
-						payload: {
-							filePath: "src/test.ts",
-							codeChunk: "test code",
-							startLine: 1,
-							endLine: 5,
-						},
-					},
-					{
-						id: "invalid-result-1",
-						score: 0.75,
-						payload: {
-							// Missing required fields
-							filePath: "src/invalid.ts",
-						},
-					},
-					{
-						id: "valid-result-2",
-						score: 0.55,
-						payload: {
-							filePath: "src/test2.ts",
-							codeChunk: "test code 2",
-							startLine: 10,
-							endLine: 15,
-						},
-					},
-				],
-			}
-
-			mockQdrantClientInstance.query.mockResolvedValue(mockQdrantResults)
-
-			const results = await vectorStore.search(queryVector)
-
-			// Should only return results with valid payloads
-			expect(results).toHaveLength(2)
-			expect(results[0].id).toBe("valid-result")
-			expect(results[1].id).toBe("valid-result-2")
-		})
-
-		it("should filter out results with null or undefined payloads", async () => {
-			const queryVector = [0.1, 0.2, 0.3]
-			const mockQdrantResults = {
-				points: [
-					{
-						id: "valid-result",
-						score: 0.85,
-						payload: {
-							filePath: "src/test.ts",
-							codeChunk: "test code",
-							startLine: 1,
-							endLine: 5,
-						},
-					},
-					{
-						id: "null-payload-result",
-						score: 0.75,
-						payload: null,
-					},
-					{
-						id: "undefined-payload-result",
-						score: 0.65,
-						payload: undefined,
-					},
-					{
-						id: "valid-result-2",
-						score: 0.55,
-						payload: {
-							filePath: "src/test2.ts",
-							codeChunk: "test code 2",
-							startLine: 10,
-							endLine: 15,
-						},
-					},
-				],
-			}
-
-			mockQdrantClientInstance.query.mockResolvedValue(mockQdrantResults)
-
-			const results = await vectorStore.search(queryVector)
-
-			// Should only return results with valid payloads, filtering out null and undefined
-			expect(results).toHaveLength(2)
-			expect(results[0].id).toBe("valid-result")
-			expect(results[1].id).toBe("valid-result-2")
-		})
-
-		it("should handle scenarios where no results are found", async () => {
-			const queryVector = [0.1, 0.2, 0.3]
-			const mockQdrantResults = { points: [] }
-
-			mockQdrantClientInstance.query.mockResolvedValue(mockQdrantResults)
-
-			const results = await vectorStore.search(queryVector)
-
-			expect(mockQdrantClientInstance.query).toHaveBeenCalledTimes(1)
-			expect(results).toEqual([])
-		})
-
-		it("should handle complex directory prefix with multiple segments", async () => {
-			const queryVector = [0.1, 0.2, 0.3]
-			const directoryPrefix = "src/components/ui/forms"
-			const mockQdrantResults = { points: [] }
-
-			mockQdrantClientInstance.query.mockResolvedValue(mockQdrantResults)
-
-			await vectorStore.search(queryVector, directoryPrefix)
-
-			const callArgs5 = mockQdrantClientInstance.query.mock.calls[0][1]
-			expect(callArgs5).toMatchObject({
-				query: queryVector,
-				score_threshold: DEFAULT_SEARCH_MIN_SCORE,
-				limit: DEFAULT_MAX_SEARCH_RESULTS,
-				params: {
-					hnsw_ef: 128,
-					exact: false,
-				},
-				with_payload: {
-					include: ["filePath", "codeChunk", "startLine", "endLine", "pathSegments"],
-				},
-			})
-			expect(callArgs5.filter).toEqual({
-				must: [
-					{ key: "pathSegments.0", match: { value: "src" } },
-					{ key: "pathSegments.1", match: { value: "components" } },
-					{ key: "pathSegments.2", match: { value: "ui" } },
-					{ key: "pathSegments.3", match: { value: "forms" } },
-				],
-				must_not: [{ key: "type", match: { value: "metadata" } }],
-			})
-		})
-
-		it("should handle error scenarios when qdrantClient.query fails", async () => {
-			const queryVector = [0.1, 0.2, 0.3]
-			const queryError = new Error("Query failed")
-			mockQdrantClientInstance.query.mockRejectedValue(queryError)
-			vitest.spyOn(logger, "error").mockImplementation(() => {})
-
-			await expect(vectorStore.search(queryVector)).rejects.toThrow(queryError)
-
-			expect(mockQdrantClientInstance.query).toHaveBeenCalledTimes(1)
-			expect(logger.error).toHaveBeenCalledWith("Failed to search points:", "Query failed", queryError)
-			;(logger.error as any).mockRestore()
-		})
-
-		it("should use constants DEFAULT_MAX_SEARCH_RESULTS and DEFAULT_SEARCH_MIN_SCORE correctly", async () => {
-			const queryVector = [0.1, 0.2, 0.3]
-			const mockQdrantResults = { points: [] }
-
-			mockQdrantClientInstance.query.mockResolvedValue(mockQdrantResults)
-
-			await vectorStore.search(queryVector)
-
-			const callArgs = mockQdrantClientInstance.query.mock.calls[0][1]
-			expect(callArgs.limit).toBe(DEFAULT_MAX_SEARCH_RESULTS)
-			expect(callArgs.score_threshold).toBe(DEFAULT_SEARCH_MIN_SCORE)
-		})
-
-		describe("current directory path handling", () => {
-			it("should not apply filter when directoryPrefix is '.'", async () => {
-				const queryVector = [0.1, 0.2, 0.3]
-				const directoryPrefix = "."
-				const mockQdrantResults = {
+		expect(calls()).toEqual([
+			{
+				method: "PUT",
+				path: `${pointsPath}?wait=true`,
+				body: {
 					points: [
 						{
-							id: "test-id-1",
-							score: 0.85,
+							id: "p1",
+							vector: [0.1, 0.2],
 							payload: {
-								filePath: "src/test.ts",
-								codeChunk: "test code",
+								filePath,
+								codeChunk: "x",
 								startLine: 1,
-								endLine: 5,
-								pathSegments: { "0": "src", "1": "test.ts" },
+								endLine: 2,
+								pathSegments: { "0": "src", "1": "services", "2": "a.ts" },
 							},
 						},
+						{ id: "p2", vector: [0.3, 0.4], payload: { codeChunk: "y" } },
 					],
-				}
+				},
+			},
+		])
+	})
 
-				mockQdrantClientInstance.query.mockResolvedValue(mockQdrantResults)
+	it("searches through the query endpoint with a directory filter and drops invalid payloads", async () => {
+		const valid = { filePath: "src/a.ts", codeChunk: "x", startLine: 1, endLine: 2, pathSegments: { "0": "src" } }
+		handler = (req) =>
+			req.method === "POST" && req.path === `${pointsPath}/query`
+				? ok({
+						points: [
+							{ id: "p1", version: 1, score: 0.9, payload: valid },
+							{ id: "p2", version: 1, score: 0.8, payload: { filePath: "only" } },
+							{ id: "p3", version: 1, score: 0.7, payload: null },
+						],
+					})
+				: undefined
 
-				const results = await vectorStore.search(queryVector, directoryPrefix)
+		const results = await createStore().search([0.5, 0.25], "src/services", 0.5, 7)
 
-				const callArgs7 = mockQdrantClientInstance.query.mock.calls[0][1]
-				expect(callArgs7).toMatchObject({
-					query: queryVector,
-					score_threshold: DEFAULT_SEARCH_MIN_SCORE,
-					limit: DEFAULT_MAX_SEARCH_RESULTS,
-					params: {
-						hnsw_ef: 128,
-						exact: false,
+		expect(results).toEqual([{ id: "p1", version: 1, score: 0.9, payload: valid }])
+		expect(calls()).toEqual([
+			{
+				method: "POST",
+				path: `${pointsPath}/query`,
+				body: {
+					query: [0.5, 0.25],
+					filter: {
+						must: [
+							{ key: "pathSegments.0", match: { value: "src" } },
+							{ key: "pathSegments.1", match: { value: "services" } },
+						],
+						must_not: [{ key: "type", match: { value: "metadata" } }],
 					},
-					with_payload: {
-						include: ["filePath", "codeChunk", "startLine", "endLine", "pathSegments"],
-					},
-				})
-				expect(callArgs7.filter).toEqual({
-					must_not: [{ key: "type", match: { value: "metadata" } }],
-				})
+					score_threshold: 0.5,
+					limit: 7,
+					params: { hnsw_ef: 128, exact: false },
+					with_payload: { include: ["filePath", "codeChunk", "startLine", "endLine", "pathSegments"] },
+				},
+			},
+		])
+	})
 
-				expect(results).toEqual(mockQdrantResults.points)
-			})
+	it.each([
+		[undefined, []],
+		["", []],
+		[".", []],
+		["./", []],
+		[".\\", []],
+		["./src", ["src"]],
+		["src//", ["src"]],
+		["src\\utils", ["src", "utils"]],
+	])("searching below %j filters on the path segments %j", async (directoryPrefix, segments) => {
+		handler = () => ok({ points: [] })
 
-			it("should not apply filter when directoryPrefix is './'", async () => {
-				const queryVector = [0.1, 0.2, 0.3]
-				const directoryPrefix = "./"
-				const mockQdrantResults = { points: [] }
+		await expect(createStore().search([1], directoryPrefix)).resolves.toEqual([])
 
-				mockQdrantClientInstance.query.mockResolvedValue(mockQdrantResults)
-
-				await vectorStore.search(queryVector, directoryPrefix)
-
-				const callArgs6 = mockQdrantClientInstance.query.mock.calls[0][1]
-				expect(callArgs6).toMatchObject({
-					query: queryVector,
-					score_threshold: DEFAULT_SEARCH_MIN_SCORE,
-					limit: DEFAULT_MAX_SEARCH_RESULTS,
-					params: {
-						hnsw_ef: 128,
-						exact: false,
-					},
-					with_payload: {
-						include: ["filePath", "codeChunk", "startLine", "endLine", "pathSegments"],
-					},
-				})
-				expect(callArgs6.filter).toEqual({
-					must_not: [{ key: "type", match: { value: "metadata" } }],
-				})
-			})
-
-			it("should not apply filter when directoryPrefix is empty string", async () => {
-				const queryVector = [0.1, 0.2, 0.3]
-				const directoryPrefix = ""
-				const mockQdrantResults = { points: [] }
-
-				mockQdrantClientInstance.query.mockResolvedValue(mockQdrantResults)
-
-				await vectorStore.search(queryVector, directoryPrefix)
-
-				const callArgs8 = mockQdrantClientInstance.query.mock.calls[0][1]
-				expect(callArgs8).toMatchObject({
-					query: queryVector,
-					score_threshold: DEFAULT_SEARCH_MIN_SCORE,
-					limit: DEFAULT_MAX_SEARCH_RESULTS,
-					params: {
-						hnsw_ef: 128,
-						exact: false,
-					},
-					with_payload: {
-						include: ["filePath", "codeChunk", "startLine", "endLine", "pathSegments"],
-					},
-				})
-				expect(callArgs8.filter).toEqual({
-					must_not: [{ key: "type", match: { value: "metadata" } }],
-				})
-			})
-
-			it("should not apply filter when directoryPrefix is '.\\' (Windows style)", async () => {
-				const queryVector = [0.1, 0.2, 0.3]
-				const directoryPrefix = ".\\"
-				const mockQdrantResults = { points: [] }
-
-				mockQdrantClientInstance.query.mockResolvedValue(mockQdrantResults)
-
-				await vectorStore.search(queryVector, directoryPrefix)
-
-				const callArgs9 = mockQdrantClientInstance.query.mock.calls[0][1]
-				expect(callArgs9).toMatchObject({
-					query: queryVector,
-					score_threshold: DEFAULT_SEARCH_MIN_SCORE,
-					limit: DEFAULT_MAX_SEARCH_RESULTS,
-					params: {
-						hnsw_ef: 128,
-						exact: false,
-					},
-					with_payload: {
-						include: ["filePath", "codeChunk", "startLine", "endLine", "pathSegments"],
-					},
-				})
-				expect(callArgs9.filter).toEqual({
-					must_not: [{ key: "type", match: { value: "metadata" } }],
-				})
-			})
-
-			it("should not apply filter when directoryPrefix has trailing slashes", async () => {
-				const queryVector = [0.1, 0.2, 0.3]
-				const directoryPrefix = ".///"
-				const mockQdrantResults = { points: [] }
-
-				mockQdrantClientInstance.query.mockResolvedValue(mockQdrantResults)
-
-				await vectorStore.search(queryVector, directoryPrefix)
-
-				const callArgs10 = mockQdrantClientInstance.query.mock.calls[0][1]
-				expect(callArgs10).toMatchObject({
-					query: queryVector,
-					score_threshold: DEFAULT_SEARCH_MIN_SCORE,
-					limit: DEFAULT_MAX_SEARCH_RESULTS,
-					params: {
-						hnsw_ef: 128,
-						exact: false,
-					},
-					with_payload: {
-						include: ["filePath", "codeChunk", "startLine", "endLine", "pathSegments"],
-					},
-				})
-				expect(callArgs10.filter).toEqual({
-					must_not: [{ key: "type", match: { value: "metadata" } }],
-				})
-			})
-
-			it("should still apply filter for relative paths like './src'", async () => {
-				const queryVector = [0.1, 0.2, 0.3]
-				const directoryPrefix = "./src"
-				const mockQdrantResults = { points: [] }
-
-				mockQdrantClientInstance.query.mockResolvedValue(mockQdrantResults)
-
-				await vectorStore.search(queryVector, directoryPrefix)
-
-				const callArgs11 = mockQdrantClientInstance.query.mock.calls[0][1]
-				expect(callArgs11).toMatchObject({
-					query: queryVector,
-					score_threshold: DEFAULT_SEARCH_MIN_SCORE,
-					limit: DEFAULT_MAX_SEARCH_RESULTS,
-					params: {
-						hnsw_ef: 128,
-						exact: false,
-					},
-					with_payload: {
-						include: ["filePath", "codeChunk", "startLine", "endLine", "pathSegments"],
-					},
-				})
-				expect(callArgs11.filter).toEqual({
-					must: [
-						{
-							key: "pathSegments.0",
-							match: { value: "src" },
-						},
-					],
-					must_not: [{ key: "type", match: { value: "metadata" } }],
-				}) // Should normalize "./src" to "src"
-			})
-
-			it("should still apply filter for regular directory paths", async () => {
-				const queryVector = [0.1, 0.2, 0.3]
-				const directoryPrefix = "src"
-				const mockQdrantResults = { points: [] }
-
-				mockQdrantClientInstance.query.mockResolvedValue(mockQdrantResults)
-
-				await vectorStore.search(queryVector, directoryPrefix)
-
-				const callArgs12 = mockQdrantClientInstance.query.mock.calls[0][1]
-				expect(callArgs12).toMatchObject({
-					query: queryVector,
-					score_threshold: DEFAULT_SEARCH_MIN_SCORE,
-					limit: DEFAULT_MAX_SEARCH_RESULTS,
-					params: {
-						hnsw_ef: 128,
-						exact: false,
-					},
-					with_payload: {
-						include: ["filePath", "codeChunk", "startLine", "endLine", "pathSegments"],
-					},
-				})
-				expect(callArgs12.filter).toEqual({
-					must: [
-						{
-							key: "pathSegments.0",
-							match: { value: "src" },
-						},
-					],
-					must_not: [{ key: "type", match: { value: "metadata" } }],
-				}) // Should still create filter for regular paths
-			})
+		const must = segments.map((value, index) => ({ key: `pathSegments.${index}`, match: { value } }))
+		expect(calls()[0].body).toMatchObject({
+			query: [1],
+			filter: {
+				...(must.length > 0 ? { must } : {}),
+				must_not: [{ key: "type", match: { value: "metadata" } }],
+			},
+			score_threshold: DEFAULT_SEARCH_MIN_SCORE,
+			limit: DEFAULT_MAX_SEARCH_RESULTS,
 		})
+		expect(Object.keys((calls()[0].body as { filter: object }).filter)).toEqual(
+			must.length > 0 ? ["must", "must_not"] : ["must_not"],
+		)
+	})
+
+	it("deletes points of several files with one should-filter after checking the collection", async () => {
+		handler = existingCollection(collectionInfo(768, 3), (req) =>
+			req.method === "POST" ? ok({ operation_id: 2, status: "completed" }) : undefined,
+		)
+
+		await createStore().deletePointsByMultipleFilePaths([
+			path.join(workspacePath, "src", "a.ts"),
+			path.join("lib", "b.ts"),
+		])
+
+		expect(calls()).toEqual([
+			{ method: "GET", path: collectionPath, body: undefined },
+			{
+				method: "POST",
+				path: `${pointsPath}/delete?wait=true`,
+				body: {
+					filter: {
+						should: [
+							{
+								must: [
+									{ key: "pathSegments.0", match: { value: "src" } },
+									{ key: "pathSegments.1", match: { value: "a.ts" } },
+								],
+							},
+							{
+								must: [
+									{ key: "pathSegments.0", match: { value: "lib" } },
+									{ key: "pathSegments.1", match: { value: "b.ts" } },
+								],
+							},
+						],
+					},
+				},
+			},
+		])
+	})
+
+	it("clears the collection with an empty must-filter", async () => {
+		handler = () => ok({ operation_id: 3, status: "completed" })
+
+		await createStore().clearCollection()
+
+		expect(calls()).toEqual([
+			{ method: "POST", path: `${pointsPath}/delete?wait=true`, body: { filter: { must: [] } } },
+		])
+	})
+
+	it.each([
+		["an existing", ok(collectionInfo(768)), true],
+		["a missing", qdrantError(404, "Not found"), false],
+	])("deleteCollection on %s collection sends DELETE: %s", async (_, info, deletes) => {
+		handler = (req) => (req.method === "GET" ? info : ok(true))
+
+		await createStore().deleteCollection()
+
+		expect(calls()).toEqual([
+			{ method: "GET", path: collectionPath, body: undefined },
+			...(deletes ? [{ method: "DELETE", path: collectionPath, body: undefined }] : []),
+		])
+	})
+
+	const reason = "Wrong input: Vector dimension error: expected dim: 1024, got 768"
+	it.each([
+		["upsertPoints", (s: QdrantVectorStore) => s.upsertPoints([{ id: "p1", vector: [0.1], payload: {} }])],
+		["search", (s: QdrantVectorStore) => s.search([1])],
+		["deletePointsByFilePath", (s: QdrantVectorStore) => s.deletePointsByFilePath("a.ts")],
+		["clearCollection", (s: QdrantVectorStore) => s.clearCollection()],
+		["deleteCollection", (s: QdrantVectorStore) => s.deleteCollection()],
+		["markIndexingComplete", (s: QdrantVectorStore) => s.markIndexingComplete()],
+	])("%s rethrows with Qdrant's reason (error.data) and keeps the status", async (_, operation) => {
+		handler = (req) => (req.method === "GET" ? ok(collectionInfo(768, 1)) : qdrantError(400, reason))
+
+		const error = await failure(operation(createStore()))
+
+		expect(error).toBeInstanceOf(Error)
+		expect(error?.message).toBe(`Bad Request: ${reason}`)
+		expect(error?.status).toBe(400)
+		expect(error?.cause).toBeInstanceOf(Error)
+	})
+})
+
+describe("QdrantVectorStore indexing marker", () => {
+	it("reads the indexing-complete marker through retrieve and writes it through upsert", async () => {
+		handler = existingCollection(collectionInfo(768, 5), (req) => {
+			if (req.method === "POST" && req.path === pointsPath) return metadataPoint({ indexing_complete: true })
+			if (req.method === "PUT") return ok({ operation_id: 4, status: "completed" })
+			return undefined
+		})
+
+		const store = createStore(3, NOMIC_CODE_QUERY_PREFIX)
+		await expect(store.hasIndexedData()).resolves.toBe(true)
+		await store.markIndexingComplete()
+		await store.markIndexingIncomplete()
+
+		const marker = (complete: boolean, timeKey: string) => ({
+			method: "PUT",
+			path: `${pointsPath}?wait=true`,
+			body: {
+				points: [
+					{
+						id: metadataId,
+						vector: [0, 0, 0],
+						// Code is embedded without a prefix now, whatever the legacy prefix was.
+						payload: {
+							type: "metadata",
+							indexing_complete: complete,
+							document_prefix: "",
+							[timeKey]: expect.any(Number),
+						},
+					},
+				],
+			},
+		})
+		expect(calls()).toEqual([
+			{ method: "GET", path: collectionPath, body: undefined },
+			{ method: "POST", path: pointsPath, body: { ids: [metadataId], with_payload: true } },
+			marker(true, "completed_at"),
+			marker(false, "started_at"),
+		])
+	})
+
+	it.each([
+		["a missing collection", qdrantError(404, "Not found"), ok([]), false],
+		["an empty collection", ok(collectionInfo(768, 0)), ok([]), false],
+		["points but no marker (index from before the marker)", ok(collectionInfo(768, 5)), ok([]), true],
+		["an unfinished marker", ok(collectionInfo(768, 5)), metadataPoint({ indexing_complete: false }), false],
+		["a marker that cannot be read", ok(collectionInfo(768, 5)), qdrantError(500, "boom"), false],
+	])("hasIndexedData with %s is %s", async (_, info, marker, expected) => {
+		handler = (req) => (req.method === "GET" ? info : marker)
+
+		await expect(createStore().hasIndexedData()).resolves.toBe(expected)
+	})
+})
+
+describe("describeQdrantError", () => {
+	const apiError = (message: string, data: unknown) => Object.assign(new Error(message), { data })
+	const circular: Record<string, unknown> = {}
+	circular.self = circular
+
+	it.each([
+		["status.error on data", apiError("Bad Request", { status: { error: "bad dim" } }), "Bad Request: bad dim"],
+		[
+			"status string on response.data",
+			Object.assign(new Error("Bad Request"), { response: { data: { status: "nope" } } }),
+			"Bad Request: nope",
+		],
+		["a string body (trimmed)", apiError("Bad Gateway", "  upstream down \n"), "Bad Gateway: upstream down"],
+		["a blank string body", apiError("Bad Gateway", "   "), "Bad Gateway"],
+		["any other body, serialized", apiError("Bad Request", { result: null }), 'Bad Request: {"result":null}'],
+		["an empty body", apiError("Bad Request", {}), "Bad Request"],
+		["a body that cannot be serialized", apiError("Bad Request", circular), "Bad Request"],
+		[
+			"a reason the message already holds",
+			apiError("Bad Request: bad dim", { status: { error: "bad dim" } }),
+			"Bad Request: bad dim",
+		],
+		["an empty message", apiError("", { status: { error: "bad dim" } }), "bad dim"],
+		["no body", new Error("fetch failed"), "fetch failed"],
+		["a non-Error", "plain text", "plain text"],
+	])("%s", (_, error, expected) => {
+		expect(describeQdrantError(error)).toBe(expected)
 	})
 })
