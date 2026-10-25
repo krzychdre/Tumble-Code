@@ -1,6 +1,6 @@
 # Test refactor round 5 (2026-10-25): tests of our logic only
 
-**Status:** done 2026-10-25 (#1061 to #1139, final verification in `chore/r5-final-verification`); results below.
+**Status:** done 2026-10-25 (#1061 to #1139, final verification #1140 to #1142, main CI green at `a8ea71db1`); results below.
 **Related plans:** `2026-10-23_17-20_maintenance-audit-round-4.md` (E1 to E9; E9 deferred the large spec families to
 this round), `simplification_round3_audit_2026-10-02.md`.
 **Touched:** spec files under `src/`, `webview-ui/src/`, `packages/cloud`, `packages/core`, `apps/cli`; production
@@ -147,6 +147,11 @@ What the pruning found besides excess tests:
 - Dead code removed where a pruned test exposed it: provider branches for states that cannot happen (#1089), the
   forced-rebuild comparison in `ModeProfileBinding` (#1077), unused exports and options in the webview, cloud, core
   and types packages, two unused translation keys (#1101).
+
+Final pass: the test-only-exports allowlist lost four entries for types #1124 deleted (#1140); two new specs
+failed only on Windows (`GIT_CONFIG_GLOBAL` at `os.devNull`, which git cannot open there, and a temp dir reported as
+an 8.3 short name) and were fixed (#1142). The version bump PR could not be built since the unified release (#1141,
+outside this round's scope).
 
 Noted and left as they are (no defect, or not worth the churn):
 
