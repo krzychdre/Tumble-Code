@@ -1,234 +1,50 @@
 import * as crypto from "crypto"
-import { sanitizeToolUseId, truncateOpenAiCallId, sanitizeOpenAiCallId, OPENAI_CALL_ID_MAX_LENGTH } from "../tool-id"
+
+import { sanitizeToolUseId, truncateOpenAiCallId, sanitizeOpenAiCallId } from "../tool-id"
+
+const sha256Suffix = (id: string) => crypto.createHash("sha256").update(id).digest("hex").slice(0, 8)
 
 describe("sanitizeToolUseId", () => {
-	describe("valid IDs pass through unchanged", () => {
-		it("should preserve alphanumeric IDs", () => {
-			expect(sanitizeToolUseId("toolu_01AbC")).toBe("toolu_01AbC")
-		})
-
-		it("should preserve IDs with underscores", () => {
-			expect(sanitizeToolUseId("tool_use_123")).toBe("tool_use_123")
-		})
-
-		it("should preserve IDs with hyphens", () => {
-			expect(sanitizeToolUseId("tool-with-hyphens")).toBe("tool-with-hyphens")
-		})
-
-		it("should preserve mixed valid characters", () => {
-			expect(sanitizeToolUseId("toolu_01AbC-xyz_789")).toBe("toolu_01AbC-xyz_789")
-		})
-
-		it("should handle empty string", () => {
-			expect(sanitizeToolUseId("")).toBe("")
-		})
-	})
-
-	describe("invalid characters get replaced with underscore", () => {
-		it("should replace dots with underscores", () => {
-			expect(sanitizeToolUseId("tool.with.dots")).toBe("tool_with_dots")
-		})
-
-		it("should replace colons with underscores", () => {
-			expect(sanitizeToolUseId("tool:with:colons")).toBe("tool_with_colons")
-		})
-
-		it("should replace slashes with underscores", () => {
-			expect(sanitizeToolUseId("tool/with/slashes")).toBe("tool_with_slashes")
-		})
-
-		it("should replace backslashes with underscores", () => {
-			expect(sanitizeToolUseId("tool\\with\\backslashes")).toBe("tool_with_backslashes")
-		})
-
-		it("should replace spaces with underscores", () => {
-			expect(sanitizeToolUseId("tool with spaces")).toBe("tool_with_spaces")
-		})
-
-		it("should replace multiple invalid characters", () => {
-			expect(sanitizeToolUseId("mcp.server:tool/name")).toBe("mcp_server_tool_name")
-		})
-
-		it("should sanitize Gemini/OpenRouter function call IDs with dots and colons", () => {
-			// This is the exact pattern seen in PostHog errors where tool_result IDs
-			// didn't match tool_use IDs due to missing sanitization
-			expect(sanitizeToolUseId("functions.read_file:0")).toBe("functions_read_file_0")
-			expect(sanitizeToolUseId("functions.write_to_file:1")).toBe("functions_write_to_file_1")
-			expect(sanitizeToolUseId("read_file:0")).toBe("read_file_0")
-		})
-	})
-
-	describe("real-world MCP tool use ID patterns", () => {
-		it("should sanitize MCP server-prefixed IDs with dots", () => {
-			// MCP tool names often include server names with dots
-			expect(sanitizeToolUseId("toolu_mcp.linear.create_issue")).toBe("toolu_mcp_linear_create_issue")
-		})
-
-		it("should sanitize IDs with URL-like patterns", () => {
-			expect(sanitizeToolUseId("toolu_https://api.example.com/tool")).toBe("toolu_https___api_example_com_tool")
-		})
-
-		it("should sanitize IDs with special characters from server names", () => {
-			expect(sanitizeToolUseId("call_mcp--posthog--query-run")).toBe("call_mcp--posthog--query-run")
-		})
-
-		it("should preserve valid native tool call IDs", () => {
-			// Standard Anthropic tool_use IDs
-			expect(sanitizeToolUseId("toolu_01H2X3Y4Z5")).toBe("toolu_01H2X3Y4Z5")
-		})
+	it.each([
+		["toolu_01-AbC", "toolu_01-AbC"],
+		["", ""],
+		// Gemini/OpenRouter function call ids and MCP server-prefixed ids
+		["functions.read_file:0", "functions_read_file_0"],
+		["mcp.server/tool\\name with space", "mcp_server_tool_name_with_space"],
+	])("turns %j into %j", (id, expected) => {
+		expect(sanitizeToolUseId(id)).toBe(expected)
 	})
 })
 
 describe("truncateOpenAiCallId", () => {
-	describe("IDs within limit pass through unchanged", () => {
-		it("should preserve short IDs", () => {
-			expect(truncateOpenAiCallId("toolu_01AbC")).toBe("toolu_01AbC")
-		})
-
-		it("should preserve IDs exactly at the limit", () => {
-			const id64Chars = "a".repeat(64)
-			expect(truncateOpenAiCallId(id64Chars)).toBe(id64Chars)
-		})
-
-		it("should handle empty string", () => {
-			expect(truncateOpenAiCallId("")).toBe("")
-		})
+	it.each([["short_id"], ["a".repeat(64)], [""]])("keeps %j, which fits in 64 characters", (id) => {
+		expect(truncateOpenAiCallId(id)).toBe(id)
 	})
 
-	describe("long IDs get truncated with hash suffix", () => {
-		it("should truncate IDs longer than 64 characters", () => {
-			const longId = "a".repeat(70) // 70 chars, exceeds 64 limit
-			const result = truncateOpenAiCallId(longId)
-			expect(result.length).toBe(64)
-		})
+	// The reported id was 69 characters long.
+	it("cuts a longer id to a 55-character prefix, '_' and an 8-character SHA-256 suffix", () => {
+		const id = "toolu_mcp--posthog--query_run_" + "a".repeat(39)
 
-		it("should produce consistent results for the same input", () => {
-			const longId = "toolu_mcp--linear--create_issue_12345678-1234-1234-1234-123456789012"
-			const result1 = truncateOpenAiCallId(longId)
-			const result2 = truncateOpenAiCallId(longId)
-			expect(result1).toBe(result2)
-		})
+		const result = truncateOpenAiCallId(id)
 
-		it("should produce different results for different inputs", () => {
-			const longId1 = "a".repeat(70) + "_unique1"
-			const longId2 = "a".repeat(70) + "_unique2"
-			const result1 = truncateOpenAiCallId(longId1)
-			const result2 = truncateOpenAiCallId(longId2)
-			expect(result1).not.toBe(result2)
-		})
-
-		it("should preserve the prefix and add hash suffix", () => {
-			const longId = "toolu_mcp--linear--create_issue_" + "x".repeat(50)
-			const result = truncateOpenAiCallId(longId)
-			// Should start with the prefix (first 55 chars)
-			expect(result.startsWith("toolu_mcp--linear--create_issue_")).toBe(true)
-			// Should contain a separator and hash
-			expect(result).toContain("_")
-		})
-
-		it("should handle the exact reported issue length (69 chars)", () => {
-			// The original error mentioned 69 characters
-			const id69Chars = "toolu_mcp--posthog--query_run_" + "a".repeat(39) // total 69 chars
-			expect(id69Chars.length).toBe(69)
-			const result = truncateOpenAiCallId(id69Chars)
-			expect(result.length).toBe(64)
-		})
+		// SHA-256, not MD5 (CodeQL js/weak-cryptographic-algorithm).
+		expect(result).toBe(`${id.slice(0, 55)}_${sha256Suffix(id)}`)
+		expect(truncateOpenAiCallId(id)).toBe(result)
+		expect(truncateOpenAiCallId(id + "x")).not.toBe(result)
 	})
 
-	describe("custom max length", () => {
-		it("should support custom max length", () => {
-			const longId = "a".repeat(50)
-			const result = truncateOpenAiCallId(longId, 32)
-			expect(result.length).toBe(32)
-		})
-
-		it("should not truncate if within custom limit", () => {
-			const id = "short_id"
-			expect(truncateOpenAiCallId(id, 100)).toBe(id)
-		})
-	})
-})
-
-describe("truncateOpenAiCallId — hash algorithm lock-in (SHA-256)", () => {
-	// Regression test for CodeQL alert js/weak-cryptographic-algorithm:
-	// the shortening hash MUST be SHA-256, not MD5. A future refactor that
-	// reverts to MD5 will fail the expected-suffix assertion below.
-	it("should derive the hash suffix from SHA-256, not MD5", () => {
-		const longId = "toolu_mcp--linear--create_issue_" + "x".repeat(50)
-		const result = truncateOpenAiCallId(longId)
-		const expectedSuffix = crypto.createHash("sha256").update(longId).digest("hex").slice(0, 8)
-		const md5Suffix = crypto.createHash("md5").update(longId).digest("hex").slice(0, 8)
-		// The result must end with the SHA-256-derived suffix...
-		expect(result.endsWith(expectedSuffix)).toBe(true)
-		// ...and must NOT end with the MD5-derived suffix (sanity: they differ).
-		expect(md5Suffix).not.toBe(expectedSuffix)
-		expect(result.endsWith(md5Suffix)).toBe(false)
-	})
-
-	it("should be deterministic across calls (same input → same output)", () => {
-		const longId = "a".repeat(70)
-		const expected = crypto.createHash("sha256").update(longId).digest("hex").slice(0, 8)
-		const result = truncateOpenAiCallId(longId)
-		// Called three times to rule out any RNG/stateful drift.
-		expect(truncateOpenAiCallId(longId)).toBe(result)
-		expect(truncateOpenAiCallId(longId)).toBe(result)
-		expect(result.endsWith(expected)).toBe(true)
-	})
-
-	it("should produce an 8-char hash suffix (preserving the fixed slice length)", () => {
-		const longId = "toolu_mcp--posthog--query_run_" + "a".repeat(39) // 69 chars
-		const result = truncateOpenAiCallId(longId)
-		expect(result.length).toBe(64)
-		// maxLength(64) - separator(1) - hashSuffixLength(8) = 55-char prefix
-		expect(result.slice(0, 55)).toBe(longId.slice(0, 55))
-		expect(result.slice(55, 56)).toBe("_")
-		expect(result.slice(56).length).toBe(8)
-	})
-
-	it("should produce different suffixes for different inputs (uniqueness sanity)", () => {
-		const longId1 = "a".repeat(70) + "_unique1"
-		const longId2 = "a".repeat(70) + "_unique2"
-		const result1 = truncateOpenAiCallId(longId1)
-		const result2 = truncateOpenAiCallId(longId2)
-		expect(result1).not.toBe(result2)
-		// Confirm the divergence is in the hash portion, not the shared prefix.
-		expect(result1.slice(56)).not.toBe(result2.slice(56))
+	it("honours a custom maximum", () => {
+		expect(truncateOpenAiCallId("a".repeat(40), 40)).toBe("a".repeat(40))
+		expect(truncateOpenAiCallId("a".repeat(41), 40)).toBe(`${"a".repeat(31)}_${sha256Suffix("a".repeat(41))}`)
 	})
 })
 
 describe("sanitizeOpenAiCallId", () => {
-	it("should sanitize characters and truncate if needed", () => {
-		// ID with invalid chars and too long
-		const longIdWithInvalidChars = "toolu_mcp.server:tool/name_" + "x".repeat(50)
-		const result = sanitizeOpenAiCallId(longIdWithInvalidChars)
-		// Should be within limit
-		expect(result.length).toBeLessThanOrEqual(64)
-		// Should not contain invalid characters
-		expect(result).toMatch(/^[a-zA-Z0-9_-]+$/)
-	})
+	it("sanitizes first, then cuts to 64 characters", () => {
+		const id = "mcp.server:" + "x".repeat(60)
+		const sanitized = "mcp_server_" + "x".repeat(60)
 
-	it("should only sanitize if length is within limit", () => {
-		const shortIdWithInvalidChars = "tool.with.dots"
-		const result = sanitizeOpenAiCallId(shortIdWithInvalidChars)
-		expect(result).toBe("tool_with_dots")
-	})
-
-	it("should handle real-world MCP tool IDs", () => {
-		// Real MCP tool ID that might exceed 64 chars
-		const mcpToolId = "call_mcp--posthog--dashboard_create_12345678-1234-1234-1234-123456789012"
-		const result = sanitizeOpenAiCallId(mcpToolId)
-		expect(result.length).toBeLessThanOrEqual(64)
-		expect(result).toMatch(/^[a-zA-Z0-9_-]+$/)
-	})
-
-	it("should preserve IDs that are already valid and within limit", () => {
-		const validId = "toolu_01AbC-xyz_789"
-		expect(sanitizeOpenAiCallId(validId)).toBe(validId)
-	})
-})
-
-describe("OPENAI_CALL_ID_MAX_LENGTH constant", () => {
-	it("should be 64", () => {
-		expect(OPENAI_CALL_ID_MAX_LENGTH).toBe(64)
+		expect(sanitizeOpenAiCallId(id)).toBe(`${sanitized.slice(0, 55)}_${sha256Suffix(sanitized)}`)
+		expect(sanitizeOpenAiCallId("call.1")).toBe("call_1")
 	})
 })
