@@ -101,17 +101,8 @@ export class NewTaskTool extends BaseTool<"new_task"> {
 				return
 			}
 
-			// Parse todos if provided, otherwise use empty array
-			let todoItems: TodoItem[] = []
-			if (todos) {
-				try {
-					todoItems = parseMarkdownChecklist(todos)
-				} catch (error) {
-					this.recordFailure(task, "new_task", { failTurn: true })
-					pushToolResult(formatResponse.toolError("Invalid todos format: must be a markdown checklist"))
-					return
-				}
-			}
+			// Lines that are not checklist items are skipped, so parsing never fails.
+			const todoItems: TodoItem[] = todos ? parseMarkdownChecklist(todos) : []
 
 			// Un-escape one level of backslashes before '@' for hierarchical subtasks
 			// Un-escape one level: \\@ -> \@ (removes one backslash for hierarchical subtasks)

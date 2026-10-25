@@ -1,844 +1,259 @@
-// npx vitest core/tools/__tests__/newTaskTool.spec.ts
+// NewTaskTool with the real mode table, todo parsing and response formatting; the task, its
+// provider (history and delegation) and the VS Code setting are replaced. The compact-profile
+// refusal is pinned in subagents-compact-profile.spec.ts.
 
-import type { AskApproval, HandleError, NativeToolArgs, ToolUse } from "../../../shared/tools"
-
-// Mock vscode module
-vi.mock("vscode", () => ({
-	workspace: {
-		getConfiguration: vi.fn(() => ({
-			get: vi.fn(),
-		})),
-	},
-}))
-
-// Mock Package module
-vi.mock("../../../shared/package", () => ({
-	Package: {
-		name: "tumble-code",
-		publisher: "QUB-IT",
-		version: "1.0.0",
-		outputChannel: "Tumble-Code",
-	},
-}))
-
-// Mock other modules first - these are hoisted to the top
-vi.mock("../../../shared/modes", () => ({
-	getModeBySlug: vi.fn(),
-	defaultModeSlug: "ask",
-}))
-
-vi.mock("../../prompts/responses", () => ({
-	formatResponse: {
-		toolError: vi.fn((msg: string) => `Tool Error: ${msg}`),
-	},
-}))
-
-vi.mock("../updateTodoListTool", () => ({
-	parseMarkdownChecklist: vi.fn((md: string) => {
-		// Simple mock implementation
-		const lines = md.split("\n").filter((line) => line.trim())
-		return lines.map((line, index) => {
-			let status = "pending"
-			let content = line
-
-			if (line.includes("[x]") || line.includes("[X]")) {
-				status = "completed"
-				content = line.replace(/^\[x\]\s*/i, "")
-			} else if (line.includes("[-]") || line.includes("[~]")) {
-				status = "in_progress"
-				content = line.replace(/^\[-\]\s*/, "").replace(/^\[~\]\s*/, "")
-			} else {
-				content = line.replace(/^\[\s*\]\s*/, "")
-			}
-
-			return {
-				id: `todo-${index}`,
-				content,
-				status,
-			}
-		})
-	}),
-}))
-
-// Define a minimal type for the resolved value
-type MockClineInstance = { taskId: string }
-
-// Mock dependencies after modules are mocked
-const mockAskApproval = vi.fn<AskApproval>()
-const mockHandleError = vi.fn<HandleError>()
-const mockPushToolResult = vi.fn()
-const mockEmit = vi.fn()
-const mockRecordToolError = vi.fn()
-const mockSayAndCreateMissingParamError = vi.fn()
-const mockStartSubtask = vi
-	.fn<(message: string, todoItems: any[], mode: string) => Promise<MockClineInstance>>()
-	.mockResolvedValue({ taskId: "mock-subtask-id" })
-
-// Adapter to satisfy legacy expectations while exercising new delegation path
-const mockDelegateParentAndOpenChild = vi.fn(
-	async (args: { parentTaskId: string; message: string; initialTodos: any[]; mode: string }) => {
-		// Call legacy spy so existing expectations still pass
-		await mockStartSubtask(args.message, args.initialTodos, args.mode)
-		return { taskId: "child-1" }
-	},
-)
-const mockCheckpointSave = vi.fn()
-
-// Mock the Cline instance and its methods/properties
-const mockCline = {
-	ask: vi.fn(),
-	sayAndCreateMissingParamError: mockSayAndCreateMissingParamError,
-	emit: mockEmit,
-	recordToolError: mockRecordToolError,
-	consecutiveMistakeCount: 0,
-	isPaused: false,
-	pausedModeSlug: "ask",
-	taskId: "mock-parent-task-id",
-	enableCheckpoints: false,
-	checkpointSave: mockCheckpointSave,
-	startSubtask: mockStartSubtask,
-	providerRef: {
-		deref: vi.fn(() => ({
-			getState: vi.fn(() => ({ customModes: [], mode: "ask" })),
-			handleModeSwitch: vi.fn(),
-			delegateParentAndOpenChild: mockDelegateParentAndOpenChild,
-		})),
-	},
-}
-
-// Import the class to test AFTER mocks are set up
-import { newTaskTool } from "../NewTaskTool"
-import { getModeBySlug } from "../../../shared/modes"
 import * as vscode from "vscode"
 
-const withNativeArgs = (block: ToolUse<"new_task">): ToolUse<"new_task"> => ({
-	...block,
-	// Native tool calling: `nativeArgs` is the source of truth for tool execution.
-	// These tests intentionally exercise missing-param behavior, so we allow undefined
-	// values and let the tool's runtime validation handle it.
-	nativeArgs: {
-		mode: block.params.mode,
-		message: block.params.message,
-		todos: block.params.todos,
-	} as unknown as NativeToolArgs["new_task"],
+import type { ToolUse } from "../../../shared/tools"
+import { Package } from "../../../shared/package"
+import { newTaskTool } from "../NewTaskTool"
+import { parseMarkdownChecklist } from "../UpdateTodoListTool"
+import { formatResponse } from "../../prompts/responses"
+
+// A chain of history items, child -> parent, keyed by task id.
+type History = Record<string, { parentTaskId?: string }>
+
+function makeTask(opts: { mode?: string; parentTaskId?: string; history?: History; isBackground?: boolean } = {}) {
+	const history = opts.history ?? {}
+	const provider = {
+		getState: vi.fn().mockResolvedValue({ customModes: [] }),
+		delegateParentAndOpenChild: vi.fn().mockResolvedValue({ taskId: "child-1" }),
+		getHistoryItem: vi.fn(async (id: string) => {
+			if (!history[id]) throw new Error("Task not found")
+			return history[id]
+		}),
+	}
+	const task = {
+		ask: vi.fn().mockResolvedValue({}),
+		sayAndCreateMissingParamError: vi.fn(async (_tool: string, param: string) => `missing ${param}`),
+		recordToolError: vi.fn(),
+		consecutiveMistakeCount: 2,
+		didToolFailInCurrentTurn: false,
+		taskId: "current-task",
+		isBackground: opts.isBackground ?? false,
+		parentTaskId: opts.parentTaskId,
+		apiConfiguration: {},
+		getTaskMode: vi.fn().mockResolvedValue(opts.mode ?? "orchestrator"),
+		providerRef: { deref: () => provider as typeof provider | undefined },
+	}
+	return { task, provider }
+}
+
+async function callNewTask(
+	task: ReturnType<typeof makeTask>["task"],
+	params: Record<string, string | undefined>,
+	approve = true,
+) {
+	const callbacks = { askApproval: vi.fn().mockResolvedValue(approve), handleError: vi.fn(), pushToolResult: vi.fn() }
+	const block = { type: "tool_use", name: "new_task", id: "call-1", params, nativeArgs: params, partial: false }
+	await newTaskTool.handle(task as any, block as unknown as ToolUse<"new_task">, {
+		...callbacks,
+		toolCallId: "call-1",
+	})
+	return callbacks
+}
+
+// A chain of `levels` ancestors above "current-task": a1 (its parent) ... aN (the root).
+const chainOf = (levels: number) => {
+	const history: History = {}
+	for (let i = 1; i <= levels; i++) {
+		history[`a${i}`] = { parentTaskId: i < levels ? `a${i + 1}` : undefined }
+	}
+	return { parentTaskId: levels > 0 ? "a1" : undefined, history }
+}
+
+let requireTodos = false
+beforeEach(() => {
+	requireTodos = false
+	vi.spyOn(vscode.workspace, "getConfiguration").mockImplementation(
+		(section?: string) =>
+			({
+				get: (key: string, fallback: unknown) =>
+					section === Package.name && key === "newTaskRequireTodos" ? requireTodos : fallback,
+			}) as any,
+	)
+})
+
+afterEach(() => {
+	vi.restoreAllMocks()
 })
 
 describe("newTaskTool", () => {
-	beforeEach(() => {
-		// Reset mocks before each test
-		vi.clearAllMocks()
-		mockAskApproval.mockResolvedValue(true) // Default to approved
-		vi.mocked(getModeBySlug).mockReturnValue({
-			slug: "code",
-			name: "Code Mode",
-			roleDefinition: "Test role definition",
-			groups: ["command", "read", "edit"],
-		}) // Default valid mode
-		mockCline.consecutiveMistakeCount = 0
-		mockCline.isPaused = false
-		// Default: VSCode setting is disabled
-		const mockGet = vi.fn().mockReturnValue(false)
-		vi.mocked(vscode.workspace.getConfiguration).mockReturnValue({
-			get: mockGet,
-		} as any)
-	})
+	it("delegates after approval and reports the child", async () => {
+		const { task, provider } = makeTask()
+		const todos = "[ ] plan\n[x] read\n[-] write"
 
-	it("refuses to run inside a background subtask (no nested delegation)", async () => {
-		;(mockCline as any).isBackground = true
-		try {
-			const block: ToolUse<"new_task"> = {
-				type: "tool_use",
-				name: "new_task",
-				params: { mode: "code", message: "nested delegation attempt" },
-				partial: false,
-			}
+		const callbacks = await callNewTask(task, { mode: "code", message: "Do it", todos })
 
-			await newTaskTool.handle(mockCline as any, withNativeArgs(block), {
-				askApproval: mockAskApproval,
-				handleError: mockHandleError,
-				pushToolResult: mockPushToolResult,
-			})
-
-			expect(mockAskApproval).not.toHaveBeenCalled()
-			expect(mockStartSubtask).not.toHaveBeenCalled()
-			expect(mockCline.recordToolError).toHaveBeenCalledWith("new_task")
-			expect(mockPushToolResult).toHaveBeenCalledWith(
-				expect.stringContaining("not available inside a parallel subtask"),
-			)
-		} finally {
-			;(mockCline as any).isBackground = false
-		}
-	})
-
-	it("should correctly un-escape \\\\@ to \\@ in the message passed to the new task", async () => {
-		const block: ToolUse<"new_task"> = {
-			type: "tool_use", // Add required 'type' property
-			name: "new_task", // Correct property name
-			params: {
-				mode: "code",
-				message: "Review this: \\\\@file1.txt and also \\\\\\\\@file2.txt", // Input with \\@ and \\\\@
-				todos: "[ ] First task\n[ ] Second task",
-			},
-			partial: false,
-		}
-
-		await newTaskTool.handle(mockCline as any, withNativeArgs(block), {
-			askApproval: mockAskApproval,
-			handleError: mockHandleError,
-			pushToolResult: mockPushToolResult,
+		const todoItems = parseMarkdownChecklist(todos)
+		expect(todoItems.map((t) => t.status)).toEqual(["pending", "completed", "in_progress"])
+		expect(JSON.parse(callbacks.askApproval.mock.calls[0][1])).toEqual({
+			tool: "newTask",
+			mode: "💻 Code",
+			content: "Do it",
+			todos: todoItems,
+			toolCallId: "call-1",
 		})
-
-		// Verify askApproval was called
-		expect(mockAskApproval).toHaveBeenCalled()
-
-		// Verify the message passed to startSubtask reflects the code's behavior in unit tests
-		expect(mockStartSubtask).toHaveBeenCalledWith(
-			"Review this: \\@file1.txt and also \\\\\\@file2.txt", // Unit Test Expectation: \\@ -> \@, \\\\@ -> \\\\@
-			expect.arrayContaining([
-				expect.objectContaining({ content: "First task" }),
-				expect.objectContaining({ content: "Second task" }),
-			]),
-			"code",
-		)
-
-		// Verify side effects
-		expect(mockPushToolResult).toHaveBeenCalledWith(expect.stringContaining("Delegated to child task"))
-	})
-
-	it("should not un-escape single escaped @", async () => {
-		const block: ToolUse<"new_task"> = {
-			type: "tool_use", // Add required 'type' property
-			name: "new_task", // Correct property name
-			params: {
-				mode: "code",
-				message: "This is already unescaped: \\@file1.txt",
-				todos: "[ ] Test todo",
-			},
-			partial: false,
-		}
-
-		await newTaskTool.handle(mockCline as any, withNativeArgs(block), {
-			askApproval: mockAskApproval,
-			handleError: mockHandleError,
-			pushToolResult: mockPushToolResult,
-		})
-
-		expect(mockStartSubtask).toHaveBeenCalledWith(
-			"This is already unescaped: \\@file1.txt", // Expected: \@ remains \@
-			expect.any(Array),
-			"code",
-		)
-	})
-
-	it("should not un-escape non-escaped @", async () => {
-		const block: ToolUse<"new_task"> = {
-			type: "tool_use", // Add required 'type' property
-			name: "new_task", // Correct property name
-			params: {
-				mode: "code",
-				message: "A normal mention @file1.txt",
-				todos: "[ ] Test todo",
-			},
-			partial: false,
-		}
-
-		await newTaskTool.handle(mockCline as any, withNativeArgs(block), {
-			askApproval: mockAskApproval,
-			handleError: mockHandleError,
-			pushToolResult: mockPushToolResult,
-		})
-
-		expect(mockStartSubtask).toHaveBeenCalledWith(
-			"A normal mention @file1.txt", // Expected: @ remains @
-			expect.any(Array),
-			"code",
-		)
-	})
-
-	it("should handle mixed escaping scenarios", async () => {
-		const block: ToolUse<"new_task"> = {
-			type: "tool_use", // Add required 'type' property
-			name: "new_task", // Correct property name
-			params: {
-				mode: "code",
-				message: "Mix: @file0.txt, \\@file1.txt, \\\\@file2.txt, \\\\\\\\@file3.txt",
-				todos: "[ ] Test todo",
-			},
-			partial: false,
-		}
-
-		await newTaskTool.handle(mockCline as any, withNativeArgs(block), {
-			askApproval: mockAskApproval,
-			handleError: mockHandleError,
-			pushToolResult: mockPushToolResult,
-		})
-
-		expect(mockStartSubtask).toHaveBeenCalledWith(
-			"Mix: @file0.txt, \\@file1.txt, \\@file2.txt, \\\\\\@file3.txt", // Unit Test Expectation: @->@, \@->\@, \\@->\@, \\\\@->\\\\@
-			expect.any(Array),
-			"code",
-		)
-	})
-
-	it("should handle missing todos parameter gracefully (backward compatibility)", async () => {
-		const block: ToolUse<"new_task"> = {
-			type: "tool_use",
-			name: "new_task",
-			params: {
-				mode: "code",
-				message: "Test message",
-				// todos missing - should work for backward compatibility
-			},
-			partial: false,
-		}
-
-		await newTaskTool.handle(mockCline as any, withNativeArgs(block), {
-			askApproval: mockAskApproval,
-			handleError: mockHandleError,
-			pushToolResult: mockPushToolResult,
-		})
-
-		// Should NOT error when todos is missing
-		expect(mockSayAndCreateMissingParamError).not.toHaveBeenCalledWith("new_task", "todos")
-		expect(mockCline.consecutiveMistakeCount).toBe(0)
-		expect(mockCline.recordToolError).not.toHaveBeenCalledWith("new_task")
-
-		// Should create task with empty todos array
-		expect(mockStartSubtask).toHaveBeenCalledWith("Test message", [], "code")
-
-		// Should complete successfully
-		expect(mockPushToolResult).toHaveBeenCalledWith(expect.stringContaining("Delegated to child task"))
-	})
-
-	it("should work with todos parameter when provided", async () => {
-		const block: ToolUse<"new_task"> = {
-			type: "tool_use",
-			name: "new_task",
-			params: {
-				mode: "code",
-				message: "Test message with todos",
-				todos: "[ ] First task\n[ ] Second task",
-			},
-			partial: false,
-		}
-
-		await newTaskTool.handle(mockCline as any, withNativeArgs(block), {
-			askApproval: mockAskApproval,
-			handleError: mockHandleError,
-			pushToolResult: mockPushToolResult,
-		})
-
-		// Should parse and include todos when provided
-		expect(mockStartSubtask).toHaveBeenCalledWith(
-			"Test message with todos",
-			expect.arrayContaining([
-				expect.objectContaining({ content: "First task" }),
-				expect.objectContaining({ content: "Second task" }),
-			]),
-			"code",
-		)
-
-		expect(mockPushToolResult).toHaveBeenCalledWith(expect.stringContaining("Delegated to child task"))
-	})
-
-	it("should error when mode parameter is missing", async () => {
-		const block: ToolUse<"new_task"> = {
-			type: "tool_use",
-			name: "new_task",
-			params: {
-				// mode missing
-				message: "Test message",
-				todos: "[ ] Test todo",
-			},
-			partial: false,
-		}
-
-		await newTaskTool.handle(mockCline as any, withNativeArgs(block), {
-			askApproval: mockAskApproval,
-			handleError: mockHandleError,
-			pushToolResult: mockPushToolResult,
-		})
-
-		expect(mockSayAndCreateMissingParamError).toHaveBeenCalledWith("new_task", "mode")
-		expect(mockCline.consecutiveMistakeCount).toBe(1)
-		expect(mockCline.recordToolError).toHaveBeenCalledWith("new_task")
-	})
-
-	it("should error when message parameter is missing", async () => {
-		const block: ToolUse<"new_task"> = {
-			type: "tool_use",
-			name: "new_task",
-			params: {
-				mode: "code",
-				// message missing
-				todos: "[ ] Test todo",
-			},
-			partial: false,
-		}
-
-		await newTaskTool.handle(mockCline as any, withNativeArgs(block), {
-			askApproval: mockAskApproval,
-			handleError: mockHandleError,
-			pushToolResult: mockPushToolResult,
-		})
-
-		expect(mockSayAndCreateMissingParamError).toHaveBeenCalledWith("new_task", "message")
-		expect(mockCline.consecutiveMistakeCount).toBe(1)
-		expect(mockCline.recordToolError).toHaveBeenCalledWith("new_task")
-	})
-
-	it("should parse todos with different statuses correctly", async () => {
-		const block: ToolUse<"new_task"> = {
-			type: "tool_use",
-			name: "new_task",
-			params: {
-				mode: "code",
-				message: "Test message",
-				todos: "[ ] Pending task\n[x] Completed task\n[-] In progress task",
-			},
-			partial: false,
-		}
-
-		await newTaskTool.handle(mockCline as any, withNativeArgs(block), {
-			askApproval: mockAskApproval,
-			handleError: mockHandleError,
-			pushToolResult: mockPushToolResult,
-		})
-
-		expect(mockStartSubtask).toHaveBeenCalledWith(
-			"Test message",
-			expect.arrayContaining([
-				expect.objectContaining({ content: "Pending task", status: "pending" }),
-				expect.objectContaining({ content: "Completed task", status: "completed" }),
-				expect.objectContaining({ content: "In progress task", status: "in_progress" }),
-			]),
-			"code",
-		)
-	})
-
-	describe("VSCode setting: newTaskRequireTodos", () => {
-		it("should NOT require todos when VSCode setting is disabled (default)", async () => {
-			// Ensure VSCode setting is disabled
-			const mockGet = vi.fn().mockReturnValue(false)
-			vi.mocked(vscode.workspace.getConfiguration).mockReturnValue({
-				get: mockGet,
-			} as any)
-
-			const block: ToolUse<"new_task"> = {
-				type: "tool_use",
-				name: "new_task",
-				params: {
-					mode: "code",
-					message: "Test message",
-					// todos missing - should work when setting is disabled
-				},
-				partial: false,
-			}
-
-			await newTaskTool.handle(mockCline as any, withNativeArgs(block), {
-				askApproval: mockAskApproval,
-				handleError: mockHandleError,
-				pushToolResult: mockPushToolResult,
-			})
-
-			// Should NOT error when todos is missing and setting is disabled
-			expect(mockSayAndCreateMissingParamError).not.toHaveBeenCalledWith("new_task", "todos")
-			expect(mockCline.consecutiveMistakeCount).toBe(0)
-			expect(mockCline.recordToolError).not.toHaveBeenCalledWith("new_task")
-
-			// Should create task with empty todos array
-			expect(mockStartSubtask).toHaveBeenCalledWith("Test message", [], "code")
-
-			// Should complete successfully
-			expect(mockPushToolResult).toHaveBeenCalledWith(expect.stringContaining("Delegated to child task"))
-		})
-
-		it("should REQUIRE todos when VSCode setting is enabled", async () => {
-			// Enable VSCode setting
-			const mockGet = vi.fn().mockReturnValue(true)
-			vi.mocked(vscode.workspace.getConfiguration).mockReturnValue({
-				get: mockGet,
-			} as any)
-
-			const block: ToolUse<"new_task"> = {
-				type: "tool_use",
-				name: "new_task",
-				params: {
-					mode: "code",
-					message: "Test message",
-					// todos missing - should error when setting is enabled
-				},
-				partial: false,
-			}
-
-			await newTaskTool.handle(mockCline as any, withNativeArgs(block), {
-				askApproval: mockAskApproval,
-				handleError: mockHandleError,
-				pushToolResult: mockPushToolResult,
-			})
-
-			// Should error when todos is missing and setting is enabled
-			expect(mockSayAndCreateMissingParamError).toHaveBeenCalledWith("new_task", "todos")
-			expect(mockCline.consecutiveMistakeCount).toBe(1)
-			expect(mockCline.recordToolError).toHaveBeenCalledWith("new_task")
-
-			// Should NOT create task
-			expect(mockStartSubtask).not.toHaveBeenCalled()
-			expect(mockPushToolResult).not.toHaveBeenCalledWith(
-				expect.stringContaining("Successfully created new task"),
-			)
-		})
-
-		it("should work with todos when VSCode setting is enabled", async () => {
-			// Enable VSCode setting
-			const mockGet = vi.fn().mockReturnValue(true)
-			vi.mocked(vscode.workspace.getConfiguration).mockReturnValue({
-				get: mockGet,
-			} as any)
-
-			const block: ToolUse<"new_task"> = {
-				type: "tool_use",
-				name: "new_task",
-				params: {
-					mode: "code",
-					message: "Test message",
-					todos: "[ ] First task\n[ ] Second task",
-				},
-				partial: false,
-			}
-
-			await newTaskTool.handle(mockCline as any, withNativeArgs(block), {
-				askApproval: mockAskApproval,
-				handleError: mockHandleError,
-				pushToolResult: mockPushToolResult,
-			})
-
-			// Should NOT error when todos is provided and setting is enabled
-			expect(mockSayAndCreateMissingParamError).not.toHaveBeenCalledWith("new_task", "todos")
-			expect(mockCline.consecutiveMistakeCount).toBe(0)
-
-			// Should create task with parsed todos
-			expect(mockStartSubtask).toHaveBeenCalledWith(
-				"Test message",
-				expect.arrayContaining([
-					expect.objectContaining({ content: "First task" }),
-					expect.objectContaining({ content: "Second task" }),
-				]),
-				"code",
-			)
-
-			// Should complete successfully
-			expect(mockPushToolResult).toHaveBeenCalledWith(expect.stringContaining("Delegated to child task"))
-		})
-
-		it("should work with empty todos string when VSCode setting is enabled", async () => {
-			// Enable VSCode setting
-			const mockGet = vi.fn().mockReturnValue(true)
-			vi.mocked(vscode.workspace.getConfiguration).mockReturnValue({
-				get: mockGet,
-			} as any)
-
-			const block: ToolUse<"new_task"> = {
-				type: "tool_use",
-				name: "new_task",
-				params: {
-					mode: "code",
-					message: "Test message",
-					todos: "", // Empty string should be accepted
-				},
-				partial: false,
-			}
-
-			await newTaskTool.handle(mockCline as any, withNativeArgs(block), {
-				askApproval: mockAskApproval,
-				handleError: mockHandleError,
-				pushToolResult: mockPushToolResult,
-			})
-
-			// Should NOT error when todos is empty string and setting is enabled
-			expect(mockSayAndCreateMissingParamError).not.toHaveBeenCalledWith("new_task", "todos")
-			expect(mockCline.consecutiveMistakeCount).toBe(0)
-
-			// Should create task with empty todos array
-			expect(mockStartSubtask).toHaveBeenCalledWith("Test message", [], "code")
-
-			// Should complete successfully
-			expect(mockPushToolResult).toHaveBeenCalledWith(expect.stringContaining("Delegated to child task"))
-		})
-
-		it("should check VSCode setting with Package.name configuration key", async () => {
-			const mockGet = vi.fn().mockReturnValue(false)
-			const mockGetConfiguration = vi.fn().mockReturnValue({
-				get: mockGet,
-			} as any)
-			vi.mocked(vscode.workspace.getConfiguration).mockImplementation(mockGetConfiguration)
-
-			const block: ToolUse<"new_task"> = {
-				type: "tool_use",
-				name: "new_task",
-				params: {
-					mode: "code",
-					message: "Test message",
-				},
-				partial: false,
-			}
-
-			await newTaskTool.handle(mockCline as any, withNativeArgs(block), {
-				askApproval: mockAskApproval,
-				handleError: mockHandleError,
-				pushToolResult: mockPushToolResult,
-			})
-
-			// Verify that VSCode configuration was accessed with Package.name
-			expect(mockGetConfiguration).toHaveBeenCalledWith("tumble-code")
-			expect(mockGet).toHaveBeenCalledWith("newTaskRequireTodos", false)
-		})
-
-		it("should use current Package.name value (roo-code-nightly) when accessing VSCode configuration", async () => {
-			// Arrange: capture calls to VSCode configuration and ensure we can assert the namespace
-			const mockGet = vi.fn().mockReturnValue(false)
-			const mockGetConfiguration = vi.fn().mockReturnValue({
-				get: mockGet,
-			} as any)
-			vi.mocked(vscode.workspace.getConfiguration).mockImplementation(mockGetConfiguration)
-
-			// Mutate the mocked Package.name dynamically to simulate a different build variant
-			const pkg = await import("../../../shared/package")
-			;(pkg.Package as any).name = "roo-code-nightly"
-
-			const block: ToolUse<"new_task"> = {
-				type: "tool_use",
-				name: "new_task",
-				params: {
-					mode: "code",
-					message: "Test message",
-				},
-				partial: false,
-			}
-
-			await newTaskTool.handle(mockCline as any, withNativeArgs(block), {
-				askApproval: mockAskApproval,
-				handleError: mockHandleError,
-				pushToolResult: mockPushToolResult,
-			})
-
-			// Assert: configuration was read using the dynamic nightly namespace
-			expect(mockGetConfiguration).toHaveBeenCalledWith("roo-code-nightly")
-			expect(mockGet).toHaveBeenCalledWith("newTaskRequireTodos", false)
-		})
-	})
-
-	// Add more tests for error handling (invalid mode, approval denied) if needed
-})
-
-describe("newTaskTool delegation flow", () => {
-	it("delegates to provider and does not call legacy startSubtask", async () => {
-		// Arrange: stub provider delegation
-		const providerSpy = {
-			getState: vi.fn().mockResolvedValue({
-				mode: "ask",
-				experiments: {},
-			}),
-			delegateParentAndOpenChild: vi.fn().mockResolvedValue({ taskId: "child-1" }),
-			handleModeSwitch: vi.fn(),
-		} as any
-
-		// Use a fresh local cline instance to avoid cross-test interference
-		const localStartSubtask = vi.fn()
-		const localEmit = vi.fn()
-		const localCline = {
-			ask: vi.fn(),
-			sayAndCreateMissingParamError: mockSayAndCreateMissingParamError,
-			emit: localEmit,
-			recordToolError: mockRecordToolError,
-			consecutiveMistakeCount: 0,
-			isPaused: false,
-			pausedModeSlug: "ask",
-			taskId: "mock-parent-task-id",
-			enableCheckpoints: false,
-			checkpointSave: mockCheckpointSave,
-			startSubtask: localStartSubtask,
-			providerRef: {
-				deref: vi.fn(() => providerSpy),
-			},
-		}
-
-		const block: ToolUse<"new_task"> = {
-			type: "tool_use",
-			name: "new_task",
-			params: {
-				mode: "code",
-				message: "Do something",
-				// no todos -> should default to []
-			},
-			partial: false,
-		}
-
-		// Act
-		await newTaskTool.handle(localCline as any, withNativeArgs(block), {
-			askApproval: mockAskApproval,
-			handleError: mockHandleError,
-			pushToolResult: mockPushToolResult,
-		})
-
-		// Assert: provider method called with correct params
-		expect(providerSpy.delegateParentAndOpenChild).toHaveBeenCalledWith({
-			parentTaskId: "mock-parent-task-id",
-			message: "Do something",
-			initialTodos: [],
+		expect(provider.delegateParentAndOpenChild).toHaveBeenCalledWith({
+			parentTaskId: "current-task",
+			message: "Do it",
+			initialTodos: todoItems,
 			mode: "code",
 		})
+		expect(callbacks.pushToolResult).toHaveBeenCalledWith("Delegated to child task child-1")
+		expect(task.consecutiveMistakeCount).toBe(0)
+	})
 
-		// Assert: legacy path not used
-		expect(localStartSubtask).not.toHaveBeenCalled()
+	it.each([
+		["\\\\@file", "\\@file"],
+		["\\@file", "\\@file"],
+		["@file and \\\\@other", "@file and \\@other"],
+	])("hands %j to the child as %j (one level of escaping removed)", async (message, delivered) => {
+		const { task, provider } = makeTask()
 
-		// Assert: no pause/unpause events emitted in delegation path
-		const pauseEvents = (localEmit as any).mock.calls.filter(
-			(c: any[]) => c[0] === "taskPaused" || c[0] === "taskUnpaused",
+		await callNewTask(task, { mode: "code", message })
+
+		expect(provider.delegateParentAndOpenChild).toHaveBeenCalledWith(
+			expect.objectContaining({ message: delivered }),
 		)
-		expect(pauseEvents.length).toBe(0)
+	})
 
-		// Assert: tool result reflects delegation
-		expect(mockPushToolResult).toHaveBeenCalledWith(expect.stringContaining("Delegated to child task child-1"))
+	it.each([
+		[{ message: "x" }, "mode"],
+		[{ mode: "code" }, "message"],
+	])("reports %j as missing its %s and fails the turn", async (params, param) => {
+		const { task, provider } = makeTask()
+
+		const callbacks = await callNewTask(task, params)
+
+		expect(callbacks.pushToolResult).toHaveBeenCalledWith(`missing ${param}`)
+		expect(task.didToolFailInCurrentTurn).toBe(true)
+		expect(provider.delegateParentAndOpenChild).not.toHaveBeenCalled()
+	})
+
+	it.each([
+		[true, undefined, false],
+		[true, "", true],
+		[false, undefined, true],
+	])("with newTaskRequireTodos %s and todos %j delegates: %s", async (setting, todos, delegates) => {
+		requireTodos = setting
+		const { task, provider } = makeTask()
+
+		const callbacks = await callNewTask(task, { mode: "code", message: "x", todos })
+
+		expect(provider.delegateParentAndOpenChild.mock.calls.length > 0).toBe(delegates)
+		if (!delegates) expect(callbacks.pushToolResult).toHaveBeenCalledWith("missing todos")
+	})
+
+	it.each([
+		[
+			"inside a background subtask",
+			makeTask({ isBackground: true }).task,
+			"new_task is not available inside a parallel subtask.",
+		],
+		["for an unknown mode", makeTask().task, "Invalid mode: nope"],
+	])("refuses %s", async (_, task, error) => {
+		const callbacks = await callNewTask(task, { mode: "nope", message: "x" })
+
+		expect(callbacks.pushToolResult.mock.calls[0][0]).toContain(error)
+		expect(callbacks.askApproval).not.toHaveBeenCalled()
+	})
+
+	it("refuses when the provider is gone", async () => {
+		const { task } = makeTask()
+		task.providerRef.deref = () => undefined
+
+		const callbacks = await callNewTask(task, { mode: "code", message: "x" })
+
+		expect(callbacks.pushToolResult).toHaveBeenCalledWith(formatResponse.toolError("Provider reference lost"))
+	})
+
+	it("does not delegate when the user rejects", async () => {
+		const { task, provider } = makeTask()
+
+		await callNewTask(task, { mode: "code", message: "x" }, false)
+
+		expect(provider.delegateParentAndOpenChild).not.toHaveBeenCalled()
+	})
+
+	it("hands a failed delegation to handleError", async () => {
+		const { task, provider } = makeTask()
+		const failure = new Error("no child")
+		provider.delegateParentAndOpenChild.mockRejectedValue(failure)
+
+		const callbacks = await callNewTask(task, { mode: "code", message: "x" })
+
+		expect(callbacks.handleError).toHaveBeenCalledWith("creating new task", failure, "new_task")
+	})
+
+	it("shows the raw call while it streams", async () => {
+		const { task } = makeTask()
+		const block = {
+			type: "tool_use",
+			name: "new_task",
+			id: "call-2",
+			params: { mode: "code", todos: "[ ] a" },
+			partial: true,
+		}
+
+		await newTaskTool.handle(task as any, block as unknown as ToolUse<"new_task">, {} as any)
+
+		expect(task.ask).toHaveBeenCalledWith(
+			"tool",
+			JSON.stringify({ tool: "newTask", mode: "code", content: "", todos: "[ ] a", toolCallId: "call-2" }),
+			true,
+		)
 	})
 })
 
 describe("newTaskTool delegation guard", () => {
-	// A chain of history items, child -> parent, keyed by task id.
-	type History = Record<string, { parentTaskId?: string }>
-
-	const makeTask = (opts: { mode: string; parentTaskId?: string; history?: History }) => {
-		const history = opts.history ?? {}
-		const provider = {
-			getState: vi.fn().mockResolvedValue({ customModes: [], mode: opts.mode }),
-			delegateParentAndOpenChild: vi.fn().mockResolvedValue({ taskId: "child-1" }),
-			getHistoryItem: vi.fn(async (id: string) => {
-				if (!history[id]) {
-					throw new Error("Task not found")
-				}
-				return history[id]
-			}),
-		}
-		const task = {
-			ask: vi.fn(),
-			sayAndCreateMissingParamError: mockSayAndCreateMissingParamError,
-			recordToolError: vi.fn(),
-			consecutiveMistakeCount: 0,
-			taskId: "current-task",
-			parentTaskId: opts.parentTaskId,
-			getTaskMode: vi.fn().mockResolvedValue(opts.mode),
-			providerRef: { deref: () => provider },
-		}
-		return { task, provider }
+	const refusal = async (opts: Parameters<typeof makeTask>[0], targetMode: string) => {
+		const { task, provider } = makeTask(opts)
+		const callbacks = await callNewTask(task, { mode: targetMode, message: "Do something" })
+		const delegated = provider.delegateParentAndOpenChild.mock.calls.length > 0
+		return { task, provider, callbacks, delegated }
 	}
-
-	const callNewTask = async (task: unknown, mode: string) => {
-		const block: ToolUse<"new_task"> = {
-			type: "tool_use",
-			name: "new_task",
-			params: { mode, message: "Do something" },
-			partial: false,
-		}
-		await newTaskTool.handle(task as any, withNativeArgs(block), {
-			askApproval: mockAskApproval,
-			handleError: mockHandleError,
-			pushToolResult: mockPushToolResult,
-		})
-	}
-
-	// A chain of `levels` ancestors above "current-task": a1 (its parent) ... aN (the root).
-	const chainOf = (levels: number) => {
-		const history: History = {}
-		for (let i = 1; i <= levels; i++) {
-			history[`a${i}`] = { parentTaskId: i < levels ? `a${i + 1}` : undefined }
-		}
-		return { parentTaskId: levels > 0 ? "a1" : undefined, history }
-	}
-
-	beforeEach(() => {
-		vi.clearAllMocks()
-		mockAskApproval.mockResolvedValue(true)
-		vi.mocked(getModeBySlug).mockImplementation((slug: string) => ({
-			slug,
-			name: slug,
-			roleDefinition: "Test role definition",
-			groups: ["read"],
-		}))
-		vi.mocked(vscode.workspace.getConfiguration).mockReturnValue({ get: vi.fn().mockReturnValue(false) } as any)
-	})
 
 	it("refuses a subtask delegating to its own mode (the ask -> ask loop)", async () => {
-		const { task, provider } = makeTask({ mode: "ask", ...chainOf(1) })
+		const { task, callbacks, delegated } = await refusal({ mode: "ask", ...chainOf(1) }, "ask")
 
-		await callNewTask(task, "ask")
-
-		expect(mockAskApproval).not.toHaveBeenCalled()
-		expect(provider.delegateParentAndOpenChild).not.toHaveBeenCalled()
-		expect(task.recordToolError).toHaveBeenCalledWith("new_task")
-		expect(task.consecutiveMistakeCount).toBe(1)
-		const result = mockPushToolResult.mock.calls[0][0] as string
+		expect(delegated).toBe(false)
+		expect(callbacks.askApproval).not.toHaveBeenCalled()
+		expect(task.consecutiveMistakeCount).toBe(3)
+		// Counted as a mistake, but attempt_completion stays open.
+		expect(task.didToolFailInCurrentTurn).toBe(false)
+		const result = JSON.parse(callbacks.pushToolResult.mock.calls[0][0]).error as string
 		expect(result).toContain('already a subtask in "ask" mode')
 		expect(result).toContain("Do the work yourself in this task")
-		expect(result).toContain("attempt_completion")
 	})
 
-	it("lets the task the user started delegate to its own mode (fresh context)", async () => {
-		const { task, provider } = makeTask({ mode: "code" })
-
-		await callNewTask(task, "code")
-
-		expect(provider.delegateParentAndOpenChild).toHaveBeenCalledWith(expect.objectContaining({ mode: "code" }))
-		expect(task.consecutiveMistakeCount).toBe(0)
-	})
-
-	it("allows orchestrator -> code -> ask", async () => {
-		const { task, provider } = makeTask({ mode: "code", ...chainOf(1) })
-
-		await callNewTask(task, "ask")
-
-		expect(provider.delegateParentAndOpenChild).toHaveBeenCalledWith(expect.objectContaining({ mode: "ask" }))
-	})
-
-	it("allows a child at the depth limit (5 levels below the root)", async () => {
-		const { task, provider } = makeTask({ mode: "code", ...chainOf(4) })
-
-		await callNewTask(task, "ask")
-
-		expect(provider.delegateParentAndOpenChild).toHaveBeenCalled()
+	it.each([
+		["the task the user started delegating to its own mode (fresh context)", { mode: "code" }, "code"],
+		["orchestrator -> code -> ask", { mode: "code", ...chainOf(1) }, "ask"],
+		["a child at the depth limit (5 levels below the root)", { mode: "code", ...chainOf(4) }, "ask"],
+		[
+			"a child whose parent is missing from the history (only known ancestors count)",
+			{ mode: "code", parentTaskId: "gone" },
+			"ask",
+		],
+	])("allows %s", async (_, opts, targetMode) => {
+		expect((await refusal(opts, targetMode)).delegated).toBe(true)
 	})
 
 	it("refuses a child deeper than the limit, walking parentTaskId through the history", async () => {
-		const { task, provider } = makeTask({ mode: "code", ...chainOf(5) })
+		const { callbacks, delegated } = await refusal({ mode: "code", ...chainOf(5) }, "ask")
 
-		await callNewTask(task, "ask")
-
-		expect(mockAskApproval).not.toHaveBeenCalled()
-		expect(provider.delegateParentAndOpenChild).not.toHaveBeenCalled()
-		expect(task.consecutiveMistakeCount).toBe(1)
-		const result = mockPushToolResult.mock.calls[0][0] as string
-		expect(result).toContain("already 5 levels of subtasks below the task the user started")
-		expect(result).toContain("limit (5)")
-		expect(result).toContain("attempt_completion")
+		expect(delegated).toBe(false)
+		expect(callbacks.pushToolResult.mock.calls[0][0]).toContain(
+			"already 5 levels of subtasks below the task the user started, which is the limit (5)",
+		)
 	})
 
 	it("stops walking a chain that points back at itself", async () => {
-		const { task, provider } = makeTask({
-			mode: "code",
-			parentTaskId: "a1",
-			history: { a1: { parentTaskId: "a2" }, a2: { parentTaskId: "a1" } },
-		})
-
-		await callNewTask(task, "ask")
+		const history = { a1: { parentTaskId: "a2" }, a2: { parentTaskId: "a1" } }
+		const { provider, delegated } = await refusal({ mode: "code", parentTaskId: "a1", history }, "ask")
 
 		expect(provider.getHistoryItem).toHaveBeenCalledTimes(5)
-		expect(provider.delegateParentAndOpenChild).not.toHaveBeenCalled()
-	})
-
-	it("counts only the known ancestors when a parent is missing from the history", async () => {
-		const { task, provider } = makeTask({ mode: "code", parentTaskId: "deleted-parent" })
-
-		await callNewTask(task, "ask")
-
-		expect(provider.delegateParentAndOpenChild).toHaveBeenCalled()
+		expect(delegated).toBe(false)
 	})
 })
