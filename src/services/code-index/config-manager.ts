@@ -36,13 +36,6 @@ export class CodeIndexConfigManager {
 	}
 
 	/**
-	 * Gets the context proxy instance
-	 */
-	public getContextProxy(): ContextProxy {
-		return this.contextProxy
-	}
-
-	/**
 	 * Private method that handles loading configuration from storage and updating instance variables.
 	 * This eliminates code duplication between initializeWithCurrentConfig() and loadConfiguration().
 	 */
@@ -81,7 +74,7 @@ export class CodeIndexConfigManager {
 		// Update instance variables with configuration
 		this.codebaseIndexEnabled = codebaseIndexEnabled ?? false
 		this.qdrantUrl = codebaseIndexQdrantUrl
-		this.qdrantApiKey = qdrantApiKey ?? ""
+		this.qdrantApiKey = qdrantApiKey
 		this.searchMinScore = codebaseIndexSearchMinScore
 		this.searchMaxResults = codebaseIndexSearchMaxResults
 
@@ -145,7 +138,7 @@ export class CodeIndexConfigManager {
 			modelDimension: this.modelDimension,
 			...snapshotEmbedderOptions(this.embedderOptions),
 			qdrantUrl: this.qdrantUrl ?? "",
-			qdrantApiKey: this.qdrantApiKey ?? "",
+			qdrantApiKey: this.qdrantApiKey,
 		}
 
 		// Refresh secrets from VSCode storage to ensure we have the latest values
@@ -199,16 +192,15 @@ export class CodeIndexConfigManager {
 	 * - UI-only settings
 	 * - Non-functional configuration tweaks
 	 */
-	doesConfigChangeRequireRestart(prev: PreviousConfigSnapshot): boolean {
+	private doesConfigChangeRequireRestart(prev: PreviousConfigSnapshot): boolean {
 		const nowConfigured = this.isConfigured()
 
-		// Handle null/undefined values safely
-		const prevEnabled = prev?.enabled ?? false
-		const prevConfigured = prev?.configured ?? false
-		const prevProvider = prev?.embedderProvider ?? "openai"
-		const prevModelDimension = prev?.modelDimension
-		const prevQdrantUrl = prev?.qdrantUrl ?? ""
-		const prevQdrantApiKey = prev?.qdrantApiKey ?? ""
+		const prevEnabled = prev.enabled
+		const prevConfigured = prev.configured
+		const prevProvider = prev.embedderProvider
+		const prevModelDimension = prev.modelDimension
+		const prevQdrantUrl = prev.qdrantUrl
+		const prevQdrantApiKey = prev.qdrantApiKey
 
 		// 1. Transition from disabled/unconfigured to enabled/configured
 		if ((!prevEnabled || !prevConfigured) && this.codebaseIndexEnabled && nowConfigured) {
@@ -225,12 +217,7 @@ export class CodeIndexConfigManager {
 			return false
 		}
 
-		// 4. CRITICAL CHANGES - Always restart for these
-		// Only check for critical changes if feature is enabled
-		if (!this.codebaseIndexEnabled) {
-			return false
-		}
-
+		// 4. CRITICAL CHANGES - Always restart for these (the feature is enabled here)
 		// Provider change
 		if (prevProvider !== this.embedderProvider) {
 			return true
@@ -239,14 +226,14 @@ export class CodeIndexConfigManager {
 		// Authentication and endpoint changes of any embedder (API keys, base URLs, regions)
 		const embedderFields = snapshotEmbedderOptions(this.embedderOptions)
 		for (const [field, value] of Object.entries(embedderFields)) {
-			if ((prev?.[field as keyof PreviousConfigSnapshot] ?? "") !== value) {
+			if (prev[field as keyof PreviousConfigSnapshot] !== value) {
 				return true
 			}
 		}
 
 		const currentModelDimension = this.modelDimension
 		const currentQdrantUrl = this.qdrantUrl ?? ""
-		const currentQdrantApiKey = this.qdrantApiKey ?? ""
+		const currentQdrantApiKey = this.qdrantApiKey
 
 		// Check for model dimension changes (generic for all providers)
 		if (prevModelDimension !== currentModelDimension) {
@@ -258,7 +245,7 @@ export class CodeIndexConfigManager {
 		}
 
 		// Vector dimension changes (still important for compatibility)
-		if (this._hasVectorDimensionChanged(prevProvider, prev?.modelId)) {
+		if (this._hasVectorDimensionChanged(prevProvider, prev.modelId)) {
 			return true
 		}
 
@@ -327,23 +314,6 @@ export class CodeIndexConfigManager {
 	 */
 	public get currentEmbedderProvider(): EmbedderProvider {
 		return this.embedderProvider
-	}
-
-	/**
-	 * Gets the current Qdrant configuration
-	 */
-	public get qdrantConfig(): { url?: string; apiKey?: string } {
-		return {
-			url: this.qdrantUrl,
-			apiKey: this.qdrantApiKey,
-		}
-	}
-
-	/**
-	 * Gets the current model ID being used for embeddings.
-	 */
-	public get currentModelId(): string | undefined {
-		return this.modelId
 	}
 
 	/**
