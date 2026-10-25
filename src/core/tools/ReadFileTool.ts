@@ -199,7 +199,7 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 				}
 
 				// Request user approval
-				await this.requestApproval(task, [fileResult], updateFileResult, toolCallId)
+				await this.requestApproval(task, fileResult, toolCallId)
 				if (fileResult.status !== "approved") continue
 
 				if (!imageLimits) {
@@ -388,6 +388,11 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 	 * Slice mode (default): simple offset/limit reading.
 	 */
 	private readSlice(content: string, offset1: number, limit: number): string {
+		// readWithSlice counts an empty file as one empty line.
+		if (content.length === 0) {
+			return "Note: File is empty"
+		}
+
 		// NOTE: read_file offset is 1-based externally; convert to 0-based for readWithSlice.
 		const offset0 = Math.max(0, offset1 - 1)
 
@@ -406,12 +411,8 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 	
 	${result.content}`
 		} else if (result.returnedLines === 0) {
-			// No lines come back for an empty file and for an offset past the last line; the model
-			// needs to know which, or it takes a long file for an empty one.
-			output =
-				content.length === 0 || result.totalLines === 0
-					? "Note: File is empty"
-					: `Note: offset ${offset1} is past the end of the file, which has ${result.totalLines} lines. Use an offset from 1 to ${result.totalLines}.`
+			// The model needs to know the offset was past the end, or it takes a long file for an empty one.
+			output = `Note: offset ${offset1} is past the end of the file, which has ${result.totalLines} lines. Use an offset from 1 to ${result.totalLines}.`
 		}
 
 		return output
@@ -539,116 +540,39 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 	}
 
 	/**
-	 * Request user approval for file reads.
+	 * Ask the user to approve reading one file; the answer and any feedback land on `fileResult`.
 	 */
-	private async requestApproval(
-		task: Task,
-		filesToApprove: FileResult[],
-		updateFileResult: (path: string, updates: Partial<FileResult>) => void,
-		toolCallId?: string,
-	): Promise<void> {
-		if (filesToApprove.length === 0) return
+	private async requestApproval(task: Task, fileResult: FileResult, toolCallId?: string): Promise<void> {
+		const relPath = fileResult.path
+		const fullPath = path.resolve(task.cwd, relPath)
+		const isOutsideWorkspace = isPathOutsideWorkspace(fullPath)
+		const lineSnippet = this.getLineSnippet(fileResult.entry!)
 
-		if (filesToApprove.length > 1) {
-			// Batch approval
-			const batchFiles = filesToApprove.map((fileResult) => {
-				const relPath = fileResult.path
-				const fullPath = path.resolve(task.cwd, relPath)
-				const isOutsideWorkspace = isPathOutsideWorkspace(fullPath)
-				const readablePath = getReadablePath(task.cwd, relPath)
+		const startLine = this.getStartLine(fileResult.entry!)
 
-				const lineSnippet = this.getLineSnippet(fileResult.entry!)
-				const key = `${readablePath}${lineSnippet ? ` (${lineSnippet})` : ""}`
+		const completeMessage = JSON.stringify({
+			tool: "readFile",
+			path: getReadablePath(task.cwd, relPath),
+			isOutsideWorkspace,
+			content: fullPath,
+			reason: lineSnippet,
+			startLine,
+			toolCallId,
+		} satisfies ClineSayTool)
 
-				return { path: readablePath, lineSnippet, isOutsideWorkspace, key, content: fullPath }
+		const { response, text, images } = await task.ask("tool", completeMessage, false)
+
+		if (text) await task.say("user_feedback", text, images)
+		if (response !== "yesButtonClicked") {
+			task.didRejectTool = true
+			Object.assign(fileResult, {
+				status: "denied",
+				nativeContent: `File: ${relPath}\nStatus: Denied by user`,
+				feedbackText: text,
+				feedbackImages: images,
 			})
-
-			const completeMessage = JSON.stringify({ tool: "readFile", batchFiles, toolCallId } satisfies ClineSayTool)
-			const { response, text, images } = await task.ask("tool", completeMessage, false)
-
-			if (response === "yesButtonClicked") {
-				if (text) await task.say("user_feedback", text, images)
-				filesToApprove.forEach((fr) => {
-					updateFileResult(fr.path, { status: "approved", feedbackText: text, feedbackImages: images })
-				})
-			} else if (response === "noButtonClicked") {
-				if (text) await task.say("user_feedback", text, images)
-				task.didRejectTool = true
-				filesToApprove.forEach((fr) => {
-					updateFileResult(fr.path, {
-						status: "denied",
-						nativeContent: `File: ${fr.path}\nStatus: Denied by user`,
-						feedbackText: text,
-						feedbackImages: images,
-					})
-				})
-			} else {
-				// Individual permissions
-				try {
-					const individualPermissions = JSON.parse(text || "{}")
-					let hasAnyDenial = false
-
-					batchFiles.forEach((batchFile, index) => {
-						const fileResult = filesToApprove[index]
-						const approved = individualPermissions[batchFile.key] === true
-
-						if (approved) {
-							updateFileResult(fileResult.path, { status: "approved" })
-						} else {
-							hasAnyDenial = true
-							updateFileResult(fileResult.path, {
-								status: "denied",
-								nativeContent: `File: ${fileResult.path}\nStatus: Denied by user`,
-							})
-						}
-					})
-
-					if (hasAnyDenial) task.didRejectTool = true
-				} catch {
-					task.didRejectTool = true
-					filesToApprove.forEach((fr) => {
-						updateFileResult(fr.path, {
-							status: "denied",
-							nativeContent: `File: ${fr.path}\nStatus: Denied by user`,
-						})
-					})
-				}
-			}
 		} else {
-			// Single file approval
-			const fileResult = filesToApprove[0]
-			const relPath = fileResult.path
-			const fullPath = path.resolve(task.cwd, relPath)
-			const isOutsideWorkspace = isPathOutsideWorkspace(fullPath)
-			const lineSnippet = this.getLineSnippet(fileResult.entry!)
-
-			const startLine = this.getStartLine(fileResult.entry!)
-
-			const completeMessage = JSON.stringify({
-				tool: "readFile",
-				path: getReadablePath(task.cwd, relPath),
-				isOutsideWorkspace,
-				content: fullPath,
-				reason: lineSnippet,
-				startLine,
-				toolCallId,
-			} satisfies ClineSayTool)
-
-			const { response, text, images } = await task.ask("tool", completeMessage, false)
-
-			if (response !== "yesButtonClicked") {
-				if (text) await task.say("user_feedback", text, images)
-				task.didRejectTool = true
-				updateFileResult(relPath, {
-					status: "denied",
-					nativeContent: `File: ${relPath}\nStatus: Denied by user`,
-					feedbackText: text,
-					feedbackImages: images,
-				})
-			} else {
-				if (text) await task.say("user_feedback", text, images)
-				updateFileResult(relPath, { status: "approved", feedbackText: text, feedbackImages: images })
-			}
+			Object.assign(fileResult, { status: "approved", feedbackText: text, feedbackImages: images })
 		}
 	}
 
