@@ -1,620 +1,159 @@
+// The problems text the agent sees, built from VS Code diagnostics. The vscode API (the shared
+// mock plus a fake file system answer per file) is the only stand-in.
+
+import * as path from "path"
 import * as vscode from "vscode"
 
-import { diagnosticsToProblemsString } from "../index"
+import { diagnosticsToProblemsString, getNewDiagnostics } from "../index"
 
-// Mock path module
-vitest.mock("path", () => ({
-	relative: vitest.fn((cwd, fullPath) => {
-		let relativePath = ""
-		// Handle the specific case already present
-		if (cwd === "/project/root" && fullPath === "/project/root/src/utils/file.ts") {
-			relativePath = "src/utils/file.ts"
-		}
-		// Handle the test cases with /path/to as cwd
-		else if (cwd === "/path/to") {
-			// Simple relative path calculation for the test cases
-			relativePath = fullPath.replace(cwd + "/", "")
-		}
-		// Fallback for other cases (can be adjusted if needed)
-		else {
-			relativePath = fullPath
-		}
+const { Error, Warning, Information, Hint } = vscode.DiagnosticSeverity
+const ALL = [Error, Warning, Information, Hint]
+const CWD = path.resolve(path.sep, "project")
 
-		// Return a string-like object with toPosix method
-		const result = Object.assign(relativePath, {
-			toPosix: () => relativePath.replace(/\\/g, "/"),
-		})
-		return result
-	}),
-}))
+const uri = (relPath: string) => {
+	const fsPath = path.join(CWD, relPath)
+	return { fsPath, toString: () => fsPath } as unknown as vscode.Uri
+}
+const diag = (line: number, message: string, severity: number, source?: string) =>
+	({ range: { start: { line, character: 0 } }, message, severity, source }) as unknown as vscode.Diagnostic
 
-// Mock vscode module
-vitest.mock("vscode", () => ({
-	Uri: {
-		file: vitest.fn((path) => ({
-			fsPath: path,
-			toString: vitest.fn(() => path),
-		})),
-	},
-	Diagnostic: vitest.fn().mockImplementation(function (range, message, severity) {
-		return {
-			range,
-			message,
-			severity,
-			source: "test",
-		}
-	}),
-	Range: vitest.fn().mockImplementation(function (startLine, startChar, endLine, endChar) {
-		return {
-			start: { line: startLine, character: startChar },
-			end: { line: endLine, character: endChar },
-		}
-	}),
-	DiagnosticSeverity: {
-		Error: 0,
-		Warning: 1,
-		Information: 2,
-		Hint: 3,
-	},
-	FileType: {
-		Unknown: 0,
-		File: 1,
-		Directory: 2,
-		SymbolicLink: 64,
-	},
-	workspace: {
-		fs: {
-			stat: vitest.fn(),
-		},
-		openTextDocument: vitest.fn(),
-	},
-}))
+// What the fake file system answers per file: its lines, "dir", or "gone" (stat throws).
+let files: Record<string, string[] | "dir" | "gone">
+let openTextDocument: ReturnType<typeof vi.fn>
+
+beforeEach(() => {
+	files = {}
+	vi.spyOn(vscode.workspace.fs, "stat").mockImplementation(async (u: vscode.Uri) => {
+		const entry = files[u.fsPath]
+		if (entry === "gone" || entry === undefined) throw new globalThis.Error("ENOENT")
+		return { type: entry === "dir" ? vscode.FileType.Directory : vscode.FileType.File } as vscode.FileStat
+	})
+	openTextDocument = vi.fn(async (u: vscode.Uri) => ({
+		lineAt: (line: number) => ({ text: (files[u.fsPath] as string[])[line] }),
+	}))
+	;(vscode.workspace as any).openTextDocument = openTextDocument
+})
+
+afterEach(() => {
+	vi.restoreAllMocks()
+	delete (vscode.workspace as any).openTextDocument
+})
+
+const problems = (diagnostics: [vscode.Uri, vscode.Diagnostic[]][], severities = ALL, include = true, max?: number) =>
+	diagnosticsToProblemsString(diagnostics, severities, CWD, include, max)
 
 describe("diagnosticsToProblemsString", () => {
+	const a = uri("src/a.ts")
+	const b = uri("b.ts")
+
 	beforeEach(() => {
-		vitest.clearAllMocks()
+		files[a.fsPath] = ["const x", "let y", "z()", "w"]
+		files[b.fsPath] = ["only line"]
 	})
 
-	it("should filter diagnostics by severity and include correct labels", async () => {
-		// Mock file URI
-		const fileUri = vscode.Uri.file("/path/to/file.ts")
-
-		// Create diagnostics with different severities
-		const diagnostics = [
-			new vscode.Diagnostic(new vscode.Range(0, 0, 0, 10), "Error message", vscode.DiagnosticSeverity.Error),
-			new vscode.Diagnostic(new vscode.Range(1, 0, 1, 10), "Warning message", vscode.DiagnosticSeverity.Warning),
-			new vscode.Diagnostic(new vscode.Range(2, 0, 2, 10), "Info message", vscode.DiagnosticSeverity.Information),
-			new vscode.Diagnostic(new vscode.Range(3, 0, 3, 10), "Hint message", vscode.DiagnosticSeverity.Hint),
-		]
-
-		// Mock fs.stat to return file type
-		const mockStat = {
-			type: vscode.FileType.File,
-		}
-		vscode.workspace.fs.stat = vitest.fn().mockResolvedValue(mockStat)
-
-		// Mock document content
-		const mockDocument = {
-			lineAt: vitest.fn((line) => ({
-				text: `Line ${line + 1} content`,
-			})),
-		}
-		vscode.workspace.openTextDocument = vitest.fn().mockResolvedValue(mockDocument)
-
-		// Test with Error and Warning severities only
-		const result = await diagnosticsToProblemsString(
-			[[fileUri, diagnostics]],
-			[vscode.DiagnosticSeverity.Error, vscode.DiagnosticSeverity.Warning],
-			"/path/to",
-		)
-
-		// Verify only Error and Warning diagnostics are included
-		expect(result).toContain("Error message")
-		expect(result).toContain("Warning message")
-		expect(result).not.toContain("Info message")
-		expect(result).not.toContain("Hint message")
-
-		// Verify correct severity labels are used
-		expect(result).toContain("[test Error]")
-		expect(result).toContain("[test Warning]")
-		expect(result).not.toContain("[test Information]")
-		expect(result).not.toContain("[test Hint]")
-
-		// Verify line content is included
-		expect(result).toContain("Line 1 content")
-		expect(result).toContain("Line 2 content")
-	})
-
-	it("should handle directory URIs correctly without attempting to open as document", async () => {
-		// Mock directory URI
-		const dirUri = vscode.Uri.file("/path/to/directory/")
-
-		// Mock diagnostic for directory
-		const diagnostic = new vscode.Diagnostic(
-			new vscode.Range(0, 0, 0, 10),
-			"Directory diagnostic message",
-			vscode.DiagnosticSeverity.Error,
-		)
-
-		// Mock fs.stat to return directory type
-		const mockStat = {
-			type: vscode.FileType.Directory,
-		}
-		vscode.workspace.fs.stat = vitest.fn().mockResolvedValue(mockStat)
-
-		// Mock openTextDocument to ensure it's not called
-		vscode.workspace.openTextDocument = vitest.fn()
-
-		// Call the function
-		const result = await diagnosticsToProblemsString(
-			[[dirUri, [diagnostic]]],
-			[vscode.DiagnosticSeverity.Error],
-			"/path/to",
-		)
-
-		// Verify fs.stat was called with the directory URI
-		expect(vscode.workspace.fs.stat).toHaveBeenCalledWith(dirUri)
-
-		// Verify openTextDocument was not called
-		expect(vscode.workspace.openTextDocument).not.toHaveBeenCalled()
-
-		// Verify the output contains the expected directory indicator
-		expect(result).toContain("(directory)")
-		expect(result).toContain("Directory diagnostic message")
-		expect(result).toMatch(/directory\/\n- \[test Error\] 1 \| \(directory\) : Directory diagnostic message/)
-	})
-
-	it("should correctly handle multiple diagnostics for the same file", async () => {
-		// Mock file URI
-		const fileUri = vscode.Uri.file("/path/to/file.ts")
-
-		// Create multiple diagnostics for the same file
-		const diagnostics = [
-			new vscode.Diagnostic(new vscode.Range(4, 0, 4, 10), "Later line error", vscode.DiagnosticSeverity.Error),
-			new vscode.Diagnostic(
-				new vscode.Range(0, 0, 0, 10),
-				"First line warning",
-				vscode.DiagnosticSeverity.Warning,
-			),
-			new vscode.Diagnostic(
-				new vscode.Range(2, 0, 2, 10),
-				"Middle line info",
-				vscode.DiagnosticSeverity.Information,
-			),
-		]
-
-		// Mock fs.stat to return file type
-		const mockStat = {
-			type: vscode.FileType.File,
-		}
-		vscode.workspace.fs.stat = vitest.fn().mockResolvedValue(mockStat)
-
-		// Mock document content with specific line texts for each test case
-		const mockDocument = {
-			lineAt: vitest.fn((line: number) => {
-				const lineTexts: Record<number, string> = {
-					0: "Line 0 content for warning",
-					2: "Line 2 content for info",
-					4: "Line 4 content for error",
-				}
-				return { text: lineTexts[line] }
-			}),
-		}
-		vscode.workspace.openTextDocument = vitest.fn().mockResolvedValue(mockDocument)
-
-		// Call the function with all severities
-		const result = await diagnosticsToProblemsString(
-			[[fileUri, diagnostics]],
-			[vscode.DiagnosticSeverity.Error, vscode.DiagnosticSeverity.Warning, vscode.DiagnosticSeverity.Information],
-			"/path/to",
-		)
-
-		// Verify all diagnostics are included in the output
-		expect(result).toContain("First line warning")
-		expect(result).toContain("Middle line info")
-		expect(result).toContain("Later line error")
-
-		// Verify line content is included for each diagnostic and matches the test case
-		expect(result).toContain("Line 0 content for warning")
-		expect(result).toContain("Line 2 content for info")
-		expect(result).toContain("Line 4 content for error")
-
-		// Verify the output contains all severity labels
-		expect(result).toContain("[test Warning]")
-		expect(result).toContain("[test Information]")
-		expect(result).toContain("[test Error]")
-
-		// Verify diagnostics appear in line number order (even though input wasn't sorted)
-		// Verify exact output format
-		expect(result).toBe(
-			"file.ts\n" +
-				"- [test Warning] 1 | Line 0 content for warning : First line warning\n" +
-				"- [test Information] 3 | Line 2 content for info : Middle line info\n" +
-				"- [test Error] 5 | Line 4 content for error : Later line error",
-		)
-	})
-
-	it("should correctly handle diagnostics from multiple files", async () => {
-		// Mock URIs for different files
-		const fileUri1 = vscode.Uri.file("/path/to/file1.ts")
-		const fileUri2 = vscode.Uri.file("/path/to/subdir/file2.ts")
-
-		// Create diagnostics for each file
-		const diagnostics1 = [
-			new vscode.Diagnostic(new vscode.Range(0, 0, 0, 10), "File1 error", vscode.DiagnosticSeverity.Error),
-		]
-
-		const diagnostics2 = [
-			new vscode.Diagnostic(new vscode.Range(1, 0, 1, 10), "File2 warning", vscode.DiagnosticSeverity.Warning),
-			new vscode.Diagnostic(new vscode.Range(2, 0, 2, 10), "File2 info", vscode.DiagnosticSeverity.Information),
-		]
-
-		// Mock fs.stat to return file type for both files
-		const mockStat = {
-			type: vscode.FileType.File,
-		}
-		vscode.workspace.fs.stat = vitest.fn().mockResolvedValue(mockStat)
-
-		// Mock document content with specific line texts for each test case
-		const mockDocument1 = {
-			lineAt: vitest.fn((_line) => ({
-				text: "Line 1 content for error",
-			})),
-		}
-		const mockDocument2 = {
-			lineAt: vitest.fn((line) => {
-				const lineTexts = ["Line 1 content", "Line 2 content for warning", "Line 3 content for info"]
-				return { text: lineTexts[line] }
-			}),
-		}
-		vscode.workspace.openTextDocument = vitest
-			.fn()
-			.mockResolvedValueOnce(mockDocument1)
-			.mockResolvedValueOnce(mockDocument2)
-
-		// Call the function with all severities
-		const result = await diagnosticsToProblemsString(
+	it("lists each file's problems by line, with label, source and the line's text", async () => {
+		const result = await problems(
 			[
-				[fileUri1, diagnostics1],
-				[fileUri2, diagnostics2],
+				[
+					a,
+					[
+						diag(3, "hint", Hint),
+						diag(0, "broken", Error, "ts"),
+						diag(1, "unused", Warning, "eslint"),
+						diag(2, "note", Information),
+						diag(2, "odd", 9),
+					],
+				],
+				[b, [diag(0, "warn b", Warning)]],
 			],
-			[vscode.DiagnosticSeverity.Error, vscode.DiagnosticSeverity.Warning, vscode.DiagnosticSeverity.Information],
-			"/path/to",
+			[...ALL, 9 as vscode.DiagnosticSeverity],
 		)
 
-		// Verify file paths are correctly shown with relative paths
-		expect(result).toContain("file1.ts")
-		expect(result).toContain("subdir/file2.ts")
-
-		// Verify diagnostics are grouped under their respective files
-		const file1Section = result.split("file1.ts")[1]
-		expect(file1Section).toContain("File1 error")
-		expect(file1Section).toContain("Line 1 content for error")
-
-		const file2Section = result.split("subdir/file2.ts")[1]
-		expect(file2Section).toContain("File2 warning")
-		expect(file2Section).toContain("Line 2 content for warning")
-		expect(file2Section).toContain("File2 info")
-		expect(file2Section).toContain("Line 3 content for info")
-
-		// Verify exact output format
 		expect(result).toBe(
-			"file1.ts\n" +
-				"- [test Error] 1 | Line 1 content for error : File1 error\n\n" +
-				"subdir/file2.ts\n" +
-				"- [test Warning] 2 | Line 2 content for warning : File2 warning\n" +
-				"- [test Information] 3 | Line 3 content for info : File2 info",
-		)
-	})
-
-	it("should return empty string when no diagnostics match the severity filter", async () => {
-		// Mock file URI
-		const fileUri = vscode.Uri.file("/path/to/file.ts")
-
-		// Create diagnostics with Error and Warning severities
-		const diagnostics = [
-			new vscode.Diagnostic(new vscode.Range(0, 0, 0, 10), "Error message", vscode.DiagnosticSeverity.Error),
-			new vscode.Diagnostic(new vscode.Range(1, 0, 1, 10), "Warning message", vscode.DiagnosticSeverity.Warning),
-		]
-
-		// Mock fs.stat to return file type
-		const mockStat = {
-			type: vscode.FileType.File,
-		}
-		vscode.workspace.fs.stat = vitest.fn().mockResolvedValue(mockStat)
-
-		// Mock document content (though it shouldn't be accessed in this case)
-		const mockDocument = {
-			lineAt: vitest.fn((line) => ({
-				text: `Line ${line + 1} content`,
-			})),
-		}
-		vscode.workspace.openTextDocument = vitest.fn().mockResolvedValue(mockDocument)
-
-		// Test with Information and Hint severities only (which don't match our diagnostics)
-		const result = await diagnosticsToProblemsString(
-			[[fileUri, diagnostics]],
-			[vscode.DiagnosticSeverity.Information, vscode.DiagnosticSeverity.Hint],
-			"/path/to",
-		)
-
-		// Verify empty string is returned
-		expect(result).toBe("")
-
-		// Verify no unnecessary calls were made
-		expect(vscode.workspace.fs.stat).not.toHaveBeenCalled()
-		expect(vscode.workspace.openTextDocument).not.toHaveBeenCalled()
-	})
-
-	it("should correctly handle cwd parameter for relative file paths", async () => {
-		// Mock file URI in a subdirectory
-		const fileUri = vscode.Uri.file("/project/root/src/utils/file.ts")
-
-		// Create a diagnostic for the file
-		const diagnostic = new vscode.Diagnostic(
-			new vscode.Range(4, 0, 4, 10),
-			"Relative path test error",
-			vscode.DiagnosticSeverity.Error,
-		)
-
-		// Mock fs.stat to return file type
-		const mockStat = {
-			type: vscode.FileType.File,
-		}
-		vscode.workspace.fs.stat = vitest.fn().mockResolvedValue(mockStat)
-
-		// Mock document content matching test assertion
-		const mockDocument = {
-			lineAt: vitest.fn((line) => ({
-				text: `Line ${line + 1} content for error`,
-			})),
-		}
-		vscode.workspace.openTextDocument = vitest.fn().mockResolvedValue(mockDocument)
-
-		// Call the function with cwd set to the project root
-		const result = await diagnosticsToProblemsString(
-			[[fileUri, [diagnostic]]],
-			[vscode.DiagnosticSeverity.Error],
-			"/project/root",
-		)
-
-		// Verify exact output format
-		expect(result).toBe(
-			"src/utils/file.ts\n" + "- [test Error] 5 | Line 5 content for error : Relative path test error",
-		)
-
-		// Verify fs.stat and openTextDocument were called
-		expect(vscode.workspace.fs.stat).toHaveBeenCalledWith(fileUri)
-		expect(vscode.workspace.openTextDocument).toHaveBeenCalledWith(fileUri)
-	})
-	it("should return empty string when includeDiagnostics is false", async () => {
-		// Mock file URI
-		const fileUri = vscode.Uri.file("/path/to/file.ts")
-
-		// Create diagnostics
-		const diagnostics = [
-			new vscode.Diagnostic(new vscode.Range(0, 0, 0, 10), "Error message", vscode.DiagnosticSeverity.Error),
-			new vscode.Diagnostic(new vscode.Range(1, 0, 1, 10), "Warning message", vscode.DiagnosticSeverity.Warning),
-		]
-
-		// Mock fs.stat to return file type
-		const mockStat = {
-			type: vscode.FileType.File,
-		}
-		vscode.workspace.fs.stat = vitest.fn().mockResolvedValue(mockStat)
-
-		// Mock document content
-		const mockDocument = {
-			lineAt: vitest.fn((line) => ({
-				text: `Line ${line + 1} content`,
-			})),
-		}
-		vscode.workspace.openTextDocument = vitest.fn().mockResolvedValue(mockDocument)
-
-		// Test with includeDiagnostics set to false
-		const result = await diagnosticsToProblemsString(
-			[[fileUri, diagnostics]],
-			[vscode.DiagnosticSeverity.Error, vscode.DiagnosticSeverity.Warning],
-			"/path/to",
-			false, // includeDiagnostics
-		)
-
-		// Verify empty string is returned
-		expect(result).toBe("")
-
-		// Verify no file operations were performed
-		expect(vscode.workspace.fs.stat).not.toHaveBeenCalled()
-		expect(vscode.workspace.openTextDocument).not.toHaveBeenCalled()
-	})
-
-	it("should limit diagnostics based on count when maxDiagnostics is specified", async () => {
-		// Mock file URI
-		const fileUri = vscode.Uri.file("/path/to/file.ts")
-
-		// Create multiple diagnostics with varying message lengths
-		const diagnostics = [
-			new vscode.Diagnostic(new vscode.Range(0, 0, 0, 10), "Error 1", vscode.DiagnosticSeverity.Error),
-			new vscode.Diagnostic(new vscode.Range(1, 0, 1, 10), "Warning 1", vscode.DiagnosticSeverity.Warning),
-			new vscode.Diagnostic(new vscode.Range(2, 0, 2, 10), "Error 2", vscode.DiagnosticSeverity.Error),
-			new vscode.Diagnostic(new vscode.Range(3, 0, 3, 10), "Warning 2", vscode.DiagnosticSeverity.Warning),
-			new vscode.Diagnostic(new vscode.Range(4, 0, 4, 10), "Error 3", vscode.DiagnosticSeverity.Error),
-		]
-
-		// Mock fs.stat to return file type
-		const mockStat = {
-			type: vscode.FileType.File,
-		}
-		vscode.workspace.fs.stat = vitest.fn().mockResolvedValue(mockStat)
-
-		// Mock document content
-		const mockDocument = {
-			lineAt: vitest.fn((line) => ({
-				text: `Line ${line + 1} content`,
-			})),
-		}
-		vscode.workspace.openTextDocument = vitest.fn().mockResolvedValue(mockDocument)
-
-		// Test with maxDiagnostics set to 3 (should include exactly 3 diagnostics)
-		const result = await diagnosticsToProblemsString(
-			[[fileUri, diagnostics]],
-			[vscode.DiagnosticSeverity.Error, vscode.DiagnosticSeverity.Warning],
-			"/path/to",
-			true, // includeDiagnostics
-			3, // maxDiagnostics (count limit)
-		)
-
-		// Verify that exactly 3 diagnostics are included, prioritizing errors
-		expect(result).toContain("Error 1")
-		expect(result).toContain("Error 2")
-		expect(result).toContain("Error 3")
-		// Warnings should not be included since we have 3 errors and limit is 3
-		expect(result).not.toContain("Warning 1")
-		expect(result).not.toContain("Warning 2")
-
-		// Verify the limit message is included
-		expect(result).toContain("2 more problems omitted to prevent context overflow")
-	})
-
-	it("should prioritize errors over warnings when limiting diagnostics by count", async () => {
-		// Mock file URIs
-		const fileUri1 = vscode.Uri.file("/path/to/file1.ts")
-		const fileUri2 = vscode.Uri.file("/path/to/file2.ts")
-
-		// Create diagnostics with mixed severities
-		const diagnostics1 = [
-			new vscode.Diagnostic(new vscode.Range(0, 0, 0, 10), "Warning in file1", vscode.DiagnosticSeverity.Warning),
-			new vscode.Diagnostic(new vscode.Range(1, 0, 1, 10), "Error in file1", vscode.DiagnosticSeverity.Error),
-		]
-
-		const diagnostics2 = [
-			new vscode.Diagnostic(new vscode.Range(0, 0, 0, 10), "Error in file2", vscode.DiagnosticSeverity.Error),
-			new vscode.Diagnostic(new vscode.Range(1, 0, 1, 10), "Warning in file2", vscode.DiagnosticSeverity.Warning),
-			new vscode.Diagnostic(
-				new vscode.Range(2, 0, 2, 10),
-				"Info in file2",
-				vscode.DiagnosticSeverity.Information,
-			),
-		]
-
-		// Mock fs.stat to return file type
-		const mockStat = {
-			type: vscode.FileType.File,
-		}
-		vscode.workspace.fs.stat = vitest.fn().mockResolvedValue(mockStat)
-
-		// Mock document content
-		const mockDocument = {
-			lineAt: vitest.fn((line) => ({
-				text: `Line ${line + 1} content`,
-			})),
-		}
-		vscode.workspace.openTextDocument = vitest.fn().mockResolvedValue(mockDocument)
-
-		// Test with maxDiagnostics set to 2 (should include exactly 2 diagnostics)
-		const result = await diagnosticsToProblemsString(
 			[
-				[fileUri1, diagnostics1],
-				[fileUri2, diagnostics2],
+				"src/a.ts",
+				"- [ts Error] 1 | const x : broken",
+				"- [eslint Warning] 2 | let y : unused",
+				"- [Information] 3 | z() : note",
+				"- [Diagnostic] 3 | z() : odd",
+				"- [Hint] 4 | w : hint",
+				"",
+				"b.ts",
+				"- [Warning] 1 | only line : warn b",
+			].join("\n"),
+		)
+		// One document per file, however many problems it has.
+		expect(openTextDocument).toHaveBeenCalledTimes(2)
+	})
+
+	it.each([
+		["a directory", "dir", "- [Error] 1 | (directory) : bad"],
+		["a file that cannot be read", "gone", "- [Error] 6 | (unavailable) : bad"],
+	])("marks %s", async (_, entry, line) => {
+		files[a.fsPath] = entry as "dir" | "gone"
+
+		expect(await problems([[a, [diag(5, "bad", Error)]]])).toBe(`src/a.ts\n${line}`)
+		expect(await problems([[a, [diag(5, "bad", Error)]]], ALL, true, 5)).toBe(`src/a.ts\n${line}`)
+	})
+
+	it.each([
+		["no problem of the asked severity", [Error], true],
+		["diagnostics turned off", ALL, false],
+	])("is empty for %s", async (_, severities, include) => {
+		expect(await problems([[a, [diag(0, "w", Warning)]]], severities, include)).toBe("")
+	})
+
+	it("keeps the most severe problems within the limit and says how many were left out", async () => {
+		const result = await problems(
+			[
+				[a, [diag(3, "warn late", Warning), diag(2, "error a", Error), diag(0, "info", Information)]],
+				[b, [diag(0, "error b", Error), diag(0, "hint", Hint)]],
 			],
-			[vscode.DiagnosticSeverity.Error, vscode.DiagnosticSeverity.Warning, vscode.DiagnosticSeverity.Information],
-			"/path/to",
-			true, // includeDiagnostics
-			2, // maxDiagnostics (count limit)
+			ALL,
+			true,
+			3,
 		)
 
-		// Verify exactly 2 errors are included (prioritized over warnings)
-		expect(result).toContain("Error in file1")
-		expect(result).toContain("Error in file2")
-		// Warnings and info should not be included
-		expect(result).not.toContain("Warning in file1")
-		expect(result).not.toContain("Warning in file2")
-		expect(result).not.toContain("Info in file2")
-
-		// Verify the limit message is included
-		expect(result).toContain("3 more problems omitted to prevent context overflow")
+		expect(result).toBe(
+			[
+				// Errors first, then by line, across files; each file listed where its first kept problem falls.
+				"b.ts",
+				"- [Error] 1 | only line : error b",
+				"",
+				"src/a.ts",
+				"- [Error] 3 | z() : error a",
+				"- [Warning] 4 | w : warn late",
+				"",
+				"... 2 more problems omitted to prevent context overflow",
+			].join("\n"),
+		)
 	})
 
-	it("should handle maxDiagnostics with no limit when undefined", async () => {
-		// Mock file URI
-		const fileUri = vscode.Uri.file("/path/to/file.ts")
+	it.each([[undefined], [0]])("has no limit for a maximum of %s", async (max) => {
+		const many = Array.from({ length: 4 }, (_, i) => diag(i, `e${i}`, Error))
 
-		// Create multiple diagnostics
-		const diagnostics = [
-			new vscode.Diagnostic(new vscode.Range(0, 0, 0, 10), "Error 1", vscode.DiagnosticSeverity.Error),
-			new vscode.Diagnostic(new vscode.Range(1, 0, 1, 10), "Warning 1", vscode.DiagnosticSeverity.Warning),
-			new vscode.Diagnostic(new vscode.Range(2, 0, 2, 10), "Error 2", vscode.DiagnosticSeverity.Error),
-		]
+		const result = await problems([[a, many]], ALL, true, max)
 
-		// Mock fs.stat to return file type
-		const mockStat = {
-			type: vscode.FileType.File,
-		}
-		vscode.workspace.fs.stat = vitest.fn().mockResolvedValue(mockStat)
-
-		// Mock document content
-		const mockDocument = {
-			lineAt: vitest.fn((line) => ({
-				text: `Line ${line + 1} content`,
-			})),
-		}
-		vscode.workspace.openTextDocument = vitest.fn().mockResolvedValue(mockDocument)
-
-		// Test with maxDiagnostics undefined
-		const result = await diagnosticsToProblemsString(
-			[[fileUri, diagnostics]],
-			[vscode.DiagnosticSeverity.Error, vscode.DiagnosticSeverity.Warning],
-			"/path/to",
-			true, // includeDiagnostics
-			undefined, // maxDiagnostics
-		)
-
-		// Verify all diagnostics are included
-		expect(result).toContain("Error 1")
-		expect(result).toContain("Warning 1")
-		expect(result).toContain("Error 2")
-
-		// Verify no limit message is included
-		expect(result).not.toContain("(Showing")
+		expect(result.split("\n")).toHaveLength(5)
+		expect(result).not.toContain("omitted")
 	})
+})
 
-	it("should handle maxDiagnostics of 0 as no limit", async () => {
-		// Mock file URI
-		const fileUri = vscode.Uri.file("/path/to/file.ts")
+describe("getNewDiagnostics", () => {
+	it("returns only the problems that were not there before, per file", () => {
+		const a = uri("a.ts")
+		const b = uri("b.ts")
+		const old: [vscode.Uri, vscode.Diagnostic[]][] = [[a, [diag(0, "old", Error)]]]
 
-		// Create multiple diagnostics
-		const diagnostics = [
-			new vscode.Diagnostic(new vscode.Range(0, 0, 0, 10), "Error 1", vscode.DiagnosticSeverity.Error),
-			new vscode.Diagnostic(new vscode.Range(1, 0, 1, 10), "Warning 1", vscode.DiagnosticSeverity.Warning),
-		]
+		const fresh = getNewDiagnostics(old, [
+			[a, [diag(0, "old", Error), diag(1, "new", Error)]],
+			[b, [diag(0, "new in b", Warning)]],
+		])
 
-		// Mock fs.stat to return file type
-		const mockStat = {
-			type: vscode.FileType.File,
-		}
-		vscode.workspace.fs.stat = vitest.fn().mockResolvedValue(mockStat)
-
-		// Mock document content
-		const mockDocument = {
-			lineAt: vitest.fn((line) => ({
-				text: `Line ${line + 1} content`,
-			})),
-		}
-		vscode.workspace.openTextDocument = vitest.fn().mockResolvedValue(mockDocument)
-
-		// Test with maxDiagnostics set to 0
-		const result = await diagnosticsToProblemsString(
-			[[fileUri, diagnostics]],
-			[vscode.DiagnosticSeverity.Error, vscode.DiagnosticSeverity.Warning],
-			"/path/to",
-			true, // includeDiagnostics
-			0, // maxDiagnostics (should be treated as no limit)
-		)
-
-		// Verify all diagnostics are included
-		expect(result).toContain("Error 1")
-		expect(result).toContain("Warning 1")
-
-		// Verify no limit message is included
-		expect(result).not.toContain("(Showing")
+		expect(fresh).toEqual([
+			[a, [diag(1, "new", Error)]],
+			[b, [diag(0, "new in b", Warning)]],
+		])
+		expect(getNewDiagnostics(old, old)).toEqual([])
 	})
 })
