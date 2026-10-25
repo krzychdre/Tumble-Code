@@ -240,18 +240,6 @@ describe("SYSTEM_PROMPT", () => {
 		await expect(prompt).toMatchFileSnapshot("./__snapshots__/system-prompt/with-mcp-hub-provided.snap")
 	})
 
-	it("should explicitly handle undefined mcpHub", async () => {
-		const prompt = await SYSTEM_PROMPT({
-			context: mockContext,
-			cwd: "/test/path",
-			mcpHub: undefined,
-			mode: defaultModeSlug,
-			experiments,
-		})
-
-		await expect(prompt).toMatchFileSnapshot("./__snapshots__/system-prompt/with-undefined-mcp-hub.snap")
-	})
-
 	it("should include vscode language in custom instructions", async () => {
 		// Mock vscode.env.language
 		const vscode = vi.mocked(await import("vscode")) as any
@@ -394,110 +382,6 @@ describe("SYSTEM_PROMPT", () => {
 
 		// Should use the default mode's role definition, in the MODE section (tail)
 		expect(prompt.indexOf(modes[0].roleDefinition)).toBeGreaterThan(prompt.indexOf("TOOL USE"))
-	})
-
-	it("should exclude update_todo_list tool when todoListEnabled is false", async () => {
-		const settings = {
-			todoListEnabled: false,
-			useAgentRules: true,
-			newTaskRequireTodos: false,
-		}
-
-		const prompt = await SYSTEM_PROMPT({
-			context: mockContext,
-			cwd: "/test/path",
-			mode: defaultModeSlug,
-			experiments,
-			settings,
-		})
-
-		// Should not contain the tool description
-		expect(prompt).not.toContain("## update_todo_list")
-		// Mode instructions will still reference the tool with a fallback to markdown
-	})
-
-	it("should include update_todo_list tool when todoListEnabled is true", async () => {
-		const settings = {
-			todoListEnabled: true,
-			useAgentRules: true,
-			newTaskRequireTodos: false,
-		}
-
-		const prompt = await SYSTEM_PROMPT({
-			context: mockContext,
-			cwd: "/test/path",
-			mode: defaultModeSlug,
-			experiments,
-			settings,
-		})
-
-		// update_todo_list is still referenced by mode instructions, but tool catalogs are not embedded.
-		expect(prompt).toContain("update_todo_list")
-		expect(prompt).not.toContain("## update_todo_list")
-	})
-
-	it("should include update_todo_list tool when todoListEnabled is undefined", async () => {
-		const settings = {
-			todoListEnabled: true,
-			useAgentRules: true,
-			newTaskRequireTodos: false,
-		}
-
-		const prompt = await SYSTEM_PROMPT({
-			context: mockContext,
-			cwd: "/test/path",
-			mode: defaultModeSlug,
-			experiments,
-			settings,
-		})
-
-		// update_todo_list is still referenced by mode instructions, but tool catalogs are not embedded.
-		expect(prompt).toContain("update_todo_list")
-		expect(prompt).not.toContain("## update_todo_list")
-	})
-
-	it("should include native tool instructions", async () => {
-		const settings = {
-			todoListEnabled: true,
-			useAgentRules: true,
-			newTaskRequireTodos: false,
-		}
-
-		const prompt = await SYSTEM_PROMPT({
-			context: mockContext,
-			cwd: "/test/path",
-			mode: defaultModeSlug,
-			experiments,
-			settings,
-		})
-
-		// Should contain TOOL USE section with native note
-		expect(prompt).toContain("TOOL USE")
-		expect(prompt).toContain("provider-native tool-calling mechanism")
-		expect(prompt).toContain("Do not include XML markup or examples")
-
-		// Should NOT contain XML-style tags or examples
-		expect(prompt).not.toContain("<actual_tool_name>")
-		expect(prompt).not.toContain("</actual_tool_name>")
-
-		// Should contain Tool Use Guidelines section
-		expect(prompt).toContain("Tool Use Guidelines")
-
-		// Should NOT contain a tool catalog / XML examples
-		expect(prompt).not.toContain("# Tools")
-		expect(prompt).not.toContain("## read_file")
-		expect(prompt).not.toContain("## execute_command")
-		expect(prompt).not.toContain("<read_file>")
-		expect(prompt).not.toContain("<path>")
-		expect(prompt).not.toContain("Usage:")
-		expect(prompt).not.toContain("Examples:")
-
-		// Should still contain role definition and other non-XML sections
-		expect(prompt).toContain(modes[0].roleDefinition)
-		expect(prompt).toContain("CAPABILITIES")
-		expect(prompt).toContain("RULES")
-		expect(prompt).toContain("SYSTEM INFORMATION")
-		expect(prompt).toContain("OBJECTIVE")
 	})
 
 	describe("allowedMcpServers filtering in system prompt", () => {

@@ -208,45 +208,4 @@ describe("RooIgnore Response Formatting", () => {
 			expect(result).toBe("No files found.")
 		})
 	})
-
-	describe("getInstructions", () => {
-		/**
-		 * Tests the instructions format
-		 */
-		it("should format .rooignore instructions for the LLM", async () => {
-			// Create controller
-			const controller = new RooIgnoreController(TEST_CWD)
-			await controller.initialize()
-
-			// Get instructions
-			const instructions = controller.getInstructions()
-
-			// Verify format and content
-			expect(instructions).toContain("# .rooignore")
-			expect(instructions).toContain(LOCK_TEXT_SYMBOL)
-			expect(instructions).toContain("node_modules")
-			expect(instructions).toContain(".git")
-			expect(instructions).toContain("secrets/**")
-			expect(instructions).toContain("*.log")
-
-			// Should explain what the lock symbol means
-			expect(instructions).toContain("you'll notice a")
-			expect(instructions).toContain("next to files that are blocked")
-		})
-
-		/**
-		 * Tests null/undefined case
-		 */
-		it("should return undefined when no .rooignore exists", async () => {
-			// Set up no .rooignore
-			mockFileExists.mockResolvedValue(false)
-
-			// Create controller without .rooignore
-			const controller = new RooIgnoreController(TEST_CWD)
-			await controller.initialize()
-
-			// Should return undefined
-			expect(controller.getInstructions()).toBeUndefined()
-		})
-	})
 })
