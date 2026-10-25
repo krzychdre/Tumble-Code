@@ -5,74 +5,26 @@ import type { ToolRendererProps } from "../types.js"
 import { CommandTool } from "../CommandTool.js"
 
 describe("CommandTool", () => {
-	describe("command display", () => {
-		it("displays the command as Bash(command) when toolData.command is provided", () => {
-			const props: ToolRendererProps = {
-				toolData: {
-					tool: "execute_command",
-					command: "npm test",
-					output: "All tests passed",
-				},
-			}
+	it("shows the command as Bash(command), without a $ prompt", () => {
+		const output = render(
+			<CommandTool toolData={{ tool: "execute_command", command: 'git commit -m "fix: resolve issue"' }} />,
+		).lastFrame()
 
-			const { lastFrame } = render(<CommandTool {...props} />)
-			const output = lastFrame()
+		expect(output).toContain('Bash(git commit -m "fix: resolve issue")')
+		expect(output).not.toContain("$ ")
+	})
 
-			// New grammar: ● Bash(command) — no $ prefix
-			expect(output).toContain("Bash")
-			expect(output).toContain("npm test")
-			expect(output).not.toContain("$ npm test")
-		})
+	it.each([
+		["empty", ""],
+		["missing", undefined],
+	])("shows a bare Bash row when the command is %s", (_name, command) => {
+		const output = render(
+			<CommandTool toolData={{ tool: "execute_command", command, output: "All tests passed" }} />,
+		).lastFrame()
 
-		it("displays Bash without command arg when toolData.command is empty", () => {
-			const props: ToolRendererProps = {
-				toolData: {
-					tool: "execute_command",
-					command: "",
-					output: "All tests passed",
-				},
-			}
-
-			const { lastFrame } = render(<CommandTool {...props} />)
-			const output = lastFrame()
-
-			// No command arg shown; the collapsed row counts the output
-			expect(output).toContain("Bash")
-			expect(output).not.toContain("Bash(")
-			expect(output).toContain("+1 line (ctrl+o)")
-		})
-
-		it("displays Bash without command arg when toolData.command is undefined", () => {
-			const props: ToolRendererProps = {
-				toolData: {
-					tool: "execute_command",
-					output: "All tests passed",
-				},
-			}
-
-			const { lastFrame } = render(<CommandTool {...props} />)
-			const output = lastFrame()
-
-			expect(output).toContain("Bash")
-			expect(output).not.toContain("Bash(")
-			expect(output).toContain("+1 line (ctrl+o)")
-		})
-
-		it("displays command with complex arguments", () => {
-			const props: ToolRendererProps = {
-				toolData: {
-					tool: "execute_command",
-					command: 'git commit -m "fix: resolve issue"',
-					output: "[main abc123] fix: resolve issue",
-				},
-			}
-
-			const { lastFrame } = render(<CommandTool {...props} />)
-			const output = lastFrame()
-
-			expect(output).toContain("Bash")
-			expect(output).toContain('git commit -m "fix: resolve issue"')
-		})
+		expect(output).toContain("Bash")
+		expect(output).not.toContain("Bash(")
+		expect(output).toContain("+1 line (ctrl+o)")
 	})
 
 	describe("output display", () => {
@@ -100,38 +52,17 @@ describe("CommandTool", () => {
 			expect(output).not.toContain("⎿")
 		})
 
-		it("displays output when provided", () => {
-			const props: ToolRendererProps = {
-				toolData: {
-					tool: "execute_command",
-					command: "echo hello",
-					output: "hello",
-				},
-				expanded: true,
-			}
+		it("prints every output line when expanded, tabs as four spaces", () => {
+			const output = render(
+				<CommandTool
+					toolData={{ tool: "execute_command", command: "ls", output: "file1.txt\n\tfile2.txt" }}
+					expanded
+				/>,
+			).lastFrame()
 
-			const { lastFrame } = render(<CommandTool {...props} />)
-			const output = lastFrame()
-
-			expect(output?.split("\n")[1]).toContain("hello")
-		})
-
-		it("displays multi-line output", () => {
-			const props: ToolRendererProps = {
-				toolData: {
-					tool: "execute_command",
-					command: "ls",
-					output: "file1.txt\nfile2.txt\nfile3.txt",
-				},
-				expanded: true,
-			}
-
-			const { lastFrame } = render(<CommandTool {...props} />)
-			const output = lastFrame()
-
-			expect(output).toContain("file1.txt")
-			expect(output).toContain("file2.txt")
-			expect(output).toContain("file3.txt")
+			expect(output?.split("\n")[1]).toContain("file1.txt")
+			expect(output).toContain("    file2.txt")
+			expect(output).not.toContain("\t")
 		})
 
 		it("uses content as fallback when output is not provided", () => {
@@ -205,22 +136,6 @@ describe("CommandTool", () => {
 	describe("expanded mode", () => {
 		const longOutput = Array.from({ length: 30 }, (_, i) => `line ${i + 1}`).join("\n")
 
-		it("prints no output line by default", () => {
-			const props: ToolRendererProps = {
-				toolData: {
-					tool: "execute_command",
-					command: "cat longfile.txt",
-					output: longOutput,
-				},
-			}
-
-			const { lastFrame } = render(<CommandTool {...props} />)
-			const output = lastFrame()
-
-			expect(output).not.toContain("line 1")
-			expect(output).toContain("+30 lines (ctrl+o)")
-		})
-
 		it("shows all output lines when expanded", () => {
 			const props: ToolRendererProps = {
 				toolData: {
@@ -287,31 +202,6 @@ describe("CommandTool", () => {
 			expect(collapsed?.split("\n")[0]).toContain('python3 -c " import json')
 			// Expanded keeps the command's own lines, indented under the bullet.
 			expect(expanded).toContain("\n  import json")
-		})
-
-		it("still renders a bare Bash row when the command is missing", () => {
-			const output = render(<CommandTool toolData={{ tool: "execute_command", output: "hello" }} />).lastFrame()
-
-			expect(output).toContain("Bash")
-			expect(output).not.toContain("Bash(")
-			expect(output).toContain("+1 line (ctrl+o)")
-		})
-	})
-
-	describe("header display", () => {
-		it("displays Bash display name when rendered", () => {
-			const props: ToolRendererProps = {
-				toolData: {
-					tool: "execute_command",
-					command: "echo test",
-				},
-			}
-
-			const { lastFrame } = render(<CommandTool {...props} />)
-			const output = lastFrame()
-
-			expect(output).toContain("Bash")
-			expect(output).toContain("echo test")
 		})
 	})
 })

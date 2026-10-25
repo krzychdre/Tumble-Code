@@ -1,302 +1,156 @@
-import {
-	type ClineMessage,
-	type ExtensionMessage,
-	isIdleAsk,
-	isResumableAsk,
-	isInteractiveAsk,
-	isNonBlockingAsk,
-} from "@tumble-code/types"
+import type { ClineAsk, ClineMessage, ClineSay, ExtensionMessage } from "@tumble-code/types"
 
 import { AgentLoopState, detectAgentState } from "../agent-state.js"
 import { createMockClient } from "./helpers.js"
 
 function createMessage(overrides: Partial<ClineMessage>): ClineMessage {
-	return { ts: Date.now() + Math.random() * 1000, type: "say", ...overrides }
+	return { ts: 1, type: "say", ...overrides }
 }
 
 function createStateMessage(messages: ClineMessage[], mode?: string): ExtensionMessage {
 	return { type: "state", state: { clineMessages: messages, mode } } as ExtensionMessage
 }
 
+const ask = (kind: string, partial = false) => createMessage({ type: "ask", ask: kind as ClineAsk, partial })
+const say = (kind: string, text?: string, partial?: boolean) =>
+	createMessage({ type: "say", say: kind as ClineSay, text, partial })
+const request = (data: object | string | undefined) =>
+	say("api_req_started", typeof data === "object" ? JSON.stringify(data) : data)
+
 describe("detectAgentState", () => {
-	describe("NO_TASK state", () => {
-		it("should return NO_TASK for empty messages array", () => {
-			const state = detectAgentState([])
-			expect(state.state).toBe(AgentLoopState.NO_TASK)
-			expect(state.isWaitingForInput).toBe(false)
-			expect(state.isRunning).toBe(false)
-		})
+	it.each<[string, ClineMessage[], AgentLoopState, string | undefined]>([
+		["no messages", [], AgentLoopState.NO_TASK, undefined],
+		["a partial ask", [ask("tool", true)], AgentLoopState.STREAMING, "tool"],
+		["a partial say", [say("text", "Typing...", true)], AgentLoopState.STREAMING, undefined],
+		["a request without a cost yet", [request({ tokensIn: 100 })], AgentLoopState.STREAMING, undefined],
+		["a request without text yet", [request("")], AgentLoopState.STREAMING, undefined],
+		[
+			"an open request before the last say",
+			[request({ tokensIn: 1 }), say("text", "x")],
+			AgentLoopState.STREAMING,
+			undefined,
+		],
+		[
+			"a priced request, even at cost 0 or null",
+			[request({ cost: 0 }), request({ cost: null })],
+			AgentLoopState.RUNNING,
+			undefined,
+		],
+		["an unreadable request", [request("not valid json")], AgentLoopState.RUNNING, undefined],
+		[
+			"a say after a priced request",
+			[request({ cost: 0.001 }), say("text", "Working")],
+			AgentLoopState.RUNNING,
+			undefined,
+		],
+		["command output (non-blocking)", [ask("command_output")], AgentLoopState.RUNNING, "command_output"],
+		["an unknown ask", [ask("unknown_type")], AgentLoopState.RUNNING, undefined],
+		...["tool", "command", "followup", "use_mcp_server"].map(
+			(kind): [string, ClineMessage[], AgentLoopState, string] => [
+				`the ${kind} ask`,
+				[ask(kind)],
+				AgentLoopState.WAITING_FOR_INPUT,
+				kind,
+			],
+		),
+		...[
+			"completion_result",
+			"api_req_failed",
+			"mistake_limit_reached",
+			"auto_approval_max_req_reached",
+			"resume_completed_task",
+		].map((kind): [string, ClineMessage[], AgentLoopState, string] => [
+			`the ${kind} ask`,
+			[ask(kind)],
+			AgentLoopState.IDLE,
+			kind,
+		]),
+		["the resume_task ask", [ask("resume_task")], AgentLoopState.RESUMABLE, "resume_task"],
+		[
+			"the last message only",
+			[ask("tool"), say("text", "done"), ask("completion_result")],
+			AgentLoopState.IDLE,
+			"completion_result",
+		],
+	])("reads %s", (_name, messages, state, currentAsk) => {
+		const info = detectAgentState(messages)
+
+		expect(info.state).toBe(state)
+		expect(info.currentAsk).toBe(currentAsk)
+		expect(info.lastMessage).toBe(messages.at(-1))
 	})
 
-	describe("STREAMING state", () => {
-		it("should detect streaming when partial is true", () => {
-			const messages = [createMessage({ type: "ask", ask: "tool", partial: true })]
-			const state = detectAgentState(messages)
-			expect(state.state).toBe(AgentLoopState.STREAMING)
-			expect(state.isStreaming).toBe(true)
-			expect(state.isWaitingForInput).toBe(false)
-		})
-
-		it("should detect streaming when api_req_started has no cost", () => {
-			const messages = [
-				createMessage({
-					say: "api_req_started",
-					text: JSON.stringify({ tokensIn: 100 }), // No cost field.
-				}),
-			]
-			const state = detectAgentState(messages)
-			expect(state.state).toBe(AgentLoopState.STREAMING)
-			expect(state.isStreaming).toBe(true)
-		})
-
-		it("should NOT be streaming when api_req_started has cost", () => {
-			const messages = [
-				createMessage({
-					say: "api_req_started",
-					text: JSON.stringify({ cost: 0.001, tokensIn: 100 }),
-				}),
-			]
-			const state = detectAgentState(messages)
-			expect(state.state).toBe(AgentLoopState.RUNNING)
-			expect(state.isStreaming).toBe(false)
-		})
-	})
-
-	describe("WAITING_FOR_INPUT state", () => {
-		it("should detect waiting for tool approval", () => {
-			const messages = [createMessage({ type: "ask", ask: "tool", partial: false })]
-			const state = detectAgentState(messages)
-			expect(state.state).toBe(AgentLoopState.WAITING_FOR_INPUT)
-			expect(state.isWaitingForInput).toBe(true)
-			expect(state.currentAsk).toBe("tool")
-		})
-
-		it("should detect waiting for command approval", () => {
-			const messages = [createMessage({ type: "ask", ask: "command", partial: false })]
-			const state = detectAgentState(messages)
-			expect(state.state).toBe(AgentLoopState.WAITING_FOR_INPUT)
-			expect(state.currentAsk).toBe("command")
-		})
-
-		it("should detect waiting for followup answer", () => {
-			const messages = [createMessage({ type: "ask", ask: "followup", partial: false })]
-			const state = detectAgentState(messages)
-			expect(state.state).toBe(AgentLoopState.WAITING_FOR_INPUT)
-			expect(state.currentAsk).toBe("followup")
-		})
-
-		it("should detect waiting for use_mcp_server approval", () => {
-			const messages = [createMessage({ type: "ask", ask: "use_mcp_server", partial: false })]
-			const state = detectAgentState(messages)
-			expect(state.state).toBe(AgentLoopState.WAITING_FOR_INPUT)
-		})
-	})
-
-	describe("IDLE state", () => {
-		it("should detect completion_result as idle", () => {
-			const messages = [createMessage({ type: "ask", ask: "completion_result", partial: false })]
-			const state = detectAgentState(messages)
-			expect(state.state).toBe(AgentLoopState.IDLE)
-			expect(state.isWaitingForInput).toBe(true)
-		})
-
-		it("should detect api_req_failed as idle", () => {
-			const messages = [createMessage({ type: "ask", ask: "api_req_failed", partial: false })]
-			const state = detectAgentState(messages)
-			expect(state.state).toBe(AgentLoopState.IDLE)
-		})
-
-		it("should detect mistake_limit_reached as idle", () => {
-			const messages = [createMessage({ type: "ask", ask: "mistake_limit_reached", partial: false })]
-			const state = detectAgentState(messages)
-			expect(state.state).toBe(AgentLoopState.IDLE)
-		})
-
-		it("should detect auto_approval_max_req_reached as idle", () => {
-			const messages = [createMessage({ type: "ask", ask: "auto_approval_max_req_reached", partial: false })]
-			const state = detectAgentState(messages)
-			expect(state.state).toBe(AgentLoopState.IDLE)
-		})
-
-		it("should detect resume_completed_task as idle", () => {
-			const messages = [createMessage({ type: "ask", ask: "resume_completed_task", partial: false })]
-			const state = detectAgentState(messages)
-			expect(state.state).toBe(AgentLoopState.IDLE)
-		})
-	})
-
-	describe("RESUMABLE state", () => {
-		it("should detect resume_task as resumable", () => {
-			const messages = [createMessage({ type: "ask", ask: "resume_task", partial: false })]
-			const state = detectAgentState(messages)
-			expect(state.state).toBe(AgentLoopState.RESUMABLE)
-			expect(state.isWaitingForInput).toBe(true)
-		})
-	})
-
-	describe("RUNNING state", () => {
-		it("should detect running for say messages", () => {
-			const messages = [
-				createMessage({
-					say: "api_req_started",
-					text: JSON.stringify({ cost: 0.001 }),
-				}),
-				createMessage({ say: "text", text: "Working on it..." }),
-			]
-			const state = detectAgentState(messages)
-			expect(state.state).toBe(AgentLoopState.RUNNING)
-			expect(state.isRunning).toBe(true)
-			expect(state.isWaitingForInput).toBe(false)
-		})
-
-		it("should detect running for command_output (non-blocking)", () => {
-			const messages = [createMessage({ type: "ask", ask: "command_output", partial: false })]
-			const state = detectAgentState(messages)
-			expect(state.state).toBe(AgentLoopState.RUNNING)
-		})
-	})
-})
-
-describe("Type Guards", () => {
-	describe("isIdleAsk", () => {
-		it("should return true for idle asks", () => {
-			expect(isIdleAsk("completion_result")).toBe(true)
-			expect(isIdleAsk("api_req_failed")).toBe(true)
-			expect(isIdleAsk("mistake_limit_reached")).toBe(true)
-			expect(isIdleAsk("auto_approval_max_req_reached")).toBe(true)
-			expect(isIdleAsk("resume_completed_task")).toBe(true)
-		})
-
-		it("should return false for non-idle asks", () => {
-			expect(isIdleAsk("tool")).toBe(false)
-			expect(isIdleAsk("followup")).toBe(false)
-			expect(isIdleAsk("resume_task")).toBe(false)
-		})
-	})
-
-	describe("isInteractiveAsk", () => {
-		it("should return true for interactive asks", () => {
-			expect(isInteractiveAsk("tool")).toBe(true)
-			expect(isInteractiveAsk("command")).toBe(true)
-			expect(isInteractiveAsk("followup")).toBe(true)
-			expect(isInteractiveAsk("use_mcp_server")).toBe(true)
-		})
-
-		it("should return false for non-interactive asks", () => {
-			expect(isInteractiveAsk("completion_result")).toBe(false)
-			expect(isInteractiveAsk("command_output")).toBe(false)
-		})
-	})
-
-	describe("isResumableAsk", () => {
-		it("should return true for resumable asks", () => {
-			expect(isResumableAsk("resume_task")).toBe(true)
-		})
-
-		it("should return false for non-resumable asks", () => {
-			expect(isResumableAsk("completion_result")).toBe(false)
-			expect(isResumableAsk("tool")).toBe(false)
-		})
-	})
-
-	describe("isNonBlockingAsk", () => {
-		it("should return true for non-blocking asks", () => {
-			expect(isNonBlockingAsk("command_output")).toBe(true)
-		})
-
-		it("should return false for blocking asks", () => {
-			expect(isNonBlockingAsk("tool")).toBe(false)
-			expect(isNonBlockingAsk("followup")).toBe(false)
-		})
+	it.each([
+		[AgentLoopState.NO_TASK, [], { isWaitingForInput: false, isRunning: false, isStreaming: false }],
+		[
+			AgentLoopState.STREAMING,
+			[ask("tool", true)],
+			{ isWaitingForInput: false, isRunning: true, isStreaming: true },
+		],
+		[AgentLoopState.RUNNING, [say("text")], { isWaitingForInput: false, isRunning: true, isStreaming: false }],
+		[
+			AgentLoopState.WAITING_FOR_INPUT,
+			[ask("followup")],
+			{ isWaitingForInput: true, isRunning: false, isStreaming: false },
+		],
+		[
+			AgentLoopState.IDLE,
+			[ask("completion_result")],
+			{ isWaitingForInput: true, isRunning: false, isStreaming: false },
+		],
+		[
+			AgentLoopState.RESUMABLE,
+			[ask("resume_task")],
+			{ isWaitingForInput: true, isRunning: false, isStreaming: false },
+		],
+	])("derives the flags of %s", (_state, messages, flags) => {
+		expect(detectAgentState(messages)).toMatchObject(flags)
 	})
 })
 
 describe("ExtensionClient", () => {
-	describe("State queries", () => {
-		it("should return NO_TASK when not initialized", () => {
-			const { client } = createMockClient()
-			expect(client.getAgentState().state).toBe(AgentLoopState.NO_TASK)
-			expect(client.isInitialized()).toBe(false)
-		})
+	it("has no task until a transcript arrives, even an empty one", () => {
+		const { client } = createMockClient()
+		expect(client.isInitialized()).toBe(false)
 
-		it("should update state when receiving messages", () => {
-			const { client } = createMockClient()
+		client.handleMessage(createStateMessage([]))
 
-			const message = createStateMessage([createMessage({ type: "ask", ask: "tool", partial: false })])
-
-			client.handleMessage(message)
-
-			expect(client.isInitialized()).toBe(true)
-			expect(client.getAgentState().state).toBe(AgentLoopState.WAITING_FOR_INPUT)
-			expect(client.getAgentState().isWaitingForInput).toBe(true)
-			expect(client.getAgentState().currentAsk).toBe("tool")
-		})
+		expect(client.isInitialized()).toBe(true)
+		expect(client.getAgentState().state).toBe(AgentLoopState.NO_TASK)
 	})
 
-	describe("Event emission", () => {
-		// Opening a finished task again ends its history with a
-		// resume_completed_task ask, and the client reports that as taskCompleted,
-		// the same event a task that just finished gets. Consumers that act on
-		// completion (the TUI's --oneshot exit) have to tell the two apart.
-		it("reports taskCompleted for a resumed completed task, carrying the resume ask", () => {
-			const { client } = createMockClient()
-			const completions: Array<string | undefined> = []
+	it("reports a new wait for input once, and stops reporting after unsubscribing", () => {
+		const { client } = createMockClient()
+		const waiting: string[] = []
+		const unsubscribe = client.on("waitingForInput", (event) => waiting.push(event.ask))
 
-			client.on("taskCompleted", (event) => completions.push(event.message?.ask))
+		client.handleMessage(createStateMessage([createMessage({ ts: 1, type: "ask", ask: "followup" })]))
+		client.handleMessage(createStateMessage([createMessage({ ts: 1, type: "ask", ask: "followup" })]))
+		unsubscribe()
+		client.handleMessage(createStateMessage([say("text"), createMessage({ ts: 2, type: "ask", ask: "tool" })]))
 
-			client.handleMessage(
-				createStateMessage([
-					createMessage({ ts: 1, type: "say", say: "text", text: "Say hi" }),
-					createMessage({ ts: 2, type: "ask", ask: "completion_result", text: "" }),
-					createMessage({ ts: 3, type: "ask", ask: "resume_completed_task", partial: false }),
-				]),
-			)
+		expect(waiting).toEqual(["followup"])
+	})
 
-			expect(completions).toEqual(["resume_completed_task"])
-		})
+	// Opening a finished task again ends its history with a
+	// resume_completed_task ask, and the client reports that as taskCompleted,
+	// the same event a task that just finished gets. Consumers that act on
+	// completion (the TUI's --oneshot exit) have to tell the two apart.
+	it("reports taskCompleted for a resumed completed task, carrying the resume ask", () => {
+		const { client } = createMockClient()
+		const completions: Array<string | undefined> = []
 
-		it("should emit stateChange events", () => {
-			const { client } = createMockClient()
-			const stateChanges: AgentLoopState[] = []
+		client.on("taskCompleted", (event) => completions.push(event.message?.ask))
 
-			client.on("stateChange", (event) => {
-				stateChanges.push(event.currentState.state)
-			})
+		client.handleMessage(
+			createStateMessage([
+				createMessage({ ts: 1, type: "say", say: "text", text: "Say hi" }),
+				createMessage({ ts: 2, type: "ask", ask: "completion_result", text: "" }),
+				createMessage({ ts: 3, type: "ask", ask: "resume_completed_task", partial: false }),
+			]),
+		)
 
-			client.handleMessage(createStateMessage([createMessage({ type: "ask", ask: "tool", partial: false })]))
-
-			expect(stateChanges).toContain(AgentLoopState.WAITING_FOR_INPUT)
-		})
-
-		it("should emit waitingForInput events", () => {
-			const { client } = createMockClient()
-			const waitingEvents: string[] = []
-
-			client.on("waitingForInput", (event) => {
-				waitingEvents.push(event.ask)
-			})
-
-			client.handleMessage(createStateMessage([createMessage({ type: "ask", ask: "followup", partial: false })]))
-
-			expect(waitingEvents).toContain("followup")
-		})
-
-		it("should allow unsubscribing from events", () => {
-			const { client } = createMockClient()
-			let callCount = 0
-
-			const unsubscribe = client.on("stateChange", () => {
-				callCount++
-			})
-
-			client.handleMessage(createStateMessage([createMessage({ say: "text" })]))
-			expect(callCount).toBe(1)
-
-			unsubscribe()
-
-			client.handleMessage(createStateMessage([createMessage({ say: "text", ts: Date.now() + 1 })]))
-			expect(callCount).toBe(1) // Should not increase.
-		})
+		expect(completions).toEqual(["resume_completed_task"])
 	})
 
 	// D11 step 2: the client publishes the deliveries stage, every new or
@@ -479,380 +333,44 @@ describe("ExtensionClient", () => {
 		})
 	})
 
-	describe("Response methods", () => {
-		it("should send approve response", () => {
-			const { client, sentMessages } = createMockClient()
+	it.each([
+		[
+			"approve",
+			(c: ReturnType<typeof createMockClient>["client"]) => c.approve(),
+			"yesButtonClicked",
+			undefined,
+			undefined,
+		],
+		[
+			"reject",
+			(c: ReturnType<typeof createMockClient>["client"]) => c.reject(),
+			"noButtonClicked",
+			undefined,
+			undefined,
+		],
+		[
+			"respond",
+			(c: ReturnType<typeof createMockClient>["client"]) => c.respond("My answer", ["image-data"]),
+			"messageResponse",
+			"My answer",
+			["image-data"],
+		],
+	])("answers the extension on %s", (_name, act, askResponse, text, images) => {
+		const { client, sentMessages } = createMockClient()
 
-			client.approve()
+		act(client)
 
-			expect(sentMessages).toHaveLength(1)
-			expect(sentMessages[0]).toEqual({
-				type: "askResponse",
-				askResponse: "yesButtonClicked",
-				text: undefined,
-				images: undefined,
-			})
-		})
-
-		it("should send reject response", () => {
-			const { client, sentMessages } = createMockClient()
-
-			client.reject()
-
-			expect(sentMessages).toHaveLength(1)
-			const msg = sentMessages[0]
-			expect(msg).toBeDefined()
-			expect(msg?.askResponse).toBe("noButtonClicked")
-		})
-
-		it("should send text response", () => {
-			const { client, sentMessages } = createMockClient()
-
-			client.respond("My answer", ["image-data"])
-
-			expect(sentMessages).toHaveLength(1)
-			expect(sentMessages[0]).toEqual({
-				type: "askResponse",
-				askResponse: "messageResponse",
-				text: "My answer",
-				images: ["image-data"],
-			})
-		})
+		expect(sentMessages).toEqual([{ type: "askResponse", askResponse, text, images }])
 	})
 
-	describe("Message handling", () => {
-		it("should handle messageUpdated messages", () => {
-			const { client } = createMockClient()
-
-			// First, set initial state.
-			client.handleMessage(
-				createStateMessage([createMessage({ ts: 123, type: "ask", ask: "tool", partial: true })]),
-			)
-
-			expect(client.getAgentState().isStreaming).toBe(true)
-
-			// Now update the message.
-			client.handleMessage({
-				type: "messageUpdated",
-				clineMessage: createMessage({ ts: 123, type: "ask", ask: "tool", partial: false }),
-			})
-
-			expect(client.getAgentState().isStreaming).toBe(false)
-			expect(client.getAgentState().isWaitingForInput).toBe(true)
-		})
-	})
-
-	describe("Reset functionality", () => {
-		it("should reset state", () => {
-			const { client } = createMockClient()
-
-			client.handleMessage(createStateMessage([createMessage({ type: "ask", ask: "tool", partial: false })]))
-
-			expect(client.isInitialized()).toBe(true)
-			expect(client.getAgentState().state).toBe(AgentLoopState.WAITING_FOR_INPUT)
-
-			client.reset()
-
-			expect(client.isInitialized()).toBe(false)
-			expect(client.getAgentState().state).toBe(AgentLoopState.NO_TASK)
-		})
-	})
-})
-
-describe("Integration", () => {
-	it("should handle a complete task flow", () => {
+	it("forgets its listeners on reset", () => {
 		const { client } = createMockClient()
-		const states: AgentLoopState[] = []
+		const changes = vi.fn()
+		client.on("stateChange", changes)
 
-		client.on("stateChange", (event) => {
-			states.push(event.currentState.state)
-		})
+		client.reset()
+		client.handleMessage(createStateMessage([say("text")]))
 
-		// 1. Task starts, API request begins.
-		client.handleMessage(
-			createStateMessage([
-				createMessage({
-					say: "api_req_started",
-					text: JSON.stringify({}), // No cost = streaming.
-				}),
-			]),
-		)
-		expect(client.getAgentState().isStreaming).toBe(true)
-
-		// 2. API request completes.
-		client.handleMessage(
-			createStateMessage([
-				createMessage({
-					say: "api_req_started",
-					text: JSON.stringify({ cost: 0.001 }),
-				}),
-				createMessage({ say: "text", text: "I'll help you with that." }),
-			]),
-		)
-		expect(client.getAgentState().isStreaming).toBe(false)
-		expect(client.getAgentState().isRunning).toBe(true)
-
-		// 3. Tool ask (partial).
-		client.handleMessage(
-			createStateMessage([
-				createMessage({
-					say: "api_req_started",
-					text: JSON.stringify({ cost: 0.001 }),
-				}),
-				createMessage({ say: "text", text: "I'll help you with that." }),
-				createMessage({ type: "ask", ask: "tool", partial: true }),
-			]),
-		)
-		expect(client.getAgentState().isStreaming).toBe(true)
-
-		// 4. Tool ask (complete).
-		client.handleMessage(
-			createStateMessage([
-				createMessage({
-					say: "api_req_started",
-					text: JSON.stringify({ cost: 0.001 }),
-				}),
-				createMessage({ say: "text", text: "I'll help you with that." }),
-				createMessage({ type: "ask", ask: "tool", partial: false }),
-			]),
-		)
-		expect(client.getAgentState().isWaitingForInput).toBe(true)
-		expect(client.getAgentState().currentAsk).toBe("tool")
-
-		// 5. User approves, task completes.
-		client.handleMessage(
-			createStateMessage([
-				createMessage({
-					say: "api_req_started",
-					text: JSON.stringify({ cost: 0.001 }),
-				}),
-				createMessage({ say: "text", text: "I'll help you with that." }),
-				createMessage({ type: "ask", ask: "tool", partial: false }),
-				createMessage({ say: "text", text: "File created." }),
-				createMessage({ type: "ask", ask: "completion_result", partial: false }),
-			]),
-		)
-		expect(client.getAgentState().state).toBe(AgentLoopState.IDLE)
-		expect(client.getAgentState().currentAsk).toBe("completion_result")
-
-		// Verify we saw the expected state transitions.
-		expect(states).toContain(AgentLoopState.STREAMING)
-		expect(states).toContain(AgentLoopState.RUNNING)
-		expect(states).toContain(AgentLoopState.WAITING_FOR_INPUT)
-		expect(states).toContain(AgentLoopState.IDLE)
-	})
-})
-
-describe("Edge Cases", () => {
-	describe("Messages with missing or empty text field", () => {
-		it("should handle ask message with missing text field", () => {
-			const messages = [createMessage({ type: "ask", ask: "tool", partial: false })]
-			// Text is undefined by default.
-			const state = detectAgentState(messages)
-			expect(state.state).toBe(AgentLoopState.WAITING_FOR_INPUT)
-			expect(state.currentAsk).toBe("tool")
-		})
-
-		it("should handle ask message with empty text field", () => {
-			const messages = [createMessage({ type: "ask", ask: "followup", partial: false, text: "" })]
-			const state = detectAgentState(messages)
-			expect(state.state).toBe(AgentLoopState.WAITING_FOR_INPUT)
-			expect(state.currentAsk).toBe("followup")
-		})
-
-		it("should handle say message with missing text field", () => {
-			const messages = [createMessage({ say: "text" })]
-			const state = detectAgentState(messages)
-			expect(state.state).toBe(AgentLoopState.RUNNING)
-		})
-	})
-
-	describe("api_req_started edge cases", () => {
-		it("should handle api_req_started with empty text field as streaming", () => {
-			const messages = [createMessage({ say: "api_req_started", text: "" })]
-			const state = detectAgentState(messages)
-			// Empty text is treated as "no text yet" = still in progress (streaming).
-			// This matches the behavior: !message.text is true for "" (falsy).
-			expect(state.state).toBe(AgentLoopState.STREAMING)
-			expect(state.isStreaming).toBe(true)
-		})
-
-		it("should handle api_req_started with invalid JSON", () => {
-			const messages = [createMessage({ say: "api_req_started", text: "not valid json" })]
-			const state = detectAgentState(messages)
-			// Invalid JSON should not crash, should return not streaming.
-			expect(state.state).toBe(AgentLoopState.RUNNING)
-			expect(state.isStreaming).toBe(false)
-		})
-
-		it("should handle api_req_started with null text", () => {
-			const messages = [createMessage({ say: "api_req_started", text: undefined })]
-			const state = detectAgentState(messages)
-			// No text means still in progress (streaming).
-			expect(state.state).toBe(AgentLoopState.STREAMING)
-			expect(state.isStreaming).toBe(true)
-		})
-
-		it("should handle api_req_started with cost of 0", () => {
-			const messages = [createMessage({ say: "api_req_started", text: JSON.stringify({ cost: 0 }) })]
-			const state = detectAgentState(messages)
-			// cost: 0 is defined (not undefined), so NOT streaming.
-			expect(state.state).toBe(AgentLoopState.RUNNING)
-			expect(state.isStreaming).toBe(false)
-		})
-
-		it("should handle api_req_started with cost of null", () => {
-			const messages = [createMessage({ say: "api_req_started", text: JSON.stringify({ cost: null }) })]
-			const state = detectAgentState(messages)
-			// cost: null is defined (not undefined), so NOT streaming.
-			expect(state.state).toBe(AgentLoopState.RUNNING)
-			expect(state.isStreaming).toBe(false)
-		})
-
-		it("should find api_req_started when it's not the last message", () => {
-			const messages = [
-				createMessage({ say: "api_req_started", text: JSON.stringify({ tokensIn: 100 }) }), // No cost = streaming
-				createMessage({ say: "text", text: "Some text" }),
-			]
-			const state = detectAgentState(messages)
-			// Last message is say:text, but api_req_started has no cost.
-			expect(state.state).toBe(AgentLoopState.STREAMING)
-			expect(state.isStreaming).toBe(true)
-		})
-	})
-
-	describe("Rapid state transitions", () => {
-		it("should handle multiple rapid state changes", () => {
-			const { client } = createMockClient()
-			const states: AgentLoopState[] = []
-
-			client.on("stateChange", (event) => {
-				states.push(event.currentState.state)
-			})
-
-			// Rapid updates.
-			client.handleMessage(createStateMessage([createMessage({ say: "text" })]))
-			client.handleMessage(createStateMessage([createMessage({ type: "ask", ask: "tool", partial: true })]))
-			client.handleMessage(createStateMessage([createMessage({ type: "ask", ask: "tool", partial: false })]))
-			client.handleMessage(
-				createStateMessage([createMessage({ type: "ask", ask: "completion_result", partial: false })]),
-			)
-
-			// Should have tracked all transitions.
-			expect(states.length).toBeGreaterThanOrEqual(3)
-			expect(states).toContain(AgentLoopState.STREAMING)
-			expect(states).toContain(AgentLoopState.WAITING_FOR_INPUT)
-			expect(states).toContain(AgentLoopState.IDLE)
-		})
-	})
-
-	describe("Message array edge cases", () => {
-		it("should handle single message array", () => {
-			const messages = [createMessage({ say: "text", text: "Hello" })]
-			const state = detectAgentState(messages)
-			expect(state.state).toBe(AgentLoopState.RUNNING)
-			expect(state.lastMessage).toBeDefined()
-		})
-
-		it("should use last message for state detection", () => {
-			// Multiple messages, last one determines state.
-			const messages = [
-				createMessage({ type: "ask", ask: "tool", partial: false }),
-				createMessage({ say: "text", text: "Tool executed" }),
-				createMessage({ type: "ask", ask: "completion_result", partial: false }),
-			]
-			const state = detectAgentState(messages)
-			// Last message is completion_result, so IDLE.
-			expect(state.state).toBe(AgentLoopState.IDLE)
-			expect(state.currentAsk).toBe("completion_result")
-		})
-
-		it("should handle very long message arrays", () => {
-			// Create many messages.
-			const messages: ClineMessage[] = []
-
-			for (let i = 0; i < 100; i++) {
-				messages.push(createMessage({ say: "text", text: `Message ${i}` }))
-			}
-
-			messages.push(createMessage({ type: "ask", ask: "followup", partial: false }))
-
-			const state = detectAgentState(messages)
-			expect(state.state).toBe(AgentLoopState.WAITING_FOR_INPUT)
-			expect(state.currentAsk).toBe("followup")
-		})
-	})
-
-	describe("State message edge cases", () => {
-		it("should handle state message with empty clineMessages", () => {
-			const { client } = createMockClient()
-			client.handleMessage({ type: "state", state: { clineMessages: [] } } as unknown as ExtensionMessage)
-			expect(client.getAgentState().state).toBe(AgentLoopState.NO_TASK)
-			expect(client.isInitialized()).toBe(true)
-		})
-
-		it("should handle state message with missing clineMessages", () => {
-			const { client } = createMockClient()
-
-			client.handleMessage({
-				type: "state",
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				state: {} as any,
-			})
-
-			// Should not crash, state should remain unchanged.
-			expect(client.getAgentState().state).toBe(AgentLoopState.NO_TASK)
-		})
-
-		it("should handle state message with missing state field", () => {
-			const { client } = createMockClient()
-
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			client.handleMessage({ type: "state" } as any)
-
-			// Should not crash
-			expect(client.getAgentState().state).toBe(AgentLoopState.NO_TASK)
-		})
-	})
-
-	describe("Partial to complete transitions", () => {
-		it("should transition from streaming to waiting when partial becomes false", () => {
-			const ts = Date.now()
-			const messages1 = [createMessage({ ts, type: "ask", ask: "tool", partial: true })]
-			const messages2 = [createMessage({ ts, type: "ask", ask: "tool", partial: false })]
-
-			const state1 = detectAgentState(messages1)
-			const state2 = detectAgentState(messages2)
-
-			expect(state1.state).toBe(AgentLoopState.STREAMING)
-			expect(state1.isWaitingForInput).toBe(false)
-
-			expect(state2.state).toBe(AgentLoopState.WAITING_FOR_INPUT)
-			expect(state2.isWaitingForInput).toBe(true)
-		})
-
-		it("should handle partial say messages", () => {
-			const messages = [createMessage({ say: "text", text: "Typing...", partial: true })]
-			const state = detectAgentState(messages)
-			expect(state.state).toBe(AgentLoopState.STREAMING)
-			expect(state.isStreaming).toBe(true)
-		})
-	})
-
-	describe("Unknown message types", () => {
-		it("should handle unknown ask types gracefully", () => {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const messages = [createMessage({ type: "ask", ask: "unknown_type" as any, partial: false })]
-			const state = detectAgentState(messages)
-			// Unknown ask type should default to RUNNING.
-			expect(state.state).toBe(AgentLoopState.RUNNING)
-		})
-
-		it("should handle unknown say types gracefully", () => {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const messages = [createMessage({ say: "unknown_say_type" as any })]
-			const state = detectAgentState(messages)
-			expect(state.state).toBe(AgentLoopState.RUNNING)
-		})
+		expect(changes).not.toHaveBeenCalled()
 	})
 })

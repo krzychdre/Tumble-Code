@@ -33,13 +33,23 @@ describe("useTranscriptSink", () => {
 		resetTranscript: () => reader.reset(),
 	}
 
+	// The store debounces partial updates for 150 ms; advancing the fake clock past
+	// that flushes them, so a late flush cannot silently put `partial: true` back.
+	const flushDebounce = () => vi.advanceTimersByTimeAsync(250)
+
 	beforeEach(() => {
+		vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
 		useCLIStore.getState().reset()
 		useCLIStore.getState().setHasStartedTask(true)
 		nonInteractive = false
 		view = render(<Harness />)
 		reader = new TranscriptReader()
 		reader.attach(sink)
+	})
+
+	afterEach(() => {
+		view.unmount()
+		vi.useRealTimers()
 	})
 
 	interface ClineMessageLike {
@@ -258,9 +268,7 @@ describe("useTranscriptSink", () => {
 		sayUpdate(2, "text", "Confirmed correct: the full answer", true)
 		sayUpdate(2, "text", "Confirmed correct: the full answer", false)
 
-		// The store debounces partial updates for 150 ms; wait past that so a late
-		// flush cannot silently put `partial: true` back.
-		await new Promise((resolve) => setTimeout(resolve, 250))
+		await flushDebounce()
 
 		const messages = useCLIStore.getState().messages
 		expect(messages).toHaveLength(1)
@@ -314,7 +322,7 @@ describe("useTranscriptSink", () => {
 			{ ts: 1001, type: "say", say: "completion_result", text: "All done.", partial: false },
 		])
 
-		await new Promise((resolve) => setTimeout(resolve, 250))
+		await flushDebounce()
 
 		const assistantMessages = useCLIStore.getState().messages.filter((m) => m.role === "assistant")
 		expect(assistantMessages).toHaveLength(2)
@@ -424,30 +432,15 @@ describe("useTranscriptSink", () => {
 			append({ ts: 8, type: "ask", ask: "completion_result", text: "", partial: false })
 		}
 
-		it("renders the answer once, not once per orphaned copy", async () => {
+		it("renders the answer once and one thinking row, leaving nothing partial for scrollback", async () => {
 			replayTurn()
-			await new Promise((resolve) => setTimeout(resolve, 250))
-
-			const assistantMessages = useCLIStore.getState().messages.filter((m) => m.role === "assistant")
-			expect(assistantMessages.map((m) => m.content)).toEqual([ANSWER])
-			expect(assistantMessages[0]?.partial).toBe(false)
-		})
-
-		it("renders one thinking row, not one per orphaned reasoning copy", async () => {
-			replayTurn()
-			await new Promise((resolve) => setTimeout(resolve, 250))
-
-			const thinking = useCLIStore.getState().messages.filter((m) => m.role === "thinking")
-			expect(thinking).toHaveLength(1)
-			expect(thinking[0]?.content).toBe(THOUGHT_FINAL)
-			expect(thinking[0]?.partial).toBe(false)
-		})
-
-		it("leaves nothing partial, so the whole turn can be promoted into scrollback", async () => {
-			replayTurn()
-			await new Promise((resolve) => setTimeout(resolve, 250))
+			await flushDebounce()
 
 			const messages = useCLIStore.getState().messages
+			const assistantMessages = messages.filter((m) => m.role === "assistant")
+			expect(assistantMessages.map((m) => m.content)).toEqual([ANSWER])
+			const thinking = messages.filter((m) => m.role === "thinking")
+			expect(thinking.map((m) => m.content)).toEqual([THOUGHT_FINAL])
 			expect(messages.filter((m) => m.partial)).toEqual([])
 			expect(getStaticCount(messages, false, false)).toBe(messages.length)
 		})
