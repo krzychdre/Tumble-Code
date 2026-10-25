@@ -1,1871 +1,392 @@
+// SkillsManager on a real temporary home and project directory; nothing of the file system is
+// faked. Only the provider (cwd and custom modes) is a stand-in.
+
+import * as fs from "fs/promises"
+import * as os from "os"
 import * as path from "path"
 
-// Use vi.hoisted to ensure mocks are available during hoisting
-const {
-	mockStat,
-	mockReadFile,
-	mockReaddir,
-	mockHomedir,
-	mockDirectoryExists,
-	mockFileExists,
-	mockRealpath,
-	mockMkdir,
-	mockWriteFile,
-	mockRm,
-	mockRename,
-	mockRmdir,
-} = vi.hoisted(() => ({
-	mockStat: vi.fn(),
-	mockReadFile: vi.fn(),
-	mockReaddir: vi.fn(),
-	mockHomedir: vi.fn(),
-	mockDirectoryExists: vi.fn(),
-	mockFileExists: vi.fn(),
-	mockRealpath: vi.fn(),
-	mockMkdir: vi.fn(),
-	mockWriteFile: vi.fn(),
-	mockRm: vi.fn(),
-	mockRename: vi.fn(),
-	mockRmdir: vi.fn(),
-}))
-
-// Platform-agnostic test paths
-// Use forward slashes for consistency, then normalize with path.normalize
-const HOME_DIR = process.platform === "win32" ? "C:\\Users\\testuser" : "/home/user"
-const PROJECT_DIR = process.platform === "win32" ? "C:\\test\\project" : "/test/project"
-const SHARED_DIR = process.platform === "win32" ? "C:\\shared\\skills" : "/shared/skills"
-
-// Helper to create platform-appropriate paths
-const p = (...segments: string[]) => path.join(...segments)
-
-// Mock fs/promises module
-vi.mock("fs/promises", () => ({
-	default: {
-		stat: mockStat,
-		readFile: mockReadFile,
-		readdir: mockReaddir,
-		realpath: mockRealpath,
-		mkdir: mockMkdir,
-		writeFile: mockWriteFile,
-		rm: mockRm,
-		rename: mockRename,
-		rmdir: mockRmdir,
-	},
-	stat: mockStat,
-	readFile: mockReadFile,
-	readdir: mockReaddir,
-	realpath: mockRealpath,
-	mkdir: mockMkdir,
-	writeFile: mockWriteFile,
-	rm: mockRm,
-	rename: mockRename,
-	rmdir: mockRmdir,
-}))
-
-// Mock os module
-vi.mock("os", () => ({
-	homedir: mockHomedir,
-}))
-
-// Mock vscode
-vi.mock("vscode", () => ({
-	workspace: {
-		createFileSystemWatcher: vi.fn(() => ({
-			onDidChange: vi.fn(),
-			onDidCreate: vi.fn(),
-			onDidDelete: vi.fn(),
-			dispose: vi.fn(),
-		})),
-	},
-	RelativePattern: vi.fn(),
-}))
-
-// Global roo directory - computed once
-const GLOBAL_ROO_DIR = p(HOME_DIR, ".roo")
-const GLOBAL_AGENTS_DIR = p(HOME_DIR, ".agents")
-
-// Mock roo-config
-vi.mock("../../roo-config", () => ({
-	getGlobalRooDirectory: () => GLOBAL_ROO_DIR,
-	getGlobalAgentsDirectory: () => GLOBAL_AGENTS_DIR,
-	getProjectAgentsDirectoryForCwd: (cwd: string) => p(cwd, ".agents"),
-	getProjectRooDirectoryForCwd: (cwd: string) => p(cwd, ".roo"),
-	directoryExists: mockDirectoryExists,
-	fileExists: mockFileExists,
-}))
-
-// Mock i18n
-vi.mock("../../../i18n", () => ({
-	t: (key: string, params?: Record<string, any>) => {
-		const translations: Record<string, string> = {
-			"skills:errors.name_length": `Skill name must be 1-${params?.maxLength} characters (got ${params?.length})`,
-			"skills:errors.name_format":
-				"Skill name must be lowercase letters/numbers/hyphens only (no leading/trailing hyphen, no consecutive hyphens)",
-			"skills:errors.description_length": `Skill description must be 1-1024 characters (got ${params?.length})`,
-			"skills:errors.no_workspace": "Cannot create project skill: no workspace folder is open",
-			"skills:errors.already_exists": `Skill "${params?.name}" already exists at ${params?.path}`,
-			"skills:errors.not_found": `Skill "${params?.name}" not found in ${params?.source}${params?.modeInfo}`,
-		}
-		return translations[key] || key
-	},
-}))
-
 import { SkillsManager } from "../SkillsManager"
-import { ClineProvider } from "../../../core/webview/ClineProvider"
+import type { ClineProvider } from "../../../core/webview/ClineProvider"
+import { logger } from "../../../utils/logging"
 
-describe("SkillsManager", () => {
-	let skillsManager: SkillsManager
-	let mockProvider: Partial<ClineProvider>
+vi.mock("../../../i18n", () => ({
+	t: (key: string, params?: Record<string, unknown>) => (params ? `${key} ${JSON.stringify(params)}` : key),
+}))
 
-	// Pre-computed paths for tests
-	const globalSkillsDir = p(GLOBAL_ROO_DIR, "skills")
-	const globalSkillsCodeDir = p(GLOBAL_ROO_DIR, "skills-code")
-	const globalSkillsArchitectDir = p(GLOBAL_ROO_DIR, "skills-architect")
-	const projectRooDir = p(PROJECT_DIR, ".roo")
-	const projectSkillsDir = p(projectRooDir, "skills")
-	// .agents directory paths
-	const globalAgentsSkillsDir = p(GLOBAL_AGENTS_DIR, "skills")
-	const globalAgentsSkillsCodeDir = p(GLOBAL_AGENTS_DIR, "skills-code")
-	const projectAgentsDir = p(PROJECT_DIR, ".agents")
-	const projectAgentsSkillsDir = p(projectAgentsDir, "skills")
+let root: string
+let home: string
+let project: string
+let manager: SkillsManager
+let customModes: () => Promise<unknown[]>
+const savedEnv = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE }
 
-	beforeEach(() => {
-		vi.clearAllMocks()
-		mockHomedir.mockReturnValue(HOME_DIR)
+/** Writes `<base>/<dir>/<name>/SKILL.md`; `content` is either frontmatter fields or the raw file. */
+async function writeSkill(
+	base: string,
+	dir: string,
+	name: string,
+	content: Record<string, unknown> | string = {},
+	body = "# Instructions\n\nDo the thing.",
+) {
+	const skillDir = path.join(base, dir, name)
+	await fs.mkdir(skillDir, { recursive: true })
+	const text =
+		typeof content === "string"
+			? content
+			: `---\n${Object.entries({ name, description: `${name} skill`, ...content })
+					.map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
+					.join("\n")}\n---\n\n${body}\n`
+	await fs.writeFile(path.join(skillDir, "SKILL.md"), text)
+	return path.join(skillDir, "SKILL.md")
+}
 
-		// Create mock provider
-		mockProvider = {
-			cwd: PROJECT_DIR,
-			customModesManager: {
-				getCustomModes: vi.fn().mockResolvedValue([]),
-			} as any,
+const globalRoo = () => path.join(home, ".roo")
+const projectRoo = () => path.join(project, ".roo")
+const summary = () =>
+	manager
+		.getAllSkills()
+		.map(({ name, source, modeSlugs }) => ({ name, source, modeSlugs }))
+		.sort((a, b) => a.name.localeCompare(b.name))
+const names = (mode: string) =>
+	manager
+		.getSkillsForMode(mode)
+		.map((s) => `${s.name}@${s.source}`)
+		.sort()
+
+function makeManager(cwd: string | null = project) {
+	return new SkillsManager({
+		cwd: cwd ?? undefined,
+		customModesManager: { getCustomModes: () => customModes() },
+	} as unknown as ClineProvider)
+}
+
+beforeEach(async () => {
+	root = await fs.mkdtemp(path.join(os.tmpdir(), "skills-spec-"))
+	home = path.join(root, "home")
+	project = path.join(root, "project")
+	await fs.mkdir(home, { recursive: true })
+	await fs.mkdir(project, { recursive: true })
+	// os.homedir() reads these, so ~/.roo and ~/.agents land in the temp home.
+	process.env.HOME = home
+	process.env.USERPROFILE = home
+	customModes = async () => []
+	manager = makeManager()
+	vi.spyOn(logger, "error").mockImplementation(() => {})
+})
+
+afterEach(async () => {
+	await manager.dispose()
+	process.env.HOME = savedEnv.HOME
+	process.env.USERPROFILE = savedEnv.USERPROFILE
+	vi.restoreAllMocks()
+	await fs.rm(root, { recursive: true, force: true })
+})
+
+describe("SkillsManager discovery", () => {
+	it("finds generic and mode skills under .roo and .agents, global and project", async () => {
+		await writeSkill(globalRoo(), "skills", "global-any")
+		await writeSkill(globalRoo(), "skills-code", "global-code")
+		await writeSkill(projectRoo(), "skills", "project-any")
+		await writeSkill(path.join(home, ".agents"), "skills", "agents-global")
+		await writeSkill(path.join(project, ".agents"), "skills-architect", "agents-project")
+
+		await manager.discoverSkills()
+
+		expect(summary()).toEqual([
+			{ name: "agents-global", source: "global", modeSlugs: undefined },
+			{ name: "agents-project", source: "project", modeSlugs: ["architect"] },
+			{ name: "global-any", source: "global", modeSlugs: undefined },
+			{ name: "global-code", source: "global", modeSlugs: ["code"] },
+			{ name: "project-any", source: "project", modeSlugs: undefined },
+		])
+	})
+
+	it("skips skills that break the spec and keeps the valid one", async () => {
+		const skills = path.join(globalRoo(), "skills")
+		await writeSkill(globalRoo(), "skills", "valid")
+		await writeSkill(globalRoo(), "skills", "no-name", "---\ndescription: d\n---\nbody")
+		await writeSkill(globalRoo(), "skills", "no-description", "---\nname: no-description\n---\nbody")
+		await writeSkill(globalRoo(), "skills", "mismatch", { name: "other-name" })
+		await writeSkill(globalRoo(), "skills", "Bad_Name", { name: "Bad_Name" })
+		await writeSkill(globalRoo(), "skills", "a".repeat(65), { name: "a".repeat(65) })
+		await writeSkill(globalRoo(), "skills", "blank-description", { description: "   " })
+		await writeSkill(globalRoo(), "skills", "long-description", { description: "x".repeat(1025) })
+		await fs.mkdir(path.join(skills, "no-skill-md"))
+		await fs.writeFile(path.join(skills, "a-file"), "not a directory")
+
+		await manager.discoverSkills()
+
+		expect(summary().map((s) => s.name)).toEqual(["valid"])
+	})
+
+	it.each([
+		["the frontmatter modeSlugs", "skills", { modeSlugs: ["code", "ask"] }, ["code", "ask"]],
+		["no mode for an empty modeSlugs list", "skills-code", { modeSlugs: [] }, undefined],
+		["no mode when modeSlugs holds no usable slug", "skills", { modeSlugs: ["", 5] }, undefined],
+		["the legacy frontmatter mode", "skills", { mode: "ask" }, ["ask"]],
+		["the directory's mode", "skills-code", {}, ["code"]],
+		["modeSlugs over the directory's mode", "skills-code", { modeSlugs: ["ask"] }, ["ask"]],
+	])("takes %s", async (_, dir, frontmatter, modeSlugs) => {
+		await writeSkill(globalRoo(), dir, "skill", frontmatter)
+
+		await manager.discoverSkills()
+
+		expect(summary()).toEqual([{ name: "skill", source: "global", modeSlugs }])
+	})
+
+	it("follows a symlinked skills directory and a symlinked skill named by its link", async () => {
+		const shared = path.join(root, "shared")
+		await writeSkill(shared, "", "linked-dir-skill")
+		await writeSkill(path.join(root, "elsewhere"), "", "original", { name: "renamed" })
+		await fs.mkdir(globalRoo(), { recursive: true })
+		await fs.symlink(shared, path.join(globalRoo(), "skills"), "junction")
+		await fs.mkdir(path.join(projectRoo(), "skills"), { recursive: true })
+		await fs.symlink(
+			path.join(root, "elsewhere", "original"),
+			path.join(projectRoo(), "skills", "renamed"),
+			"junction",
+		)
+
+		await manager.discoverSkills()
+
+		expect(summary().map((s) => `${s.name}@${s.source}`)).toEqual(["linked-dir-skill@global", "renamed@project"])
+	})
+
+	it("lets a .roo skill replace an .agents skill of the same name and source", async () => {
+		await writeSkill(path.join(home, ".agents"), "skills", "same")
+		const rooPath = await writeSkill(globalRoo(), "skills", "same")
+
+		await manager.discoverSkills()
+
+		expect(manager.getAllSkills().map((s) => s.path)).toEqual([rooPath])
+	})
+
+	it.each([
+		[
+			"custom modes",
+			async () => [{ slug: "mine", name: "Mine", roleDefinition: "r", groups: [] }],
+			["built-in", "custom"],
+		],
+		[
+			"the built-in modes when custom modes cannot be read",
+			async () => Promise.reject(new Error("bad yaml")),
+			["built-in"],
+		],
+	])("scans the mode directories of %s", async (_, modes, found) => {
+		customModes = modes
+		await writeSkill(globalRoo(), "skills-mine", "custom")
+		await writeSkill(globalRoo(), "skills-code", "built-in")
+
+		await manager.discoverSkills()
+
+		expect(summary().map((s) => s.name)).toEqual(found)
+	})
+})
+
+describe("SkillsManager.getSkillsForMode", () => {
+	it.each([
+		["a project skill over a global one", ["global skills", "project skills"], "code", "project skills"],
+		[
+			"a mode skill over a generic one of the same source",
+			["global skills", "global skills-code"],
+			"code",
+			"global skills-code",
+		],
+		["a global generic skill in any mode", ["global skills"], "debug", "global skills"],
+		["no skill of another mode", ["global skills-ask"], "code", undefined],
+	])("resolves %s", async (_, placements, mode, winner) => {
+		for (const placement of placements) {
+			const [source, dir] = placement.split(" ")
+			await writeSkill(source === "global" ? globalRoo() : projectRoo(), dir, "s", { description: placement })
 		}
 
-		skillsManager = new SkillsManager(mockProvider as ClineProvider)
+		await manager.discoverSkills()
+
+		expect(manager.getSkillsForMode(mode).map((s) => s.description)).toEqual(winner ? [winner] : [])
+	})
+})
+
+describe("SkillsManager content and lookup", () => {
+	it("returns the instructions without frontmatter, for a mode or any", async () => {
+		await writeSkill(globalRoo(), "skills-code", "coder", {}, "\n# Coder\n\nWrite code.\n\n")
+
+		await manager.discoverSkills()
+
+		expect(await manager.getSkillContent("coder", "code")).toMatchObject({
+			name: "coder",
+			modeSlugs: ["code"],
+			instructions: "# Coder\n\nWrite code.",
+		})
+		expect(await manager.getSkillContent("coder", "ask")).toBeNull()
+		expect((await manager.getSkillContent("coder"))?.name).toBe("coder")
+		expect(await manager.getSkillContent("nope")).toBeNull()
 	})
 
-	afterEach(async () => {
-		await skillsManager.dispose()
+	it("finds a skill by name, source and mode", async () => {
+		await writeSkill(globalRoo(), "skills-code", "coder")
+		await manager.discoverSkills()
+
+		expect(manager.getSkill("coder", "global", "code")?.name).toBe("coder")
+		expect(manager.getSkill("coder", "global")).toBeUndefined()
+		expect(manager.findSkillByNameAndSource("coder", "global")?.name).toBe("coder")
+		expect(manager.findSkillByNameAndSource("coder", "project")).toBeUndefined()
+		expect(manager.getSkillsMetadata()).toEqual(manager.getAllSkills())
 	})
 
-	describe("discoverSkills", () => {
-		it("should discover skills from global directory", async () => {
-			const pdfSkillDir = p(globalSkillsDir, "pdf-processing")
-			const pdfSkillMd = p(pdfSkillDir, "SKILL.md")
-
-			// Setup mocks
-			mockDirectoryExists.mockImplementation(async (dir: string) => {
-				return dir === globalSkillsDir
-			})
-
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
-
-			mockReaddir.mockImplementation(async (dir: string) => {
-				if (dir === globalSkillsDir) {
-					return ["pdf-processing"]
-				}
-				return []
-			})
-
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === pdfSkillDir) {
-					return { isDirectory: () => true }
-				}
-				throw new Error("Not found")
-			})
-
-			mockFileExists.mockImplementation(async (file: string) => {
-				return file === pdfSkillMd
-			})
-
-			mockReadFile.mockImplementation(async (file: string) => {
-				if (file === pdfSkillMd) {
-					return `---
-name: pdf-processing
-description: Extract text and tables from PDF files
----
-
-# PDF Processing
-
-Instructions here...`
-				}
-				throw new Error("File not found")
-			})
-
-			await skillsManager.discoverSkills()
-
-			const skills = skillsManager.getAllSkills()
-			expect(skills).toHaveLength(1)
-			expect(skills[0].name).toBe("pdf-processing")
-			expect(skills[0].description).toBe("Extract text and tables from PDF files")
-			expect(skills[0].source).toBe("global")
-		})
-
-		it("should discover skills from project directory", async () => {
-			const codeReviewDir = p(projectSkillsDir, "code-review")
-			const codeReviewMd = p(codeReviewDir, "SKILL.md")
-
-			mockDirectoryExists.mockImplementation(async (dir: string) => {
-				return dir === projectSkillsDir
-			})
-
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
-
-			mockReaddir.mockImplementation(async (dir: string) => {
-				if (dir === projectSkillsDir) {
-					return ["code-review"]
-				}
-				return []
-			})
-
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === codeReviewDir) {
-					return { isDirectory: () => true }
-				}
-				throw new Error("Not found")
-			})
-
-			mockFileExists.mockImplementation(async (file: string) => {
-				return file === codeReviewMd
-			})
-
-			mockReadFile.mockImplementation(async (file: string) => {
-				if (file === codeReviewMd) {
-					return `---
-name: code-review
-description: Review code for best practices
----
-
-# Code Review
-
-Instructions here...`
-				}
-				throw new Error("File not found")
-			})
-
-			await skillsManager.discoverSkills()
-
-			const skills = skillsManager.getAllSkills()
-			expect(skills).toHaveLength(1)
-			expect(skills[0].name).toBe("code-review")
-			expect(skills[0].source).toBe("project")
-		})
-
-		it("should discover mode-specific skills", async () => {
-			const refactoringDir = p(globalSkillsCodeDir, "refactoring")
-			const refactoringMd = p(refactoringDir, "SKILL.md")
-
-			mockDirectoryExists.mockImplementation(async (dir: string) => {
-				return dir === globalSkillsCodeDir
-			})
-
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
-
-			mockReaddir.mockImplementation(async (dir: string) => {
-				if (dir === globalSkillsCodeDir) {
-					return ["refactoring"]
-				}
-				return []
-			})
-
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === refactoringDir) {
-					return { isDirectory: () => true }
-				}
-				throw new Error("Not found")
-			})
-
-			mockFileExists.mockImplementation(async (file: string) => {
-				return file === refactoringMd
-			})
-
-			mockReadFile.mockImplementation(async (file: string) => {
-				if (file === refactoringMd) {
-					return `---
-name: refactoring
-description: Refactor code for better maintainability
----
-
-# Refactoring
-
-Instructions here...`
-				}
-				throw new Error("File not found")
-			})
-
-			await skillsManager.discoverSkills()
-
-			const skills = skillsManager.getAllSkills()
-			expect(skills).toHaveLength(1)
-			expect(skills[0].name).toBe("refactoring")
-			expect(skills[0].modeSlugs).toEqual(["code"])
-		})
-
-		it("should skip skills with missing required fields", async () => {
-			const invalidSkillDir = p(globalSkillsDir, "invalid-skill")
-			const invalidSkillMd = p(invalidSkillDir, "SKILL.md")
-
-			mockDirectoryExists.mockImplementation(async (dir: string) => {
-				return dir === globalSkillsDir
-			})
-
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
-
-			mockReaddir.mockImplementation(async (dir: string) => {
-				if (dir === globalSkillsDir) {
-					return ["invalid-skill"]
-				}
-				return []
-			})
-
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === invalidSkillDir) {
-					return { isDirectory: () => true }
-				}
-				throw new Error("Not found")
-			})
-
-			mockFileExists.mockImplementation(async (file: string) => {
-				return file === invalidSkillMd
-			})
-
-			mockReadFile.mockImplementation(async (file: string) => {
-				if (file === invalidSkillMd) {
-					return `---
-name: invalid-skill
----
-
-# Missing description field`
-				}
-				throw new Error("File not found")
-			})
-
-			await skillsManager.discoverSkills()
-
-			const skills = skillsManager.getAllSkills()
-			expect(skills).toHaveLength(0)
-		})
-
-		it("should skip skills where name doesn't match directory", async () => {
-			const mySkillDir = p(globalSkillsDir, "my-skill")
-			const mySkillMd = p(mySkillDir, "SKILL.md")
-
-			mockDirectoryExists.mockImplementation(async (dir: string) => {
-				return dir === globalSkillsDir
-			})
-
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
-
-			mockReaddir.mockImplementation(async (dir: string) => {
-				if (dir === globalSkillsDir) {
-					return ["my-skill"]
-				}
-				return []
-			})
-
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === mySkillDir) {
-					return { isDirectory: () => true }
-				}
-				throw new Error("Not found")
-			})
-
-			mockFileExists.mockImplementation(async (file: string) => {
-				return file === mySkillMd
-			})
-
-			mockReadFile.mockImplementation(async (file: string) => {
-				if (file === mySkillMd) {
-					return `---
-name: different-name
-description: Name doesn't match directory
----
-
-# Mismatched name`
-				}
-				throw new Error("File not found")
-			})
-
-			await skillsManager.discoverSkills()
-
-			const skills = skillsManager.getAllSkills()
-			expect(skills).toHaveLength(0)
-		})
-
-		it("should skip skills with invalid name formats (spec compliance)", async () => {
-			const invalidNames = [
-				"PDF-processing", // uppercase
-				"-pdf", // leading hyphen
-				"pdf-", // trailing hyphen
-				"pdf--processing", // consecutive hyphens
-			]
-
-			mockDirectoryExists.mockImplementation(async (dir: string) => dir === globalSkillsDir)
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
-			mockReaddir.mockImplementation(async (dir: string) => (dir === globalSkillsDir ? invalidNames : []))
-
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (invalidNames.some((name) => pathArg === p(globalSkillsDir, name))) {
-					return { isDirectory: () => true }
-				}
-				throw new Error("Not found")
-			})
-
-			mockFileExists.mockImplementation(async (file: string) => {
-				return invalidNames.some((name) => file === p(globalSkillsDir, name, "SKILL.md"))
-			})
-
-			mockReadFile.mockImplementation(async (file: string) => {
-				const match = invalidNames.find((name) => file === p(globalSkillsDir, name, "SKILL.md"))
-				if (!match) throw new Error("File not found")
-				return `---
-name: ${match}
-description: Invalid name format
----
-
-# Invalid Skill`
-			})
-
-			await skillsManager.discoverSkills()
-			const skills = skillsManager.getAllSkills()
-			expect(skills).toHaveLength(0)
-		})
-
-		it("should skip skills with name longer than 64 characters (spec compliance)", async () => {
-			const longName = "a".repeat(65)
-			const longDir = p(globalSkillsDir, longName)
-			const longMd = p(longDir, "SKILL.md")
-
-			mockDirectoryExists.mockImplementation(async (dir: string) => dir === globalSkillsDir)
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
-			mockReaddir.mockImplementation(async (dir: string) => (dir === globalSkillsDir ? [longName] : []))
-
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === longDir) return { isDirectory: () => true }
-				throw new Error("Not found")
-			})
-
-			mockFileExists.mockImplementation(async (file: string) => file === longMd)
-			mockReadFile.mockResolvedValue(`---
-name: ${longName}
-description: Too long name
----
-
-# Long Name Skill`)
-
-			await skillsManager.discoverSkills()
-			const skills = skillsManager.getAllSkills()
-			expect(skills).toHaveLength(0)
-		})
-
-		it("should skip skills with empty/whitespace-only description (spec compliance)", async () => {
-			const skillDir = p(globalSkillsDir, "valid-name")
-			const skillMd = p(skillDir, "SKILL.md")
-
-			mockDirectoryExists.mockImplementation(async (dir: string) => dir === globalSkillsDir)
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
-			mockReaddir.mockImplementation(async (dir: string) => (dir === globalSkillsDir ? ["valid-name"] : []))
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === skillDir) return { isDirectory: () => true }
-				throw new Error("Not found")
-			})
-			mockFileExists.mockImplementation(async (file: string) => file === skillMd)
-			mockReadFile.mockResolvedValue(`---
-name: valid-name
-description: "   "
----
-
-# Empty Description`)
-
-			await skillsManager.discoverSkills()
-			const skills = skillsManager.getAllSkills()
-			expect(skills).toHaveLength(0)
-		})
-
-		it("should skip skills with too-long descriptions (spec compliance)", async () => {
-			const skillDir = p(globalSkillsDir, "valid-name")
-			const skillMd = p(skillDir, "SKILL.md")
-			const longDescription = "d".repeat(1025)
-
-			mockDirectoryExists.mockImplementation(async (dir: string) => dir === globalSkillsDir)
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
-			mockReaddir.mockImplementation(async (dir: string) => (dir === globalSkillsDir ? ["valid-name"] : []))
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === skillDir) return { isDirectory: () => true }
-				throw new Error("Not found")
-			})
-			mockFileExists.mockImplementation(async (file: string) => file === skillMd)
-			mockReadFile.mockResolvedValue(`---
-name: valid-name
-description: ${longDescription}
----
-
-# Too Long Description`)
-
-			await skillsManager.discoverSkills()
-			const skills = skillsManager.getAllSkills()
-			expect(skills).toHaveLength(0)
-		})
-
-		it("should handle symlinked skills directory", async () => {
-			const sharedSkillDir = p(SHARED_DIR, "shared-skill")
-			const sharedSkillMd = p(sharedSkillDir, "SKILL.md")
-
-			// Simulate .roo/skills being a symlink to /shared/skills
-			mockDirectoryExists.mockImplementation(async (dir: string) => {
-				return dir === globalSkillsDir
-			})
-
-			// realpath resolves the symlink to the actual directory
-			mockRealpath.mockImplementation(async (pathArg: string) => {
-				if (pathArg === globalSkillsDir) {
-					return SHARED_DIR
-				}
-				return pathArg
-			})
-
-			mockReaddir.mockImplementation(async (dir: string) => {
-				if (dir === SHARED_DIR) {
-					return ["shared-skill"]
-				}
-				return []
-			})
-
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === sharedSkillDir) {
-					return { isDirectory: () => true }
-				}
-				throw new Error("Not found")
-			})
-
-			mockFileExists.mockImplementation(async (file: string) => {
-				return file === sharedSkillMd
-			})
-
-			mockReadFile.mockImplementation(async (file: string) => {
-				if (file === sharedSkillMd) {
-					return `---
-name: shared-skill
-description: A skill from a symlinked directory
----
-
-# Shared Skill
-
-Instructions here...`
-				}
-				throw new Error("File not found")
-			})
-
-			await skillsManager.discoverSkills()
-
-			const skills = skillsManager.getAllSkills()
-			expect(skills).toHaveLength(1)
-			expect(skills[0].name).toBe("shared-skill")
-			expect(skills[0].source).toBe("global")
-		})
-
-		it("should handle symlinked skill subdirectory", async () => {
-			const myAliasDir = p(globalSkillsDir, "my-alias")
-			const myAliasMd = p(myAliasDir, "SKILL.md")
-
-			// Simulate .roo/skills/my-alias being a symlink to /external/actual-skill
-			mockDirectoryExists.mockImplementation(async (dir: string) => {
-				return dir === globalSkillsDir
-			})
-
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
-
-			mockReaddir.mockImplementation(async (dir: string) => {
-				if (dir === globalSkillsDir) {
-					return ["my-alias"]
-				}
-				return []
-			})
-
-			// fs.stat follows symlinks, so it returns the target directory info
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === myAliasDir) {
-					return { isDirectory: () => true }
-				}
-				throw new Error("Not found")
-			})
-
-			mockFileExists.mockImplementation(async (file: string) => {
-				return file === myAliasMd
-			})
-
-			// The skill name in frontmatter must match the symlink name (my-alias)
-			mockReadFile.mockImplementation(async (file: string) => {
-				if (file === myAliasMd) {
-					return `---
-name: my-alias
-description: A skill accessed via symlink
----
-
-# My Alias Skill
-
-Instructions here...`
-				}
-				throw new Error("File not found")
-			})
-
-			await skillsManager.discoverSkills()
-
-			const skills = skillsManager.getAllSkills()
-			expect(skills).toHaveLength(1)
-			expect(skills[0].name).toBe("my-alias")
-			expect(skills[0].source).toBe("global")
-		})
-
-		it("should discover skills from global .agents directory", async () => {
-			const agentSkillDir = p(globalAgentsSkillsDir, "agent-skill")
-			const agentSkillMd = p(agentSkillDir, "SKILL.md")
-
-			mockDirectoryExists.mockImplementation(async (dir: string) => {
-				return dir === globalAgentsSkillsDir
-			})
-
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
-
-			mockReaddir.mockImplementation(async (dir: string) => {
-				if (dir === globalAgentsSkillsDir) {
-					return ["agent-skill"]
-				}
-				return []
-			})
-
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === agentSkillDir) {
-					return { isDirectory: () => true }
-				}
-				throw new Error("Not found")
-			})
-
-			mockFileExists.mockImplementation(async (file: string) => {
-				return file === agentSkillMd
-			})
-
-			mockReadFile.mockImplementation(async (file: string) => {
-				if (file === agentSkillMd) {
-					return `---
-name: agent-skill
-description: A skill from .agents directory shared across AI coding tools
----
-
-# Agent Skill
-
-Instructions here...`
-				}
-				throw new Error("File not found")
-			})
-
-			await skillsManager.discoverSkills()
-
-			const skills = skillsManager.getAllSkills()
-			expect(skills).toHaveLength(1)
-			expect(skills[0].name).toBe("agent-skill")
-			expect(skills[0].description).toBe("A skill from .agents directory shared across AI coding tools")
-			expect(skills[0].source).toBe("global")
-		})
-
-		it("should discover skills from project .agents directory", async () => {
-			const projectAgentSkillDir = p(projectAgentsSkillsDir, "project-agent-skill")
-			const projectAgentSkillMd = p(projectAgentSkillDir, "SKILL.md")
-
-			mockDirectoryExists.mockImplementation(async (dir: string) => {
-				return dir === projectAgentsSkillsDir
-			})
-
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
-
-			mockReaddir.mockImplementation(async (dir: string) => {
-				if (dir === projectAgentsSkillsDir) {
-					return ["project-agent-skill"]
-				}
-				return []
-			})
-
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === projectAgentSkillDir) {
-					return { isDirectory: () => true }
-				}
-				throw new Error("Not found")
-			})
-
-			mockFileExists.mockImplementation(async (file: string) => {
-				return file === projectAgentSkillMd
-			})
-
-			mockReadFile.mockImplementation(async (file: string) => {
-				if (file === projectAgentSkillMd) {
-					return `---
-name: project-agent-skill
-description: A project-level skill from .agents directory
----
-
-# Project Agent Skill
-
-Instructions here...`
-				}
-				throw new Error("File not found")
-			})
-
-			await skillsManager.discoverSkills()
-
-			const skills = skillsManager.getAllSkills()
-			expect(skills).toHaveLength(1)
-			expect(skills[0].name).toBe("project-agent-skill")
-			expect(skills[0].source).toBe("project")
-		})
-
-		it("should prioritize .roo skills over .agents skills with same name", async () => {
-			const agentSkillDir = p(globalAgentsSkillsDir, "common-skill")
-			const agentSkillMd = p(agentSkillDir, "SKILL.md")
-			const rooSkillDir = p(globalSkillsDir, "common-skill")
-			const rooSkillMd = p(rooSkillDir, "SKILL.md")
-
-			mockDirectoryExists.mockImplementation(async (dir: string) => {
-				return dir === globalAgentsSkillsDir || dir === globalSkillsDir
-			})
-
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
-
-			mockReaddir.mockImplementation(async (dir: string) => {
-				if (dir === globalAgentsSkillsDir || dir === globalSkillsDir) {
-					return ["common-skill"]
-				}
-				return []
-			})
-
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === agentSkillDir || pathArg === rooSkillDir) {
-					return { isDirectory: () => true }
-				}
-				throw new Error("Not found")
-			})
-
-			mockFileExists.mockImplementation(async (file: string) => {
-				return file === agentSkillMd || file === rooSkillMd
-			})
-
-			mockReadFile.mockImplementation(async (file: string) => {
-				if (file === agentSkillMd) {
-					return `---
-name: common-skill
-description: Agent version (should be overridden)
----
-
-# Agent Common Skill`
-				}
-				if (file === rooSkillMd) {
-					return `---
-name: common-skill
-description: Roo version (should take priority)
----
-
-# Roo Common Skill`
-				}
-				throw new Error("File not found")
-			})
-
-			await skillsManager.discoverSkills()
-
-			const skills = skillsManager.getSkillsForMode("code")
-			const commonSkill = skills.find((s) => s.name === "common-skill")
-			expect(commonSkill).toBeDefined()
-			// .roo should override .agents
-			expect(commonSkill?.description).toBe("Roo version (should take priority)")
-		})
-
-		it("should discover mode-specific skills from .agents directory", async () => {
-			const agentCodeSkillDir = p(globalAgentsSkillsCodeDir, "agent-code-skill")
-			const agentCodeSkillMd = p(agentCodeSkillDir, "SKILL.md")
-
-			mockDirectoryExists.mockImplementation(async (dir: string) => {
-				return dir === globalAgentsSkillsCodeDir
-			})
-
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
-
-			mockReaddir.mockImplementation(async (dir: string) => {
-				if (dir === globalAgentsSkillsCodeDir) {
-					return ["agent-code-skill"]
-				}
-				return []
-			})
-
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === agentCodeSkillDir) {
-					return { isDirectory: () => true }
-				}
-				throw new Error("Not found")
-			})
-
-			mockFileExists.mockImplementation(async (file: string) => {
-				return file === agentCodeSkillMd
-			})
-
-			mockReadFile.mockImplementation(async (file: string) => {
-				if (file === agentCodeSkillMd) {
-					return `---
-name: agent-code-skill
-description: A code mode skill from .agents directory
----
-
-# Agent Code Skill
-
-Instructions here...`
-				}
-				throw new Error("File not found")
-			})
-
-			await skillsManager.discoverSkills()
-
-			const skills = skillsManager.getAllSkills()
-			expect(skills).toHaveLength(1)
-			expect(skills[0].name).toBe("agent-code-skill")
-			expect(skills[0].modeSlugs).toEqual(["code"])
-		})
+	// ClineProvider starts initialize() without awaiting it, and a one-shot CLI run asks for a
+	// skill in the same tick.
+	it("makes a reader wait for a scan in flight instead of reporting the skill missing", async () => {
+		await writeSkill(globalRoo(), "skills", "race-skill")
+
+		const initialized = manager.initialize()
+		expect(manager.getAllSkills()).toEqual([])
+
+		expect((await manager.getSkillContent("race-skill", "code"))?.name).toBe("race-skill")
+		await manager.whenReady()
+		expect(names("code")).toEqual(["race-skill@global"])
+		await initialized
 	})
 
-	describe("getSkillsForMode", () => {
-		it("should return skills filtered by mode", async () => {
-			const genericSkillDir = p(globalSkillsDir, "generic-skill")
-			const codeSkillDir = p(globalSkillsCodeDir, "code-skill")
+	it("keeps the previous result visible while a rescan is in flight", async () => {
+		await writeSkill(globalRoo(), "skills", "kept")
+		await manager.discoverSkills()
 
-			// Setup skills for testing
-			mockDirectoryExists.mockImplementation(async (dir: string) => {
-				return [globalSkillsDir, globalSkillsCodeDir].includes(dir)
-			})
+		const rescan = manager.discoverSkills()
+		expect(manager.getAllSkills()).toHaveLength(1)
+		await rescan
 
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
-
-			mockReaddir.mockImplementation(async (dir: string) => {
-				if (dir === globalSkillsDir) {
-					return ["generic-skill"]
-				}
-				if (dir === globalSkillsCodeDir) {
-					return ["code-skill"]
-				}
-				return []
-			})
-
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === genericSkillDir || pathArg === codeSkillDir) {
-					return { isDirectory: () => true }
-				}
-				throw new Error("Not found")
-			})
-
-			mockFileExists.mockResolvedValue(true)
-
-			mockReadFile.mockImplementation(async (file: string) => {
-				if (file.includes("generic-skill")) {
-					return `---
-name: generic-skill
-description: Generic skill
----
-Instructions`
-				}
-				if (file.includes("code-skill")) {
-					return `---
-name: code-skill
-description: Code skill
----
-Instructions`
-				}
-				throw new Error("File not found")
-			})
-
-			await skillsManager.discoverSkills()
-
-			const codeSkills = skillsManager.getSkillsForMode("code")
-
-			// Should include both generic and code-specific skills
-			expect(codeSkills.length).toBe(2)
-			expect(codeSkills.map((s) => s.name)).toContain("generic-skill")
-			expect(codeSkills.map((s) => s.name)).toContain("code-skill")
-		})
-
-		it("should apply project > global override", async () => {
-			const globalSharedSkillDir = p(globalSkillsDir, "shared-skill")
-			const projectSharedSkillDir = p(projectSkillsDir, "shared-skill")
-
-			mockDirectoryExists.mockImplementation(async (dir: string) => {
-				return [globalSkillsDir, projectSkillsDir].includes(dir)
-			})
-
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
-
-			mockReaddir.mockImplementation(async (dir: string) => {
-				if (dir === globalSkillsDir) {
-					return ["shared-skill"]
-				}
-				if (dir === projectSkillsDir) {
-					return ["shared-skill"]
-				}
-				return []
-			})
-
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === globalSharedSkillDir || pathArg === projectSharedSkillDir) {
-					return { isDirectory: () => true }
-				}
-				throw new Error("Not found")
-			})
-
-			mockFileExists.mockResolvedValue(true)
-
-			mockReadFile.mockResolvedValue(`---
-name: shared-skill
-description: Shared skill
----
-Instructions`)
-
-			await skillsManager.discoverSkills()
-
-			const skills = skillsManager.getSkillsForMode("code")
-			const sharedSkill = skills.find((s) => s.name === "shared-skill")
-
-			// Project skill should override global
-			expect(sharedSkill?.source).toBe("project")
-		})
-
-		it("should apply mode-specific > generic override", async () => {
-			const genericTestSkillDir = p(globalSkillsDir, "test-skill")
-			const codeTestSkillDir = p(globalSkillsCodeDir, "test-skill")
-
-			mockDirectoryExists.mockImplementation(async (dir: string) => {
-				return [globalSkillsDir, globalSkillsCodeDir].includes(dir)
-			})
-
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
-
-			mockReaddir.mockImplementation(async (dir: string) => {
-				if (dir === globalSkillsDir) {
-					return ["test-skill"]
-				}
-				if (dir === globalSkillsCodeDir) {
-					return ["test-skill"]
-				}
-				return []
-			})
-
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === genericTestSkillDir || pathArg === codeTestSkillDir) {
-					return { isDirectory: () => true }
-				}
-				throw new Error("Not found")
-			})
-
-			mockFileExists.mockResolvedValue(true)
-
-			mockReadFile.mockResolvedValue(`---
-name: test-skill
-description: Test skill
----
-Instructions`)
-
-			await skillsManager.discoverSkills()
-
-			const skills = skillsManager.getSkillsForMode("code")
-			const testSkill = skills.find((s) => s.name === "test-skill")
-
-			// Mode-specific should override generic
-			expect(testSkill?.modeSlugs).toEqual(["code"])
-		})
-
-		it("should not include mode-specific skills for other modes", async () => {
-			const architectOnlyDir = p(globalSkillsArchitectDir, "architect-only")
-
-			mockDirectoryExists.mockImplementation(async (dir: string) => {
-				return dir === globalSkillsArchitectDir
-			})
-
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
-
-			mockReaddir.mockImplementation(async (dir: string) => {
-				if (dir === globalSkillsArchitectDir) {
-					return ["architect-only"]
-				}
-				return []
-			})
-
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === architectOnlyDir) {
-					return { isDirectory: () => true }
-				}
-				throw new Error("Not found")
-			})
-
-			mockFileExists.mockResolvedValue(true)
-
-			mockReadFile.mockResolvedValue(`---
-name: architect-only
-description: Only for architect mode
----
-Instructions`)
-
-			await skillsManager.discoverSkills()
-
-			const codeSkills = skillsManager.getSkillsForMode("code")
-			const architectSkill = codeSkills.find((s) => s.name === "architect-only")
-
-			expect(architectSkill).toBeUndefined()
-		})
+		expect(manager.getAllSkills()).toHaveLength(1)
 	})
 
-	describe("getSkillContent", () => {
-		it("should return full skill content", async () => {
-			const testSkillDir = p(globalSkillsDir, "test-skill")
-			const testSkillMd = p(testSkillDir, "SKILL.md")
+	it("is ready at once when discovery never started, and empty after dispose", async () => {
+		await expect(manager.whenReady()).resolves.toBeUndefined()
+		await writeSkill(globalRoo(), "skills", "gone")
+		await manager.discoverSkills()
 
-			mockDirectoryExists.mockImplementation(async (dir: string) => {
-				return dir === globalSkillsDir
-			})
+		await manager.dispose()
 
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
+		expect(manager.getAllSkills()).toEqual([])
+	})
+})
 
-			mockReaddir.mockImplementation(async (dir: string) => {
-				if (dir === globalSkillsDir) {
-					return ["test-skill"]
-				}
-				return []
-			})
+describe("SkillsManager.createSkill", () => {
+	it("writes a global skill with its title and finds it", async () => {
+		const created = await manager.createSkill("my-new-skill", "global", "  Does things  ")
 
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === testSkillDir) {
-					return { isDirectory: () => true }
-				}
-				throw new Error("Not found")
-			})
-
-			mockFileExists.mockImplementation(async (file: string) => {
-				return file === testSkillMd
-			})
-
-			const skillContent = `---
-name: test-skill
-description: A test skill
----
-
-# Test Skill
-
-## Instructions
-
-1. Do this
-2. Do that`
-
-			mockReadFile.mockResolvedValue(skillContent)
-
-			await skillsManager.discoverSkills()
-
-			const content = await skillsManager.getSkillContent("test-skill")
-
-			expect(content).not.toBeNull()
-			expect(content?.name).toBe("test-skill")
-			expect(content?.instructions).toContain("# Test Skill")
-			expect(content?.instructions).toContain("1. Do this")
-		})
-
-		it("should return null for non-existent skill", async () => {
-			mockDirectoryExists.mockResolvedValue(false)
-			mockRealpath.mockImplementation(async (p: string) => p)
-			mockReaddir.mockResolvedValue([])
-
-			await skillsManager.discoverSkills()
-
-			const content = await skillsManager.getSkillContent("non-existent")
-
-			expect(content).toBeNull()
-		})
+		expect(created).toBe(path.join(globalRoo(), "skills", "my-new-skill", "SKILL.md"))
+		expect(await fs.readFile(created, "utf-8")).toBe(
+			"---\nname: my-new-skill\ndescription: Does things\n---\n\n# My New Skill\n\n## Instructions\n\nAdd your skill instructions here.\n",
+		)
+		expect(summary()).toEqual([{ name: "my-new-skill", source: "global", modeSlugs: undefined }])
 	})
 
-	describe("whenReady", () => {
-		const raceSkillDir = p(globalSkillsDir, "race-skill")
-		const raceSkillMd = p(raceSkillDir, "SKILL.md")
+	it("writes a project skill limited to modes", async () => {
+		const created = await manager.createSkill("proj", "project", "d", ["code", "ask"])
 
-		/**
-		 * Put one global skill on disk. When `gate` is passed, every directory
-		 * probe waits on it, so a discovery pass cannot finish until the test
-		 * releases it. That reproduces the real timing: ClineProvider starts
-		 * discovery without awaiting it, and consumers run while it is pending.
-		 */
-		const setupRaceSkill = (gate?: Promise<void>) => {
-			mockDirectoryExists.mockImplementation(async (dir: string) => {
-				if (gate) {
-					await gate
-				}
-				return dir === globalSkillsDir
-			})
-
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
-
-			mockReaddir.mockImplementation(async (dir: string) => (dir === globalSkillsDir ? ["race-skill"] : []))
-
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === raceSkillDir) {
-					return { isDirectory: () => true }
-				}
-				throw new Error("Not found")
-			})
-
-			mockFileExists.mockImplementation(async (file: string) => file === raceSkillMd)
-
-			mockReadFile.mockResolvedValue(`---
-name: race-skill
-description: A skill discovered asynchronously
----
-
-# Race Skill
-
-Instructions here...`)
-		}
-
-		const createGate = () => {
-			let release!: () => void
-			const gate = new Promise<void>((resolve) => {
-				release = resolve
-			})
-			return { gate, release }
-		}
-
-		it("resolves only once an unawaited initialize() has finished discovering", async () => {
-			const { gate, release } = createGate()
-			setupRaceSkill(gate)
-
-			// Exactly what ClineProvider does: start discovery, do not await it.
-			const initialized = skillsManager.initialize()
-
-			expect(skillsManager.getAllSkills()).toHaveLength(0)
-
-			release()
-			await skillsManager.whenReady()
-
-			expect(skillsManager.getAllSkills()).toHaveLength(1)
-			expect(skillsManager.getSkillsForMode("code").map((skill) => skill.name)).toEqual(["race-skill"])
-
-			await initialized
-		})
-
-		it("makes getSkillContent wait for a pending scan instead of reporting the skill as missing", async () => {
-			const { gate, release } = createGate()
-			setupRaceSkill(gate)
-
-			const initialized = skillsManager.initialize()
-
-			// Same tick as activation, like a one-shot `tumble -p` run whose
-			// first message expands `/race-skill`.
-			const contentPromise = skillsManager.getSkillContent("race-skill", "code")
-
-			release()
-
-			const content = await contentPromise
-			expect(content).not.toBeNull()
-			expect(content?.instructions).toContain("# Race Skill")
-
-			await initialized
-		})
-
-		it("keeps the previous result visible while a rescan is in flight", async () => {
-			setupRaceSkill()
-			await skillsManager.discoverSkills()
-			expect(skillsManager.getAllSkills()).toHaveLength(1)
-
-			const { gate, release } = createGate()
-			setupRaceSkill(gate)
-
-			const rescan = skillsManager.discoverSkills()
-
-			// A reader during the rescan must still see the complete previous
-			// result, never a half-filled map.
-			expect(skillsManager.getAllSkills()).toHaveLength(1)
-
-			release()
-			await rescan
-
-			expect(skillsManager.getAllSkills()).toHaveLength(1)
-		})
-
-		it("resolves immediately when discovery was never started", async () => {
-			await expect(skillsManager.whenReady()).resolves.toBeUndefined()
-		})
+		expect(created).toBe(path.join(projectRoo(), "skills", "proj", "SKILL.md"))
+		expect(await fs.readFile(created, "utf-8")).toContain("modeSlugs:\n  - code\n  - ask\n---")
+		expect(summary()).toEqual([{ name: "proj", source: "project", modeSlugs: ["code", "ask"] }])
 	})
 
-	describe("dispose", () => {
-		it("should clean up resources", async () => {
-			await skillsManager.dispose()
-
-			const skills = skillsManager.getAllSkills()
-			expect(skills).toHaveLength(0)
-		})
+	it.each([
+		["Bad_Name", "d", "skills:errors.name_format"],
+		["-lead", "d", "skills:errors.name_format"],
+		["trail-", "d", "skills:errors.name_format"],
+		["dou--ble", "d", "skills:errors.name_format"],
+		["a".repeat(65), "d", 'skills:errors.name_length {"maxLength":64,"length":65}'],
+		["", "d", 'skills:errors.name_length {"maxLength":64,"length":0}'],
+		["ok", "   ", 'skills:errors.description_length {"length":0}'],
+		["ok", "x".repeat(1025), 'skills:errors.description_length {"length":1025}'],
+	])("refuses the name %j with description %j", async (name, description, message) => {
+		await expect(manager.createSkill(name, "global", description)).rejects.toThrow(message)
 	})
 
-	describe("getSkillsMetadata", () => {
-		it("should return all skills metadata", async () => {
-			const testSkillDir = p(globalSkillsDir, "test-skill")
-			const testSkillMd = p(testSkillDir, "SKILL.md")
+	it("refuses a skill that exists, and a project skill without a workspace", async () => {
+		await manager.createSkill("taken", "global", "d")
 
-			mockDirectoryExists.mockImplementation(async (dir: string) => {
-				return dir === globalSkillsDir
-			})
+		await expect(manager.createSkill("taken", "global", "d")).rejects.toThrow("skills:errors.already_exists")
+		await expect(makeManager(null).createSkill("x", "project", "d")).rejects.toThrow("skills:errors.no_workspace")
+	})
+})
 
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
+describe("SkillsManager changing skills", () => {
+	const exists = (p: string) =>
+		fs.stat(p).then(
+			() => true,
+			() => false,
+		)
 
-			mockReaddir.mockImplementation(async (dir: string) => {
-				if (dir === globalSkillsDir) {
-					return ["test-skill"]
-				}
-				return []
-			})
+	it("deletes the skill directory", async () => {
+		const skillMd = await writeSkill(globalRoo(), "skills-code", "doomed")
+		await manager.discoverSkills()
 
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === testSkillDir) {
-					return { isDirectory: () => true }
-				}
-				throw new Error("Not found")
-			})
+		await manager.deleteSkill("doomed", "global", "code")
 
-			mockFileExists.mockImplementation(async (file: string) => {
-				return file === testSkillMd
-			})
-
-			mockReadFile.mockResolvedValue(`---
-name: test-skill
-description: A test skill
----
-Instructions`)
-
-			await skillsManager.discoverSkills()
-
-			const metadata = skillsManager.getSkillsMetadata()
-
-			expect(metadata).toHaveLength(1)
-			expect(metadata[0].name).toBe("test-skill")
-			expect(metadata[0].description).toBe("A test skill")
-		})
+		expect(await exists(path.dirname(skillMd))).toBe(false)
+		expect(manager.getAllSkills()).toEqual([])
+		await expect(manager.deleteSkill("doomed", "global", "code")).rejects.toThrow(
+			'skills:errors.not_found {"name":"doomed","source":"global","modeInfo":" (mode: code)"}',
+		)
 	})
 
-	describe("getSkill", () => {
-		it("should return a skill by name, source, and mode", async () => {
-			const testSkillDir = p(globalSkillsDir, "test-skill")
-			const testSkillMd = p(testSkillDir, "SKILL.md")
+	it.each([
+		[undefined, "code", "skills", "skills-code"],
+		["code", "ask", "skills-code", "skills-ask"],
+		["code", undefined, "skills-code", "skills"],
+	])("moves a skill from mode %s to mode %s and removes the emptied directory", async (from, to, fromDir, toDir) => {
+		await writeSkill(projectRoo(), fromDir, "mover")
+		await manager.discoverSkills()
 
-			mockDirectoryExists.mockImplementation(async (dir: string) => {
-				return dir === globalSkillsDir
-			})
+		await manager.moveSkill("mover", "project", from, to)
 
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
-
-			mockReaddir.mockImplementation(async (dir: string) => {
-				if (dir === globalSkillsDir) {
-					return ["test-skill"]
-				}
-				return []
-			})
-
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === testSkillDir) {
-					return { isDirectory: () => true }
-				}
-				throw new Error("Not found")
-			})
-
-			mockFileExists.mockImplementation(async (file: string) => {
-				return file === testSkillMd
-			})
-
-			mockReadFile.mockResolvedValue(`---
-name: test-skill
-description: A test skill
----
-Instructions`)
-
-			await skillsManager.discoverSkills()
-
-			const skill = skillsManager.getSkill("test-skill", "global")
-
-			expect(skill).toBeDefined()
-			expect(skill?.name).toBe("test-skill")
-			expect(skill?.source).toBe("global")
-		})
-
-		it("should return undefined for non-existent skill", async () => {
-			mockDirectoryExists.mockResolvedValue(false)
-			mockRealpath.mockImplementation(async (p: string) => p)
-			mockReaddir.mockResolvedValue([])
-
-			await skillsManager.discoverSkills()
-
-			const skill = skillsManager.getSkill("non-existent", "global")
-
-			expect(skill).toBeUndefined()
-		})
+		expect(await exists(path.join(projectRoo(), toDir, "mover", "SKILL.md"))).toBe(true)
+		expect(await exists(path.join(projectRoo(), fromDir))).toBe(false)
+		expect(manager.getSkill("mover", "project", to)?.name).toBe("mover")
 	})
 
-	describe("createSkill", () => {
-		it("should create a new global skill", async () => {
-			// Setup: no existing skills
-			mockDirectoryExists.mockResolvedValue(false)
-			mockRealpath.mockImplementation(async (p: string) => p)
-			mockReaddir.mockResolvedValue([])
-			mockFileExists.mockResolvedValue(false)
-			mockMkdir.mockResolvedValue(undefined)
-			mockWriteFile.mockResolvedValue(undefined)
+	it("keeps a source directory that still holds other skills", async () => {
+		await writeSkill(globalRoo(), "skills", "mover")
+		await writeSkill(globalRoo(), "skills", "stays")
+		await manager.discoverSkills()
 
-			const createdPath = await skillsManager.createSkill("new-skill", "global", "A new skill description")
+		await manager.moveSkill("mover", "global", undefined, "code")
 
-			expect(createdPath).toBe(p(GLOBAL_ROO_DIR, "skills", "new-skill", "SKILL.md"))
-			expect(mockMkdir).toHaveBeenCalledWith(p(GLOBAL_ROO_DIR, "skills", "new-skill"), { recursive: true })
-			expect(mockWriteFile).toHaveBeenCalled()
-
-			// Verify the content written
-			const writeCall = mockWriteFile.mock.calls[0]
-			expect(writeCall[0]).toBe(p(GLOBAL_ROO_DIR, "skills", "new-skill", "SKILL.md"))
-			expect(writeCall[1]).toContain("name: new-skill")
-			expect(writeCall[1]).toContain("description: A new skill description")
-		})
-
-		it("should create a mode-specific skill with modeSlugs array", async () => {
-			mockDirectoryExists.mockResolvedValue(false)
-			mockRealpath.mockImplementation(async (p: string) => p)
-			mockReaddir.mockResolvedValue([])
-			mockFileExists.mockResolvedValue(false)
-			mockMkdir.mockResolvedValue(undefined)
-			mockWriteFile.mockResolvedValue(undefined)
-
-			const createdPath = await skillsManager.createSkill("code-skill", "global", "A code skill", ["code"])
-
-			// Skills are always created in the generic skills directory now; mode info is in frontmatter
-			expect(createdPath).toBe(p(GLOBAL_ROO_DIR, "skills", "code-skill", "SKILL.md"))
-
-			// Verify frontmatter contains modeSlugs
-			const writeCall = mockWriteFile.mock.calls[0]
-			expect(writeCall[1]).toContain("modeSlugs:")
-			expect(writeCall[1]).toContain("- code")
-		})
-
-		it("should create a project skill", async () => {
-			mockDirectoryExists.mockResolvedValue(false)
-			mockRealpath.mockImplementation(async (p: string) => p)
-			mockReaddir.mockResolvedValue([])
-			mockFileExists.mockResolvedValue(false)
-			mockMkdir.mockResolvedValue(undefined)
-			mockWriteFile.mockResolvedValue(undefined)
-
-			const createdPath = await skillsManager.createSkill("project-skill", "project", "A project skill")
-
-			expect(createdPath).toBe(p(PROJECT_DIR, ".roo", "skills", "project-skill", "SKILL.md"))
-		})
-
-		it("should throw error for invalid skill name", async () => {
-			await expect(skillsManager.createSkill("Invalid-Name", "global", "Description")).rejects.toThrow(
-				"Skill name must be lowercase letters/numbers/hyphens only",
-			)
-		})
-
-		it("should throw error for skill name that is too long", async () => {
-			const longName = "a".repeat(65)
-			await expect(skillsManager.createSkill(longName, "global", "Description")).rejects.toThrow(
-				"Skill name must be 1-64 characters",
-			)
-		})
-
-		it("should throw error for skill name starting with hyphen", async () => {
-			await expect(skillsManager.createSkill("-invalid", "global", "Description")).rejects.toThrow(
-				"Skill name must be lowercase letters/numbers/hyphens only",
-			)
-		})
-
-		it("should throw error for skill name ending with hyphen", async () => {
-			await expect(skillsManager.createSkill("invalid-", "global", "Description")).rejects.toThrow(
-				"Skill name must be lowercase letters/numbers/hyphens only",
-			)
-		})
-
-		it("should throw error for skill name with consecutive hyphens", async () => {
-			await expect(skillsManager.createSkill("invalid--name", "global", "Description")).rejects.toThrow(
-				"Skill name must be lowercase letters/numbers/hyphens only",
-			)
-		})
-
-		it("should throw error for empty description", async () => {
-			await expect(skillsManager.createSkill("valid-name", "global", "   ")).rejects.toThrow(
-				"Skill description must be 1-1024 characters",
-			)
-		})
-
-		it("should throw error for description that is too long", async () => {
-			const longDesc = "d".repeat(1025)
-			await expect(skillsManager.createSkill("valid-name", "global", longDesc)).rejects.toThrow(
-				"Skill description must be 1-1024 characters",
-			)
-		})
-
-		it("should throw error if skill already exists", async () => {
-			mockFileExists.mockResolvedValue(true)
-
-			await expect(skillsManager.createSkill("existing-skill", "global", "Description")).rejects.toThrow(
-				"already exists",
-			)
-		})
+		expect(names("code")).toEqual(["mover@global", "stays@global"])
+		expect(await exists(path.join(globalRoo(), "skills", "stays"))).toBe(true)
 	})
 
-	describe("deleteSkill", () => {
-		it("should delete an existing skill", async () => {
-			const testSkillDir = p(globalSkillsDir, "test-skill")
-			const testSkillMd = p(testSkillDir, "SKILL.md")
+	it("does nothing for a move to the same mode, and refuses a missing skill or a taken destination", async () => {
+		await writeSkill(globalRoo(), "skills", "both")
+		await writeSkill(globalRoo(), "skills-code", "both")
+		await manager.discoverSkills()
 
-			// Setup: skill exists
-			mockDirectoryExists.mockImplementation(async (dir: string) => {
-				return dir === globalSkillsDir
-			})
-
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
-
-			mockReaddir.mockImplementation(async (dir: string) => {
-				if (dir === globalSkillsDir) {
-					return ["test-skill"]
-				}
-				return []
-			})
-
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === testSkillDir) {
-					return { isDirectory: () => true }
-				}
-				throw new Error("Not found")
-			})
-
-			mockFileExists.mockImplementation(async (file: string) => {
-				return file === testSkillMd
-			})
-
-			mockReadFile.mockResolvedValue(`---
-name: test-skill
-description: A test skill
----
-Instructions`)
-
-			mockRm.mockResolvedValue(undefined)
-
-			await skillsManager.discoverSkills()
-
-			// Verify skill exists
-			expect(skillsManager.getSkill("test-skill", "global")).toBeDefined()
-
-			// Delete the skill
-			await skillsManager.deleteSkill("test-skill", "global")
-
-			expect(mockRm).toHaveBeenCalledWith(testSkillDir, { recursive: true, force: true })
-		})
-
-		it("should throw error if skill does not exist", async () => {
-			mockDirectoryExists.mockResolvedValue(false)
-			mockRealpath.mockImplementation(async (p: string) => p)
-			mockReaddir.mockResolvedValue([])
-
-			await skillsManager.discoverSkills()
-
-			await expect(skillsManager.deleteSkill("non-existent", "global")).rejects.toThrow("not found")
-		})
+		await expect(manager.moveSkill("both", "global", "code", "code")).resolves.toBeUndefined()
+		await expect(manager.moveSkill("nope", "global", undefined, "code")).rejects.toThrow("skills:errors.not_found")
+		await expect(manager.moveSkill("both", "global", undefined, "code")).rejects.toThrow(
+			"skills:errors.already_exists",
+		)
 	})
 
-	describe("moveSkill", () => {
-		it("should move a skill from generic to mode-specific directory", async () => {
-			const sourceDir = p(globalSkillsDir, "test-skill")
-			const testSkillMd = p(sourceDir, "SKILL.md")
-			const destDir = p(GLOBAL_ROO_DIR, "skills-code", "test-skill")
-			const destSkillsDir = p(GLOBAL_ROO_DIR, "skills-code")
-
-			// Setup: skill exists in generic skills directory
-			mockDirectoryExists.mockImplementation(async (dir: string) => {
-				return dir === globalSkillsDir
-			})
-
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
-
-			mockReaddir.mockImplementation(async (dir: string) => {
-				if (dir === globalSkillsDir) {
-					return ["test-skill"]
-				}
-				return []
-			})
-
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === sourceDir) {
-					return { isDirectory: () => true }
-				}
-				throw new Error("Not found")
-			})
-
-			mockFileExists.mockImplementation(async (file: string) => {
-				// Skill exists in source
-				if (file === testSkillMd) return true
-				// Skill does not exist in destination
-				if (file === p(destDir, "SKILL.md")) return false
-				return false
-			})
-
-			mockReadFile.mockResolvedValue(`---
-name: test-skill
-description: A test skill
----
-Instructions`)
-
-			mockMkdir.mockResolvedValue(undefined)
-			mockRename.mockResolvedValue(undefined)
-
-			await skillsManager.discoverSkills()
-
-			// Verify skill exists
-			expect(skillsManager.getSkill("test-skill", "global")).toBeDefined()
-
-			// Move the skill to code mode
-			await skillsManager.moveSkill("test-skill", "global", undefined, "code")
-
-			expect(mockMkdir).toHaveBeenCalledWith(destSkillsDir, { recursive: true })
-			expect(mockRename).toHaveBeenCalledWith(sourceDir, destDir)
-		})
-
-		it("should move a skill from one mode to another", async () => {
-			const sourceSkillsDir = p(GLOBAL_ROO_DIR, "skills-code")
-			const sourceDir = p(sourceSkillsDir, "test-skill")
-			const testSkillMd = p(sourceDir, "SKILL.md")
-			const destDir = p(GLOBAL_ROO_DIR, "skills-architect", "test-skill")
-			const destSkillsDir = p(GLOBAL_ROO_DIR, "skills-architect")
-
-			// Setup: skill exists in code mode directory
-			mockDirectoryExists.mockImplementation(async (dir: string) => {
-				return dir === sourceSkillsDir
-			})
-
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
-
-			mockReaddir.mockImplementation(async (dir: string) => {
-				if (dir === sourceSkillsDir) {
-					return ["test-skill"]
-				}
-				return []
-			})
-
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === sourceDir) {
-					return { isDirectory: () => true }
-				}
-				throw new Error("Not found")
-			})
-
-			mockFileExists.mockImplementation(async (file: string) => {
-				// Skill exists in source
-				if (file === testSkillMd) return true
-				// Skill does not exist in destination
-				if (file === p(destDir, "SKILL.md")) return false
-				return false
-			})
-
-			mockReadFile.mockResolvedValue(`---
-name: test-skill
-description: A test skill
----
-Instructions`)
-
-			mockMkdir.mockResolvedValue(undefined)
-			mockRename.mockResolvedValue(undefined)
-
-			await skillsManager.discoverSkills()
-
-			// Verify skill exists with mode
-			expect(skillsManager.getSkill("test-skill", "global", "code")).toBeDefined()
-
-			// Move the skill to architect mode
-			await skillsManager.moveSkill("test-skill", "global", "code", "architect")
-
-			expect(mockMkdir).toHaveBeenCalledWith(destSkillsDir, { recursive: true })
-			expect(mockRename).toHaveBeenCalledWith(sourceDir, destDir)
-		})
-
-		it("should move a skill from mode-specific to generic directory", async () => {
-			const sourceSkillsDir = p(GLOBAL_ROO_DIR, "skills-code")
-			const sourceDir = p(sourceSkillsDir, "test-skill")
-			const testSkillMd = p(sourceDir, "SKILL.md")
-			const destDir = p(globalSkillsDir, "test-skill")
-
-			// Setup: skill exists in code mode directory
-			mockDirectoryExists.mockImplementation(async (dir: string) => {
-				return dir === sourceSkillsDir
-			})
-
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
-
-			mockReaddir.mockImplementation(async (dir: string) => {
-				if (dir === sourceSkillsDir) {
-					return ["test-skill"]
-				}
-				return []
-			})
-
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === sourceDir) {
-					return { isDirectory: () => true }
-				}
-				throw new Error("Not found")
-			})
-
-			mockFileExists.mockImplementation(async (file: string) => {
-				// Skill exists in source
-				if (file === testSkillMd) return true
-				// Skill does not exist in destination
-				if (file === p(destDir, "SKILL.md")) return false
-				return false
-			})
-
-			mockReadFile.mockResolvedValue(`---
-name: test-skill
-description: A test skill
----
-Instructions`)
-
-			mockMkdir.mockResolvedValue(undefined)
-			mockRename.mockResolvedValue(undefined)
-
-			await skillsManager.discoverSkills()
-
-			// Verify skill exists with mode
-			expect(skillsManager.getSkill("test-skill", "global", "code")).toBeDefined()
-
-			// Move the skill to generic (no mode)
-			await skillsManager.moveSkill("test-skill", "global", "code", undefined)
-
-			expect(mockMkdir).toHaveBeenCalledWith(globalSkillsDir, { recursive: true })
-			expect(mockRename).toHaveBeenCalledWith(sourceDir, destDir)
-		})
-
-		it("should not do anything when source and destination modes are the same", async () => {
-			mockDirectoryExists.mockImplementation(async (dir: string) => {
-				return dir === globalSkillsDir
-			})
-
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
-
-			mockReaddir.mockImplementation(async (dir: string) => {
-				if (dir === globalSkillsDir) {
-					return ["test-skill"]
-				}
-				return []
-			})
-
-			const testSkillDir = p(globalSkillsDir, "test-skill")
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === testSkillDir) {
-					return { isDirectory: () => true }
-				}
-				throw new Error("Not found")
-			})
-
-			mockFileExists.mockImplementation(async (file: string) => {
-				return file === p(testSkillDir, "SKILL.md")
-			})
-
-			mockReadFile.mockResolvedValue(`---
-name: test-skill
-description: A test skill
----
-Instructions`)
-
-			await skillsManager.discoverSkills()
-
-			// Try to move skill to the same mode (undefined -> undefined)
-			await skillsManager.moveSkill("test-skill", "global", undefined, undefined)
-
-			// Should not call rename
-			expect(mockRename).not.toHaveBeenCalled()
-		})
-
-		it("should throw error if skill does not exist", async () => {
-			mockDirectoryExists.mockResolvedValue(false)
-			mockRealpath.mockImplementation(async (p: string) => p)
-			mockReaddir.mockResolvedValue([])
-
-			await skillsManager.discoverSkills()
-
-			await expect(skillsManager.moveSkill("non-existent", "global", undefined, "code")).rejects.toThrow(
-				"not found",
-			)
-		})
-
-		it("should throw error if skill already exists at destination", async () => {
-			const sourceDir = p(globalSkillsDir, "test-skill")
-			const testSkillMd = p(sourceDir, "SKILL.md")
-			const destDir = p(GLOBAL_ROO_DIR, "skills-code", "test-skill")
-			const destSkillMd = p(destDir, "SKILL.md")
-
-			// Setup: skill exists in both locations
-			mockDirectoryExists.mockImplementation(async (dir: string) => {
-				return dir === globalSkillsDir
-			})
-
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
-
-			mockReaddir.mockImplementation(async (dir: string) => {
-				if (dir === globalSkillsDir) {
-					return ["test-skill"]
-				}
-				return []
-			})
-
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === sourceDir) {
-					return { isDirectory: () => true }
-				}
-				throw new Error("Not found")
-			})
-
-			mockFileExists.mockImplementation(async (file: string) => {
-				// Skill exists in both source and destination
-				if (file === testSkillMd) return true
-				if (file === destSkillMd) return true
-				return false
-			})
-
-			mockReadFile.mockResolvedValue(`---
-name: test-skill
-description: A test skill
----
-Instructions`)
-
-			await skillsManager.discoverSkills()
-
-			await expect(skillsManager.moveSkill("test-skill", "global", undefined, "code")).rejects.toThrow(
-				"already exists",
-			)
-		})
-
-		it("should clean up empty source skills directory after moving", async () => {
-			const sourceSkillsDir = p(GLOBAL_ROO_DIR, "skills-code")
-			const sourceDir = p(sourceSkillsDir, "test-skill")
-			const testSkillMd = p(sourceDir, "SKILL.md")
-			const destDir = p(GLOBAL_ROO_DIR, "skills-architect", "test-skill")
-			const destSkillsDir = p(GLOBAL_ROO_DIR, "skills-architect")
-
-			// Setup: skill exists in code mode directory
-			mockDirectoryExists.mockImplementation(async (dir: string) => {
-				return dir === sourceSkillsDir
-			})
-
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
-
-			// Track readdir calls - return skill for discovery, empty for cleanup check
-			let readdirCallCount = 0
-			mockReaddir.mockImplementation(async (dir: string) => {
-				if (dir === sourceSkillsDir) {
-					readdirCallCount++
-					// First call is for discovery, return the skill
-					// Second call is for cleanup check after move, return empty
-					if (readdirCallCount === 1) {
-						return ["test-skill"]
-					}
-					return []
-				}
-				return []
-			})
-
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === sourceDir) {
-					return { isDirectory: () => true }
-				}
-				throw new Error("Not found")
-			})
-
-			mockFileExists.mockImplementation(async (file: string) => {
-				// Skill exists in source
-				if (file === testSkillMd) return true
-				// Skill does not exist in destination
-				if (file === p(destDir, "SKILL.md")) return false
-				return false
-			})
-
-			mockReadFile.mockResolvedValue(`---
-name: test-skill
-description: A test skill
----
-Instructions`)
-
-			mockMkdir.mockResolvedValue(undefined)
-			mockRename.mockResolvedValue(undefined)
-			mockRmdir.mockResolvedValue(undefined)
-
-			await skillsManager.discoverSkills()
-
-			// Move the skill to architect mode
-			await skillsManager.moveSkill("test-skill", "global", "code", "architect")
-
-			// Verify empty directory was cleaned up
-			expect(mockRmdir).toHaveBeenCalledWith(sourceSkillsDir)
-		})
-
-		it("should not clean up source skills directory if it still has other skills", async () => {
-			const sourceSkillsDir = p(GLOBAL_ROO_DIR, "skills-code")
-			const sourceDir = p(sourceSkillsDir, "test-skill")
-			const testSkillMd = p(sourceDir, "SKILL.md")
-			const destDir = p(GLOBAL_ROO_DIR, "skills-architect", "test-skill")
-			const destSkillsDir = p(GLOBAL_ROO_DIR, "skills-architect")
-
-			// Setup: skill exists in code mode directory along with another skill
-			mockDirectoryExists.mockImplementation(async (dir: string) => {
-				return dir === sourceSkillsDir
-			})
-
-			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
-
-			// Track readdir calls - return skill for discovery, non-empty for cleanup check
-			let readdirCallCount = 0
-			mockReaddir.mockImplementation(async (dir: string) => {
-				if (dir === sourceSkillsDir) {
-					readdirCallCount++
-					// First call is for discovery
-					if (readdirCallCount === 1) {
-						return ["test-skill", "another-skill"]
-					}
-					// Second call for cleanup - still has another skill
-					return ["another-skill"]
-				}
-				return []
-			})
-
-			mockStat.mockImplementation(async (pathArg: string) => {
-				if (pathArg === sourceDir || pathArg === p(sourceSkillsDir, "another-skill")) {
-					return { isDirectory: () => true }
-				}
-				throw new Error("Not found")
-			})
-
-			mockFileExists.mockImplementation(async (file: string) => {
-				// Skill exists in source
-				if (file === testSkillMd) return true
-				if (file === p(sourceSkillsDir, "another-skill", "SKILL.md")) return true
-				// Skill does not exist in destination
-				if (file === p(destDir, "SKILL.md")) return false
-				return false
-			})
-
-			mockReadFile.mockResolvedValue(`---
-name: test-skill
-description: A test skill
----
-Instructions`)
-
-			mockMkdir.mockResolvedValue(undefined)
-			mockRename.mockResolvedValue(undefined)
-			mockRmdir.mockResolvedValue(undefined)
-
-			await skillsManager.discoverSkills()
-
-			// Move the skill to architect mode
-			await skillsManager.moveSkill("test-skill", "global", "code", "architect")
-
-			// Verify directory was NOT cleaned up (still has other skills)
-			expect(mockRmdir).not.toHaveBeenCalled()
-		})
+	it.each([
+		[
+			["code", "ask"],
+			["code", "ask"],
+		],
+		[[], undefined],
+		[undefined, undefined],
+	])("rewrites the modes to %j, dropping the legacy mode field", async (newModes, modeSlugs) => {
+		const skillMd = await writeSkill(globalRoo(), "skills", "moded", { mode: "debug" }, "Body stays.")
+		await manager.discoverSkills()
+
+		await manager.updateSkillModes("moded", "global", newModes)
+
+		const text = await fs.readFile(skillMd, "utf-8")
+		expect(text).not.toContain("mode: debug")
+		expect(text).toContain("Body stays.")
+		expect(summary()).toEqual([{ name: "moded", source: "global", modeSlugs }])
+	})
+
+	it("refuses to update the modes of a missing skill", async () => {
+		await expect(manager.updateSkillModes("nope", "global", ["code"])).rejects.toThrow("skills:errors.not_found")
 	})
 })
