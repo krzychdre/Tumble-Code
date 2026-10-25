@@ -110,15 +110,11 @@ export const organizationDefaultSettingsSchema = globalSettingsSchema
 		}),
 	)
 
-export type OrganizationDefaultSettings = z.infer<typeof organizationDefaultSettingsSchema>
-
 /**
  * WorkspaceTaskVisibility
  */
 
 const workspaceTaskVisibilitySchema = z.enum(["all", "list-only", "admins-and-creator", "creator", "full-lockdown"])
-
-export type WorkspaceTaskVisibility = z.infer<typeof workspaceTaskVisibilitySchema>
 
 /**
  * OrganizationCloudSettings
@@ -134,15 +130,11 @@ export const organizationCloudSettingsSchema = z.object({
 	llmEnhancedFeaturesEnabled: z.boolean().optional(),
 })
 
-export type OrganizationCloudSettings = z.infer<typeof organizationCloudSettingsSchema>
-
 /**
  * OrganizationFeatures
  */
 
 export const organizationFeaturesSchema = z.object({})
-
-export type OrganizationFeatures = z.infer<typeof organizationFeaturesSchema>
 
 /**
  * OrganizationSettings

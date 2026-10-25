@@ -12,7 +12,7 @@ import * as fs from "fs"
 import * as path from "path"
 import { fileURLToPath } from "url"
 
-const mode = (overrides: Record<string, unknown> = {}) => ({
+const mode = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
 	slug: "my-mode",
 	name: "My Mode",
 	roleDefinition: "You are a helpful assistant.",
