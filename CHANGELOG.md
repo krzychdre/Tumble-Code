@@ -1,6 +1,8 @@
 # Tumble Code Changelog
 
-## 1.1.0 (2026-10-24)
+## 1.1.0
+
+Released 2026-10-24
 
 The first Tumble Code release on the Visual Studio Marketplace. Tasks keep running in the background, parallel subagents report into the task history, and the chat has a calmer look, full keyboard access and much faster streaming in long tasks. The CLI is rebuilt around the terminal's own scrollback and supports every provider of the extension. Tumble Code now needs VS Code 1.102 or newer.
 
@@ -62,7 +64,9 @@ The first Tumble Code release on the Visual Studio Marketplace. Tasks keep runni
 - **Background tasks use their own mode.** A background task, subagent or subtask gets the tools, rules and MCP servers of its own mode.
 - **CLI.** MCP tools no longer hang in the default `allow` mode, a password-asking command can no longer freeze the interface, options after the prompt are reported instead of ignored, and fast arrow keys select the right item.
 
-## 1.0.0 (2026-08-26)
+## 1.0.0
+
+Released 2026-08-26
 
 Tumble Code is a new tool: the community fork of Roo Code, refocused on local inference engines (Ollama, LM Studio, llama.cpp and other locally hosted models) so you can run AI coding assistance on your own hardware without paying per token. The display name, publisher, URLs and output channel read "Tumble Code"; command and view IDs (`roo-cline.*`) are kept, so your keybindings keep working. Settings moved from `roo-cline.*` to `tumble-code.*`, and the first launch offers to migrate them from Roo Code.
 

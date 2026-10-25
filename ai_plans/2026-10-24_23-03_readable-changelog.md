@@ -30,13 +30,15 @@ many changes.
 - **One bullet per changeset.** `getReleaseLine` joins the summary lines into one bullet, so the label stays at its
   start.
 - **`scripts/format-changelog.mjs`** runs in `pnpm changeset:version` right after `changeset version` and rewrites the
-  new section: `## 1.2.0 (date)`, the Highlights paragraphs, then `### New`, `### Improved`, `### Fixed`. The
-  Major/Minor/Patch headings are dropped. A first section that already has a date is left alone (only CLI or webview
-  changesets pending, so changesets added no extension section). An entry without a label throws.
+  new section: `## 1.2.0`, a `Released <date>` line, the Highlights paragraphs, then `### New`, `### Improved`,
+  `### Fixed`. The heading stays the bare version because changesets/action finds the version bump PR's entry by it
+  (with a dated heading it would quote the whole changelog). The Major/Minor/Patch headings are dropped. A first
+  section without those headings is a formatted release and is left alone (no new extension changesets). An entry
+  without a label throws.
 - **`scripts/check-changesets.mjs`** (Code QA) rejects an extension changeset without a label, so the release job
   cannot hit that throw.
-- **Release notes.** The awk in `marketplace-publish.yml` matched `## 1.2.3` exactly; it now compares the second field,
-  so `## 1.2.3 (2026-11-02)` and the old `## [1.2.3]` both match.
+- **Release notes.** The awk in `marketplace-publish.yml` compares the heading's second field, so `## 1.2.3` and the
+  old `## [1.2.3]` both match.
 - **CHANGELOG.md rewritten.** 1.1.0 and 1.0.0 are condensed into the new layout (about 70 bullets in total instead of
   about 620); the Roo Code history is replaced by a link to the Roo Code changelog. The full old text stays at tag
   `v1.1.0`.
