@@ -1,365 +1,145 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
-import { skillTool } from "../SkillTool"
-import { Task } from "../../task/Task"
-import { formatResponse } from "../../prompts/responses"
+// SkillTool with the real approval message and result formatting; the task, its provider and the
+// SkillsManager (tested in services/skills) are replaced.
+
+import type { Task } from "../../task/Task"
 import type { ToolUse } from "../../../shared/tools"
+import { skillTool } from "../SkillTool"
+import { formatResponse } from "../../prompts/responses"
+
+const skill = {
+	name: "create-mcp-server",
+	description: "Instructions for creating MCP servers",
+	source: "global",
+	instructions: "Step 1: Create the server...",
+}
+
+function setup({ skillsManager = true, content = skill as typeof skill | null, approve = true } = {}) {
+	const manager = {
+		getSkillContent: vi.fn().mockResolvedValue(content),
+		getSkillsForMode: vi.fn().mockReturnValue([{ name: "a" }, { name: "b" }]),
+	}
+	const task = {
+		consecutiveMistakeCount: 2,
+		recordToolError: vi.fn(),
+		didToolFailInCurrentTurn: false,
+		sayAndCreateMissingParamError: vi.fn().mockResolvedValue("missing skill"),
+		ask: vi.fn().mockResolvedValue({}),
+		getTaskMode: vi.fn().mockResolvedValue("architect"),
+		providerRef: { deref: () => ({ getSkillsManager: () => (skillsManager ? manager : undefined) }) },
+	}
+	const callbacks = {
+		askApproval: vi.fn().mockResolvedValue(approve),
+		handleError: vi.fn(),
+		pushToolResult: vi.fn(),
+		toolCallId: "call-1",
+	}
+	const run = (nativeArgs: Record<string, unknown>, partial = false) =>
+		skillTool.handle(
+			task as unknown as Task,
+			{
+				type: "tool_use",
+				name: "skill",
+				id: "call-1",
+				params: nativeArgs,
+				partial,
+				nativeArgs,
+			} as ToolUse<"skill">,
+			callbacks,
+		)
+	return { manager, task, callbacks, run }
+}
 
 describe("skillTool", () => {
-	let mockTask: any
-	let mockCallbacks: any
-	let mockSkillsManager: any
+	it("reports a missing skill name and fails the turn", async () => {
+		const { task, callbacks, run } = setup()
 
-	beforeEach(() => {
-		vi.clearAllMocks()
+		await run({ skill: "" })
 
-		mockSkillsManager = {
-			getSkillContent: vi.fn(),
-			getSkillsForMode: vi.fn().mockReturnValue([]),
-		}
-
-		mockTask = {
-			consecutiveMistakeCount: 0,
-			recordToolError: vi.fn(),
-			didToolFailInCurrentTurn: false,
-			sayAndCreateMissingParamError: vi.fn().mockResolvedValue("Missing parameter error"),
-			ask: vi.fn().mockResolvedValue({}),
-			getTaskMode: vi.fn().mockResolvedValue("code"),
-			providerRef: {
-				deref: vi.fn().mockReturnValue({
-					getState: vi.fn().mockResolvedValue({ mode: "code" }),
-					getSkillsManager: vi.fn().mockReturnValue(mockSkillsManager),
-				}),
-			},
-		}
-
-		mockCallbacks = {
-			askApproval: vi.fn().mockResolvedValue(true),
-			handleError: vi.fn(),
-			pushToolResult: vi.fn(),
-		}
+		expect(callbacks.pushToolResult).toHaveBeenCalledWith("missing skill")
+		expect(task.consecutiveMistakeCount).toBe(3)
+		expect(task.didToolFailInCurrentTurn).toBe(true)
 	})
 
-	it("should handle missing skill parameter", async () => {
-		const block: ToolUse<"skill"> = {
-			type: "tool_use" as const,
-			name: "skill" as const,
-			params: {},
-			partial: false,
-			nativeArgs: {
-				skill: "",
-			},
-		}
+	it.each([
+		["no skills manager", { skillsManager: false }, "Skills Manager not available"],
+		[
+			"an unknown skill, listing the mode's skills",
+			{ content: null },
+			"Skill 'nope' not found. Available skills: a, b",
+		],
+	])("refuses with %s", async (_, options, error) => {
+		const { task, callbacks, run } = setup(options)
 
-		await skillTool.handle(mockTask as Task, block, mockCallbacks)
+		await run({ skill: "nope" })
 
-		expect(mockTask.consecutiveMistakeCount).toBe(1)
-		expect(mockTask.recordToolError).toHaveBeenCalledWith("skill")
-		expect(mockTask.sayAndCreateMissingParamError).toHaveBeenCalledWith("skill", "skill")
-		expect(mockCallbacks.pushToolResult).toHaveBeenCalledWith("Missing parameter error")
+		expect(callbacks.pushToolResult).toHaveBeenCalledWith(formatResponse.toolError(error))
+		expect(task.recordToolError).toHaveBeenCalledWith("skill")
+		expect(task.didToolFailInCurrentTurn).toBe(true)
+		expect(callbacks.askApproval).not.toHaveBeenCalled()
 	})
 
-	it("resolves the skill for the task's own mode, not the provider's", async () => {
-		// Provider state holds the focused task's mode; a background subagent or a delegated
-		// child can run in another mode and must see that mode's skills.
-		mockTask.getTaskMode.mockResolvedValue("architect")
-		const block: ToolUse<"skill"> = {
-			type: "tool_use" as const,
-			name: "skill" as const,
-			params: {},
-			partial: false,
-			nativeArgs: { skill: "plan-review" },
-		}
-		mockSkillsManager.getSkillContent.mockResolvedValue(null)
+	it("lists (none) when the mode has no skills", async () => {
+		const { manager, callbacks, run } = setup({ content: null })
+		manager.getSkillsForMode.mockReturnValue([])
 
-		await skillTool.handle(mockTask as Task, block, mockCallbacks)
+		await run({ skill: "nope" })
 
-		expect(mockSkillsManager.getSkillContent).toHaveBeenCalledWith("plan-review", "architect")
-		expect(mockSkillsManager.getSkillsForMode).toHaveBeenCalledWith("architect")
-	})
-
-	it("should handle skill not found", async () => {
-		const block: ToolUse<"skill"> = {
-			type: "tool_use" as const,
-			name: "skill" as const,
-			params: {},
-			partial: false,
-			nativeArgs: {
-				skill: "non-existent",
-			},
-		}
-
-		mockSkillsManager.getSkillContent.mockResolvedValue(null)
-		mockSkillsManager.getSkillsForMode.mockReturnValue([{ name: "create-mcp-server" }])
-
-		await skillTool.handle(mockTask as Task, block, mockCallbacks)
-
-		expect(mockCallbacks.pushToolResult).toHaveBeenCalledWith(
-			formatResponse.toolError("Skill 'non-existent' not found. Available skills: create-mcp-server"),
+		expect(callbacks.pushToolResult).toHaveBeenCalledWith(
+			formatResponse.toolError("Skill 'nope' not found. Available skills: (none)"),
 		)
 	})
 
-	it("should handle empty available skills list", async () => {
-		const block: ToolUse<"skill"> = {
-			type: "tool_use" as const,
-			name: "skill" as const,
-			params: {},
-			partial: false,
-			nativeArgs: {
-				skill: "non-existent",
-			},
-		}
+	it.each([
+		[undefined, ""],
+		["--fast", "\nProvided arguments: --fast"],
+	])("loads the skill of the task's own mode with args %j after approval", async (args, argsLine) => {
+		const { manager, task, callbacks, run } = setup()
 
-		mockSkillsManager.getSkillContent.mockResolvedValue(null)
-		mockSkillsManager.getSkillsForMode.mockReturnValue([])
+		await run({ skill: "create-mcp-server", args })
 
-		await skillTool.handle(mockTask as Task, block, mockCallbacks)
-
-		expect(mockCallbacks.pushToolResult).toHaveBeenCalledWith(
-			formatResponse.toolError("Skill 'non-existent' not found. Available skills: (none)"),
-		)
-	})
-
-	it("should successfully load a global skill", async () => {
-		const block: ToolUse<"skill"> = {
-			type: "tool_use" as const,
-			name: "skill" as const,
-			params: {},
-			partial: false,
-			nativeArgs: {
-				skill: "create-mcp-server",
-			},
-		}
-
-		const mockSkillContent = {
-			name: "create-mcp-server",
-			description: "Instructions for creating MCP servers",
+		// The task's mode, not the provider's: a background subagent may run in another mode.
+		expect(manager.getSkillContent).toHaveBeenCalledWith("create-mcp-server", "architect")
+		expect(JSON.parse(callbacks.askApproval.mock.calls[0][1])).toEqual({
+			tool: "skill",
+			skill: "create-mcp-server",
+			...(args ? { args } : {}),
 			source: "global",
-			instructions: "Step 1: Create the server...",
-		}
-
-		mockSkillsManager.getSkillContent.mockResolvedValue(mockSkillContent)
-
-		await skillTool.handle(mockTask as Task, block, mockCallbacks)
-
-		expect(mockCallbacks.askApproval).toHaveBeenCalledWith(
-			"tool",
-			JSON.stringify({
-				tool: "skill",
-				skill: "create-mcp-server",
-				args: undefined,
-				source: "global",
-				description: "Instructions for creating MCP servers",
-			}),
-		)
-
-		expect(mockCallbacks.pushToolResult).toHaveBeenCalledWith(
-			`Skill: create-mcp-server
-Description: Instructions for creating MCP servers
-Source: global
-
---- Skill Instructions ---
-
-Step 1: Create the server...`,
-		)
-	})
-
-	it("should successfully load skill with arguments", async () => {
-		const block: ToolUse<"skill"> = {
-			type: "tool_use" as const,
-			name: "skill" as const,
-			params: {},
-			partial: false,
-			nativeArgs: {
-				skill: "create-mcp-server",
-				args: "weather API server",
-			},
-		}
-
-		const mockSkillContent = {
-			name: "create-mcp-server",
-			description: "Instructions for creating MCP servers",
-			source: "global",
-			instructions: "Step 1: Create the server...",
-		}
-
-		mockSkillsManager.getSkillContent.mockResolvedValue(mockSkillContent)
-
-		await skillTool.handle(mockTask as Task, block, mockCallbacks)
-
-		expect(mockCallbacks.pushToolResult).toHaveBeenCalledWith(
-			`Skill: create-mcp-server
-Description: Instructions for creating MCP servers
-Provided arguments: weather API server
-Source: global
-
---- Skill Instructions ---
-
-Step 1: Create the server...`,
-		)
-	})
-
-	it("should handle user rejection", async () => {
-		const block: ToolUse<"skill"> = {
-			type: "tool_use" as const,
-			name: "skill" as const,
-			params: {},
-			partial: false,
-			nativeArgs: {
-				skill: "create-mcp-server",
-			},
-		}
-
-		mockSkillsManager.getSkillContent.mockResolvedValue({
-			name: "create-mcp-server",
-			description: "Test",
-			source: "global",
-			instructions: "Test instructions",
+			description: skill.description,
+			toolCallId: "call-1",
 		})
-
-		mockCallbacks.askApproval.mockResolvedValue(false)
-
-		await skillTool.handle(mockTask as Task, block, mockCallbacks)
-
-		expect(mockCallbacks.pushToolResult).not.toHaveBeenCalled()
+		expect(callbacks.pushToolResult).toHaveBeenCalledWith(
+			`Skill: create-mcp-server\nDescription: ${skill.description}${argsLine}\nSource: global\n\n--- Skill Instructions ---\n\n${skill.instructions}`,
+		)
+		expect(task.consecutiveMistakeCount).toBe(0)
 	})
 
-	it("should handle partial block", async () => {
-		const block: ToolUse<"skill"> = {
-			type: "tool_use" as const,
-			name: "skill" as const,
-			params: {
-				skill: "create-mcp-server",
-				args: "",
-			},
-			partial: true,
-		}
+	it("returns nothing when the user rejects", async () => {
+		const { callbacks, run } = setup({ approve: false })
 
-		await skillTool.handle(mockTask as Task, block, mockCallbacks)
+		await run({ skill: "create-mcp-server" })
 
-		expect(mockTask.ask).toHaveBeenCalledWith(
+		expect(callbacks.pushToolResult).not.toHaveBeenCalled()
+	})
+
+	it("hands a failed lookup to handleError", async () => {
+		const { manager, callbacks, run } = setup()
+		const failure = new Error("unreadable SKILL.md")
+		manager.getSkillContent.mockRejectedValue(failure)
+
+		await run({ skill: "create-mcp-server" })
+
+		expect(callbacks.handleError).toHaveBeenCalledWith("executing skill", failure, "skill")
+	})
+
+	it("shows the skill and its args while streaming", async () => {
+		const { task, run } = setup()
+
+		await run({ skill: "create-mcp", args: "--f" }, true)
+
+		expect(task.ask).toHaveBeenCalledWith(
 			"tool",
-			JSON.stringify({
-				tool: "skill",
-				skill: "create-mcp-server",
-				args: "",
-			}),
+			JSON.stringify({ tool: "skill", skill: "create-mcp", args: "--f", toolCallId: "call-1" }),
 			true,
-		)
-
-		expect(mockCallbacks.pushToolResult).not.toHaveBeenCalled()
-	})
-
-	it("should handle errors during execution", async () => {
-		const block: ToolUse<"skill"> = {
-			type: "tool_use" as const,
-			name: "skill" as const,
-			params: {},
-			partial: false,
-			nativeArgs: {
-				skill: "create-mcp-server",
-			},
-		}
-
-		const error = new Error("Test error")
-		mockSkillsManager.getSkillContent.mockRejectedValue(error)
-
-		await skillTool.handle(mockTask as Task, block, mockCallbacks)
-
-		expect(mockCallbacks.handleError).toHaveBeenCalledWith("executing skill", error, "skill")
-	})
-
-	it("should reset consecutive mistake count on valid skill", async () => {
-		const block: ToolUse<"skill"> = {
-			type: "tool_use" as const,
-			name: "skill" as const,
-			params: {},
-			partial: false,
-			nativeArgs: {
-				skill: "create-mcp-server",
-			},
-		}
-
-		mockTask.consecutiveMistakeCount = 5
-
-		const mockSkillContent = {
-			name: "create-mcp-server",
-			description: "Test",
-			source: "global",
-			instructions: "Test instructions",
-		}
-
-		mockSkillsManager.getSkillContent.mockResolvedValue(mockSkillContent)
-
-		await skillTool.handle(mockTask as Task, block, mockCallbacks)
-
-		expect(mockTask.consecutiveMistakeCount).toBe(0)
-	})
-
-	it("should handle Skills Manager not available", async () => {
-		const block: ToolUse<"skill"> = {
-			type: "tool_use" as const,
-			name: "skill" as const,
-			params: {},
-			partial: false,
-			nativeArgs: {
-				skill: "create-mcp-server",
-			},
-		}
-
-		mockTask.providerRef.deref = vi.fn().mockReturnValue({
-			getState: vi.fn().mockResolvedValue({ mode: "code" }),
-			getSkillsManager: vi.fn().mockReturnValue(undefined),
-		})
-
-		await skillTool.handle(mockTask as Task, block, mockCallbacks)
-
-		expect(mockTask.recordToolError).toHaveBeenCalledWith("skill")
-		expect(mockCallbacks.pushToolResult).toHaveBeenCalledWith(
-			formatResponse.toolError("Skills Manager not available"),
-		)
-	})
-
-	it("should load project skill", async () => {
-		const block: ToolUse<"skill"> = {
-			type: "tool_use" as const,
-			name: "skill" as const,
-			params: {},
-			partial: false,
-			nativeArgs: {
-				skill: "my-project-skill",
-			},
-		}
-
-		const mockSkillContent = {
-			name: "my-project-skill",
-			description: "A custom project skill",
-			source: "project",
-			instructions: "Follow these project-specific instructions...",
-		}
-
-		mockSkillsManager.getSkillContent.mockResolvedValue(mockSkillContent)
-
-		await skillTool.handle(mockTask as Task, block, mockCallbacks)
-
-		expect(mockCallbacks.askApproval).toHaveBeenCalledWith(
-			"tool",
-			JSON.stringify({
-				tool: "skill",
-				skill: "my-project-skill",
-				args: undefined,
-				source: "project",
-				description: "A custom project skill",
-			}),
-		)
-
-		expect(mockCallbacks.pushToolResult).toHaveBeenCalledWith(
-			`Skill: my-project-skill
-Description: A custom project skill
-Source: project
-
---- Skill Instructions ---
-
-Follow these project-specific instructions...`,
 		)
 	})
 })
