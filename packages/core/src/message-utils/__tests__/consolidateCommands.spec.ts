@@ -2,144 +2,147 @@
 
 import type { ClineMessage } from "@tumble-code/types"
 
-import { consolidateCommands, COMMAND_OUTPUT_STRING } from "../consolidateCommands.js"
+import { consolidateCommands } from "../consolidateCommands.js"
+
+let ts = 0
+const ask = (kind: "command" | "command_output" | "use_mcp_server", text?: string): ClineMessage => ({
+	type: "ask",
+	ask: kind,
+	text,
+	ts: ++ts,
+})
+const say = (kind: "command_output" | "mcp_server_response" | "text", text?: string): ClineMessage => ({
+	type: "say",
+	say: kind,
+	text,
+	ts: ++ts,
+})
+const withText = (message: ClineMessage, text: string): ClineMessage => ({ ...message, text })
 
 describe("consolidateCommands", () => {
-	describe("command sequences", () => {
-		it("should consolidate command and command_output messages", () => {
-			const messages: ClineMessage[] = [
-				{ type: "ask", ask: "command", text: "ls", ts: 1000 },
-				{ type: "ask", ask: "command_output", text: "file1.txt", ts: 1001 },
-				{ type: "ask", ask: "command_output", text: "file2.txt", ts: 1002 },
-			]
+	it("returns an empty list unchanged", () => {
+		expect(consolidateCommands([])).toEqual([])
+	})
 
-			const result = consolidateCommands(messages)
+	describe("commands", () => {
+		it("appends every output after an Output: marker, keeping messages around it", () => {
+			const before = say("text", "before")
+			const command = ask("command", "ls")
+			const after = say("text", "after")
 
-			expect(result.length).toBe(1)
-			expect(result[0]!.ask).toBe("command")
-			expect(result[0]!.text).toBe(`ls\n${COMMAND_OUTPUT_STRING}file1.txt\nfile2.txt`)
+			expect(
+				consolidateCommands([
+					before,
+					command,
+					ask("command_output", "a.txt"),
+					say("command_output", "b.txt"),
+					after,
+				]),
+			).toEqual([before, withText(command, "ls\nOutput:a.txt\nb.txt"), after])
 		})
 
-		it("should handle multiple command sequences", () => {
-			const messages: ClineMessage[] = [
-				{ type: "ask", ask: "command", text: "ls", ts: 1000 },
-				{ type: "ask", ask: "command_output", text: "output1", ts: 1001 },
-				{ type: "ask", ask: "command", text: "pwd", ts: 1002 },
-				{ type: "ask", ask: "command_output", text: "output2", ts: 1003 },
-			]
+		it("keeps the outputs of consecutive commands apart", () => {
+			const ls = ask("command", "ls")
+			const pwd = ask("command", "pwd")
 
-			const result = consolidateCommands(messages)
-
-			expect(result.length).toBe(2)
-			expect(result[0]!.text).toBe(`ls\n${COMMAND_OUTPUT_STRING}output1`)
-			expect(result[1]!.text).toBe(`pwd\n${COMMAND_OUTPUT_STRING}output2`)
+			expect(consolidateCommands([ls, ask("command_output", "one"), pwd, ask("command_output", "two")])).toEqual([
+				withText(ls, "ls\nOutput:one"),
+				withText(pwd, "pwd\nOutput:two"),
+			])
 		})
 
-		it("should handle command without output", () => {
-			const messages: ClineMessage[] = [
-				{ type: "ask", ask: "command", text: "ls", ts: 1000 },
-				{ type: "say", say: "text", text: "some text", ts: 1001 },
-			]
+		it.each<[string, () => ClineMessage[], string]>([
+			["a command without output", () => [ask("command", "ls")], "ls"],
+			["a command without text", () => [ask("command"), ask("command_output", "out")], "\nOutput:out"],
+			["an empty output", () => [ask("command", "ls"), ask("command_output", "")], "ls\nOutput:"],
+			[
+				"the same output streamed as ask and as say",
+				() => [ask("command", "ls"), ask("command_output", "same"), say("command_output", "same")],
+				"ls\nOutput:same",
+			],
+			[
+				"a repeated output of one kind",
+				() => [ask("command", "ls"), say("command_output", "x"), say("command_output", "x")],
+				"ls\nOutput:x\nx",
+			],
+		])("builds the text for %s", (_name, build, expected) => {
+			const [command, ...rest] = build()
 
-			const result = consolidateCommands(messages)
-
-			expect(result.length).toBe(2)
-			expect(result[0]!.ask).toBe("command")
-			expect(result[0]!.text).toBe("ls")
-			expect(result[1]!.say).toBe("text")
+			expect(consolidateCommands([command!, ...rest])).toEqual([withText(command!, expected)])
 		})
 
-		it("should handle duplicate outputs (ask and say with same text)", () => {
-			const messages: ClineMessage[] = [
-				{ type: "ask", ask: "command", text: "ls", ts: 1000 },
-				{ type: "ask", ask: "command_output", text: "same output", ts: 1001 },
-				{ type: "say", say: "command_output", text: "same output", ts: 1002 },
-			]
+		it("drops an output that follows no command", () => {
+			const note = say("text", "note")
 
-			const result = consolidateCommands(messages)
-
-			expect(result.length).toBe(1)
-			expect(result[0]!.text).toBe(`ls\n${COMMAND_OUTPUT_STRING}same output`)
+			expect(consolidateCommands([say("command_output", "stray"), note])).toEqual([note])
 		})
 	})
 
-	describe("MCP server sequences", () => {
-		it("should consolidate use_mcp_server and mcp_server_response messages", () => {
-			const messages: ClineMessage[] = [
-				{
-					type: "ask",
-					ask: "use_mcp_server",
-					text: JSON.stringify({ server: "test", tool: "myTool" }),
-					ts: 1000,
-				},
-				{ type: "say", say: "mcp_server_response", text: "response data", ts: 1001 },
-			]
+	describe("MCP requests", () => {
+		it("adds every response to the request's JSON, skipping messages in between", () => {
+			const request = ask("use_mcp_server", JSON.stringify({ serverName: "s", toolName: "t" }))
+			const note = say("text", "note")
 
-			const result = consolidateCommands(messages)
-
-			expect(result.length).toBe(1)
-			expect(result[0]!.ask).toBe("use_mcp_server")
-			const parsed = JSON.parse(result[0]!.text || "{}")
-			expect(parsed.server).toBe("test")
-			expect(parsed.response).toBe("response data")
+			expect(
+				consolidateCommands([
+					request,
+					say("mcp_server_response", "one"),
+					note,
+					say("mcp_server_response", "two"),
+				]),
+			).toEqual([
+				withText(request, JSON.stringify({ serverName: "s", toolName: "t", response: "one\ntwo" })),
+				note,
+			])
 		})
 
-		it("should handle MCP request without response", () => {
-			const messages: ClineMessage[] = [
-				{
-					type: "ask",
-					ask: "use_mcp_server",
-					text: JSON.stringify({ server: "test" }),
-					ts: 1000,
-				},
-			]
+		it("stops collecting at the next request", () => {
+			const first = ask("use_mcp_server", JSON.stringify({ serverName: "a" }))
+			const second = ask("use_mcp_server", JSON.stringify({ serverName: "b" }))
 
-			const result = consolidateCommands(messages)
-
-			expect(result.length).toBe(1)
-			expect(result[0]!.ask).toBe("use_mcp_server")
+			expect(
+				consolidateCommands([first, say("mcp_server_response", "1"), second, say("mcp_server_response", "2")]),
+			).toEqual([
+				withText(first, JSON.stringify({ serverName: "a", response: "1" })),
+				withText(second, JSON.stringify({ serverName: "b", response: "2" })),
+			])
 		})
 
-		it("should handle multiple MCP responses", () => {
-			const messages: ClineMessage[] = [
-				{
-					type: "ask",
-					ask: "use_mcp_server",
-					text: JSON.stringify({ server: "test" }),
-					ts: 1000,
-				},
-				{ type: "say", say: "mcp_server_response", text: "response1", ts: 1001 },
-				{ type: "say", say: "mcp_server_response", text: "response2", ts: 1002 },
-			]
+		it.each<[string, string | undefined, string | undefined, string]>([
+			["an unreadable request", "{broken", "r", JSON.stringify({ response: "r" })],
+			["a request without text", undefined, "r", JSON.stringify({ response: "r" })],
+			[
+				"a response without text",
+				JSON.stringify({ serverName: "s" }),
+				undefined,
+				JSON.stringify({ serverName: "s", response: "" }),
+			],
+		])("handles %s", (_name, requestText, responseText, expected) => {
+			vi.spyOn(console, "error").mockImplementation(() => {})
+			const request = ask("use_mcp_server", requestText)
 
-			const result = consolidateCommands(messages)
+			expect(consolidateCommands([request, say("mcp_server_response", responseText)])).toEqual([
+				withText(request, expected),
+			])
+			vi.restoreAllMocks()
+		})
 
-			expect(result.length).toBe(1)
-			const parsed = JSON.parse(result[0]!.text || "{}")
-			expect(parsed.response).toBe("response1\nresponse2")
+		it("keeps a request without a response as it is", () => {
+			const request = ask("use_mcp_server", JSON.stringify({ serverName: "s" }))
+
+			expect(consolidateCommands([request])).toEqual([request])
 		})
 	})
 
-	describe("mixed messages", () => {
-		it("should preserve non-command, non-MCP messages", () => {
-			const messages: ClineMessage[] = [
-				{ type: "say", say: "text", text: "before", ts: 1000 },
-				{ type: "ask", ask: "command", text: "ls", ts: 1001 },
-				{ type: "ask", ask: "command_output", text: "output", ts: 1002 },
-				{ type: "say", say: "text", text: "after", ts: 1003 },
-			]
+	it("handles a command next to an MCP request", () => {
+		const command = ask("command", "ls")
+		const request = ask("use_mcp_server", JSON.stringify({ serverName: "s" }))
 
-			const result = consolidateCommands(messages)
-
-			expect(result.length).toBe(3)
-			expect(result[0]!.text).toBe("before")
-			expect(result[1]!.text).toBe(`ls\n${COMMAND_OUTPUT_STRING}output`)
-			expect(result[2]!.text).toBe("after")
-		})
-
-		it("should handle empty array", () => {
-			const result = consolidateCommands([])
-			expect(result).toEqual([])
-		})
+		expect(
+			consolidateCommands([command, ask("command_output", "f"), request, say("mcp_server_response", "r")]),
+		).toEqual([
+			withText(command, "ls\nOutput:f"),
+			withText(request, JSON.stringify({ serverName: "s", response: "r" })),
+		])
 	})
 })

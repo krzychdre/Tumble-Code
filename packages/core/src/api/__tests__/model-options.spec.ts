@@ -2,644 +2,186 @@ import { type ModelInfo, type ProviderSettings, ANTHROPIC_DEFAULT_MAX_TOKENS } f
 
 import { getModelMaxOutputTokens, shouldUseReasoningBudget, shouldUseReasoningEffort } from "../model-options.js"
 
+const model = (info: Partial<ModelInfo> = {}): ModelInfo => ({
+	contextWindow: 200_000,
+	supportsPromptCache: true,
+	...info,
+})
+
+type Format = "anthropic" | "openai" | "gemini" | "openrouter" | undefined
+
 describe("getModelMaxOutputTokens", () => {
-	const mockModel: ModelInfo = {
-		maxTokens: 8192,
-		contextWindow: 200000,
-		supportsPromptCache: true,
-	}
+	const hybrid = model({ maxTokens: 64_000, supportsReasoningBudget: true })
 
-	test("should return model maxTokens when maxTokens is within 20% of context window", () => {
-		const settings: ProviderSettings = {
-			apiProvider: "anthropic",
-		}
-
-		// mockModel has maxTokens: 8192 and contextWindow: 200000
-		// 8192 is 4.096% of 200000, which is <= 20%, so it should use model.maxTokens
-		const result = getModelMaxOutputTokens({
-			modelId: "claude-3-5-sonnet-20241022",
-			model: mockModel,
-			settings,
-		})
-
-		expect(result).toBe(8192)
-	})
-
-	test("should handle reasoning budget models correctly", () => {
-		const reasoningModel: ModelInfo = {
-			...mockModel,
-			supportsReasoningBudget: true,
-			requiredReasoningBudget: true,
-		}
-
-		const settings: ProviderSettings = {
-			apiProvider: "anthropic",
-			enableReasoningEffort: true,
-			modelMaxTokens: 32000,
-		}
-
-		const result = getModelMaxOutputTokens({
-			modelId: "claude-3-7-sonnet-20250219",
-			model: reasoningModel,
-			settings,
-		})
-
-		expect(result).toBe(32000)
-	})
-
-	test("should return default of 8192 when maxTokens is undefined", () => {
-		const modelWithoutMaxTokens: ModelInfo = {
-			contextWindow: 100000,
-			supportsPromptCache: true,
-		}
-
-		const result = getModelMaxOutputTokens({
-			modelId: "some-model",
-			model: modelWithoutMaxTokens,
-			settings: {},
-		})
-
-		expect(result).toBe(8192)
-	})
-
-	test("should return ANTHROPIC_DEFAULT_MAX_TOKENS for Anthropic models that support reasoning budget but aren't using it", () => {
-		const anthropicModelId = "claude-sonnet-4-20250514"
-		const model: ModelInfo = {
-			contextWindow: 200_000,
-			supportsPromptCache: true,
-			supportsReasoningBudget: true,
-			maxTokens: 64_000, // This should be ignored
-		}
-
-		const settings: ProviderSettings = {
-			apiProvider: "anthropic",
-			enableReasoningEffort: false, // Not using reasoning
-		}
-
-		const result = getModelMaxOutputTokens({ modelId: anthropicModelId, model, settings })
-		expect(result).toBe(ANTHROPIC_DEFAULT_MAX_TOKENS) // Should be 8192, not 64_000
-	})
-
-	test("should preserve Anthropic hybrid token handling for Claude Opus 4.8", () => {
-		// 4.8 inherits the same adaptive-thinking + binary-reasoning capability as 4.7
-		// (no breaking API changes between 4.7 and 4.8 per the official migration guide).
-		const model: ModelInfo = {
-			contextWindow: 1_000_000,
-			supportsPromptCache: true,
-			supportsReasoningBudget: true,
-			supportsReasoningBinary: true,
-			supportsTemperature: false,
-			maxTokens: 128_000,
-		}
-
-		expect(
-			getModelMaxOutputTokens({
-				modelId: "claude-opus-4-8",
-				model,
-				settings: { apiProvider: "anthropic", enableReasoningEffort: false },
-			}),
-		).toBe(ANTHROPIC_DEFAULT_MAX_TOKENS)
-
-		expect(
-			getModelMaxOutputTokens({
-				modelId: "claude-opus-4-8",
-				model,
-				settings: { apiProvider: "anthropic", enableReasoningEffort: true, modelMaxTokens: 32_768 },
-			}),
-		).toBe(32_768)
-	})
-
-	test("should preserve Anthropic hybrid token handling for Claude Fable 5", () => {
-		const model: ModelInfo = {
-			contextWindow: 1_000_000,
-			supportsPromptCache: true,
-			supportsReasoningBudget: true,
-			supportsReasoningBinary: true,
-			supportsTemperature: false,
-			maxTokens: 128_000,
-		}
-
-		expect(
-			getModelMaxOutputTokens({
-				modelId: "claude-fable-5",
-				model,
-				settings: { apiProvider: "anthropic", enableReasoningEffort: false },
-			}),
-		).toBe(ANTHROPIC_DEFAULT_MAX_TOKENS)
-
-		expect(
-			getModelMaxOutputTokens({
-				modelId: "claude-fable-5",
-				model,
-				settings: { apiProvider: "anthropic", enableReasoningEffort: true, modelMaxTokens: 32_768 },
-			}),
-		).toBe(32_768)
-	})
-
-	test("should return model.maxTokens for non-Anthropic models that support reasoning budget but aren't using it", () => {
-		const geminiModelId = "gemini-2.5-flash-preview-04-17"
-		const model: ModelInfo = {
-			contextWindow: 1_048_576,
-			supportsPromptCache: false,
-			supportsReasoningBudget: true,
-			maxTokens: 65_535, // 65_535 is ~6.25% of 1_048_576, which is <= 20%
-		}
-
-		const settings: ProviderSettings = {
-			apiProvider: "gemini",
-			enableReasoningEffort: false, // Not using reasoning
-		}
-
-		const result = getModelMaxOutputTokens({ modelId: geminiModelId, model, settings })
-		expect(result).toBe(65_535) // Should use model.maxTokens since it's within 20% threshold
-	})
-
-	test("should clamp maxTokens to 20% of context window when maxTokens exceeds threshold", () => {
-		const model: ModelInfo = {
-			contextWindow: 100_000,
-			supportsPromptCache: false,
-			maxTokens: 50_000, // 50% of context window, exceeds 20% threshold
-		}
-
-		const settings: ProviderSettings = {
-			apiProvider: "openai",
-		}
-
-		const result = getModelMaxOutputTokens({
-			modelId: "gpt-4",
-			model,
-			settings,
-			format: "openai",
-		})
-		// Should clamp to 20% of context window: 100_000 * 0.2 = 20_000
-		expect(result).toBe(20_000)
-	})
-
-	test("should clamp maxTokens to 20% of context window for Anthropic models when maxTokens exceeds threshold", () => {
-		const model: ModelInfo = {
-			contextWindow: 100_000,
-			supportsPromptCache: true,
-			maxTokens: 50_000, // 50% of context window, exceeds 20% threshold
-		}
-
-		const settings: ProviderSettings = {
-			apiProvider: "anthropic",
-		}
-
-		const result = getModelMaxOutputTokens({
-			modelId: "claude-3-5-sonnet-20241022",
-			model,
-			settings,
-		})
-		// Should clamp to 20% of context window: 100_000 * 0.2 = 20_000
-		expect(result).toBe(20_000)
-	})
-
-	test("should use model.maxTokens when exactly at 20% threshold", () => {
-		const model: ModelInfo = {
-			contextWindow: 100_000,
-			supportsPromptCache: false,
-			maxTokens: 20_000, // Exactly 20% of context window
-		}
-
-		const settings: ProviderSettings = {
-			apiProvider: "openai",
-		}
-
-		const result = getModelMaxOutputTokens({
-			modelId: "gpt-4",
-			model,
-			settings,
-			format: "openai",
-		})
-		expect(result).toBe(20_000) // Should use model.maxTokens since it's exactly at 20%
-	})
-
-	test("should bypass 20% cap for GPT-5 models and use exact configured max tokens", () => {
-		const model: ModelInfo = {
-			contextWindow: 200_000,
-			supportsPromptCache: false,
-			maxTokens: 128_000, // 64% of context window, normally would be capped
-		}
-
-		const settings: ProviderSettings = {
-			apiProvider: "openai",
-		}
-
-		// Test various GPT-5 model IDs
-		const gpt5ModelIds = ["gpt-5", "gpt-5-turbo", "GPT-5", "openai/gpt-5-preview", "gpt-5-32k", "GPT-5-TURBO"]
-
-		gpt5ModelIds.forEach((modelId) => {
-			const result = getModelMaxOutputTokens({
-				modelId,
-				model,
-				settings,
-				format: "openai",
-			})
-			// Should use full 128k tokens, not capped to 20% (40k)
-			expect(result).toBe(128_000)
-		})
-	})
-
-	test("should honor the user's modelMaxTokens override for supportsMaxTokens models (e.g. Z.ai GLM)", () => {
-		const model: ModelInfo = {
-			contextWindow: 200_000,
-			supportsPromptCache: false,
-			supportsMaxTokens: true,
-			maxTokens: 98_304, // model ceiling, well above the 20% clamp (40k)
-		}
-
-		const settings: ProviderSettings = {
-			apiProvider: "zai",
-			modelMaxTokens: 64_000, // user override, above 20% of the context window (40k)
-		}
-
-		const result = getModelMaxOutputTokens({ modelId: "glm-4.6", model, settings, format: "openai" })
-		// Honored instead of clamped to 20% of the context window.
-		expect(result).toBe(64_000)
-	})
-
-	test("should cap the supportsMaxTokens override at the model's own maxTokens ceiling", () => {
-		const model: ModelInfo = {
-			contextWindow: 200_000,
-			supportsPromptCache: false,
-			supportsMaxTokens: true,
-			maxTokens: 32_000,
-		}
-
-		const settings: ProviderSettings = {
-			apiProvider: "zai",
-			modelMaxTokens: 999_999, // beyond the model ceiling
-		}
-
-		const result = getModelMaxOutputTokens({ modelId: "glm-4.6", model, settings, format: "openai" })
-		expect(result).toBe(32_000)
-	})
-
-	test("should still apply 20% cap to non-GPT-5 models", () => {
-		const model: ModelInfo = {
-			contextWindow: 200_000,
-			supportsPromptCache: false,
-			maxTokens: 128_000, // 64% of context window, should be capped
-		}
-
-		const settings: ProviderSettings = {
-			apiProvider: "openai",
-		}
-
-		// Test non-GPT-5 model IDs
-		const nonGpt5ModelIds = ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo", "claude-3-5-sonnet", "gemini-pro"]
-
-		nonGpt5ModelIds.forEach((modelId) => {
-			const result = getModelMaxOutputTokens({
-				modelId,
-				model,
-				settings,
-				format: "openai",
-			})
-			// Should be capped to 20% of context window: 200_000 * 0.2 = 40_000
-			expect(result).toBe(40_000)
-		})
-	})
-
-	test("should handle GPT-5 models with various max token configurations", () => {
-		const testCases = [
-			{
-				maxTokens: 128_000,
-				contextWindow: 200_000,
-				expected: 128_000, // Uses full 128k
-			},
-			{
-				maxTokens: 64_000,
-				contextWindow: 200_000,
-				expected: 64_000, // Uses configured 64k
-			},
-			{
-				maxTokens: 256_000,
-				contextWindow: 400_000,
-				expected: 256_000, // Uses full 256k even though it's 64% of context
-			},
-		]
-
-		testCases.forEach(({ maxTokens, contextWindow, expected }) => {
-			const model: ModelInfo = {
-				contextWindow,
-				supportsPromptCache: false,
-				maxTokens,
-			}
-
-			const result = getModelMaxOutputTokens({
-				modelId: "gpt-5-turbo",
-				model,
-				settings: { apiProvider: "openai" },
-				format: "openai",
-			})
-
-			expect(result).toBe(expected)
-		})
-	})
-
-	test("should still clamp Z.ai models to 20% of context window by default", () => {
-		// glm-5.1: maxTokens=131_072 on a 200k context window. Without an explicit
-		// modelMaxTokens override the default 20% clamp applies (200_000 * 0.2 = 40_000).
-		const model: ModelInfo = {
-			contextWindow: 200_000,
-			supportsPromptCache: true,
-			maxTokens: 131_072,
-			supportsReasoningEffort: ["disable", "medium"],
-		}
-
-		const result = getModelMaxOutputTokens({
-			modelId: "glm-5.1",
-			model,
-			settings: { apiProvider: "zai" },
-			format: "openai",
-		})
-
-		expect(result).toBe(40_000)
-	})
-
-	test("should still clamp non-Z.ai models with high maxTokens to 20% of context window", () => {
-		const model: ModelInfo = {
-			contextWindow: 200_000,
-			supportsPromptCache: false,
-			maxTokens: 131_072,
-		}
-
-		const result = getModelMaxOutputTokens({
-			modelId: "glm-5.1",
-			model,
-			settings: { apiProvider: "openai" },
-			format: "openai",
-		})
-
-		expect(result).toBe(40_000)
-	})
-
-	test("should return modelMaxTokens from settings when reasoning budget is required", () => {
-		const model: ModelInfo = {
-			contextWindow: 200_000,
-			supportsPromptCache: true,
-			requiredReasoningBudget: true,
-			maxTokens: 8000,
-		}
-
-		const settings: ProviderSettings = {
-			modelMaxTokens: 4000,
-		}
-
-		expect(getModelMaxOutputTokens({ modelId: "test", model, settings })).toBe(4000)
-	})
-
-	test("should return default 16_384 for reasoning budget models when modelMaxTokens not provided", () => {
-		const model: ModelInfo = {
-			contextWindow: 200_000,
-			supportsPromptCache: true,
-			requiredReasoningBudget: true,
-			maxTokens: 8000,
-		}
-
-		const settings = {}
-
-		expect(getModelMaxOutputTokens({ modelId: "test", model, settings })).toBe(16_384)
+	it.each<[string, string, ModelInfo, ProviderSettings, Format, number | undefined]>([
+		[
+			"a maxTokens within 20 percent of the window",
+			"claude-3-5-sonnet",
+			model({ maxTokens: 8192 }),
+			{},
+			undefined,
+			8192,
+		],
+		[
+			"a maxTokens above 20 percent, clamped",
+			"glm-4.6",
+			model({ maxTokens: 64_000, contextWindow: 100_000 }),
+			{},
+			"openai",
+			20_000,
+		],
+		[
+			"a Claude maxTokens above 20 percent, clamped",
+			"claude-x",
+			model({ maxTokens: 64_000, contextWindow: 100_000 }),
+			{},
+			undefined,
+			20_000,
+		],
+		["GPT-5, unclamped (any case)", "openai/GPT-5-chat", model({ maxTokens: 128_000 }), {}, "openai", 128_000],
+		[
+			"a required reasoning budget",
+			"claude-3-7",
+			model({ requiredReasoningBudget: true }),
+			{ modelMaxTokens: 32_000 },
+			undefined,
+			32_000,
+		],
+		[
+			"a required reasoning budget without modelMaxTokens",
+			"x",
+			model({ requiredReasoningBudget: true }),
+			{},
+			undefined,
+			16_384,
+		],
+		[
+			"an enabled reasoning budget",
+			"claude-opus-4-8",
+			hybrid,
+			{ enableReasoningEffort: true, modelMaxTokens: 32_768 },
+			undefined,
+			32_768,
+		],
+		[
+			"a hybrid model by Claude id, budget off",
+			"claude-sonnet-4",
+			hybrid,
+			{ enableReasoningEffort: false },
+			undefined,
+			ANTHROPIC_DEFAULT_MAX_TOKENS,
+		],
+		["a hybrid model in the Anthropic format", "my-model", hybrid, {}, "anthropic", ANTHROPIC_DEFAULT_MAX_TOKENS],
+		[
+			"a hybrid model on OpenRouter's anthropic/",
+			"anthropic/sonnet-x",
+			hybrid,
+			{},
+			"openrouter",
+			ANTHROPIC_DEFAULT_MAX_TOKENS,
+		],
+		["a hybrid model elsewhere, clamped", "gemini-2.5-flash", hybrid, {}, "gemini", 40_000],
+		[
+			"a hybrid model on OpenRouter from another vendor, clamped",
+			"google/gemini-x",
+			hybrid,
+			{},
+			"openrouter",
+			40_000,
+		],
+		[
+			"an Anthropic-format model with maxTokens 0",
+			"my-model",
+			model({ maxTokens: 0 }),
+			{},
+			"anthropic",
+			ANTHROPIC_DEFAULT_MAX_TOKENS,
+		],
+		[
+			"the user's max-output slider",
+			"glm-4.6",
+			model({ maxTokens: 131_072, supportsMaxTokens: true }),
+			{ modelMaxTokens: 50_000 },
+			"openai",
+			50_000,
+		],
+		[
+			"the slider, capped at the model's ceiling",
+			"glm-4.6",
+			model({ maxTokens: 131_072, supportsMaxTokens: true }),
+			{ modelMaxTokens: 200_000 },
+			"openai",
+			131_072,
+		],
+		[
+			"the slider without a ceiling",
+			"x",
+			model({ supportsMaxTokens: true }),
+			{ modelMaxTokens: 3_000 },
+			"openai",
+			3_000,
+		],
+		[
+			"a slider model without a value, clamped",
+			"glm-4.6",
+			model({ maxTokens: 131_072, supportsMaxTokens: true }),
+			{},
+			"openai",
+			40_000,
+		],
+		["no maxTokens with a format", "x", model(), {}, "openai", undefined],
+		["no maxTokens without a format", "x", model(), {}, undefined, ANTHROPIC_DEFAULT_MAX_TOKENS],
+	])("for %s", (_name, modelId, info, settings, format, expected) => {
+		expect(getModelMaxOutputTokens({ modelId, model: info, settings, format })).toBe(expected)
 	})
 })
 
-describe("shouldUseReasoningBudget", () => {
-	test("should return true when model has requiredReasoningBudget", () => {
-		const model: ModelInfo = {
-			contextWindow: 200_000,
-			supportsPromptCache: true,
-			requiredReasoningBudget: true,
-		}
-
-		// Should return true regardless of settings
-		expect(shouldUseReasoningBudget({ model })).toBe(true)
-		expect(shouldUseReasoningBudget({ model, settings: {} })).toBe(true)
-		expect(shouldUseReasoningBudget({ model, settings: { enableReasoningEffort: false } })).toBe(true)
-	})
-
-	test("should return true when model supports reasoning budget and settings enable reasoning effort", () => {
-		const model: ModelInfo = {
-			contextWindow: 200_000,
-			supportsPromptCache: true,
-			supportsReasoningBudget: true,
-		}
-
-		const settings: ProviderSettings = {
-			enableReasoningEffort: true,
-		}
-
-		expect(shouldUseReasoningBudget({ model, settings })).toBe(true)
-	})
-
-	test("should return false when model supports reasoning budget but settings don't enable reasoning effort", () => {
-		const model: ModelInfo = {
-			contextWindow: 200_000,
-			supportsPromptCache: true,
-			supportsReasoningBudget: true,
-		}
-
-		const settings: ProviderSettings = {
-			enableReasoningEffort: false,
-		}
-
-		expect(shouldUseReasoningBudget({ model, settings })).toBe(false)
-		expect(shouldUseReasoningBudget({ model, settings: {} })).toBe(false)
-		expect(shouldUseReasoningBudget({ model })).toBe(false)
-	})
-
-	test("should return false when model doesn't support reasoning budget", () => {
-		const model: ModelInfo = {
-			contextWindow: 200_000,
-			supportsPromptCache: true,
-		}
-
-		const settings: ProviderSettings = {
-			enableReasoningEffort: true,
-		}
-
-		expect(shouldUseReasoningBudget({ model, settings })).toBe(false)
-		expect(shouldUseReasoningBudget({ model })).toBe(false)
-	})
+it.each<[string, Partial<ModelInfo>, ProviderSettings | undefined, boolean]>([
+	["a required budget", { requiredReasoningBudget: true }, undefined, true],
+	[
+		"a supported budget the settings enable",
+		{ supportsReasoningBudget: true },
+		{ enableReasoningEffort: true },
+		true,
+	],
+	["a supported budget the settings leave off", { supportsReasoningBudget: true }, {}, false],
+	["no budget support", {}, { enableReasoningEffort: true }, false],
+])("shouldUseReasoningBudget: %s -> %s", (_name, info, settings, expected) => {
+	expect(shouldUseReasoningBudget({ model: model(info), settings })).toBe(expected)
 })
 
 describe("shouldUseReasoningEffort", () => {
-	test("should return true when model has reasoningEffort property", () => {
-		const model: ModelInfo = {
-			contextWindow: 200_000,
-			supportsPromptCache: true,
-			reasoningEffort: "medium",
-		}
+	const effort = (value: string) => value as ProviderSettings["reasoningEffort"]
+	const levels = ["disable", "none", "minimal", "low"] as unknown as ModelInfo["supportsReasoningEffort"]
 
-		expect(shouldUseReasoningEffort({ model })).toBe(true)
-		expect(shouldUseReasoningEffort({ model, settings: {} })).toBe(true)
-		expect(shouldUseReasoningEffort({ model, settings: { reasoningEffort: undefined } })).toBe(true)
-	})
-
-	test("should return false when enableReasoningEffort is false, even if reasoningEffort is set", () => {
-		const model: ModelInfo = {
-			contextWindow: 200_000,
-			supportsPromptCache: true,
-			supportsReasoningEffort: true,
-		}
-
-		const settings: ProviderSettings = {
-			enableReasoningEffort: false,
-			reasoningEffort: "medium",
-		}
-
-		expect(shouldUseReasoningEffort({ model, settings })).toBe(false)
-	})
-
-	test("should return false when enableReasoningEffort is false, even if model has reasoningEffort property", () => {
-		const model: ModelInfo = {
-			contextWindow: 200_000,
-			supportsPromptCache: true,
-			reasoningEffort: "medium",
-		}
-
-		const settings: ProviderSettings = {
-			enableReasoningEffort: false,
-		}
-
-		expect(shouldUseReasoningEffort({ model, settings })).toBe(false)
-	})
-
-	test("should return true when model supports reasoning effort and settings provide reasoning effort", () => {
-		const model: ModelInfo = {
-			contextWindow: 200_000,
-			supportsPromptCache: true,
-			supportsReasoningEffort: true,
-		}
-
-		const settings: ProviderSettings = {
-			reasoningEffort: "high",
-		}
-
-		expect(shouldUseReasoningEffort({ model, settings })).toBe(true)
-	})
-
-	test("should return false when model supports reasoning effort but settings don't provide reasoning effort", () => {
-		const model: ModelInfo = {
-			contextWindow: 200_000,
-			supportsPromptCache: true,
-			supportsReasoningEffort: true,
-		}
-
-		const settings: ProviderSettings = {
-			reasoningEffort: undefined,
-		}
-
-		expect(shouldUseReasoningEffort({ model, settings })).toBe(false)
-		expect(shouldUseReasoningEffort({ model, settings: {} })).toBe(false)
-		expect(shouldUseReasoningEffort({ model })).toBe(false)
-	})
-
-	test("should return false when model doesn't support reasoning effort and has no default", () => {
-		const model: ModelInfo = {
-			contextWindow: 200_000,
-			supportsPromptCache: true,
-		}
-
-		const settings: ProviderSettings = {
-			reasoningEffort: "high",
-		}
-
-		expect(shouldUseReasoningEffort({ model, settings })).toBe(false)
-		expect(shouldUseReasoningEffort({ model })).toBe(false)
-	})
-
-	test("should handle different reasoning effort values", () => {
-		const model: ModelInfo = {
-			contextWindow: 200_000,
-			supportsPromptCache: true,
-			supportsReasoningEffort: true,
-		}
-
-		const settingsLow: ProviderSettings = { reasoningEffort: "low" }
-		const settingsMedium: ProviderSettings = { reasoningEffort: "medium" }
-		const settingsHigh: ProviderSettings = { reasoningEffort: "high" }
-
-		expect(shouldUseReasoningEffort({ model, settings: settingsLow })).toBe(true)
-		expect(shouldUseReasoningEffort({ model, settings: settingsMedium })).toBe(true)
-		expect(shouldUseReasoningEffort({ model, settings: settingsHigh })).toBe(true)
-	})
-
-	// New cases for extended capability surface
-	test("array capability includes 'disable' with selection 'disable' -> false", () => {
-		const model: ModelInfo = {
-			contextWindow: 100_000,
-			supportsPromptCache: true,
-			supportsReasoningEffort: [
-				"disable",
-				"low",
-				"medium",
-				"high",
-			] as unknown as ModelInfo["supportsReasoningEffort"],
-		}
-		const settings: ProviderSettings = {
-			enableReasoningEffort: true,
-			reasoningEffort: "disable" as unknown as ProviderSettings["reasoningEffort"],
-		}
-		expect(shouldUseReasoningEffort({ model, settings })).toBe(false)
-	})
-
-	test("array capability includes 'none' with settings.reasoningEffort='none' -> true", () => {
-		const model: ModelInfo = {
-			contextWindow: 100_000,
-			supportsPromptCache: true,
-			supportsReasoningEffort: [
-				"none",
-				"minimal",
-				"low",
-				"medium",
-				"high",
-			] as unknown as ModelInfo["supportsReasoningEffort"],
-		}
-		const settings: ProviderSettings = {
-			enableReasoningEffort: true,
-			reasoningEffort: "none" as unknown as ProviderSettings["reasoningEffort"],
-		}
-		expect(shouldUseReasoningEffort({ model, settings })).toBe(true)
-	})
-
-	test("array capability includes 'minimal' with settings.reasoningEffort='minimal' -> true", () => {
-		const model: ModelInfo = {
-			contextWindow: 100_000,
-			supportsPromptCache: true,
-			supportsReasoningEffort: [
-				"none",
-				"minimal",
-				"low",
-				"medium",
-				"high",
-			] as unknown as ModelInfo["supportsReasoningEffort"],
-		}
-		const settings: ProviderSettings = {
-			enableReasoningEffort: true,
-			reasoningEffort: "minimal" as unknown as ProviderSettings["reasoningEffort"],
-		}
-		expect(shouldUseReasoningEffort({ model, settings })).toBe(true)
-	})
-
-	test("boolean true with 'none' and 'minimal' -> true", () => {
-		const model: ModelInfo = {
-			contextWindow: 100_000,
-			supportsPromptCache: true,
-			supportsReasoningEffort: true,
-		}
-		expect(
-			shouldUseReasoningEffort({
-				model,
-				settings: { reasoningEffort: "none" as unknown as ProviderSettings["reasoningEffort"] },
-			}),
-		).toBe(true)
-		expect(
-			shouldUseReasoningEffort({
-				model,
-				settings: { reasoningEffort: "minimal" as unknown as ProviderSettings["reasoningEffort"] },
-			}),
-		).toBe(true)
+	it.each<[string, Partial<ModelInfo>, ProviderSettings | undefined, boolean]>([
+		["a model default effort", { reasoningEffort: "medium" }, undefined, true],
+		["the off switch over a model default", { reasoningEffort: "medium" }, { enableReasoningEffort: false }, false],
+		[
+			"the off switch over a selected effort",
+			{ supportsReasoningEffort: true },
+			{ enableReasoningEffort: false, reasoningEffort: "medium" },
+			false,
+		],
+		["support with a selected effort", { supportsReasoningEffort: true }, { reasoningEffort: "high" }, true],
+		[
+			"support with none or minimal selected",
+			{ supportsReasoningEffort: true },
+			{ reasoningEffort: effort("minimal") },
+			true,
+		],
+		["support without a selected effort", { supportsReasoningEffort: true }, {}, false],
+		["a selection without support or a model default", {}, { reasoningEffort: "high" }, false],
+		["a level in the model's list", { supportsReasoningEffort: levels }, { reasoningEffort: effort("none") }, true],
+		["a level outside the model's list", { supportsReasoningEffort: levels }, { reasoningEffort: "high" }, false],
+		["no level with a list", { supportsReasoningEffort: levels }, {}, false],
+		[
+			"disable, even when listed",
+			{ supportsReasoningEffort: levels },
+			{ enableReasoningEffort: true, reasoningEffort: effort("disable") },
+			false,
+		],
+	])("%s -> %s", (_name, info, settings, expected) => {
+		expect(shouldUseReasoningEffort({ model: model(info), settings })).toBe(expected)
 	})
 })

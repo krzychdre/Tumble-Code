@@ -1,287 +1,127 @@
 // npx vitest run packages/core/src/message-utils/__tests__/consolidateTokenUsage.spec.ts
 
-import type { ClineMessage } from "@tumble-code/types"
+import type { ClineMessage, TokenUsage, ToolUsage } from "@tumble-code/types"
 
 import { consolidateTokenUsage, hasTokenUsageChanged, hasToolUsageChanged } from "../consolidateTokenUsage.js"
 
+const request = (data: object | string | undefined): ClineMessage => ({
+	ts: 1,
+	type: "say",
+	say: "api_req_started",
+	text: typeof data === "object" ? JSON.stringify(data) : data,
+})
+const condense = (contextCondense?: { newContextTokens?: number; cost?: number }): ClineMessage =>
+	({ ts: 1, type: "say", say: "condense_context", contextCondense }) as ClineMessage
+const text: ClineMessage = { ts: 1, type: "say", say: "text", text: '{"tokensIn":999}' }
+
+const usage = (overrides: Partial<TokenUsage> = {}): TokenUsage => ({
+	totalTokensIn: 0,
+	totalTokensOut: 0,
+	totalCacheWrites: undefined,
+	totalCacheReads: undefined,
+	totalCost: 0,
+	contextTokens: 0,
+	...overrides,
+})
+
 describe("consolidateTokenUsage", () => {
-	// Helper function to create a basic api_req_started message
-	const createApiReqMessage = (
-		ts: number,
-		data: {
-			tokensIn?: number
-			tokensOut?: number
-			cacheWrites?: number
-			cacheReads?: number
-			cost?: number
-		},
-	): ClineMessage => ({
-		ts,
-		type: "say",
-		say: "api_req_started",
-		text: JSON.stringify(data),
+	beforeEach(() => {
+		vi.spyOn(console, "error").mockImplementation(() => {})
 	})
 
-	describe("basic token accumulation", () => {
-		it("should accumulate tokens from a single message", () => {
-			const messages: ClineMessage[] = [createApiReqMessage(1000, { tokensIn: 100, tokensOut: 50, cost: 0.01 })]
-
-			const result = consolidateTokenUsage(messages)
-
-			expect(result.totalTokensIn).toBe(100)
-			expect(result.totalTokensOut).toBe(50)
-			expect(result.totalCost).toBe(0.01)
-		})
-
-		it("should accumulate tokens from multiple messages", () => {
-			const messages: ClineMessage[] = [
-				createApiReqMessage(1000, { tokensIn: 100, tokensOut: 50, cost: 0.01 }),
-				createApiReqMessage(1001, { tokensIn: 200, tokensOut: 100, cost: 0.02 }),
-			]
-
-			const result = consolidateTokenUsage(messages)
-
-			expect(result.totalTokensIn).toBe(300)
-			expect(result.totalTokensOut).toBe(150)
-			expect(result.totalCost).toBeCloseTo(0.03)
-		})
-
-		it("should handle cache writes and reads", () => {
-			const messages: ClineMessage[] = [
-				createApiReqMessage(1000, { tokensIn: 100, tokensOut: 50, cacheWrites: 500, cacheReads: 200 }),
-			]
-
-			const result = consolidateTokenUsage(messages)
-
-			expect(result.totalCacheWrites).toBe(500)
-			expect(result.totalCacheReads).toBe(200)
-		})
-
-		it("should handle empty messages array", () => {
-			const result = consolidateTokenUsage([])
-
-			expect(result.totalTokensIn).toBe(0)
-			expect(result.totalTokensOut).toBe(0)
-			expect(result.totalCost).toBe(0)
-			expect(result.contextTokens).toBe(0)
-		})
+	afterEach(() => {
+		vi.restoreAllMocks()
 	})
 
-	describe("context tokens calculation", () => {
-		it("should calculate context tokens from the last API request", () => {
-			const messages: ClineMessage[] = [
-				createApiReqMessage(1000, { tokensIn: 100, tokensOut: 50 }),
-				createApiReqMessage(1001, { tokensIn: 200, tokensOut: 100 }),
-			]
-
-			const result = consolidateTokenUsage(messages)
-
-			// Context tokens = tokensIn + tokensOut from last message
-			expect(result.contextTokens).toBe(300) // 200 + 100
-		})
-
-		it("should handle condense_context messages for context tokens", () => {
-			const messages: ClineMessage[] = [
-				createApiReqMessage(1000, { tokensIn: 100, tokensOut: 50 }),
-				{
-					ts: 1001,
-					type: "say",
-					say: "condense_context",
-					contextCondense: { newContextTokens: 5000, cost: 0.05 },
-				} as ClineMessage,
-			]
-
-			const result = consolidateTokenUsage(messages)
-
-			expect(result.contextTokens).toBe(5000)
-			expect(result.totalCost).toBeCloseTo(0.05)
-		})
+	it.each<[string, ClineMessage[], TokenUsage]>([
+		["nothing for no messages", [], usage()],
+		["nothing from other messages", [text], usage()],
+		[
+			"sums every request, and takes the context from the last one",
+			[
+				request({ tokensIn: 100, tokensOut: 50, cacheWrites: 5, cacheReads: 10, cost: 0.25 }),
+				request({ tokensIn: 200, tokensOut: 100, cacheWrites: 1, cost: 0.5 }),
+			],
+			usage({
+				totalTokensIn: 300,
+				totalTokensOut: 150,
+				totalCacheWrites: 6,
+				totalCacheReads: 10,
+				totalCost: 0.75,
+				contextTokens: 300,
+			}),
+		],
+		[
+			"ignores missing and non-number figures",
+			[request({ tokensIn: "100", tokensOut: null, cost: 0.5 }), request({ tokensOut: 7 })],
+			usage({ totalTokensOut: 7, totalCost: 0.5, contextTokens: 7 }),
+		],
+		[
+			"adds a condense's cost and takes its context when it is last",
+			[request({ tokensIn: 100, tokensOut: 50, cost: 0.5 }), condense({ newContextTokens: 5000, cost: 0.25 })],
+			usage({ totalTokensIn: 100, totalTokensOut: 50, totalCost: 0.75, contextTokens: 5000 }),
+		],
+		[
+			"takes the context from a request after a condense",
+			[condense({ newContextTokens: 5000, cost: 0.25 }), request({ tokensIn: 700, tokensOut: 30 })],
+			usage({ totalTokensIn: 700, totalTokensOut: 30, totalCost: 0.25, contextTokens: 730 }),
+		],
+		[
+			"scans back past a condense without figures, a request without text and unreadable payloads",
+			[
+				request({ tokensIn: 300, tokensOut: 20, cost: 0.5 }),
+				request("null"),
+				request("42"),
+				request("{broken"),
+				request(undefined),
+				condense(),
+			],
+			usage({ totalTokensIn: 300, totalTokensOut: 20, totalCost: 0.5, contextTokens: 320 }),
+		],
+	])("counts %s", (_name, messages, expected) => {
+		expect(consolidateTokenUsage(messages)).toEqual(expected)
 	})
 
-	describe("invalid data handling", () => {
-		it("should handle messages with invalid JSON", () => {
-			const messages: ClineMessage[] = [{ ts: 1000, type: "say", say: "api_req_started", text: "invalid json" }]
+	it("logs an unparseable request once, from the totals pass only", () => {
+		consolidateTokenUsage([request("{broken")])
 
-			// Should not throw
-			const result = consolidateTokenUsage(messages)
-			expect(result.totalTokensIn).toBe(0)
-		})
-
-		it("treats a JSON null or scalar payload like an unparseable one", () => {
-			vi.spyOn(console, "error").mockImplementation(() => {})
-			const messages: ClineMessage[] = [
-				createApiReqMessage(1000, { tokensIn: 100, tokensOut: 50, cost: 0.01 }),
-				{ ts: 1001, type: "say", say: "api_req_started", text: "null" },
-				{ ts: 1002, type: "say", say: "api_req_started", text: "42" },
-			]
-
-			const result = consolidateTokenUsage(messages)
-
-			expect(result.totalTokensIn).toBe(100)
-			expect(result.totalTokensOut).toBe(50)
-			expect(result.totalCost).toBe(0.01)
-			// The context scan walks back past the null and scalar payloads to the last real request.
-			expect(result.contextTokens).toBe(150)
-			vi.restoreAllMocks()
-		})
-
-		it("keeps scanning back for context tokens past an unparseable last request", () => {
-			vi.spyOn(console, "error").mockImplementation(() => {})
-			const messages: ClineMessage[] = [
-				createApiReqMessage(1000, { tokensIn: 300, tokensOut: 20 }),
-				{ ts: 1001, type: "say", say: "api_req_started", text: "{broken" },
-			]
-
-			const result = consolidateTokenUsage(messages)
-
-			expect(result.totalTokensIn).toBe(300)
-			expect(result.contextTokens).toBe(320)
-			vi.restoreAllMocks()
-		})
-
-		it("logs an unparseable request once (from the totals pass only)", () => {
-			const error = vi.spyOn(console, "error").mockImplementation(() => {})
-			consolidateTokenUsage([{ ts: 1000, type: "say", say: "api_req_started", text: "{broken" }])
-
-			expect(error).toHaveBeenCalledTimes(1)
-			expect(error.mock.calls[0]?.[0]).toBe("Error parsing JSON:")
-			vi.restoreAllMocks()
-		})
-
-		it("should skip non-api_req_started messages", () => {
-			const messages: ClineMessage[] = [
-				{ ts: 1000, type: "say", say: "text", text: "hello" },
-				createApiReqMessage(1001, { tokensIn: 100, tokensOut: 50 }),
-			]
-
-			const result = consolidateTokenUsage(messages)
-
-			expect(result.totalTokensIn).toBe(100)
-			expect(result.totalTokensOut).toBe(50)
-		})
-
-		it("should handle missing token values", () => {
-			const messages: ClineMessage[] = [createApiReqMessage(1000, { cost: 0.01 })]
-
-			const result = consolidateTokenUsage(messages)
-
-			expect(result.totalTokensIn).toBe(0)
-			expect(result.totalTokensOut).toBe(0)
-			expect(result.totalCost).toBe(0.01)
-		})
+		expect(console.error).toHaveBeenCalledTimes(1)
+		expect(vi.mocked(console.error).mock.calls[0]![0]).toBe("Error parsing JSON:")
 	})
 })
 
 describe("hasTokenUsageChanged", () => {
-	it("should return true when snapshot is undefined", () => {
-		const current = {
-			totalTokensIn: 100,
-			totalTokensOut: 50,
-			totalCost: 0.01,
-			contextTokens: 150,
-		}
+	const base = usage({ totalTokensIn: 100, totalTokensOut: 50, totalCost: 0.01, contextTokens: 150 })
 
-		expect(hasTokenUsageChanged(current, undefined)).toBe(true)
-	})
-
-	it("should return false when values are the same", () => {
-		const current = {
-			totalTokensIn: 100,
-			totalTokensOut: 50,
-			totalCost: 0.01,
-			contextTokens: 150,
-		}
-		const snapshot = { ...current }
-
-		expect(hasTokenUsageChanged(current, snapshot)).toBe(false)
-	})
-
-	it("should return true when totalTokensIn changes", () => {
-		const current = {
-			totalTokensIn: 200,
-			totalTokensOut: 50,
-			totalCost: 0.01,
-			contextTokens: 150,
-		}
-		const snapshot = {
-			totalTokensIn: 100,
-			totalTokensOut: 50,
-			totalCost: 0.01,
-			contextTokens: 150,
-		}
-
-		expect(hasTokenUsageChanged(current, snapshot)).toBe(true)
-	})
-
-	it("should return true when totalCost changes", () => {
-		const current = {
-			totalTokensIn: 100,
-			totalTokensOut: 50,
-			totalCost: 0.02,
-			contextTokens: 150,
-		}
-		const snapshot = {
-			totalTokensIn: 100,
-			totalTokensOut: 50,
-			totalCost: 0.01,
-			contextTokens: 150,
-		}
-
-		expect(hasTokenUsageChanged(current, snapshot)).toBe(true)
+	it.each<[string, TokenUsage | undefined, boolean]>([
+		["no snapshot", undefined, true],
+		["an equal snapshot", { ...base }, false],
+		...(
+			[
+				"totalTokensIn",
+				"totalTokensOut",
+				"totalCacheWrites",
+				"totalCacheReads",
+				"totalCost",
+				"contextTokens",
+			] as const
+		).map((key): [string, TokenUsage, boolean] => [`a different ${key}`, { ...base, [key]: 1 }, true]),
+	])("is %s for %s", (_name, snapshot, changed) => {
+		expect(hasTokenUsageChanged(base, snapshot)).toBe(changed)
 	})
 })
 
 describe("hasToolUsageChanged", () => {
-	it("should return true when snapshot is undefined", () => {
-		const current = {
-			read_file: { attempts: 1, failures: 0 },
-		}
+	const current: ToolUsage = { read_file: { attempts: 1, failures: 0 } }
 
-		expect(hasToolUsageChanged(current, undefined)).toBe(true)
-	})
-
-	it("should return false when values are the same", () => {
-		const current = {
-			read_file: { attempts: 1, failures: 0 },
-		}
-		const snapshot = {
-			read_file: { attempts: 1, failures: 0 },
-		}
-
-		expect(hasToolUsageChanged(current, snapshot)).toBe(false)
-	})
-
-	it("should return true when a tool is added", () => {
-		const current = {
-			read_file: { attempts: 1, failures: 0 },
-			write_to_file: { attempts: 1, failures: 0 },
-		}
-		const snapshot = {
-			read_file: { attempts: 1, failures: 0 },
-		}
-
-		expect(hasToolUsageChanged(current, snapshot)).toBe(true)
-	})
-
-	it("should return true when attempts change", () => {
-		const current = {
-			read_file: { attempts: 2, failures: 0 },
-		}
-		const snapshot = {
-			read_file: { attempts: 1, failures: 0 },
-		}
-
-		expect(hasToolUsageChanged(current, snapshot)).toBe(true)
-	})
-
-	it("should return true when failures change", () => {
-		const current = {
-			read_file: { attempts: 1, failures: 1 },
-		}
-		const snapshot = {
-			read_file: { attempts: 1, failures: 0 },
-		}
-
-		expect(hasToolUsageChanged(current, snapshot)).toBe(true)
+	it.each<[string, ToolUsage | undefined, boolean]>([
+		["no snapshot", undefined, true],
+		["an equal snapshot", { read_file: { attempts: 1, failures: 0 } }, false],
+		["one tool fewer", {}, true],
+		["a different tool", { write_to_file: { attempts: 1, failures: 0 } }, true],
+		["other attempts", { read_file: { attempts: 2, failures: 0 } }, true],
+		["other failures", { read_file: { attempts: 1, failures: 1 } }, true],
+	])("for %s", (_name, snapshot, changed) => {
+		expect(hasToolUsageChanged(current, snapshot)).toBe(changed)
 	})
 })
