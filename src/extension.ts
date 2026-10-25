@@ -32,6 +32,7 @@ import { registerRooDirectoryWatchers } from "./services/roo-config/watcher"
 import { configureLogger, logger, setDebugLogging } from "./utils/logging"
 import { perfCounters } from "./utils/perfCounters"
 import { migrateFromRooCline } from "./utils/migrateFromRooCline"
+import { migrateCheckpointsOutOfGlobalStorage } from "./services/checkpoints"
 import { autoImportSettings } from "./utils/autoImportSettings"
 import { API } from "./extension/api"
 import { setupRemoteControlBridge } from "./extension/bridge"
@@ -193,6 +194,14 @@ export async function activate(context: vscode.ExtensionContext) {
 	void migrateFromRooCline(context).catch((error) => {
 		const message = error instanceof Error ? error.message : String(error)
 		logger.error(`[migrate-from-roo-code] background failure: ${message}`)
+	})
+
+	// Checkpoints written by older versions still sit in globalStorage, which VS Code
+	// walks to show the extension's size. Move them to ~/.roo/checkpoints in the
+	// background; the pass is idempotent and does nothing once everything has moved.
+	void migrateCheckpointsOutOfGlobalStorage(context.globalStorageUri.fsPath).catch((error) => {
+		const message = error instanceof Error ? error.message : String(error)
+		logger.error(`[migrateCheckpoints] background failure: ${message}`)
 	})
 
 	// Initialize telemetry service. Its only client is the cloud one, registered once

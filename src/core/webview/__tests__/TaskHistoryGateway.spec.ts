@@ -1,5 +1,6 @@
 // pnpm --filter tumble-code test core/webview/__tests__/TaskHistoryGateway.spec.ts
 
+import * as os from "os"
 import * as path from "path"
 import fs from "fs/promises"
 import type { HistoryItem } from "@tumble-code/types"
@@ -428,6 +429,13 @@ describe("TaskHistoryGateway", () => {
 			})
 			expect(fs.rm).toHaveBeenCalledWith("/storage/tasks/p", { recursive: true, force: true })
 			expect(fs.rm).toHaveBeenCalledWith("/storage/tasks/c", { recursive: true, force: true })
+			// Checkpoints live outside the task directory, so they need their own removal.
+			for (const taskId of ["p", "c"]) {
+				expect(fs.rm).toHaveBeenCalledWith(path.join(os.homedir(), ".roo", "checkpoints", taskId), {
+					recursive: true,
+					force: true,
+				})
+			}
 			expect(host.postStateToWebview).toHaveBeenCalledTimes(1)
 		})
 

@@ -120,20 +120,15 @@ function createSanitizedGit(baseDir: string): SimpleGit {
 export class ShadowCheckpointService extends EventEmitter {
 	/**
 	 * Creates a checkpoint service backed by the per-task shadow git directory
-	 * `<shadowDir>/tasks/<taskId>/checkpoints`.
+	 * `<checkpointsRoot>/<taskId>`.
 	 */
 	public static create({
 		taskId,
 		workspaceDir,
-		shadowDir,
+		checkpointsRoot,
 		log = (message: string) => logger.info(message),
 	}: CheckpointServiceOptions) {
-		return new ShadowCheckpointService(
-			taskId,
-			path.join(shadowDir, "tasks", taskId, "checkpoints"),
-			workspaceDir,
-			log,
-		)
+		return new ShadowCheckpointService(taskId, path.join(checkpointsRoot, taskId), workspaceDir, log)
 	}
 	public readonly taskId: string
 	public readonly checkpointsDir: string

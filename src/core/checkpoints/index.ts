@@ -15,7 +15,7 @@ import { consolidateTokenUsage } from "@tumble-code/core/browser"
 
 import { DIFF_VIEW_URI_SCHEME } from "../../integrations/editor/DiffViewProvider"
 
-import { CheckpointServiceOptions, ShadowCheckpointService } from "../../services/checkpoints"
+import { CheckpointServiceOptions, ShadowCheckpointService, getCheckpointsRoot } from "../../services/checkpoints"
 import { logger } from "../../utils/logging"
 
 const WARNING_THRESHOLD_MS = 5000
@@ -54,18 +54,10 @@ export async function getCheckpointService(task: Task, { interval = 250 }: { int
 			return undefined
 		}
 
-		const globalStorageDir = provider?.context.globalStorageUri.fsPath
-
-		if (!globalStorageDir) {
-			log("[Task#getCheckpointService] globalStorageDir not found, disabling checkpoints")
-			task.enableCheckpoints = false
-			return undefined
-		}
-
 		const options: CheckpointServiceOptions = {
 			taskId: task.taskId,
 			workspaceDir,
-			shadowDir: globalStorageDir,
+			checkpointsRoot: getCheckpointsRoot(),
 			log,
 		}
 

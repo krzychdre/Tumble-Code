@@ -16,7 +16,7 @@ export type CheckpointDiff = {
 export interface CheckpointServiceOptions {
 	taskId: string
 	workspaceDir: string
-	shadowDir: string // globalStorageUri.fsPath
+	checkpointsRoot: string // getCheckpointsRoot(), i.e. ~/.roo/checkpoints
 
 	log?: (message: string) => void
 }
