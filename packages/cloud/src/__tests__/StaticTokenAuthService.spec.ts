@@ -2,445 +2,167 @@ import type { ExtensionContext } from "vscode"
 
 import { StaticTokenAuthService } from "../StaticTokenAuthService.js"
 
-vi.mock("vscode", () => ({
-	window: {
-		showInformationMessage: vi.fn(),
-	},
-	env: {
-		openExternal: vi.fn(),
-		uriScheme: "vscode",
-	},
-	Uri: {
-		parse: vi.fn(),
-	},
-}))
+/** An unsigned JWT; the service only decodes it, it never verifies the signature. */
+function makeJWT(claims: Record<string, unknown>): string {
+	const b64url = (obj: unknown) => Buffer.from(JSON.stringify(obj)).toString("base64url")
+	return `${b64url({ alg: "none", typ: "JWT" })}.${b64url(claims)}.`
+}
+
+const context = {} as ExtensionContext
+const nowSeconds = () => Math.floor(Date.now() / 1000)
 
 describe("StaticTokenAuthService", () => {
-	let authService: StaticTokenAuthService
-	let mockContext: ExtensionContext
-	let mockLog: (...args: unknown[]) => void
-	const testToken = "test-static-token"
+	let log: ReturnType<typeof vi.fn<(...args: unknown[]) => void>>
+	const services: StaticTokenAuthService[] = []
 
-	// Job token (t:'cj') with userId and orgId - sub is CloudJob ID
-	const jobTokenWithOrg =
-		"eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJyY2MiLCJzdWIiOiIzIiwiZXhwIjoxNzU2Mjc5NzU0LCJpYXQiOjE3NTYyNzU4NTQsIm5iZiI6MTc1NjI3NTgyNCwidiI6MSwiciI6eyJ1IjoidXNlcl8yeG1CaGVqTmVEVHdhbk04Q2dJT25NZ1Z4ekMiLCJvIjoib3JnXzEyM2FiYyIsInQiOiJjaiJ9fQ.k6VgV0cZUbx75kdedaeAsVYSRT7PzxDOCseLowq6moX92B4QuqtNkPRLKtQX7pJCxjuqRwEjJxmfTeXtQ82Pyg"
-
-	// Job token without orgId (orgId was null during creation)
-	const jobTokenNoOrg =
-		"eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJyY2MiLCJzdWIiOiI1IiwiZXhwIjoxNzU2Mjc5NzU0LCJpYXQiOjE3NTYyNzU4NTQsIm5iZiI6MTc1NjI3NTgyNCwidiI6MSwiciI6eyJ1IjoidXNlcl8yeG1CaGVqTmVEVHdhbk04Q2dJT25NZ1Z4ekMiLCJ0IjoiY2oifX0.signature"
-
-	// Auth token (t:'auth') - sub is User ID
-	const authToken =
-		"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJyY2MiLCJzdWIiOiJ1c2VyXzEyMyIsImV4cCI6MTc1NjI3OTc1NCwiaWF0IjoxNzU2Mjc1ODU0LCJuYmYiOjE3NTYyNzU4MjQsInYiOjEsInIiOnsidSI6InVzZXJfMTIzIiwidCI6ImF1dGgifX0.signature"
-
-	// JWT without the 'r' field (legacy format)
-	const legacyJWT =
-		"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyXzEyMyIsImlhdCI6MTUxNjIzOTAyMn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+	const makeService = (token: string) => {
+		const service = new StaticTokenAuthService(context, token, log)
+		services.push(service)
+		return service
+	}
 
 	beforeEach(() => {
-		mockLog = vi.fn()
-
-		// Create a minimal mock that satisfies the constructor requirements
-		const mockContextPartial = {
-			extension: {
-				packageJSON: {
-					publisher: "TestPublisher",
-					name: "test-extension",
-				},
-			},
-			globalState: {
-				get: vi.fn(),
-				update: vi.fn(),
-			},
-			secrets: {
-				get: vi.fn(),
-				store: vi.fn(),
-				delete: vi.fn(),
-				onDidChange: vi.fn(),
-			},
-			subscriptions: [],
-		}
-
-		// Use type assertion for test mocking
-		mockContext = mockContextPartial as unknown as ExtensionContext
-
-		authService = new StaticTokenAuthService(mockContext, testToken, mockLog)
+		vi.useFakeTimers()
+		log = vi.fn()
 	})
 
 	afterEach(() => {
-		vi.clearAllMocks()
+		services.splice(0).forEach((service) => service.dispose())
+		vi.useRealTimers()
 	})
 
-	describe("constructor", () => {
-		it("should create instance and log static token mode", () => {
-			expect(authService).toBeInstanceOf(StaticTokenAuthService)
-			expect(mockLog).toHaveBeenCalledWith("[auth] Using StaticTokenAuthService")
-		})
+	it.each([
+		[
+			"a job token: user from r.u, organization from r.o",
+			{ sub: "3", r: { u: "user_1", o: "org_1", t: "cj" } },
+			"user_1",
+			"org_1",
+		],
+		["a job token without an organization", { sub: "5", r: { u: "user_1", t: "cj" } }, "user_1", undefined],
+		["a legacy token without r: user from sub", { sub: "user_123" }, "user_123", undefined],
+	])("reads %s", (_name, claims, id, organizationId) => {
+		const service = makeService(makeJWT(claims))
 
-		it("should use console.log as default logger", () => {
-			const serviceWithoutLog = new StaticTokenAuthService(mockContext as unknown as ExtensionContext, testToken)
-			// Can't directly test console.log usage, but constructor should not throw
-			expect(serviceWithoutLog).toBeInstanceOf(StaticTokenAuthService)
-		})
-
-		it("should parse job token with orgId and extract userId from r.u", () => {
-			const serviceWithJWT = new StaticTokenAuthService(mockContext, jobTokenWithOrg, mockLog)
-
-			const userInfo = serviceWithJWT.getUserInfo()
-			expect(userInfo?.id).toBe("user_2xmBhejNeDTwanM8CgIOnMgVxzC")
-			expect(userInfo?.organizationId).toBe("org_123abc")
-		})
-
-		it("should parse job token without orgId (null orgId case)", () => {
-			const serviceWithJWT = new StaticTokenAuthService(mockContext, jobTokenNoOrg, mockLog)
-
-			const userInfo = serviceWithJWT.getUserInfo()
-			expect(userInfo?.id).toBe("user_2xmBhejNeDTwanM8CgIOnMgVxzC")
-			expect(userInfo?.organizationId).toBeUndefined()
-		})
-
-		it("should parse auth token and extract userId from r.u", () => {
-			const serviceWithAuthToken = new StaticTokenAuthService(mockContext, authToken, mockLog)
-
-			const userInfo = serviceWithAuthToken.getUserInfo()
-			expect(userInfo?.id).toBe("user_123")
-			expect(userInfo?.organizationId).toBeUndefined()
-		})
-
-		it("should handle legacy JWT format with sub field", () => {
-			const serviceWithLegacyJWT = new StaticTokenAuthService(mockContext, legacyJWT, mockLog)
-
-			const userInfo = serviceWithLegacyJWT.getUserInfo()
-			expect(userInfo?.id).toBe("user_123")
-			expect(userInfo?.organizationId).toBeUndefined()
-		})
-
-		it("should handle invalid JWT gracefully", () => {
-			const serviceWithInvalidJWT = new StaticTokenAuthService(mockContext, "invalid-jwt-token", mockLog)
-
-			const userInfo = serviceWithInvalidJWT.getUserInfo()
-			expect(userInfo?.id).toBeUndefined()
-			expect(userInfo?.organizationId).toBeUndefined()
-
-			expect(mockLog).toHaveBeenCalledWith("[auth] Failed to parse JWT:", expect.any(Error))
-		})
-
-		it("should handle malformed JWT payload", () => {
-			// JWT with invalid base64 in payload
-			const malformedJWT = "header.!!!invalid-base64!!!.signature"
-			const serviceWithMalformedJWT = new StaticTokenAuthService(mockContext, malformedJWT, mockLog)
-
-			const userInfo = serviceWithMalformedJWT.getUserInfo()
-			expect(userInfo?.id).toBeUndefined()
-			expect(userInfo?.organizationId).toBeUndefined()
-
-			expect(mockLog).toHaveBeenCalledWith("[auth] Failed to parse JWT:", expect.any(Error))
-		})
+		expect(service.getUserInfo()).toEqual({ id, organizationId })
+		expect(service.getStoredOrganizationId()).toBe(organizationId ?? null)
+		expect(service.getSessionToken()).toBe(makeJWT(claims))
 	})
 
-	describe("initialize", () => {
-		it("should start in active-session state", async () => {
-			await authService.initialize()
-			expect(authService.getState()).toBe("active-session")
-		})
+	it.each(["not-a-jwt", "header.!!!invalid-base64!!!.signature"])(
+		"keeps a token it cannot decode (%s) as a non-expiring session without a user",
+		(token) => {
+			const service = makeService(token)
 
-		it("should not emit events on initialize", async () => {
-			const authStateChangedSpy = vi.fn()
-			const userInfoSpy = vi.fn()
-
-			authService.on("auth-state-changed", authStateChangedSpy)
-			authService.on("user-info", userInfoSpy)
-
-			await authService.initialize()
-
-			expect(authStateChangedSpy).not.toHaveBeenCalled()
-			expect(userInfoSpy).not.toHaveBeenCalled()
-		})
-	})
-
-	describe("broadcast", () => {
-		it("should emit auth-state-changed event", () => {
-			const spy = vi.fn()
-			authService.on("auth-state-changed", spy)
-
-			authService.broadcast()
-
-			expect(spy).toHaveBeenCalledWith({
-				state: "active-session",
-				previousState: "initializing",
-			})
-		})
-
-		it("should emit user-info event", () => {
-			const spy = vi.fn()
-			authService.on("user-info", spy)
-
-			authService.broadcast()
-
-			expect(spy).toHaveBeenCalledWith({
-				userInfo: expect.objectContaining({}),
-			})
-		})
-
-		it("should emit user-info with parsed JWT data", () => {
-			const serviceWithJWT = new StaticTokenAuthService(mockContext, jobTokenWithOrg, mockLog)
-
-			const spy = vi.fn()
-			serviceWithJWT.on("user-info", spy)
-
-			serviceWithJWT.broadcast()
-
-			expect(spy).toHaveBeenCalledWith({
-				userInfo: {
-					id: "user_2xmBhejNeDTwanM8CgIOnMgVxzC",
-					organizationId: "org_123abc",
-				},
-			})
-		})
-	})
-
-	describe("getSessionToken", () => {
-		it("should return the provided token", () => {
-			expect(authService.getSessionToken()).toBe(testToken)
-		})
-
-		it("should return different token when constructed with different token", () => {
-			const differentToken = "different-token"
-			const differentService = new StaticTokenAuthService(mockContext, differentToken, mockLog)
-			expect(differentService.getSessionToken()).toBe(differentToken)
-		})
-	})
-
-	describe("getUserInfo", () => {
-		it("should return user info object", () => {
-			const userInfo = authService.getUserInfo()
-			expect(userInfo).toBeDefined()
-		})
-	})
-
-	describe("getStoredOrganizationId", () => {
-		it("should return null for non-JWT token", () => {
-			expect(authService.getStoredOrganizationId()).toBeNull()
-		})
-
-		it("should return organizationId from parsed JWT", () => {
-			const serviceWithJWT = new StaticTokenAuthService(mockContext, jobTokenWithOrg, mockLog)
-
-			expect(serviceWithJWT.getStoredOrganizationId()).toBe("org_123abc")
-		})
-
-		it("should return null when JWT has no organizationId", () => {
-			const serviceWithNoOrg = new StaticTokenAuthService(mockContext, jobTokenNoOrg, mockLog)
-
-			expect(serviceWithNoOrg.getStoredOrganizationId()).toBeNull()
-		})
-
-		it("should return null for legacy JWT format", () => {
-			const serviceWithLegacyJWT = new StaticTokenAuthService(mockContext, legacyJWT, mockLog)
-
-			expect(serviceWithLegacyJWT.getStoredOrganizationId()).toBeNull()
-		})
-	})
-
-	describe("authentication state methods", () => {
-		it("should return true for isAuthenticated with non-expiring static token", () => {
-			expect(authService.isAuthenticated()).toBe(true)
-		})
-
-		it("should return true for hasActiveSession with non-expiring static token", () => {
-			expect(authService.hasActiveSession()).toBe(true)
-		})
-
-		it("should return true for hasOrIsAcquiringActiveSession with non-expiring static token", () => {
-			expect(authService.hasOrIsAcquiringActiveSession()).toBe(true)
-		})
-
-		it("should return active-session for getState with non-expiring static token", () => {
-			expect(authService.getState()).toBe("active-session")
-		})
-	})
-
-	describe("disabled authentication methods", () => {
-		const expectedErrorMessage = "Authentication methods are disabled in StaticTokenAuthService"
-
-		it("should throw error for login", async () => {
-			await expect(authService.login()).rejects.toThrow(expectedErrorMessage)
-		})
-
-		it("should throw error for logout", async () => {
-			await expect(authService.logout()).rejects.toThrow(expectedErrorMessage)
-		})
-
-		it("should throw error for handleCallback", async () => {
-			await expect(authService.handleCallback("code", "state")).rejects.toThrow(expectedErrorMessage)
-		})
-
-		it("should throw error for handleCallback with organization", async () => {
-			await expect(authService.handleCallback("code", "state", "org_123")).rejects.toThrow(expectedErrorMessage)
-		})
-	})
-
-	describe("event emission", () => {
-		it("should be able to register and emit events via broadcast", () => {
-			const authStateChangedSpy = vi.fn()
-			const userInfoSpy = vi.fn()
-
-			authService.on("auth-state-changed", authStateChangedSpy)
-			authService.on("user-info", userInfoSpy)
-
-			authService.broadcast()
-
-			expect(authStateChangedSpy).toHaveBeenCalledWith({
-				state: "active-session",
-				previousState: "initializing",
-			})
-
-			expect(userInfoSpy).toHaveBeenCalledWith({
-				userInfo: expect.objectContaining({}),
-			})
-		})
-	})
-
-	// ---------------------------------------------------------------------------
-	// CB-3: JWT expiry handling
-	// ---------------------------------------------------------------------------
-
-	// Helper to craft unsigned JWTs with a specific exp claim.
-	function makeJWT(exp?: number): string {
-		const header = { alg: "none", typ: "JWT" }
-		const payload: Record<string, unknown> = {
-			iss: "rcc",
-			sub: "user_test",
-			iat: Math.floor(Date.now() / 1000),
-			r: { u: "user_test", t: "auth" },
-		}
-		if (exp !== undefined) {
-			payload.exp = exp
-		}
-		const b64url = (obj: unknown) => Buffer.from(JSON.stringify(obj)).toString("base64url")
-		return `${b64url(header)}.${b64url(payload)}.`
-	}
-
-	describe("JWT expiry handling (CB-3)", () => {
-		beforeEach(() => {
-			vi.useFakeTimers()
-			vi.setSystemTime(new Date())
-		})
-
-		afterEach(() => {
-			vi.useRealTimers()
-		})
-
-		it("should start in inactive-session when JWT is already expired at construction", async () => {
-			const expiredJWT = makeJWT(Math.floor(Date.now() / 1000) - 3600)
-			const service = new StaticTokenAuthService(mockContext, expiredJWT, mockLog)
-
-			expect(service.getState()).toBe("inactive-session")
-			expect(service.isAuthenticated()).toBe(false)
-			expect(service.hasActiveSession()).toBe(false)
-
-			await service.initialize()
-			expect(service.getState()).toBe("inactive-session")
-		})
-
-		it("should be authenticated when JWT exp is in the future", async () => {
-			const futureJWT = makeJWT(Math.floor(Date.now() / 1000) + 3600)
-			const service = new StaticTokenAuthService(mockContext, futureJWT, mockLog)
-
-			expect(service.getState()).toBe("active-session")
-
-			await service.initialize()
-
+			expect(service.getUserInfo()).toEqual({ id: undefined, organizationId: undefined })
+			expect(service.getStoredOrganizationId()).toBeNull()
 			expect(service.isAuthenticated()).toBe(true)
-			expect(service.hasActiveSession()).toBe(true)
-			expect(service.hasOrIsAcquiringActiveSession()).toBe(true)
-		})
+			expect(log).toHaveBeenCalledWith("[auth] Failed to parse JWT:", expect.any(Error))
+		},
+	)
 
-		it("should transition to inactive-session and emit auth-state-changed when timer fires past expiry", async () => {
-			const expSeconds = Math.floor(Date.now() / 1000) + 3600
-			const futureJWT = makeJWT(expSeconds)
-			const service = new StaticTokenAuthService(mockContext, futureJWT, mockLog)
+	it("broadcasts its state and user only when asked, not on initialize", async () => {
+		const service = makeService(makeJWT({ sub: "s", r: { u: "user_1", o: "org_1" } }))
+		const stateChanged = vi.fn()
+		const userInfo = vi.fn()
+		service.on("auth-state-changed", stateChanged)
+		service.on("user-info", userInfo)
+
+		await service.initialize()
+		expect(stateChanged).not.toHaveBeenCalled()
+
+		service.broadcast()
+		expect(stateChanged).toHaveBeenCalledWith({ state: "active-session", previousState: "initializing" })
+		expect(userInfo).toHaveBeenCalledWith({ userInfo: { id: "user_1", organizationId: "org_1" } })
+	})
+
+	it.each([
+		["login", (s: StaticTokenAuthService) => s.login()],
+		["logout", (s: StaticTokenAuthService) => s.logout()],
+		["handleCallback", (s: StaticTokenAuthService) => s.handleCallback("code", "state", "org_1")],
+		["switchOrganization", (s: StaticTokenAuthService) => s.switchOrganization("org_1")],
+		["getOrganizationMemberships", (s: StaticTokenAuthService) => s.getOrganizationMemberships()],
+	])("refuses %s", async (_name, call) => {
+		await expect(call(makeService("token"))).rejects.toThrow(
+			"Authentication methods are disabled in StaticTokenAuthService",
+		)
+	})
+
+	describe("JWT expiry (CB-3)", () => {
+		const expectSession = (service: StaticTokenAuthService, active: boolean) => {
+			expect(service.getState()).toBe(active ? "active-session" : "inactive-session")
+			expect(service.isAuthenticated()).toBe(active)
+			expect(service.hasActiveSession()).toBe(active)
+			expect(service.hasOrIsAcquiringActiveSession()).toBe(active)
+		}
+
+		it("starts inactive with a token that has already expired", async () => {
+			const service = makeService(makeJWT({ sub: "u", exp: nowSeconds() - 3600 }))
+			const stateChanged = vi.fn()
+			service.on("auth-state-changed", stateChanged)
 
 			await service.initialize()
 
-			const spy = vi.fn()
-			service.on("auth-state-changed", spy)
+			expectSession(service, false)
+			expect(stateChanged).not.toHaveBeenCalled()
+		})
 
-			expect(service.isAuthenticated()).toBe(true)
+		it("goes inactive, once, when the expiry timer fires", async () => {
+			const service = makeService(makeJWT({ sub: "u", exp: nowSeconds() + 3600 }))
+			await service.initialize()
+			const stateChanged = vi.fn()
+			service.on("auth-state-changed", stateChanged)
+			expectSession(service, true)
 
-			// Advance past expiry
 			vi.advanceTimersByTime(3600 * 1000 + 1)
 
-			expect(spy).toHaveBeenCalledTimes(1)
-			expect(spy).toHaveBeenCalledWith({
-				state: "inactive-session",
-				previousState: "active-session",
-			})
-			expect(service.getState()).toBe("inactive-session")
-			expect(service.isAuthenticated()).toBe(false)
-			expect(service.hasActiveSession()).toBe(false)
+			expectSession(service, false)
+			expect(stateChanged).toHaveBeenCalledTimes(1)
+			expect(stateChanged).toHaveBeenCalledWith({ state: "inactive-session", previousState: "active-session" })
 		})
 
-		it("should keep always-authenticated behavior for tokens without exp (back-compat)", async () => {
-			const noExpJWT = makeJWT(undefined)
-			const service = new StaticTokenAuthService(mockContext, noExpJWT, mockLog)
-
-			expect(service.getState()).toBe("active-session")
+		it("goes inactive at once when the token expired between construction and initialize", async () => {
+			const service = makeService(makeJWT({ sub: "u", exp: nowSeconds() + 10 }))
+			const stateChanged = vi.fn()
+			service.on("auth-state-changed", stateChanged)
+			vi.setSystemTime(Date.now() + 20_000)
 
 			await service.initialize()
 
-			expect(service.isAuthenticated()).toBe(true)
-			expect(service.hasActiveSession()).toBe(true)
-			expect(service.hasOrIsAcquiringActiveSession()).toBe(true)
+			expect(stateChanged).toHaveBeenCalledWith({ state: "inactive-session", previousState: "active-session" })
+			expectSession(service, false)
+		})
 
-			// Advance way into the future — should still be authenticated.
+		it("re-checks the expiry live when the timer was missed", async () => {
+			const exp = nowSeconds() + 3600
+			const service = makeService(makeJWT({ sub: "u", exp }))
+			await service.initialize()
+
+			// The clock moves on without the timer firing, as after a suspend.
+			vi.setSystemTime((exp + 60) * 1000)
+
+			expect(service.isAuthenticated()).toBe(false)
+			expect(service.getState()).toBe("inactive-session")
+		})
+
+		it("stays active for ever with a token without exp", async () => {
+			const service = makeService(makeJWT({ sub: "u" }))
+			await service.initialize()
+
 			vi.advanceTimersByTime(999_999_999)
-			expect(service.isAuthenticated()).toBe(true)
-			expect(service.hasActiveSession()).toBe(true)
+
+			expectSession(service, true)
 		})
 
-		it("should report false from isAuthenticated even if timer was suppressed (live re-check)", async () => {
-			const expSeconds = Math.floor(Date.now() / 1000) + 3600
-			const futureJWT = makeJWT(expSeconds)
-			const service = new StaticTokenAuthService(mockContext, futureJWT, mockLog)
-
+		it("fires nothing after dispose", async () => {
+			const service = makeService(makeJWT({ sub: "u", exp: nowSeconds() + 3600 }))
 			await service.initialize()
-
-			// Suppress the timer by advancing system time without advancing fake timers.
-			// This simulates a missed/blocked timer.
-			vi.setSystemTime(new Date((expSeconds + 60) * 1000))
-
-			// isAuthenticated does a live re-check — should return false even
-			// though the timer callback hasn't fired yet.
-			expect(service.isAuthenticated()).toBe(false)
-			expect(service.hasActiveSession()).toBe(false)
-
-			// The live re-check should also have transitioned the state.
-			expect(service.getState()).toBe("inactive-session")
-		})
-
-		it("should clear expiry timer on dispose", async () => {
-			const futureJWT = makeJWT(Math.floor(Date.now() / 1000) + 3600)
-			const service = new StaticTokenAuthService(mockContext, futureJWT, mockLog)
-
-			await service.initialize()
-
-			// Access the private timer to verify it's set
-			expect(service["expiryTimer"]).not.toBeNull()
+			const stateChanged = vi.fn()
+			service.on("auth-state-changed", stateChanged)
 
 			service.dispose()
-
-			expect(service["expiryTimer"]).toBeNull()
-
-			// Advancing timers should not cause any transition after dispose.
-			const spy = vi.fn()
-			service.on("auth-state-changed", spy)
-
 			vi.advanceTimersByTime(3600 * 1000 + 1)
 
-			expect(spy).not.toHaveBeenCalled()
-			// State remains active-session because timer was cleared and
-			// isAuthenticated wasn't called (which would do the live re-check).
+			expect(stateChanged).not.toHaveBeenCalled()
 			expect(service.getState()).toBe("active-session")
 		})
 	})
