@@ -22,8 +22,8 @@ import {
 } from "../git"
 import { logger } from "../logging"
 
+// GIT_CONFIG_GLOBAL is set to an empty file in the temp dir: git on Windows cannot read os.devNull (\\.\nul).
 const ISOLATED_GIT = {
-	GIT_CONFIG_GLOBAL: os.devNull,
 	GIT_CONFIG_NOSYSTEM: "1",
 	GIT_AUTHOR_NAME: "Ann Author",
 	GIT_AUTHOR_EMAIL: "ann@example.com",
@@ -55,6 +55,9 @@ beforeAll(async () => {
 		process.env[key] = value
 	}
 	root = await fs.mkdtemp(path.join(os.tmpdir(), "git-spec-"))
+	savedEnv.GIT_CONFIG_GLOBAL = process.env.GIT_CONFIG_GLOBAL
+	process.env.GIT_CONFIG_GLOBAL = path.join(root, "gitconfig")
+	await fs.writeFile(process.env.GIT_CONFIG_GLOBAL, "")
 	repo = path.join(root, "repo")
 	notRepo = path.join(root, "plain")
 	await fs.mkdir(repo)
