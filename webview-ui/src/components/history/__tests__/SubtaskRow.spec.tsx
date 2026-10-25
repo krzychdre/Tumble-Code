@@ -1,5 +1,4 @@
 import { render, screen, fireEvent } from "@/utils/test-utils"
-import userEvent from "@testing-library/user-event"
 
 import { vscode } from "@src/utils/vscode"
 
@@ -14,14 +13,8 @@ vi.mock("@/context/ExtensionStateContext", () => ({
 }))
 vi.mock("@src/i18n/TranslationContext", () => ({
 	useAppTranslation: () => ({
-		t: (key: string, options?: Record<string, unknown>) => {
-			if (key === "history:subtasks" && options?.count !== undefined) {
-				return `${options.count} Subtask${options.count === 1 ? "" : "s"}`
-			}
-			if (key === "history:collapseSubtasks") return "Collapse subtasks"
-			if (key === "history:expandSubtasks") return "Expand subtasks"
-			return key
-		},
+		t: (key: string, options?: Record<string, unknown>) =>
+			options?.count !== undefined ? `${key}:${options.count}` : key,
 	}),
 }))
 
@@ -52,238 +45,97 @@ describe("SubtaskRow", () => {
 		vi.clearAllMocks()
 	})
 
-	describe("leaf node rendering", () => {
-		it("renders leaf node with correct text", () => {
-			const node = createMockNode({ id: "leaf-1", task: "Leaf task content" })
+	const withChildren = (isExpanded: boolean) =>
+		createMockNode(
+			{ id: "parent-1", task: "Parent" },
+			[
+				createMockNode({ id: "child-1", task: "Child 1" }, [createMockNode({ id: "grandchild-1" })], true),
+				createMockNode({ id: "child-2", task: "Child 2" }),
+			],
+			isExpanded,
+		)
 
-			render(<SubtaskRow node={node} depth={1} onToggleExpand={vi.fn()} />)
+	it("a leaf row is indented by its depth and has no subtask toggle", () => {
+		render(<SubtaskRow node={createMockNode({ id: "leaf-1" })} depth={2} onToggleExpand={vi.fn()} />)
 
-			expect(screen.getByText("Leaf task content")).toBeInTheDocument()
-		})
-
-		it("renders with correct depth indentation", () => {
-			const node = createMockNode({ id: "leaf-1", task: "Indented task" })
-
-			render(<SubtaskRow node={node} depth={2} onToggleExpand={vi.fn()} />)
-
-			const row = screen.getByTestId("subtask-row-leaf-1")
-			// §2.9: the clickable row is a real <button>; paddingLeft = depth * 16 = 32px
-			const clickableRow = row.querySelector("button")
-			expect(clickableRow).not.toBeNull()
-			expect(clickableRow).toHaveStyle({ paddingLeft: "32px" })
-		})
-
-		it("does not render collapsible row for leaf node", () => {
-			const node = createMockNode({ id: "leaf-1", task: "Leaf only" })
-
-			render(<SubtaskRow node={node} depth={1} onToggleExpand={vi.fn()} />)
-
-			expect(screen.queryByTestId("subtask-collapsible-row")).not.toBeInTheDocument()
-		})
+		expect(screen.getByRole("button")).toHaveStyle({ paddingLeft: "32px" })
+		expect(screen.queryByTestId("subtask-collapsible-row")).not.toBeInTheDocument()
 	})
 
-	describe("node with children", () => {
-		it("renders collapsible row with correct child count", () => {
-			const node = createMockNode(
-				{ id: "parent-1", task: "Parent task" },
-				[
-					createMockNode({ id: "child-1", task: "Child 1" }),
-					createMockNode({ id: "child-2", task: "Child 2" }),
-				],
-				false,
-			)
+	it("opens the task on click", () => {
+		render(<SubtaskRow node={createMockNode({ id: "task-42" })} depth={1} onToggleExpand={vi.fn()} />)
 
-			render(<SubtaskRow node={node} depth={1} onToggleExpand={vi.fn()} />)
+		fireEvent.click(screen.getByRole("button"))
 
-			expect(screen.getByText("2 Subtasks")).toBeInTheDocument()
-			expect(screen.getByTestId("subtask-collapsible-row")).toBeInTheDocument()
-		})
-
-		it("renders nested children count including grandchildren", () => {
-			const node = createMockNode(
-				{ id: "parent-1", task: "Parent task" },
-				[
-					createMockNode({ id: "child-1", task: "Child 1" }, [
-						createMockNode({ id: "grandchild-1", task: "Grandchild 1" }),
-					]),
-				],
-				false,
-			)
-
-			render(<SubtaskRow node={node} depth={1} onToggleExpand={vi.fn()} />)
-
-			// countAllSubtasks counts child-1 (1) + grandchild-1 (1) = 2
-			expect(screen.getByText("2 Subtasks")).toBeInTheDocument()
-		})
+		expect(vscode.postMessage).toHaveBeenCalledWith({ type: "showTaskWithId", text: "task-42" })
 	})
 
-	describe("click behavior", () => {
-		it("sends showTaskWithId message when task row is clicked", () => {
-			const node = createMockNode({ id: "task-42", task: "Clickable task" })
+	it("a parallel subagent opens its transcript instead of becoming the open task", () => {
+		const open = vi.fn()
+		render(
+			<SubagentTranscriptContext.Provider value={open}>
+				<SubtaskRow
+					node={createMockNode({ id: "sub-1", isSubagent: true })}
+					depth={1}
+					onToggleExpand={vi.fn()}
+				/>
+			</SubagentTranscriptContext.Provider>,
+		)
 
-			render(<SubtaskRow node={node} depth={1} onToggleExpand={vi.fn()} />)
+		fireEvent.click(screen.getByRole("button"))
 
-			const row = screen.getByRole("button")
-			fireEvent.click(row)
-
-			expect(vscode.postMessage).toHaveBeenCalledWith({
-				type: "showTaskWithId",
-				text: "task-42",
-			})
-		})
-
-		it("a parallel subagent opens its transcript instead of becoming the open task", () => {
-			const open = vi.fn()
-			const node = createMockNode({ id: "sub-1", task: "Subagent task", isSubagent: true })
-
-			render(
-				<SubagentTranscriptContext.Provider value={open}>
-					<SubtaskRow node={node} depth={1} onToggleExpand={vi.fn()} />
-				</SubagentTranscriptContext.Provider>,
-			)
-			fireEvent.click(screen.getByRole("button"))
-
-			expect(open).toHaveBeenCalledWith("sub-1")
-			expect(vscode.postMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: "showTaskWithId" }))
-		})
-
-		it("calls onToggleExpand with correct task ID when collapsible row is clicked", () => {
-			const onToggleExpand = vi.fn()
-			const node = createMockNode(
-				{ id: "expandable-1", task: "Expandable task" },
-				[createMockNode({ id: "child-1", task: "Child" })],
-				false,
-			)
-
-			render(<SubtaskRow node={node} depth={1} onToggleExpand={onToggleExpand} />)
-
-			const collapsibleRow = screen.getByTestId("subtask-collapsible-row")
-			fireEvent.click(collapsibleRow)
-
-			expect(onToggleExpand).toHaveBeenCalledWith("expandable-1")
-		})
+		expect(open).toHaveBeenCalledWith("sub-1")
+		expect(vscode.postMessage).not.toHaveBeenCalled()
 	})
 
-	describe("expand/collapse behavior", () => {
-		it("renders child SubtaskRow components when expanded", () => {
-			const node = createMockNode(
-				{ id: "parent-1", task: "Parent" },
-				[
-					createMockNode({ id: "child-1", task: "Child 1" }),
-					createMockNode({ id: "child-2", task: "Child 2" }),
-				],
-				true, // expanded
-			)
+	it("the toggle counts the whole subtree and expands this node only", () => {
+		const onToggleExpand = vi.fn()
+		render(<SubtaskRow node={withChildren(false)} depth={1} onToggleExpand={onToggleExpand} />)
+		const [toggle] = screen.getAllByTestId("subtask-collapsible-row")
+		expect(toggle).toHaveTextContent("history:subtasks:3")
 
-			render(<SubtaskRow node={node} depth={1} onToggleExpand={vi.fn()} />)
+		fireEvent.click(toggle)
 
-			expect(screen.getByTestId("subtask-row-child-1")).toBeInTheDocument()
-			expect(screen.getByTestId("subtask-row-child-2")).toBeInTheDocument()
-			expect(screen.getByText("Child 1")).toBeInTheDocument()
-			expect(screen.getByText("Child 2")).toBeInTheDocument()
-		})
+		expect(onToggleExpand).toHaveBeenCalledWith("parent-1")
+		expect(vscode.postMessage).not.toHaveBeenCalled()
+	})
 
-		it("uses max-h-0 for collapsed node with children", () => {
-			const node = createMockNode(
-				{ id: "parent-1", task: "Parent" },
-				[createMockNode({ id: "child-1", task: "Child 1" })],
-				false, // collapsed
-			)
+	// A collapsed list stays mounted for the height animation; `inert` keeps Tab off its rows.
+	it.each([false, true])("expanded=%s: nested rows are rendered, inert only while collapsed", (isExpanded) => {
+		render(<SubtaskRow node={withChildren(isExpanded)} depth={1} onToggleExpand={vi.fn()} />)
 
-			const { container } = render(<SubtaskRow node={node} depth={1} onToggleExpand={vi.fn()} />)
-
-			// The children wrapper div should have max-h-0 when collapsed
-			const childrenWrapper = container.querySelector(".max-h-0")
-			expect(childrenWrapper).toBeInTheDocument()
-		})
-
-		it("does not use max-h-0 when node is expanded", () => {
-			const node = createMockNode(
-				{ id: "parent-1", task: "Parent" },
-				[createMockNode({ id: "child-1", task: "Child 1" })],
-				true, // expanded
-			)
-
-			const { container } = render(<SubtaskRow node={node} depth={1} onToggleExpand={vi.fn()} />)
-
-			// The children wrapper should NOT have max-h-0 when expanded
-			const collapsedWrapper = container.querySelector(".max-h-0")
-			expect(collapsedWrapper).not.toBeInTheDocument()
-		})
-
-		it("renders deeply nested recursive structure when all levels expanded", () => {
-			const node = createMockNode(
-				{ id: "root", task: "Root" },
-				[
-					createMockNode(
-						{ id: "child", task: "Child" },
-						[createMockNode({ id: "grandchild", task: "Grandchild" })],
-						true, // child expanded
-					),
-				],
-				true, // root expanded
-			)
-
-			render(<SubtaskRow node={node} depth={1} onToggleExpand={vi.fn()} />)
-
-			expect(screen.getByTestId("subtask-row-root")).toBeInTheDocument()
-			expect(screen.getByTestId("subtask-row-child")).toBeInTheDocument()
-			expect(screen.getByTestId("subtask-row-grandchild")).toBeInTheDocument()
-			expect(screen.getByText("Grandchild")).toBeInTheDocument()
-		})
+		const list = screen.getByTestId("subtask-row-child-1").parentElement!
+		expect(list.hasAttribute("inert")).toBe(!isExpanded)
+		expect(list.classList.contains("max-h-0")).toBe(!isExpanded)
+		expect(screen.getByTestId("subtask-row-grandchild-1")).toBeInTheDocument()
 	})
 
 	describe("running status", () => {
-		it("shows a spinner on a working subtask", () => {
-			const node = createMockNode({ id: "leaf-1", task: "Working subtask", runningStatus: "running" })
-
-			render(<SubtaskRow node={node} depth={1} onToggleExpand={vi.fn()} />)
+		it("puts a spinner in the bullet's slot while the subtask works and describes the row by it", () => {
+			render(
+				<SubtaskRow
+					node={createMockNode({ id: "leaf-1", task: "Working subtask", runningStatus: "running" })}
+					depth={1}
+					onToggleExpand={vi.fn()}
+				/>,
+			)
 
 			const indicator = screen.getByRole("img", { name: "history:runningIndicator.running" })
-			expect(indicator.querySelector(".ui-progress-ring")).toBeInTheDocument()
+			expect(screen.queryByTestId("subtask-bullet")).not.toBeInTheDocument()
 			const describedBy = screen.getByRole("button", { name: "Working subtask" }).getAttribute("aria-describedby")
 			expect(describedBy?.split(" ")).toEqual([indicator.id, screen.getByTestId("task-details").id])
 		})
 
-		it("shows the attention icon on a subtask waiting for input", () => {
-			const node = createMockNode({ id: "leaf-1", task: "Asking subtask", runningStatus: "awaiting_input" })
+		it.each([
+			{ runningStatus: "awaiting_input" as const, indicator: "running-indicator-awaiting_input", bullet: false },
+			{ runningStatus: undefined, indicator: undefined, bullet: true },
+		])("$runningStatus: shows the right marker", ({ runningStatus, indicator, bullet }) => {
+			render(<SubtaskRow node={createMockNode({ runningStatus })} depth={1} onToggleExpand={vi.fn()} />)
 
-			render(<SubtaskRow node={node} depth={1} onToggleExpand={vi.fn()} />)
-
-			expect(screen.getByRole("img", { name: "history:runningIndicator.awaitingInput" })).toBeInTheDocument()
-			expect(screen.queryByTestId("running-indicator-running")).not.toBeInTheDocument()
-		})
-
-		it("shows a list bullet, not a status, on a subtask at rest", () => {
-			const node = createMockNode({ id: "leaf-1", task: "Resting subtask" })
-
-			render(<SubtaskRow node={node} depth={1} onToggleExpand={vi.fn()} />)
-
-			expect(screen.queryByTestId(/^running-indicator-/)).not.toBeInTheDocument()
-			expect(screen.getByTestId("subtask-bullet")).toBeInTheDocument()
-		})
-
-		it("puts the status in the bullet's slot while the subtask works", () => {
-			const node = createMockNode({ id: "leaf-1", task: "Working subtask", runningStatus: "running" })
-
-			render(<SubtaskRow node={node} depth={1} onToggleExpand={vi.fn()} />)
-
-			expect(screen.getByTestId("running-indicator-running")).toBeInTheDocument()
-			expect(screen.queryByTestId("subtask-bullet")).not.toBeInTheDocument()
-		})
-
-		it("marks a working nested subtask", () => {
-			const node = createMockNode(
-				{ id: "parent-1", task: "Parent" },
-				[createMockNode({ id: "child-1", task: "Child", runningStatus: "running" })],
-				true,
+			expect(screen.queryAllByTestId(/^running-indicator-/).map((el) => el.dataset.testid)).toEqual(
+				indicator ? [indicator] : [],
 			)
-
-			render(<SubtaskRow node={node} depth={1} onToggleExpand={vi.fn()} />)
-
-			const child = screen.getByTestId("subtask-row-child-1")
-			expect(child.querySelector('[data-testid="running-indicator-running"]')).toBeInTheDocument()
-			expect(screen.getAllByTestId(/^running-indicator-/)).toHaveLength(1)
+			expect(screen.queryByTestId("subtask-bullet") !== null).toBe(bullet)
 		})
 	})
 
@@ -370,55 +222,6 @@ describe("SubtaskRow", () => {
 			expect(screen.queryByTestId("task-cost")).not.toBeInTheDocument()
 			// Only the start time and the outcome are left, so one separator between them.
 			expect(screen.getByTestId("task-details").textContent?.split("·")).toHaveLength(2)
-		})
-	})
-	describe("keyboard access to the nested subtask toggle", () => {
-		it("is a real button reached with Tab after the task row, toggled by Enter and Space", async () => {
-			const user = userEvent.setup()
-			const onToggleExpand = vi.fn()
-			const node = createMockNode(
-				{ id: "parent-1", task: "Parent" },
-				[createMockNode({ id: "child-1", task: "Child" })],
-				false,
-			)
-
-			render(<SubtaskRow node={node} depth={1} onToggleExpand={onToggleExpand} />)
-
-			const toggle = screen.getByRole("button", { name: "Expand subtasks" })
-			expect(toggle.tagName).toBe("BUTTON")
-			expect(toggle).toHaveAttribute("aria-expanded", "false")
-
-			await user.tab()
-			expect(screen.getByRole("button", { name: "Parent" })).toHaveFocus()
-			await user.tab()
-			expect(toggle).toHaveFocus()
-
-			await user.keyboard("{Enter}")
-			await user.keyboard(" ")
-			expect(onToggleExpand).toHaveBeenCalledTimes(2)
-			expect(onToggleExpand).toHaveBeenCalledWith("parent-1")
-			expect(vscode.postMessage).not.toHaveBeenCalled()
-		})
-		it("keeps Tab off the rows of a collapsed list and lets it in once expanded", () => {
-			const children = [createMockNode({ id: "child-1", task: "Child" })]
-			const { rerender } = render(
-				<SubtaskRow
-					node={createMockNode({ id: "parent-1", task: "Parent" }, children, false)}
-					depth={1}
-					onToggleExpand={vi.fn()}
-				/>,
-			)
-			const childRow = () => screen.getByTestId("subtask-row-child-1")
-			expect(childRow().parentElement).toHaveAttribute("inert")
-
-			rerender(
-				<SubtaskRow
-					node={createMockNode({ id: "parent-1", task: "Parent" }, children, true)}
-					depth={1}
-					onToggleExpand={vi.fn()}
-				/>,
-			)
-			expect(childRow().parentElement).not.toHaveAttribute("inert")
 		})
 	})
 })

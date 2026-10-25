@@ -86,6 +86,19 @@ describe("TaskItem", () => {
 		expect(onToggleSelection).toHaveBeenCalledWith("1", true)
 	})
 
+	it.each([
+		{ variant: "full" as const, showWorkspace: true, checkbox: true, workspace: true },
+		{ variant: "compact" as const, showWorkspace: false, checkbox: false, workspace: false },
+	])(
+		"$variant row in selection mode: checkbox $checkbox, workspace $workspace",
+		({ variant, showWorkspace, checkbox, workspace }) => {
+			render(<TaskItem item={mockTask} variant={variant} showWorkspace={showWorkspace} isSelectionMode />)
+
+			expect(screen.queryByRole("checkbox") !== null).toBe(checkbox)
+			expect(screen.queryByText("/test/workspace") !== null).toBe(workspace)
+		},
+	)
+
 	it("shows action buttons", () => {
 		render(
 			<TaskItem

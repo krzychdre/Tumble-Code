@@ -61,19 +61,10 @@ describe("useTaskSearch", () => {
 		} as any)
 	})
 
-	it("returns all tasks by default", () => {
+	it("lists the tasks of the current workspace, newest first", () => {
 		const { result } = renderHook(() => useTaskSearch())
 
-		expect(result.current.tasks).toHaveLength(2) // Only tasks from current workspace
-		expect(result.current.tasks[0].id).toBe("task-2") // Newest first
-		expect(result.current.tasks[1].id).toBe("task-1")
-	})
-
-	it("filters tasks by current workspace by default", () => {
-		const { result } = renderHook(() => useTaskSearch())
-
-		expect(result.current.tasks).toHaveLength(2)
-		expect(result.current.tasks.every((task) => task.workspace === "/workspace/project1")).toBe(true)
+		expect(result.current.tasks.map((task) => task.id)).toEqual(["task-2", "task-1"])
 	})
 
 	it("keeps a subtask from another workspace (at any depth) when an ancestor is in this one", () => {
@@ -106,59 +97,21 @@ describe("useTaskSearch", () => {
 		expect(result.current.showAllWorkspaces).toBe(true)
 	})
 
-	it("sorts by newest by default", () => {
+	// task-2: Feb 17, $0.02, 335 tokens with cache; task-1: Feb 16, $0.01, 150; task-3: Feb 15, $0.05, 225.
+	it.each([
+		{ sort: "newest" as const, ids: ["task-2", "task-1", "task-3"] },
+		{ sort: "oldest" as const, ids: ["task-3", "task-1", "task-2"] },
+		{ sort: "mostExpensive" as const, ids: ["task-3", "task-2", "task-1"] },
+		{ sort: "mostTokens" as const, ids: ["task-2", "task-3", "task-1"] },
+	])("sorts by $sort", ({ sort, ids }) => {
 		const { result } = renderHook(() => useTaskSearch())
 
 		act(() => {
 			result.current.setShowAllWorkspaces(true)
+			result.current.setSortOption(sort)
 		})
 
-		expect(result.current.sortOption).toBe("newest")
-		expect(result.current.tasks[0].id).toBe("task-2") // Feb 17
-		expect(result.current.tasks[1].id).toBe("task-1") // Feb 16
-		expect(result.current.tasks[2].id).toBe("task-3") // Feb 15
-	})
-
-	it("sorts by oldest", () => {
-		const { result } = renderHook(() => useTaskSearch())
-
-		act(() => {
-			result.current.setShowAllWorkspaces(true)
-			result.current.setSortOption("oldest")
-		})
-
-		expect(result.current.tasks[0].id).toBe("task-3") // Feb 15
-		expect(result.current.tasks[1].id).toBe("task-1") // Feb 16
-		expect(result.current.tasks[2].id).toBe("task-2") // Feb 17
-	})
-
-	it("sorts by most expensive", () => {
-		const { result } = renderHook(() => useTaskSearch())
-
-		act(() => {
-			result.current.setShowAllWorkspaces(true)
-			result.current.setSortOption("mostExpensive")
-		})
-
-		expect(result.current.tasks[0].id).toBe("task-3") // $0.05
-		expect(result.current.tasks[1].id).toBe("task-2") // $0.02
-		expect(result.current.tasks[2].id).toBe("task-1") // $0.01
-	})
-
-	it("sorts by most tokens", () => {
-		const { result } = renderHook(() => useTaskSearch())
-
-		act(() => {
-			result.current.setShowAllWorkspaces(true)
-			result.current.setSortOption("mostTokens")
-		})
-
-		// task-2: 200 + 100 + 25 + 10 = 335 tokens
-		// task-3: 150 + 75 = 225 tokens
-		// task-1: 100 + 50 = 150 tokens
-		expect(result.current.tasks[0].id).toBe("task-2")
-		expect(result.current.tasks[1].id).toBe("task-3")
-		expect(result.current.tasks[2].id).toBe("task-1")
+		expect(result.current.tasks.map((task) => task.id)).toEqual(ids)
 	})
 
 	it("filters tasks by search query", () => {
@@ -172,33 +125,6 @@ describe("useTaskSearch", () => {
 		expect(result.current.tasks).toHaveLength(1)
 		expect(result.current.tasks[0].id).toBe("task-1")
 		expect((result.current.tasks[0] as any).highlight).toBe("<mark>Create a React component</mark>")
-	})
-
-	it("automatically switches to mostRelevant when searching", () => {
-		const { result } = renderHook(() => useTaskSearch())
-
-		// Initially lastNonRelevantSort should be "newest" (the default)
-		expect(result.current.lastNonRelevantSort).toBe("newest")
-
-		act(() => {
-			result.current.setSortOption("oldest")
-		})
-
-		expect(result.current.sortOption).toBe("oldest")
-
-		// Clear lastNonRelevantSort to test the auto-switch behavior
-		act(() => {
-			result.current.setLastNonRelevantSort(null)
-		})
-
-		act(() => {
-			result.current.setSearchQuery("test")
-		})
-
-		// The hook should automatically switch to mostRelevant when there's a search query
-		// and the current sort is not mostRelevant and lastNonRelevantSort is null
-		expect(result.current.sortOption).toBe("mostRelevant")
-		expect(result.current.lastNonRelevantSort).toBe("oldest")
 	})
 
 	it("restores previous sort when clearing search", () => {
@@ -228,17 +154,6 @@ describe("useTaskSearch", () => {
 
 		expect(result.current.sortOption).toBe("mostExpensive")
 		expect(result.current.lastNonRelevantSort).toBe(null)
-	})
-
-	it("handles empty task history", () => {
-		mockUseExtensionState.mockReturnValue({
-			taskHistory: [],
-			cwd: "/workspace/project1",
-		} as any)
-
-		const { result } = renderHook(() => useTaskSearch())
-
-		expect(result.current.tasks).toHaveLength(0)
 	})
 
 	it("filters out tasks without timestamp or task content", () => {

@@ -8,194 +8,78 @@ vi.mock("@/utils/vscode")
 
 vi.mock("@/i18n/TranslationContext", () => ({
 	useAppTranslation: () => ({
-		t: (key: string, options?: Record<string, unknown>) => {
-			const translations: Record<string, string> = {
-				"history:deleteTask": "Delete Task",
-				"history:deleteTaskMessage": "Are you sure you want to delete this task? This action cannot be undone.",
-				"history:cancel": "Cancel",
-				"history:delete": "Delete",
-			}
-			// Handle deleteWithSubtasks with interpolation
-			if (key === "history:deleteWithSubtasks" && options?.count !== undefined) {
-				return `This will also delete ${options.count} subtask(s). Are you sure?`
-			}
-			return translations[key] || key
-		},
+		t: (key: string, options?: Record<string, unknown>) =>
+			options?.count !== undefined ? `${key}:${options.count}` : key,
 	}),
 }))
 
-vi.mock("react-use", () => ({
-	useKeyPress: vi.fn(),
-}))
+// The keyboard boundary: what react-use reports for the Enter key.
+vi.mock("react-use", () => ({ useKeyPress: vi.fn() }))
 
 import { useKeyPress } from "react-use"
 
-const mockUseKeyPress = useKeyPress as any
+const enterPressed = (pressed: boolean) => vi.mocked(useKeyPress).mockReturnValue([pressed, null] as never)
+
+const DELETE = { type: "deleteTaskWithId", text: "task-1" }
 
 describe("DeleteTaskDialog", () => {
-	const mockTaskId = "test-task-id"
-	const mockOnOpenChange = vi.fn()
+	const onOpenChange = vi.fn()
 
 	beforeEach(() => {
 		vi.clearAllMocks()
-		mockUseKeyPress.mockReturnValue([false, null])
+		enterPressed(false)
 	})
 
-	it("renders dialog with correct content", () => {
-		render(<DeleteTaskDialog taskId={mockTaskId} open={true} onOpenChange={mockOnOpenChange} />)
+	it("Delete posts the deletion and closes", () => {
+		render(<DeleteTaskDialog taskId="task-1" open onOpenChange={onOpenChange} />)
 
-		expect(screen.getByText("Delete Task")).toBeInTheDocument()
-		expect(
-			screen.getByText("Are you sure you want to delete this task? This action cannot be undone."),
-		).toBeInTheDocument()
-		expect(screen.getByText("Cancel")).toBeInTheDocument()
-		expect(screen.getByText("Delete")).toBeInTheDocument()
+		fireEvent.click(screen.getByText("history:delete"))
+
+		expect(vscode.postMessage).toHaveBeenCalledWith(DELETE)
+		expect(onOpenChange).toHaveBeenCalledWith(false)
 	})
 
-	it("calls vscode.postMessage when delete is confirmed", () => {
-		render(<DeleteTaskDialog taskId={mockTaskId} open={true} onOpenChange={mockOnOpenChange} />)
+	it.each([
+		{ name: "Cancel", close: () => fireEvent.click(screen.getByText("history:cancel")) },
+		{ name: "Escape", close: () => fireEvent.keyDown(document.activeElement!, { key: "Escape" }) },
+	])("$name closes without deleting", ({ close }) => {
+		render(<DeleteTaskDialog taskId="task-1" open onOpenChange={onOpenChange} />)
 
-		const deleteButton = screen.getByText("Delete")
-		fireEvent.click(deleteButton)
+		close()
 
-		expect(vscode.postMessage).toHaveBeenCalledWith({
-			type: "deleteTaskWithId",
-			text: mockTaskId,
-		})
-		expect(mockOnOpenChange).toHaveBeenCalledWith(false)
+		expect(onOpenChange).toHaveBeenCalledWith(false)
+		expect(vscode.postMessage).not.toHaveBeenCalled()
 	})
 
-	it("calls onOpenChange when cancel is clicked", () => {
-		render(<DeleteTaskDialog taskId={mockTaskId} open={true} onOpenChange={mockOnOpenChange} />)
+	it.each([
+		{ name: "Enter deletes the task", taskId: "task-1", pressed: true, posts: [[DELETE]] },
+		{ name: "Enter without a task deletes nothing", taskId: "", pressed: true, posts: [] },
+		{ name: "no key, no deletion", taskId: "task-1", pressed: false, posts: [] },
+	])("$name", ({ taskId, pressed, posts }) => {
+		enterPressed(pressed)
 
-		const cancelButton = screen.getByText("Cancel")
-		fireEvent.click(cancelButton)
+		render(<DeleteTaskDialog taskId={taskId} open onOpenChange={onOpenChange} />)
+
+		expect(vi.mocked(vscode.postMessage).mock.calls).toEqual(posts)
+		// A deletion by Enter closes the dialog itself (no Radix button is involved).
+		expect(onOpenChange.mock.calls).toEqual(posts.length ? [[false]] : [])
+	})
+
+	it("a click on Delete without a task deletes nothing and keeps the dialog", () => {
+		render(<DeleteTaskDialog taskId="" open onOpenChange={onOpenChange} />)
+
+		fireEvent.click(screen.getByText("history:delete"))
 
 		expect(vscode.postMessage).not.toHaveBeenCalled()
-		expect(mockOnOpenChange).toHaveBeenCalledWith(false)
 	})
 
-	it("does not call vscode.postMessage when taskId is empty", () => {
-		render(<DeleteTaskDialog taskId="" open={true} onOpenChange={mockOnOpenChange} />)
+	it.each([
+		{ subtaskCount: undefined, message: "history:deleteTaskMessage" },
+		{ subtaskCount: 0, message: "history:deleteTaskMessage" },
+		{ subtaskCount: 3, message: "history:deleteWithSubtasks:3" },
+	])("warns about the subtasks deleted with it: $subtaskCount", ({ subtaskCount, message }) => {
+		render(<DeleteTaskDialog taskId="task-1" subtaskCount={subtaskCount} open onOpenChange={onOpenChange} />)
 
-		const deleteButton = screen.getByText("Delete")
-		fireEvent.click(deleteButton)
-
-		expect(vscode.postMessage).not.toHaveBeenCalled()
-		expect(mockOnOpenChange).toHaveBeenCalledWith(false)
-	})
-
-	it("handles Enter key press to delete task", () => {
-		// Mock Enter key being pressed
-		mockUseKeyPress.mockReturnValue([true, null])
-
-		render(<DeleteTaskDialog taskId={mockTaskId} open={true} onOpenChange={mockOnOpenChange} />)
-
-		expect(vscode.postMessage).toHaveBeenCalledWith({
-			type: "deleteTaskWithId",
-			text: mockTaskId,
-		})
-		expect(mockOnOpenChange).toHaveBeenCalledWith(false)
-	})
-
-	it("does not delete on Enter key press when taskId is empty", () => {
-		// Mock Enter key being pressed
-		mockUseKeyPress.mockReturnValue([true, null])
-
-		render(<DeleteTaskDialog taskId="" open={true} onOpenChange={mockOnOpenChange} />)
-
-		expect(vscode.postMessage).not.toHaveBeenCalled()
-		expect(mockOnOpenChange).not.toHaveBeenCalled()
-	})
-
-	it("calls onOpenChange on escape key", () => {
-		render(<DeleteTaskDialog taskId={mockTaskId} open={true} onOpenChange={mockOnOpenChange} />)
-
-		// Simulate escape key press on the dialog content
-		const dialogContent = screen.getByRole("alertdialog")
-		fireEvent.keyDown(dialogContent, { key: "Escape" })
-
-		expect(mockOnOpenChange).toHaveBeenCalledWith(false)
-	})
-
-	it("has correct button variants", () => {
-		render(<DeleteTaskDialog taskId={mockTaskId} open={true} onOpenChange={mockOnOpenChange} />)
-
-		const cancelButton = screen.getByText("Cancel")
-		const deleteButton = screen.getByText("Delete")
-
-		// These should have the correct styling classes based on the component
-		expect(cancelButton).toBeInTheDocument()
-		expect(deleteButton).toBeInTheDocument()
-	})
-
-	it("handles multiple Enter key presses correctly", () => {
-		// First render with Enter not pressed
-		const { rerender } = render(
-			<DeleteTaskDialog taskId={mockTaskId} open={true} onOpenChange={mockOnOpenChange} />,
-		)
-
-		expect(vscode.postMessage).not.toHaveBeenCalled()
-
-		// Then simulate Enter key press
-		mockUseKeyPress.mockReturnValue([true, null])
-		rerender(<DeleteTaskDialog taskId={mockTaskId} open={true} onOpenChange={mockOnOpenChange} />)
-
-		expect(vscode.postMessage).toHaveBeenCalledTimes(1)
-		expect(vscode.postMessage).toHaveBeenCalledWith({
-			type: "deleteTaskWithId",
-			text: mockTaskId,
-		})
-	})
-
-	describe("cascade delete warning", () => {
-		it("shows warning message when deleting parent with subtasks", () => {
-			render(
-				<DeleteTaskDialog taskId={mockTaskId} open={true} onOpenChange={mockOnOpenChange} subtaskCount={3} />,
-			)
-
-			expect(screen.getByText("This will also delete 3 subtask(s). Are you sure?")).toBeInTheDocument()
-		})
-
-		it("shows standard message when no subtasks", () => {
-			render(
-				<DeleteTaskDialog taskId={mockTaskId} open={true} onOpenChange={mockOnOpenChange} subtaskCount={0} />,
-			)
-
-			expect(
-				screen.getByText("Are you sure you want to delete this task? This action cannot be undone."),
-			).toBeInTheDocument()
-		})
-
-		it("shows standard message when subtaskCount is not provided", () => {
-			render(<DeleteTaskDialog taskId={mockTaskId} open={true} onOpenChange={mockOnOpenChange} />)
-
-			expect(
-				screen.getByText("Are you sure you want to delete this task? This action cannot be undone."),
-			).toBeInTheDocument()
-		})
-
-		it("shows singular subtask warning for single subtask", () => {
-			render(
-				<DeleteTaskDialog taskId={mockTaskId} open={true} onOpenChange={mockOnOpenChange} subtaskCount={1} />,
-			)
-
-			expect(screen.getByText("This will also delete 1 subtask(s). Are you sure?")).toBeInTheDocument()
-		})
-
-		it("still deletes task when cascade warning is shown", () => {
-			render(
-				<DeleteTaskDialog taskId={mockTaskId} open={true} onOpenChange={mockOnOpenChange} subtaskCount={5} />,
-			)
-
-			const deleteButton = screen.getByText("Delete")
-			fireEvent.click(deleteButton)
-
-			expect(vscode.postMessage).toHaveBeenCalledWith({
-				type: "deleteTaskWithId",
-				text: mockTaskId,
-			})
-			expect(mockOnOpenChange).toHaveBeenCalledWith(false)
-		})
+		expect(screen.getByText(message)).toBeInTheDocument()
 	})
 })

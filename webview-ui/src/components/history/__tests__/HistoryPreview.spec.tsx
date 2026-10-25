@@ -1,372 +1,86 @@
-import { render, screen } from "@/utils/test-utils"
+import { fireEvent, render, screen } from "@/utils/test-utils"
 
 import type { HistoryItem } from "@tumble-code/types"
+
+import { vscode } from "@src/utils/vscode"
 
 import HistoryPreview from "../HistoryPreview"
 import type { TaskGroup } from "../types"
 
-vi.mock("../useTaskSearch")
+vi.mock("@src/utils/vscode", () => ({ vscode: { postMessage: vi.fn() } }))
+vi.mock("../useTaskSearch", () => ({ useTaskSearch: () => ({ tasks: [], searchQuery: "" }) }))
 vi.mock("../useGroupedTasks")
+vi.mock("../TaskGroupItem", () => ({
+	default: ({ group, variant, onToggleExpand }: any) => (
+		<button data-testid={`task-group-${group.parent.id}`} data-variant={variant} onClick={onToggleExpand} />
+	),
+}))
 
-vi.mock("../TaskGroupItem", () => {
-	return {
-		default: vi.fn(({ group, variant }) => (
-			<div data-testid={`task-group-${group.parent.id}`} data-variant={variant}>
-				{group.parent.task}
-			</div>
-		)),
-	}
-})
-
-import { useTaskSearch } from "../useTaskSearch"
 import { useGroupedTasks } from "../useGroupedTasks"
-import TaskGroupItem from "../TaskGroupItem"
 
-const mockUseTaskSearch = useTaskSearch as any
-const mockUseGroupedTasks = useGroupedTasks as any
-const mockTaskGroupItem = TaskGroupItem as any
+const toggleExpand = vi.fn()
 
-// The props of every TaskGroupItem render. React calls a function component with a second
-// argument that is an implementation detail (legacy context `{}` in React 18, `undefined` in
-// React 19), so the assertions look at the props only.
-const taskGroupItemProps = () => mockTaskGroupItem.mock.calls.map((call: unknown[]) => call[0])
-
-const mockTasks: HistoryItem[] = [
-	{
-		id: "task-1",
-		number: 1,
-		task: "First task",
-		ts: 600,
-		tokensIn: 100,
-		tokensOut: 50,
-		totalCost: 0.01,
-	},
-	{
-		id: "task-2",
-		number: 2,
-		task: "Second task",
-		ts: 500,
-		tokensIn: 200,
-		tokensOut: 100,
-		totalCost: 0.02,
-	},
-	{
-		id: "task-3",
-		number: 3,
-		task: "Third task",
-		ts: 400,
-		tokensIn: 150,
-		tokensOut: 75,
-		totalCost: 0.015,
-	},
-	{
-		id: "task-4",
-		number: 4,
-		task: "Fourth task",
-		ts: 300,
-		tokensIn: 300,
-		tokensOut: 150,
-		totalCost: 0.03,
-	},
-	{
-		id: "task-5",
-		number: 5,
-		task: "Fifth task",
-		ts: 200,
-		tokensIn: 250,
-		tokensOut: 125,
-		totalCost: 0.025,
-	},
-	{
-		id: "task-6",
-		number: 6,
-		task: "Sixth task",
-		ts: 100,
-		tokensIn: 400,
-		tokensOut: 200,
-		totalCost: 0.04,
-	},
-]
-
-// Helper to create mock groups from tasks
-function createMockGroups(tasks: HistoryItem[]): TaskGroup[] {
-	return tasks.map((task) => ({
-		parent: { ...task, isSubtask: false },
+/** Six groups, newest first; `parent` adds fields to the parent of the group at that index. */
+const showGroups = (parent: (index: number) => Partial<HistoryItem> = () => ({})) => {
+	const groups: TaskGroup[] = Array.from({ length: 6 }, (_, index) => ({
+		parent: { id: `task-${index + 1}`, number: index + 1, task: "t", ts: 600 - index, ...parent(index) },
 		subtasks: [],
 		isExpanded: false,
-	}))
+	})) as TaskGroup[]
+	vi.mocked(useGroupedTasks).mockReturnValue({ groups, toggleExpand } as any)
 }
+
+const shownIds = () => screen.queryAllByTestId(/task-group-/).map((el) => el.dataset.testid!.replace("task-group-", ""))
 
 describe("HistoryPreview", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
 	})
 
-	it("renders nothing when no tasks are available", () => {
-		mockUseTaskSearch.mockReturnValue({
-			tasks: [],
-			searchQuery: "",
-			setSearchQuery: vi.fn(),
-			sortOption: "newest",
-			setSortOption: vi.fn(),
-			lastNonRelevantSort: null,
-			setLastNonRelevantSort: vi.fn(),
-			showAllWorkspaces: false,
-			setShowAllWorkspaces: vi.fn(),
-		})
-
-		mockUseGroupedTasks.mockReturnValue({
-			groups: [],
-			flatTasks: null,
-			toggleExpand: vi.fn(),
-			isSearchMode: false,
-		})
-
-		const { container } = render(<HistoryPreview />)
-
-		// Should render the container but no task groups
-		expect(container.firstChild).toHaveClass("flex", "flex-col", "gap-2")
-		expect(screen.queryByTestId(/task-group-/)).not.toBeInTheDocument()
-	})
-
-	it("renders up to 4 groups when tasks are available", () => {
-		mockUseTaskSearch.mockReturnValue({
-			tasks: mockTasks,
-			searchQuery: "",
-			setSearchQuery: vi.fn(),
-			sortOption: "newest",
-			setSortOption: vi.fn(),
-			lastNonRelevantSort: null,
-			setLastNonRelevantSort: vi.fn(),
-			showAllWorkspaces: false,
-			setShowAllWorkspaces: vi.fn(),
-		})
-
-		const mockGroups = createMockGroups(mockTasks)
-		mockUseGroupedTasks.mockReturnValue({
-			groups: mockGroups,
-			flatTasks: null,
-			toggleExpand: vi.fn(),
-			isSearchMode: false,
-		})
-
+	it("shows the first 4 groups as compact rows", () => {
+		showGroups()
 		render(<HistoryPreview />)
 
-		// Should render only the first 4 groups
-		expect(screen.getByTestId("task-group-task-1")).toBeInTheDocument()
-		expect(screen.getByTestId("task-group-task-2")).toBeInTheDocument()
-		expect(screen.getByTestId("task-group-task-3")).toBeInTheDocument()
-		expect(screen.getByTestId("task-group-task-4")).toBeInTheDocument()
-		expect(screen.queryByTestId("task-group-task-5")).not.toBeInTheDocument()
-		expect(screen.queryByTestId("task-group-task-6")).not.toBeInTheDocument()
+		expect(shownIds()).toEqual(["task-1", "task-2", "task-3", "task-4"])
+		expect(screen.getByTestId("task-group-task-1")).toHaveAttribute("data-variant", "compact")
 	})
 
-	it("renders every working group, even past 4, then fills up to 4", () => {
-		// useGroupedTasks puts the working groups first; here five of six work.
-		const groups = createMockGroups(mockTasks).map((group, index) =>
-			index < 5 ? { ...group, parent: { ...group.parent, runningStatus: "running" } } : group,
-		)
-		mockUseTaskSearch.mockReturnValue({ tasks: mockTasks, searchQuery: "" })
-		mockUseGroupedTasks.mockReturnValue({ groups, flatTasks: null, toggleExpand: vi.fn(), isSearchMode: false })
-
+	it("shows fewer groups when there are fewer", () => {
+		vi.mocked(useGroupedTasks).mockReturnValue({ groups: [], toggleExpand } as any)
 		render(<HistoryPreview />)
 
-		expect(screen.getAllByTestId(/task-group-/).map((el) => el.dataset.testid)).toEqual([
-			"task-group-task-1",
-			"task-group-task-2",
-			"task-group-task-3",
-			"task-group-task-4",
-			"task-group-task-5",
-		])
+		expect(shownIds()).toEqual([])
 	})
 
-	it("counts the pinned groups with the working ones that are always shown", () => {
-		const groups = createMockGroups(mockTasks).map((group, index) =>
-			index < 3
-				? { ...group, parent: { ...group.parent, pinnedAt: index + 1 } }
-				: index < 5
-					? { ...group, parent: { ...group.parent, runningStatus: "running" } }
-					: group,
-		)
-		mockUseTaskSearch.mockReturnValue({ tasks: mockTasks, searchQuery: "" })
-		mockUseGroupedTasks.mockReturnValue({ groups, flatTasks: null, toggleExpand: vi.fn(), isSearchMode: false })
-
+	// useGroupedTasks puts the pinned and working groups first; all of them show, even past 4.
+	it.each([
+		{ name: "five working groups", parent: (i: number) => (i < 5 ? { runningStatus: "running" } : {}) },
+		{
+			name: "three pinned and two working groups",
+			parent: (i: number) => (i < 3 ? { pinnedAt: i + 1 } : i < 5 ? { runningStatus: "running" } : {}),
+		},
+	])("shows every section group past 4: $name", ({ parent }) => {
+		showGroups(parent as (index: number) => Partial<HistoryItem>)
 		render(<HistoryPreview />)
 
-		expect(screen.getAllByTestId(/task-group-/)).toHaveLength(5)
-		expect(screen.queryByTestId("task-group-task-6")).not.toBeInTheDocument()
+		expect(shownIds()).toEqual(["task-1", "task-2", "task-3", "task-4", "task-5"])
 	})
 
-	it("renders all groups when there are 4 or fewer", () => {
-		const threeTasks = mockTasks.slice(0, 3)
-		mockUseTaskSearch.mockReturnValue({
-			tasks: threeTasks,
-			searchQuery: "",
-			setSearchQuery: vi.fn(),
-			sortOption: "newest",
-			setSortOption: vi.fn(),
-			lastNonRelevantSort: null,
-			setLastNonRelevantSort: vi.fn(),
-			showAllWorkspaces: false,
-			setShowAllWorkspaces: vi.fn(),
-		})
-
-		const mockGroups = createMockGroups(threeTasks)
-		mockUseGroupedTasks.mockReturnValue({
-			groups: mockGroups,
-			flatTasks: null,
-			toggleExpand: vi.fn(),
-			isSearchMode: false,
-		})
-
+	it("expands a group by its parent id", () => {
+		showGroups()
 		render(<HistoryPreview />)
 
-		expect(screen.getByTestId("task-group-task-1")).toBeInTheDocument()
-		expect(screen.getByTestId("task-group-task-2")).toBeInTheDocument()
-		expect(screen.getByTestId("task-group-task-3")).toBeInTheDocument()
-		expect(screen.queryByTestId("task-group-task-4")).not.toBeInTheDocument()
-		expect(screen.queryByTestId("task-group-task-5")).not.toBeInTheDocument()
-		expect(screen.queryByTestId("task-group-task-6")).not.toBeInTheDocument()
+		fireEvent.click(screen.getByTestId("task-group-task-2"))
+
+		expect(toggleExpand).toHaveBeenCalledWith("task-2")
 	})
 
-	it("renders only 1 group when there is only 1 task", () => {
-		const oneTask = mockTasks.slice(0, 1)
-		mockUseTaskSearch.mockReturnValue({
-			tasks: oneTask,
-			searchQuery: "",
-			setSearchQuery: vi.fn(),
-			sortOption: "newest",
-			setSortOption: vi.fn(),
-			lastNonRelevantSort: null,
-			setLastNonRelevantSort: vi.fn(),
-			showAllWorkspaces: false,
-			setShowAllWorkspaces: vi.fn(),
-		})
-
-		const mockGroups = createMockGroups(oneTask)
-		mockUseGroupedTasks.mockReturnValue({
-			groups: mockGroups,
-			flatTasks: null,
-			toggleExpand: vi.fn(),
-			isSearchMode: false,
-		})
-
+	it("View all switches to the history tab", () => {
+		showGroups()
 		render(<HistoryPreview />)
 
-		expect(screen.getByTestId("task-group-task-1")).toBeInTheDocument()
-		expect(screen.queryByTestId("task-group-task-2")).not.toBeInTheDocument()
-	})
+		fireEvent.click(screen.getByRole("button", { name: "history:viewAllHistory" }))
 
-	it("passes correct props to TaskGroupItem components", () => {
-		const threeTasks = mockTasks.slice(0, 3)
-		mockUseTaskSearch.mockReturnValue({
-			tasks: threeTasks,
-			searchQuery: "",
-			setSearchQuery: vi.fn(),
-			sortOption: "newest",
-			setSortOption: vi.fn(),
-			lastNonRelevantSort: null,
-			setLastNonRelevantSort: vi.fn(),
-			showAllWorkspaces: false,
-			setShowAllWorkspaces: vi.fn(),
-		})
-
-		const mockGroups = createMockGroups(threeTasks)
-		mockUseGroupedTasks.mockReturnValue({
-			groups: mockGroups,
-			flatTasks: null,
-			toggleExpand: vi.fn(),
-			isSearchMode: false,
-		})
-
-		render(<HistoryPreview />)
-
-		// Verify TaskGroupItem was called with correct props for first 3 groups
-		expect(taskGroupItemProps()).toContainEqual(
-			expect.objectContaining({
-				group: mockGroups[0],
-				variant: "compact",
-			}),
-		)
-		expect(taskGroupItemProps()).toContainEqual(
-			expect.objectContaining({
-				group: mockGroups[1],
-				variant: "compact",
-			}),
-		)
-		expect(taskGroupItemProps()).toContainEqual(
-			expect.objectContaining({
-				group: mockGroups[2],
-				variant: "compact",
-			}),
-		)
-	})
-
-	it("displays the header and view all button", () => {
-		mockUseTaskSearch.mockReturnValue({
-			tasks: mockTasks,
-			searchQuery: "",
-			setSearchQuery: vi.fn(),
-			sortOption: "newest",
-			setSortOption: vi.fn(),
-			lastNonRelevantSort: null,
-			setLastNonRelevantSort: vi.fn(),
-			showAllWorkspaces: false,
-			setShowAllWorkspaces: vi.fn(),
-		})
-
-		const mockGroups = createMockGroups(mockTasks)
-		mockUseGroupedTasks.mockReturnValue({
-			groups: mockGroups,
-			flatTasks: null,
-			toggleExpand: vi.fn(),
-			isSearchMode: false,
-		})
-
-		render(<HistoryPreview />)
-
-		// Should show header and view all button
-		expect(screen.getByText("history:recentTasks")).toBeInTheDocument()
-		expect(screen.getByText("history:viewAllHistory")).toBeInTheDocument()
-	})
-
-	it("calls toggleExpand when onToggleExpand is called", () => {
-		const oneTask = mockTasks.slice(0, 1)
-		mockUseTaskSearch.mockReturnValue({
-			tasks: oneTask,
-			searchQuery: "",
-			setSearchQuery: vi.fn(),
-			sortOption: "newest",
-			setSortOption: vi.fn(),
-			lastNonRelevantSort: null,
-			setLastNonRelevantSort: vi.fn(),
-			showAllWorkspaces: false,
-			setShowAllWorkspaces: vi.fn(),
-		})
-
-		const mockToggleExpand = vi.fn()
-		const mockGroups = createMockGroups(oneTask)
-		mockUseGroupedTasks.mockReturnValue({
-			groups: mockGroups,
-			flatTasks: null,
-			toggleExpand: mockToggleExpand,
-			isSearchMode: false,
-		})
-
-		render(<HistoryPreview />)
-
-		// Verify TaskGroupItem received onToggleExpand prop
-		expect(taskGroupItemProps()).toContainEqual(
-			expect.objectContaining({
-				onToggleExpand: expect.any(Function),
-			}),
-		)
-
-		// Call the onToggleExpand function passed to TaskGroupItem
-		const callArgs = mockTaskGroupItem.mock.calls[0][0]
-		callArgs.onToggleExpand()
-
-		// Verify toggleExpand was called with the parent id
-		expect(mockToggleExpand).toHaveBeenCalledWith("task-1")
+		expect(vscode.postMessage).toHaveBeenCalledWith({ type: "switchTab", tab: "history" })
 	})
 })
