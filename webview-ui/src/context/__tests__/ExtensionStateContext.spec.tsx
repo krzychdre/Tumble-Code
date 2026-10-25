@@ -1,548 +1,213 @@
-import { render, screen, act } from "@/utils/test-utils"
+import { render, act } from "@/utils/test-utils"
+
+import type { ClineMessage, ExtensionState, SubagentSummary } from "@tumble-code/types"
 
 import {
-	type ProviderSettings,
-	type ExperimentId,
-	type ExtensionState,
-	type ClineMessage,
-	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
-} from "@tumble-code/types"
+	ExtensionStateContextProvider,
+	useExtensionState,
+	mergeExtensionState,
+	type ExtensionStateContextType,
+} from "../ExtensionStateContext"
 
-import { ExtensionStateContextProvider, useExtensionState, mergeExtensionState } from "../ExtensionStateContext"
-
-const TestComponent = () => {
-	const { allowedCommands, setAllowedCommands, soundEnabled, showRooIgnoredFiles } = useExtensionState()
-
-	return (
-		<div>
-			<div data-testid="allowed-commands">{JSON.stringify(allowedCommands)}</div>
-			<div data-testid="sound-enabled">{JSON.stringify(soundEnabled)}</div>
-			<div data-testid="show-rooignored-files">{JSON.stringify(showRooIgnoredFiles)}</div>
-			<button data-testid="update-button" onClick={() => setAllowedCommands(["npm install", "git status"])}>
-				Update Commands
-			</button>
-		</div>
-	)
+let latest: ExtensionStateContextType
+const record = (state: ExtensionStateContextType) => {
+	latest = state
+}
+const Probe = () => {
+	record(useExtensionState())
+	return null
 }
 
-const ApiConfigTestComponent = () => {
-	const { apiConfiguration, setApiConfiguration } = useExtensionState()
-
-	return (
-		<div>
-			<div data-testid="api-configuration">{JSON.stringify(apiConfiguration)}</div>
-			<button
-				data-testid="update-api-config-button"
-				onClick={() => setApiConfiguration({ apiModelId: "new-model", apiProvider: "anthropic" })}>
-				Update API Config
-			</button>
-			<button data-testid="partial-update-button" onClick={() => setApiConfiguration({ modelTemperature: 0.7 })}>
-				Partial Update
-			</button>
-		</div>
+const renderProvider = () =>
+	render(
+		<ExtensionStateContextProvider>
+			<Probe />
+		</ExtensionStateContextProvider>,
 	)
-}
 
-describe("ExtensionStateContext", () => {
-	it("initializes with empty allowedCommands array", () => {
-		render(
-			<ExtensionStateContextProvider>
-				<TestComponent />
-			</ExtensionStateContextProvider>,
-		)
-
-		expect(JSON.parse(screen.getByTestId("allowed-commands").textContent!)).toEqual([])
+const postState = (state: Partial<ExtensionState>) => {
+	act(() => {
+		window.dispatchEvent(new MessageEvent("message", { data: { type: "state", state } }))
 	})
+}
 
-	it("initializes with soundEnabled set to false", () => {
-		render(
-			<ExtensionStateContextProvider>
-				<TestComponent />
-			</ExtensionStateContextProvider>,
+describe("ExtensionStateContextProvider", () => {
+	it("throws when used outside the provider", () => {
+		vi.spyOn(console, "error").mockImplementation(() => {})
+
+		expect(() => render(<Probe />)).toThrow(
+			"useExtensionState must be used within an ExtensionStateContextProvider",
 		)
-
-		expect(JSON.parse(screen.getByTestId("sound-enabled").textContent!)).toBe(false)
 	})
 
 	// DEF-C25, owner decisions 4a and 4b: until the host posts its state, the
 	// webview must show the same defaults the host uses.
-	it("initializes the disputed settings to the decided host defaults", () => {
-		const DefaultsProbe = () => {
-			const { terminalShellIntegrationTimeout, soundEnabled, enableCheckpoints } = useExtensionState()
-			return (
-				<div data-testid="defaults">
-					{JSON.stringify({ terminalShellIntegrationTimeout, soundEnabled, enableCheckpoints })}
-				</div>
-			)
-		}
+	it("starts with the decided host defaults", () => {
+		renderProvider()
 
-		render(
-			<ExtensionStateContextProvider>
-				<DefaultsProbe />
-			</ExtensionStateContextProvider>,
-		)
-
-		expect(JSON.parse(screen.getByTestId("defaults").textContent!)).toEqual({
-			terminalShellIntegrationTimeout: 30_000,
-			soundEnabled: false,
-			enableCheckpoints: true,
-		})
+		expect({
+			terminalShellIntegrationTimeout: latest.terminalShellIntegrationTimeout,
+			soundEnabled: latest.soundEnabled,
+			enableCheckpoints: latest.enableCheckpoints,
+		}).toEqual({ terminalShellIntegrationTimeout: 30_000, soundEnabled: false, enableCheckpoints: true })
 	})
 
-	it("initializes with showRooIgnoredFiles set to true", () => {
-		render(
-			<ExtensionStateContextProvider>
-				<TestComponent />
-			</ExtensionStateContextProvider>,
-		)
-
-		expect(JSON.parse(screen.getByTestId("show-rooignored-files").textContent!)).toBe(true)
-	})
-
-	it("updates showRooIgnoredFiles from a state message", () => {
-		render(
-			<ExtensionStateContextProvider>
-				<TestComponent />
-			</ExtensionStateContextProvider>,
-		)
-
-		act(() => {
-			window.dispatchEvent(
-				new MessageEvent("message", { data: { type: "state", state: { showRooIgnoredFiles: false } } }),
-			)
-		})
-
-		expect(JSON.parse(screen.getByTestId("show-rooignored-files").textContent!)).toBe(false)
-	})
-
-	it("updates allowedCommands through setAllowedCommands", () => {
-		render(
-			<ExtensionStateContextProvider>
-				<TestComponent />
-			</ExtensionStateContextProvider>,
-		)
-
-		act(() => {
-			screen.getByTestId("update-button").click()
-		})
-
-		expect(JSON.parse(screen.getByTestId("allowed-commands").textContent!)).toEqual(["npm install", "git status"])
-	})
-
-	it("throws error when used outside provider", () => {
-		// Suppress console.error for this test since we expect an error
-		const consoleSpy = vi.spyOn(console, "error")
-		consoleSpy.mockImplementation(() => {})
-
-		expect(() => {
-			render(<TestComponent />)
-		}).toThrow("useExtensionState must be used within an ExtensionStateContextProvider")
-
-		consoleSpy.mockRestore()
-	})
-
-	it("updates apiConfiguration through setApiConfiguration", () => {
-		render(
-			<ExtensionStateContextProvider>
-				<ApiConfigTestComponent />
-			</ExtensionStateContextProvider>,
-		)
-
-		const initialContent = screen.getByTestId("api-configuration").textContent!
-		expect(initialContent).toBeDefined()
-
-		act(() => {
-			screen.getByTestId("update-api-config-button").click()
-		})
-
-		const updatedContent = screen.getByTestId("api-configuration").textContent!
-		const updatedConfig = JSON.parse(updatedContent || "{}")
-
-		expect(updatedConfig).toEqual(
-			expect.objectContaining({
-				apiModelId: "new-model",
-				apiProvider: "anthropic",
-			}),
-		)
-	})
-
-	it("correctly merges partial updates to apiConfiguration", () => {
-		render(
-			<ExtensionStateContextProvider>
-				<ApiConfigTestComponent />
-			</ExtensionStateContextProvider>,
-		)
-
-		// First set the initial configuration
-		act(() => {
-			screen.getByTestId("update-api-config-button").click()
-		})
-
-		// Verify initial update
-		const initialContent = screen.getByTestId("api-configuration").textContent!
-		const initialConfig = JSON.parse(initialContent || "{}")
-		expect(initialConfig).toEqual(
-			expect.objectContaining({
-				apiModelId: "new-model",
-				apiProvider: "anthropic",
-			}),
-		)
-
-		// Now perform a partial update
-		act(() => {
-			screen.getByTestId("partial-update-button").click()
-		})
-
-		// Verify that the partial update was merged with the existing configuration
-		const updatedContent = screen.getByTestId("api-configuration").textContent!
-		const updatedConfig = JSON.parse(updatedContent || "{}")
-		expect(updatedConfig).toEqual(
-			expect.objectContaining({
-				apiModelId: "new-model", // Should retain this from previous update
-				apiProvider: "anthropic", // Should retain this from previous update
-				modelTemperature: 0.7, // Should add this from partial update
-			}),
-		)
-	})
-})
-
-// The five settings below were once mirrored in separate useState hooks
-// next to the main state object. These tests pin what readers of the context
-// observe, so folding them back into the single state object cannot change it.
-describe("ExtensionStateContext follow-up and prompt settings", () => {
-	const postState = (state: Partial<ExtensionState>) => {
-		act(() => {
-			window.dispatchEvent(new MessageEvent("message", { data: { type: "state", state } }))
-		})
-	}
-
-	const SettingsProbe = () => {
-		const {
-			alwaysAllowFollowupQuestions,
-			setAlwaysAllowFollowupQuestions,
-			followupAutoApproveTimeoutMs,
-			includeTaskHistoryInEnhance,
-			setIncludeTaskHistoryInEnhance,
-			includeCurrentTime,
-			includeCurrentCost,
-		} = useExtensionState()
-		return (
-			<div>
-				<div data-testid="settings">
-					{JSON.stringify({
-						alwaysAllowFollowupQuestions,
-						followupAutoApproveTimeoutMs: followupAutoApproveTimeoutMs ?? null,
-						includeTaskHistoryInEnhance,
-						includeCurrentTime,
-						includeCurrentCost,
-					})}
-				</div>
-				<button data-testid="allow-followups" onClick={() => setAlwaysAllowFollowupQuestions(true)} />
-				<button data-testid="no-history" onClick={() => setIncludeTaskHistoryInEnhance(false)} />
-			</div>
-		)
-	}
-
-	const readSettings = () => JSON.parse(screen.getByTestId("settings").textContent!)
-
-	const renderProbe = () =>
-		render(
-			<ExtensionStateContextProvider>
-				<SettingsProbe />
-			</ExtensionStateContextProvider>,
-		)
-
-	it("exposes the defaults before the host posts its state", () => {
-		renderProbe()
-
-		expect(readSettings()).toEqual({
+	// buildContextValue fills these from SETTINGS_DEFAULTS while the state lacks them.
+	it("falls back to the defaults the read model fills in, and takes the pushed values", () => {
+		renderProvider()
+		expect({
+			alwaysAllowFollowupQuestions: latest.alwaysAllowFollowupQuestions,
+			enterBehavior: latest.enterBehavior,
+			showWorktreesInHomeScreen: latest.showWorktreesInHomeScreen,
+			profileThresholds: latest.profileThresholds,
+		}).toEqual({
 			alwaysAllowFollowupQuestions: false,
-			followupAutoApproveTimeoutMs: null,
-			includeTaskHistoryInEnhance: true,
-			includeCurrentTime: true,
-			includeCurrentCost: true,
+			enterBehavior: "send",
+			showWorktreesInHomeScreen: true,
+			profileThresholds: {},
 		})
-	})
-
-	it("exposes the values the host posts in a state message", () => {
-		renderProbe()
 
 		postState({
 			alwaysAllowFollowupQuestions: true,
-			followupAutoApproveTimeoutMs: 42_000,
-			includeTaskHistoryInEnhance: false,
-			includeCurrentTime: false,
-			includeCurrentCost: false,
+			enterBehavior: "newline",
+			showWorktreesInHomeScreen: false,
+			profileThresholds: { p1: 50 },
 		})
 
-		expect(readSettings()).toEqual({
-			alwaysAllowFollowupQuestions: true,
-			followupAutoApproveTimeoutMs: 42_000,
-			includeTaskHistoryInEnhance: false,
-			includeCurrentTime: false,
-			includeCurrentCost: false,
-		})
+		expect(latest.alwaysAllowFollowupQuestions).toBe(true)
+		expect(latest.enterBehavior).toBe("newline")
+		expect(latest.showWorktreesInHomeScreen).toBe(false)
+		expect(latest.profileThresholds).toEqual({ p1: 50 })
 	})
 
-	it("keeps setter values when a later state push omits those keys", () => {
-		renderProbe()
+	it("keeps a value set through an action when a later push omits it; a push that carries it wins", () => {
+		renderProvider()
 
-		act(() => {
-			screen.getByTestId("allow-followups").click()
-			screen.getByTestId("no-history").click()
-		})
+		act(() => latest.setAlwaysAllowFollowupQuestions(true))
 		postState({ includeCurrentTime: false })
+		expect(latest.alwaysAllowFollowupQuestions).toBe(true)
 
-		expect(readSettings()).toEqual(
-			expect.objectContaining({
-				alwaysAllowFollowupQuestions: true,
-				includeTaskHistoryInEnhance: false,
-				includeCurrentTime: false,
-			}),
-		)
+		postState({ alwaysAllowFollowupQuestions: false })
+		expect(latest.alwaysAllowFollowupQuestions).toBe(false)
 	})
 
-	it("lets a later state push override setter values", () => {
-		renderProbe()
+	it("setApiConfiguration merges a partial profile into the current one", () => {
+		renderProvider()
 
-		act(() => {
-			screen.getByTestId("allow-followups").click()
+		act(() => latest.setApiConfiguration({ apiModelId: "new-model", apiProvider: "anthropic" }))
+		act(() => latest.setApiConfiguration({ modelTemperature: 0.7 }))
+
+		expect(latest.apiConfiguration).toEqual({
+			apiModelId: "new-model",
+			apiProvider: "anthropic",
+			modelTemperature: 0.7,
 		})
-		postState({ alwaysAllowFollowupQuestions: false })
+	})
 
-		expect(readSettings().alwaysAllowFollowupQuestions).toBe(false)
+	it("togglePinnedApiConfig pins a profile and unpinning removes the key", () => {
+		renderProvider()
+
+		act(() => latest.togglePinnedApiConfig("p1"))
+		act(() => latest.togglePinnedApiConfig("p2"))
+		expect(latest.pinnedApiConfigs).toEqual({ p1: true, p2: true })
+
+		act(() => latest.togglePinnedApiConfig("p1"))
+		expect(latest.pinnedApiConfigs).toEqual({ p2: true })
+	})
+
+	it("clearSubagents empties the subagent panel", () => {
+		renderProvider()
+		act(() => {
+			window.dispatchEvent(
+				new MessageEvent("message", {
+					data: { type: "subagentsUpdated", subagents: [{ taskId: "c1" } as SubagentSummary] },
+				}),
+			)
+		})
+		expect(latest.subagents).toHaveLength(1)
+
+		act(() => latest.clearSubagents())
+
+		expect(latest.subagents).toEqual([])
 	})
 })
 
 describe("mergeExtensionState", () => {
+	const merge = (prev: Partial<ExtensionState>, next: Partial<ExtensionState>) =>
+		mergeExtensionState(prev as ExtensionState, next)
+
 	// Decision 18: the host posts "" for a cleared profile or memory directory,
 	// and the merge must take it (a missing key would keep the old value).
 	it("takes an empty string from a state push over the previous value", () => {
-		const prevState = {
-			autoCondenseContextApiConfigId: "p-condense",
-			memoryWriterApiConfigId: "p-writer",
-			autoMemoryDirectory: "/srv/memories",
-			apiConfiguration: {},
-		} as unknown as ExtensionState
-
-		const result = mergeExtensionState(prevState, {
-			autoCondenseContextApiConfigId: "",
-			memoryWriterApiConfigId: "",
-			autoMemoryDirectory: "",
-		})
+		const result = merge(
+			{ autoCondenseContextApiConfigId: "p-condense", memoryWriterApiConfigId: "p", autoMemoryDirectory: "/m" },
+			{ autoCondenseContextApiConfigId: "", memoryWriterApiConfigId: "", autoMemoryDirectory: "" },
+		)
 
 		expect(result.autoCondenseContextApiConfigId).toBe("")
 		expect(result.memoryWriterApiConfigId).toBe("")
 		expect(result.autoMemoryDirectory).toBe("")
 	})
 
-	it("should correctly merge extension states", () => {
-		const baseState: ExtensionState = {
-			version: "",
-			mcpEnabled: false,
-			clineMessages: [],
-			taskHistory: [],
-			shouldShowAnnouncement: false,
-			enableCheckpoints: true,
-			writeDelayMs: 1000,
-			mode: "default",
-			experiments: {} as Record<ExperimentId, boolean>,
-			customModes: [],
-			maxOpenTabsContext: 20,
-			maxWorkspaceFiles: 100,
-			apiConfiguration: { providerId: "openrouter" } as ProviderSettings,
-			showRooIgnoredFiles: true,
-			enableSubfolderRules: false,
-			renderContext: "sidebar",
-			cloudUserInfo: null,
-			organizationAllowList: { allowAll: true, providers: {} },
-			autoCondenseContext: true,
-			autoCondenseContextPercent: 100,
-			cloudIsAuthenticated: false,
-			sharingEnabled: false,
-			publicSharingEnabled: false,
-			profileThresholds: {},
-			hasOpenedModeSelector: false, // Add the new required property
-			maxImageFileSize: 5,
-			maxTotalImageSize: 20,
-			taskSyncEnabled: false,
-			checkpointTimeout: DEFAULT_CHECKPOINT_TIMEOUT_SECONDS, // Add the checkpoint timeout property
-			maxReadFileLine: -1,
-		}
+	it("replaces the profile and support prompts, merges experiments and mode prompts", () => {
+		const result = merge(
+			{
+				apiConfiguration: { modelMaxTokens: 1234, modelMaxThinkingTokens: 123 },
+				customSupportPrompts: { ENHANCE: "old", CONDENSE: "old" },
+				experiments: { preventFocusDisruption: true } as never,
+				customModePrompts: { code: { roleDefinition: "kept" } },
+			},
+			{
+				apiConfiguration: { modelMaxThinkingTokens: 456 },
+				customSupportPrompts: { ENHANCE: "new" },
+				experiments: { customTools: true } as never,
+				customModePrompts: { ask: { roleDefinition: "added" } },
+			},
+		)
 
-		const prevState: ExtensionState = {
-			...baseState,
-			apiConfiguration: { modelMaxTokens: 1234, modelMaxThinkingTokens: 123 },
-			experiments: {} as Record<ExperimentId, boolean>,
-			checkpointTimeout: DEFAULT_CHECKPOINT_TIMEOUT_SECONDS - 5,
-		}
-
-		const newState: ExtensionState = {
-			...baseState,
-			apiConfiguration: { modelMaxThinkingTokens: 456, modelTemperature: 0.3 },
-			experiments: {
-				preventFocusDisruption: false,
-				customTools: false,
-			} as Record<ExperimentId, boolean>,
-			checkpointTimeout: DEFAULT_CHECKPOINT_TIMEOUT_SECONDS + 5,
-		}
-
-		const result = mergeExtensionState(prevState, newState)
-
-		expect(result.apiConfiguration).toEqual({
-			modelMaxThinkingTokens: 456,
-			modelTemperature: 0.3,
-		})
-
-		expect(result.experiments).toEqual({
-			preventFocusDisruption: false,
-			customTools: false,
+		expect(result.apiConfiguration).toEqual({ modelMaxThinkingTokens: 456 })
+		expect(result.customSupportPrompts).toEqual({ ENHANCE: "new" })
+		expect(result.experiments).toEqual({ preventFocusDisruption: true, customTools: true })
+		expect(result.customModePrompts).toEqual({
+			code: { roleDefinition: "kept" },
+			ask: { roleDefinition: "added" },
 		})
 	})
 
-	describe("clineMessagesSeq protection", () => {
-		const baseState: ExtensionState = {
-			version: "",
-			mcpEnabled: false,
-			clineMessages: [],
-			taskHistory: [],
-			shouldShowAnnouncement: false,
-			enableCheckpoints: true,
-			writeDelayMs: 1000,
-			mode: "default",
-			experiments: {} as Record<ExperimentId, boolean>,
-			customModes: [],
-			maxOpenTabsContext: 20,
-			maxWorkspaceFiles: 100,
-			apiConfiguration: {},
-			showRooIgnoredFiles: true,
-			enableSubfolderRules: false,
-			renderContext: "sidebar",
-			cloudUserInfo: null,
-			organizationAllowList: { allowAll: true, providers: {} },
-			autoCondenseContext: true,
-			autoCondenseContextPercent: 100,
-			cloudIsAuthenticated: false,
-			sharingEnabled: false,
-			publicSharingEnabled: false,
-			profileThresholds: {},
-			hasOpenedModeSelector: false,
-			maxImageFileSize: 5,
-			maxTotalImageSize: 20,
-			taskSyncEnabled: false,
-			checkpointTimeout: DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
-			maxReadFileLine: -1,
-		}
+	it("keeps the profile and prompts when the push omits them", () => {
+		const prev = { apiConfiguration: { apiModelId: "m" }, customSupportPrompts: { ENHANCE: "e" } }
 
-		const makeMessage = (ts: number, text: string): ClineMessage =>
-			({ ts, type: "say", say: "text", text }) as ClineMessage
+		const result = merge(prev, { cwd: "/w" })
 
-		it("rejects stale clineMessages when seq is not newer", () => {
-			const newerMessages = [makeMessage(1, "hello"), makeMessage(2, "world")]
-			const staleMessages = [makeMessage(1, "hello")]
+		expect(result.apiConfiguration).toBe(prev.apiConfiguration)
+		expect(result.customSupportPrompts).toBe(prev.customSupportPrompts)
+	})
 
-			const prevState: ExtensionState = {
-				...baseState,
-				clineMessages: newerMessages,
-				clineMessagesSeq: 5,
-			}
+	// Concurrent pushes (cloud auth, settings, streaming) can arrive out of
+	// order: chat messages apply only with a strictly newer sequence number.
+	const older = [{ ts: 1, type: "say", say: "text", text: "a" }] as ClineMessage[]
+	const newer = [...older, { ts: 2, type: "say", say: "text", text: "b" }] as ClineMessage[]
 
-			const result = mergeExtensionState(prevState, {
-				clineMessages: staleMessages,
-				clineMessagesSeq: 3, // stale seq
-			})
+	it.each([
+		{ name: "an older seq keeps the current messages", prevSeq: 5, push: { seq: 3 }, kept: true },
+		{ name: "an equal seq keeps the current messages", prevSeq: 5, push: { seq: 5 }, kept: true },
+		{ name: "a strictly newer seq applies", prevSeq: 3, push: { seq: 4 }, kept: false },
+		{ name: "without any seq the push applies", prevSeq: undefined, push: { seq: undefined }, kept: false },
+		{ name: "the first seq applies", prevSeq: undefined, push: { seq: 1 }, kept: false },
+	])("clineMessages: $name", ({ prevSeq, push, kept }) => {
+		const result = merge(
+			{ clineMessages: newer, clineMessagesSeq: prevSeq },
+			{ clineMessages: older, clineMessagesSeq: push.seq },
+		)
 
-			// Should keep the newer messages
-			expect(result.clineMessages).toBe(newerMessages)
-			expect(result.clineMessagesSeq).toBe(5)
-		})
+		expect(result.clineMessages).toBe(kept ? newer : older)
+		expect(result.clineMessagesSeq).toBe(kept ? prevSeq : push.seq)
+	})
 
-		it("rejects clineMessages when seq equals current (not strictly greater)", () => {
-			const currentMessages = [makeMessage(1, "hello"), makeMessage(2, "world")]
-			const sameSeqMessages = [makeMessage(1, "hello")]
+	it("clineMessages: a push without messages (cloud event) keeps them and their seq", () => {
+		const result = merge({ clineMessages: newer, clineMessagesSeq: 5 }, { cloudIsAuthenticated: true })
 
-			const prevState: ExtensionState = {
-				...baseState,
-				clineMessages: currentMessages,
-				clineMessagesSeq: 5,
-			}
-
-			const result = mergeExtensionState(prevState, {
-				clineMessages: sameSeqMessages,
-				clineMessagesSeq: 5, // same seq, not strictly greater
-			})
-
-			expect(result.clineMessages).toBe(currentMessages)
-			expect(result.clineMessagesSeq).toBe(5)
-		})
-
-		it("accepts clineMessages when seq is strictly greater", () => {
-			const oldMessages = [makeMessage(1, "hello")]
-			const newMessages = [makeMessage(1, "hello"), makeMessage(2, "world")]
-
-			const prevState: ExtensionState = {
-				...baseState,
-				clineMessages: oldMessages,
-				clineMessagesSeq: 3,
-			}
-
-			const result = mergeExtensionState(prevState, {
-				clineMessages: newMessages,
-				clineMessagesSeq: 4, // newer seq
-			})
-
-			expect(result.clineMessages).toBe(newMessages)
-			expect(result.clineMessagesSeq).toBe(4)
-		})
-
-		it("preserves clineMessages when newState does not include them (cloud event path)", () => {
-			const existingMessages = [makeMessage(1, "hello"), makeMessage(2, "world")]
-
-			const prevState: ExtensionState = {
-				...baseState,
-				clineMessages: existingMessages,
-				clineMessagesSeq: 5,
-			}
-
-			// Simulate a cloud event push that omits clineMessages and clineMessagesSeq
-			const result = mergeExtensionState(prevState, {
-				cloudIsAuthenticated: true,
-			})
-
-			expect(result.clineMessages).toBe(existingMessages)
-			expect(result.clineMessagesSeq).toBe(5)
-		})
-
-		it("applies clineMessages normally when neither state has seq (backward compat)", () => {
-			const oldMessages = [makeMessage(1, "hello")]
-			const newMessages = [makeMessage(1, "hello"), makeMessage(2, "world")]
-
-			const prevState: ExtensionState = {
-				...baseState,
-				clineMessages: oldMessages,
-			}
-
-			const result = mergeExtensionState(prevState, {
-				clineMessages: newMessages,
-			})
-
-			expect(result.clineMessages).toBe(newMessages)
-		})
-
-		it("applies clineMessages when prevState has no seq but newState does (first push)", () => {
-			const prevState: ExtensionState = {
-				...baseState,
-				clineMessages: [],
-			}
-
-			const newMessages = [makeMessage(1, "hello")]
-			const result = mergeExtensionState(prevState, {
-				clineMessages: newMessages,
-				clineMessagesSeq: 1,
-			})
-
-			expect(result.clineMessages).toBe(newMessages)
-			expect(result.clineMessagesSeq).toBe(1)
-		})
+		expect(result.clineMessages).toBe(newer)
+		expect(result.clineMessagesSeq).toBe(5)
 	})
 })
