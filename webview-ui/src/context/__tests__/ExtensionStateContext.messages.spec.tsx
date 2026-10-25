@@ -1,7 +1,8 @@
 /**
- * Table test: every extension message type ExtensionStateContextProvider
- * handles, dispatched as a real window `message` event. The rows live in
- * `extensionMessageCases.ts` so the pure reducer tests can reuse them.
+ * The provider's own part of message handling, dispatched as real window
+ * `message` events: the host posts it sends back and the skipped re-render
+ * when a message changes nothing. The state each message produces is the
+ * reducer's job (extensionStateReducer.spec.ts runs every row of the table).
  */
 import { render, act } from "@/utils/test-utils"
 
@@ -48,7 +49,9 @@ describe("ExtensionStateContext message table", () => {
 		vi.restoreAllMocks()
 	})
 
-	it.each(extensionMessageCases.map((c) => [c.name, c] as const))("%s", (_name, testCase) => {
+	const providerCases = extensionMessageCases.filter((c) => c.posts !== undefined || c.noChange)
+
+	it.each(providerCases.map((c) => [c.name, c] as const))("%s", (_name, testCase) => {
 		render(
 			<ExtensionStateContextProvider>
 				<Probe />

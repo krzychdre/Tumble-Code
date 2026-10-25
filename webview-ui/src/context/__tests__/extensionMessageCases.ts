@@ -378,6 +378,18 @@ export const extensionMessageCases: ExtensionMessageCase[] = [
 		check: (view) => expect(view.subagents?.map((s) => s.taskId)).toEqual(["c1"]),
 	},
 	{
+		name: "subagentsUpdated: takes a list without a source task (sent before the task id is known)",
+		seed: chatSeed,
+		message: { type: "subagentsUpdated", subagents: [subagent("c1")] },
+		check: (view) => expect(view.subagents?.map((s) => s.taskId)).toEqual(["c1"]),
+	},
+	{
+		name: "subagentsUpdated: an empty list (reset) from another task clears the panel",
+		seed: [...chatSeed, { type: "subagentsUpdated", subagents: [subagent("c1")] }],
+		message: { type: "subagentsUpdated", sourceTaskId: "task-b", subagents: [] },
+		check: (view) => expect(view.subagents).toEqual([]),
+	},
+	{
 		name: "subagentsUpdated: drops a non-empty list from another task",
 		seed: [...chatSeed, { type: "subagentsUpdated", subagents: [subagent("c1")] }],
 		message: { type: "subagentsUpdated", sourceTaskId: "task-b", subagents: [subagent("late")] },

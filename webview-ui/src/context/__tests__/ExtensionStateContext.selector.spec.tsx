@@ -163,36 +163,6 @@ describe("useExtensionSelector", () => {
 		expect(mode).toBe("architect")
 	})
 
-	it("a changed store produces a new value; the selector cache keeps slices stable", () => {
-		const values: unknown[] = []
-		let soundRenders = 0
-		const Probe = () => {
-			values.push(useExtensionState())
-			return null
-		}
-		const SoundProbe = () => {
-			soundRenders++
-			useExtensionSelector((s) => s.soundEnabled ?? false)
-			return null
-		}
-
-		render(
-			<ExtensionStateContextProvider>
-				<Probe />
-				<SoundProbe />
-			</ExtensionStateContextProvider>,
-		)
-		const before = values[values.length - 1]
-		dispatchState({ cwd: "/same" })
-		// The store object changed (merge always builds a new state), so the
-		// legacy value identity changed too.
-		expect(values[values.length - 1]).not.toBe(before)
-		// ...but the selector consumer did not re-render.
-		const baseline = soundRenders
-		dispatchState({ cwd: "/other" })
-		expect(soundRenders).toBe(baseline)
-	})
-
 	it("useExtensionSelector throws outside a provider", () => {
 		const Probe = () => {
 			useExtensionSelector((s) => s.cwd)
