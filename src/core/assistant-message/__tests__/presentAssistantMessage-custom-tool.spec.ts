@@ -2,6 +2,7 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { presentAssistantMessage } from "../presentAssistantMessage"
+import { makePresentTask } from "./presentTask"
 import { validateToolUse } from "../../tools/validateToolUse"
 
 // Mock dependencies
@@ -43,47 +44,15 @@ describe("presentAssistantMessage - Custom Tool Recording", () => {
 		vi.clearAllMocks()
 
 		// Create a mock Task with minimal properties needed for testing
-		mockTask = {
-			taskId: "test-task-id",
-			instanceId: "test-instance",
-			abort: false,
-			presentAssistantMessageLocked: false,
-			presentAssistantMessageHasPendingUpdates: false,
-			currentStreamingContentIndex: 0,
-			assistantMessageContent: [],
-			userMessageContent: [],
-			didCompleteReadingStream: false,
-			didRejectTool: false,
-			didAlreadyUseTool: false,
-			consecutiveMistakeCount: 0,
-			clineMessages: [],
-			api: {
-				getModel: () => ({ id: "test-model", info: {} }),
-			},
-			recordToolUsage: vi.fn(),
-			recordToolError: vi.fn(),
-			toolRepetitionDetector: {
-				check: vi.fn().mockReturnValue({ allowExecution: true }),
-			},
+		mockTask = makePresentTask({
 			providerRef: {
 				deref: () => ({
-					getState: vi.fn().mockResolvedValue({
-						mode: "code",
-						customModes: [],
-						experiments: {
-							customTools: true, // Enable by default
-						},
-					}),
+					getState: vi
+						.fn()
+						.mockResolvedValue({ mode: "code", customModes: [], experiments: { customTools: true } }),
 				}),
 			},
-			getTaskMode: vi.fn().mockResolvedValue("code"),
-			say: vi.fn().mockResolvedValue(undefined),
-			ask: vi.fn().mockResolvedValue({ response: "yesButtonClicked" }),
-			askSay: {
-				ask: vi.fn().mockResolvedValue({ response: "yesButtonClicked" }),
-				say: vi.fn().mockResolvedValue(undefined),
-			},
-		}
+		})
 
 		// Add pushToolResultToUserContent method after mockTask is created so it can reference mockTask
 		mockTask.pushToolResultToUserContent = vi.fn().mockImplementation((toolResult: any) => {

@@ -2,6 +2,7 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { presentAssistantMessage } from "../presentAssistantMessage"
+import { makePresentTask } from "./presentTask"
 
 // Mock dependencies
 vi.mock("../../task/Task")
@@ -21,57 +22,7 @@ describe("presentAssistantMessage - Unknown Tool Handling", () => {
 	let mockTask: any
 
 	beforeEach(() => {
-		// Create a mock Task with minimal properties needed for testing
-		mockTask = {
-			taskId: "test-task-id",
-			instanceId: "test-instance",
-			abort: false,
-			presentAssistantMessageLocked: false,
-			presentAssistantMessageHasPendingUpdates: false,
-			currentStreamingContentIndex: 0,
-			assistantMessageContent: [],
-			userMessageContent: [],
-			didCompleteReadingStream: false,
-			didRejectTool: false,
-			didAlreadyUseTool: false,
-			consecutiveMistakeCount: 0,
-			clineMessages: [],
-			api: {
-				getModel: () => ({ id: "test-model", info: {} }),
-			},
-			recordToolUsage: vi.fn(),
-			recordToolError: vi.fn(),
-			toolRepetitionDetector: {
-				check: vi.fn().mockReturnValue({ allowExecution: true }),
-			},
-			getTaskMode: vi.fn().mockResolvedValue("code"),
-			providerRef: {
-				deref: () => ({
-					getState: vi.fn().mockResolvedValue({
-						mode: "code",
-						customModes: [],
-					}),
-				}),
-			},
-			say: vi.fn().mockResolvedValue(undefined),
-			ask: vi.fn().mockResolvedValue({ response: "yesButtonClicked" }),
-			askSay: {
-				ask: vi.fn().mockResolvedValue({ response: "yesButtonClicked" }),
-				say: vi.fn().mockResolvedValue(undefined),
-			},
-		}
-
-		// Add pushToolResultToUserContent method after mockTask is created so 'this' binds correctly
-		mockTask.pushToolResultToUserContent = vi.fn().mockImplementation((toolResult: any) => {
-			const existingResult = mockTask.userMessageContent.find(
-				(block: any) => block.type === "tool_result" && block.tool_use_id === toolResult.tool_use_id,
-			)
-			if (existingResult) {
-				return false
-			}
-			mockTask.userMessageContent.push(toolResult)
-			return true
-		})
+		mockTask = makePresentTask()
 	})
 
 	it("should return error for unknown tool in native protocol", async () => {

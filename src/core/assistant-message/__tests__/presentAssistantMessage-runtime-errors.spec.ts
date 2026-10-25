@@ -6,6 +6,7 @@ import { TOOL_MINIMAL_EXAMPLES } from "../../prompts/tools/native-tools/examples
 import { AskIgnoredError } from "../../task/AskIgnoredError"
 import { isValidToolName, validateToolUse } from "../../tools/validateToolUse"
 import { presentAssistantMessage } from "../presentAssistantMessage"
+import { makePresentTask } from "./presentTask"
 
 vi.mock("../../task/Task")
 vi.mock("../../tools/validateToolUse", () => ({
@@ -46,42 +47,7 @@ describe("runtime tool failures are counted and taught", () => {
 		vi.mocked(isValidToolName).mockReturnValue(true)
 		vi.mocked(validateToolUse).mockImplementation(() => {})
 
-		mockTask = {
-			taskId: "test-task-id",
-			instanceId: "test-instance",
-			abort: false,
-			abandoned: false,
-			presentAssistantMessageLocked: false,
-			presentAssistantMessageHasPendingUpdates: false,
-			currentStreamingContentIndex: 0,
-			assistantMessageContent: [],
-			userMessageContent: [],
-			didCompleteReadingStream: false,
-			didRejectTool: false,
-			didAlreadyUseTool: false,
-			consecutiveMistakeCount: 0,
-			consecutiveMistakeLimit: 3,
-			clineMessages: [],
-			apiConfiguration: { apiProvider: "openai" },
-			api: { getModel: () => ({ id: "test-model", info: {} }) },
-			recordToolUsage: vi.fn(),
-			recordToolError: vi.fn(),
-			toolRepetitionDetector: {
-				check: vi.fn().mockReturnValue({ allowExecution: true }),
-			},
-			getTaskMode: vi.fn().mockResolvedValue("code"),
-			providerRef: {
-				deref: () => ({
-					getState: vi.fn().mockResolvedValue({ mode: "code", customModes: [] }),
-				}),
-			},
-			say: vi.fn().mockResolvedValue(undefined),
-			ask: vi.fn().mockResolvedValue({ response: "yesButtonClicked" }),
-			askSay: {
-				ask: vi.fn().mockResolvedValue({ response: "yesButtonClicked" }),
-				say: vi.fn().mockResolvedValue(undefined),
-			},
-		}
+		mockTask = makePresentTask({ apiConfiguration: { apiProvider: "openai" } })
 
 		mockTask.pushToolResultToUserContent = vi.fn().mockImplementation((toolResult: any) => {
 			const existing = mockTask.userMessageContent.find(
