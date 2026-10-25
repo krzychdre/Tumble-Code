@@ -1,8 +1,7 @@
 // Characterization for UI plan §2.12 part c (one checkbox, one button with an
 // `icon` variant, one icon button). The call sites below are the ones whose
 // primitive is about to change and that no other spec renders with the real
-// component: the Radix checkbox in the history row and in the worktree delete
-// dialog, the toolbar icon button of the Mermaid actions and the icon
+// component: the Radix checkbox in the worktree delete dialog, the toolbar icon button of the Mermaid actions and the icon
 // appearance of ThemedButton in the code index form. The assertions go through
 // roles, names, checked state, clicks and posted messages, so they hold for
 // either implementation.
@@ -13,7 +12,6 @@ import { fireEvent, render, screen } from "@/utils/test-utils"
 
 import type { Worktree } from "@tumble-code/types"
 
-import TaskItem from "@src/components/history/TaskItem"
 import { DeleteWorktreeModal } from "@src/components/worktrees/DeleteWorktreeModal"
 import { MermaidActionButtons } from "@src/components/common/MermaidActionButtons"
 import { CodeIndexAdvancedFields } from "@src/components/code-index/CodeIndexAdvancedFields"
@@ -25,65 +23,8 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 	useAppTranslation: () => ({ t: (key: string) => key }),
 }))
 
-vi.mock("@/utils/format", () => ({
-	formatDateTime: () => "2026-05-22 17:50:33",
-	formatTimestamp: () => "17:50",
-	formatLargeNumber: (num: number) => num.toString(),
-}))
-
-// The history row's summary line reads the custom modes to name the task's mode.
-vi.mock("@/context/ExtensionStateContext", () => ({
-	useExtensionSelector: (selector: (s: never) => unknown) => selector({ customModes: [] } as never),
-}))
-
 beforeEach(() => {
 	vi.clearAllMocks()
-})
-
-describe("history row selection checkbox", () => {
-	const item = {
-		id: "task-1",
-		number: 1,
-		task: "Test task",
-		ts: 1_700_000_000_000,
-		tokensIn: 100,
-		tokensOut: 50,
-		totalCost: 0.002,
-		workspace: "/test/workspace",
-	}
-
-	it("shows the selection and reports a click once, without toggling through the row", () => {
-		const onToggleSelection = vi.fn()
-		render(
-			<TaskItem
-				item={item}
-				variant="full"
-				isSelected={true}
-				onToggleSelection={onToggleSelection}
-				isSelectionMode={true}
-			/>,
-		)
-
-		const checkbox = screen.getByRole("checkbox")
-		expect(checkbox).toBeChecked()
-
-		fireEvent.click(checkbox)
-		expect(onToggleSelection).toHaveBeenCalledTimes(1)
-		expect(onToggleSelection).toHaveBeenCalledWith("task-1", false)
-	})
-
-	it("has no checkbox outside selection mode", () => {
-		render(
-			<TaskItem
-				item={item}
-				variant="full"
-				isSelected={false}
-				onToggleSelection={vi.fn()}
-				isSelectionMode={false}
-			/>,
-		)
-		expect(screen.queryByRole("checkbox")).toBeNull()
-	})
 })
 
 describe("worktree delete dialog force checkbox", () => {

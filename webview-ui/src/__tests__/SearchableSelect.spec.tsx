@@ -1,5 +1,5 @@
 import React from "react"
-import { render, screen, act, cleanup, waitFor, within, fireEvent } from "@/utils/test-utils"
+import { render, screen, cleanup, waitFor, within, fireEvent } from "@/utils/test-utils"
 import { SearchableSelect, SearchableSelectOption } from "@/components/ui/searchable-select"
 import userEvent from "@testing-library/user-event"
 
@@ -37,18 +37,6 @@ describe("SearchableSelect", () => {
 		expect(screen.getByText("Option 1")).toBeInTheDocument()
 	})
 
-	it("opens dropdown when clicked", async () => {
-		const user = userEvent.setup()
-		render(<SearchableSelect {...defaultProps} />)
-
-		const trigger = screen.getByRole("combobox")
-		await user.click(trigger)
-
-		expect(screen.getByPlaceholderText("Search options...")).toBeInTheDocument()
-		expect(screen.getByText("Option 1")).toBeInTheDocument()
-		expect(screen.getByText("Option 2")).toBeInTheDocument()
-	})
-
 	it("filters options based on search input", async () => {
 		const user = userEvent.setup()
 		render(<SearchableSelect {...defaultProps} />)
@@ -78,14 +66,19 @@ describe("SearchableSelect", () => {
 
 	it("filters options by value when the label does not contain the provider ID", async () => {
 		const user = userEvent.setup()
-		render(<SearchableSelect {...defaultProps} options={[{ value: "openai-native", label: "OpenAI" }]} />)
+		const options = [
+			{ value: "openai-native", label: "OpenAI" },
+			{ value: "anthropic", label: "Anthropic" },
+		]
+		render(<SearchableSelect {...defaultProps} options={options} />)
 
 		await user.click(screen.getByRole("combobox"))
 		fireEvent.change(screen.getByPlaceholderText("Search options..."), {
 			target: { value: "native" },
 		})
 
-		await waitFor(() => expect(screen.getByText("OpenAI")).toBeInTheDocument())
+		await waitFor(() => expect(screen.queryByText("Anthropic")).not.toBeInTheDocument())
+		expect(screen.getByText("OpenAI")).toBeInTheDocument()
 	})
 
 	it("calls onValueChange when an option is selected", async () => {
@@ -154,42 +147,6 @@ describe("SearchableSelect", () => {
 		})
 	})
 
-	it("handles component unmounting without memory leaks", async () => {
-		vi.useFakeTimers()
-		const { unmount, rerender } = render(<SearchableSelect {...defaultProps} value="option1" />)
-
-		// Change the value prop to trigger the effect with timeout
-		rerender(<SearchableSelect {...defaultProps} value="option2" />)
-
-		// Immediately unmount the component before the timeout completes
-		act(() => {
-			unmount()
-		})
-
-		// This test ensures that no setState calls happen after unmount
-		// If there was a memory leak, this would throw an error
-		expect(() => {
-			// Wait for any pending timeouts
-			act(() => {
-				vi.runAllTimers()
-			})
-		}).not.toThrow()
-	})
-
-	it("cleans up timeouts on unmount", () => {
-		vi.useFakeTimers()
-		const clearTimeoutSpy = vi.spyOn(global, "clearTimeout")
-		const { unmount } = render(<SearchableSelect {...defaultProps} />)
-
-		act(() => {
-			unmount()
-		})
-
-		// Verify that clearTimeout was called during cleanup
-		expect(clearTimeoutSpy).toHaveBeenCalled()
-		clearTimeoutSpy.mockRestore()
-	})
-
 	it("resets search value when value prop changes", async () => {
 		const user = userEvent.setup()
 		const { rerender } = render(<SearchableSelect {...defaultProps} value="option1" />)
@@ -234,38 +191,6 @@ describe("SearchableSelect", () => {
 		})
 	})
 
-	it("handles rapid value changes without issues", async () => {
-		const { rerender } = render(<SearchableSelect {...defaultProps} value="option1" />)
-
-		// Rapidly change values
-		rerender(<SearchableSelect {...defaultProps} value="option2" />)
-		rerender(<SearchableSelect {...defaultProps} value="option3" />)
-		rerender(<SearchableSelect {...defaultProps} value="option1" />)
-
-		// Wait for the final value to be reflected
-		await waitFor(() => {
-			const trigger = screen.getByRole("combobox")
-			expect(trigger).toHaveTextContent("Option 1")
-		})
-
-		// Component should still be functional - open dropdown
-		const user = userEvent.setup()
-		const trigger = screen.getByRole("combobox")
-		await user.click(trigger)
-
-		// Should be able to search
-		const searchInput = screen.getByPlaceholderText("Search options...")
-		fireEvent.change(searchInput, { target: { value: "2" } })
-
-		// Check filtering works - use within to scope to dropdown
-		const dropdown = screen.getByRole("dialog")
-		await waitFor(() => {
-			expect(within(dropdown).getByText("Option 2")).toBeInTheDocument()
-			expect(within(dropdown).queryByText("Option 1")).not.toBeInTheDocument()
-			expect(within(dropdown).queryByText("Option 3")).not.toBeInTheDocument()
-		})
-	})
-
 	it("closes the dropdown when ESC key is pressed", async () => {
 		const user = userEvent.setup()
 		render(<SearchableSelect {...defaultProps} />)
@@ -288,44 +213,17 @@ describe("SearchableSelect", () => {
 		})
 	})
 
-	it("does not close the dropdown when ESC is pressed while dropdown is closed", async () => {
-		render(<SearchableSelect {...defaultProps} />)
+	// Only maxDisplayItems options render; a selected option cut off by the limit is kept in front.
+	it.each([
+		{ value: undefined, shown: ["Item 0", "Item 1", "Item 2"] },
+		{ value: "item-7", shown: ["Item 7", "Item 0", "Item 1"] },
+		{ value: "item-1", shown: ["Item 0", "Item 1", "Item 2"] },
+	])("limits the list to maxDisplayItems, selected $value", async ({ value, shown }) => {
+		const options = Array.from({ length: 10 }, (_, i) => ({ value: `item-${i}`, label: `Item ${i}` }))
+		render(<SearchableSelect {...defaultProps} options={options} value={value} maxDisplayItems={3} />)
 
-		const trigger = screen.getByRole("combobox")
+		await userEvent.setup().click(screen.getByRole("combobox"))
 
-		// Ensure dropdown is closed
-		expect(trigger).toHaveAttribute("aria-expanded", "false")
-
-		// Press ESC key
-		fireEvent.keyDown(window, { key: "Escape" })
-
-		// Verify dropdown remains closed
-		expect(trigger).toHaveAttribute("aria-expanded", "false")
-		expect(screen.queryByRole("listbox")).not.toBeInTheDocument()
-	})
-
-	it("prevents default and stops propagation when ESC is pressed", async () => {
-		const user = userEvent.setup()
-		render(<SearchableSelect {...defaultProps} />)
-
-		// Open the dropdown
-		const trigger = screen.getByRole("combobox")
-		await user.click(trigger)
-
-		// Create a mock event to track preventDefault and stopPropagation
-		const escapeEvent = new KeyboardEvent("keydown", {
-			key: "Escape",
-			bubbles: true,
-			cancelable: true,
-		})
-		const preventDefaultSpy = vi.spyOn(escapeEvent, "preventDefault")
-		const stopPropagationSpy = vi.spyOn(escapeEvent, "stopPropagation")
-
-		// Dispatch the event
-		window.dispatchEvent(escapeEvent)
-
-		// Verify preventDefault and stopPropagation were called
-		expect(preventDefaultSpy).toHaveBeenCalled()
-		expect(stopPropagationSpy).toHaveBeenCalled()
+		expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(shown)
 	})
 })

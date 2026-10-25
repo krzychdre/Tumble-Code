@@ -217,4 +217,29 @@ describe("CodeBlock", () => {
 			})
 		}
 	})
+
+	// A block taller than the 500px window shade gets a toggle that lifts and restores the limit,
+	// then scrolls the block back into view once the transition is over.
+	it("the window-shade toggle of a tall block lifts and restores the height limit", () => {
+		const tall = vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(600)
+		const { container } = render(<CodeBlock source={"a\nb"} language="typescript" />)
+		tall.mockRestore()
+		const scroller = container.querySelector(".code-block-scroller") as HTMLElement
+		expect(scroller.style.maxHeight).toBe("500px")
+		vi.useFakeTimers()
+		const scrollIntoView = vi.mocked(Element.prototype.scrollIntoView)
+		scrollIntoView.mockClear()
+
+		const toggle = () => container.querySelector(".code-block-toolbar button") as HTMLElement
+		fireEvent.click(toggle())
+		expect(scroller.style.maxHeight).toBe("none")
+		act(() => {
+			vi.runAllTimers()
+		})
+		expect(scrollIntoView).toHaveBeenCalledTimes(1)
+
+		fireEvent.click(toggle())
+		expect(scroller.style.maxHeight).toBe("500px")
+		vi.useRealTimers()
+	})
 })
