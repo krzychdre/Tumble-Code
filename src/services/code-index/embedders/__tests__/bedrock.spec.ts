@@ -1,651 +1,166 @@
-import type { MockedFunction } from "vitest"
-import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime"
+// BedrockEmbedder's own mapping: the client it builds, the request body and the response field of
+// each model family, and the AWS errors it names during validation. The Bedrock runtime client and
+// the credential providers are the boundary; batching and retry are BaseHttpEmbedder's and run for
+// every embedder in embedder-contract.spec.ts (including Bedrock's ThrottlingException).
+
+const send = vi.hoisted(() => vi.fn())
+
+vi.mock("@aws-sdk/client-bedrock-runtime", () => ({
+	BedrockRuntimeClient: vi.fn(function () {
+		return { send }
+	}),
+	InvokeModelCommand: vi.fn(function (input: unknown) {
+		return { input }
+	}),
+}))
+
+vi.mock("@aws-sdk/credential-providers", () => ({
+	fromIni: vi.fn(() => "ini-credentials"),
+	fromNodeProviderChain: vi.fn(() => "chain-credentials"),
+}))
+
+vi.mock("@tumble-code/telemetry", () => ({
+	TelemetryService: { instance: { captureEvent: vi.fn() } },
+}))
+
+vi.mock("../../../../i18n", () => ({
+	t: (key: string, params?: Record<string, unknown>) => (params?.model ? `${key} | ${String(params.model)}` : key),
+}))
+
+import { BedrockRuntimeClient } from "@aws-sdk/client-bedrock-runtime"
+import { fromIni } from "@aws-sdk/credential-providers"
 
 import { BedrockEmbedder } from "../bedrock"
-import { MAX_ITEM_TOKENS } from "../../constants"
 import { resetRateLimitGates } from "../rate-limit-gate"
+import { Package } from "../../../../shared/package"
 import { logger } from "../../../../utils/logging"
 
-// Mock the AWS SDK
-vitest.mock("@aws-sdk/client-bedrock-runtime", () => {
-	return {
-		BedrockRuntimeClient: vitest.fn().mockImplementation(() => ({
-			send: vitest.fn(),
-		})),
-		InvokeModelCommand: vitest.fn().mockImplementation(function (input) {
-			return {
-				input,
-			}
-		}),
-	}
+const reply = (body: unknown) => ({ body: new TextEncoder().encode(JSON.stringify(body)) })
+const awsError = (name: string) => Object.assign(new Error(`${name}: refused`), { name })
+
+/** The JSON body of each InvokeModel request, with its model id. */
+const sentRequests = () =>
+	send.mock.calls.map(([command]) => ({ ...command.input, body: JSON.parse(command.input.body) }))
+
+beforeEach(() => {
+	send.mockReset()
+	resetRateLimitGates()
+	vi.mocked(BedrockRuntimeClient).mockClear()
+	vi.spyOn(logger, "error").mockImplementation(() => {})
+	vi.spyOn(logger, "warn").mockImplementation(() => {})
 })
-vitest.mock("@aws-sdk/credential-providers", () => ({
-	fromEnv: vitest.fn().mockReturnValue(Promise.resolve({})),
-	fromIni: vitest.fn().mockReturnValue(Promise.resolve({})),
-}))
 
-// Mock TelemetryService
-vitest.mock("@tumble-code/telemetry", () => ({
-	TelemetryService: {
-		instance: {
-			captureEvent: vitest.fn(),
-		},
-	},
-}))
-
-// Mock i18n
-vitest.mock("../../../../i18n", () => ({
-	t: (key: string, params?: Record<string, any>) => {
-		const translations: Record<string, string> = {
-			"embeddings:authenticationFailed":
-				"Failed to create embeddings: Authentication failed. Please check your AWS credentials.",
-			"embeddings:failedWithStatus": `Failed to create embeddings after ${params?.attempts} attempts: HTTP ${params?.statusCode} - ${params?.errorMessage}`,
-			"embeddings:failedWithError": `Failed to create embeddings after ${params?.attempts} attempts: ${params?.errorMessage}`,
-			"embeddings:failedMaxAttempts": `Failed to create embeddings after ${params?.attempts} attempts`,
-			"embeddings:textTruncatedToTokenLimit": `Text at index ${params?.index} exceeds maximum token limit (${params?.itemTokens} > ${params?.maxTokens}). Truncating it to the limit.`,
-			"embeddings:rateLimitRetry": `Rate limit hit, retrying in ${params?.delayMs}ms (attempt ${params?.attempt}/${params?.maxRetries})`,
-			"embeddings:bedrock.invalidResponseFormat": "Invalid response format from Bedrock",
-			"embeddings:bedrock.invalidCredentials": "Invalid AWS credentials",
-			"embeddings:bedrock.accessDenied": "Access denied to Bedrock service",
-			"embeddings:bedrock.modelNotFound": `Model ${params?.model} not found`,
-			"embeddings:validation.authenticationFailed": "Authentication failed",
-			"embeddings:validation.connectionFailed": "Connection failed",
-			"embeddings:validation.serviceUnavailable": "Service unavailable",
-			"embeddings:validation.configurationError": "Configuration error",
-		}
-		return translations[key] || key
-	},
-}))
-
-// Mock console methods
-const consoleMocks = {
-	error: vitest.spyOn(logger, "error").mockImplementation(() => {}),
-	warn: vitest.spyOn(logger, "warn").mockImplementation(() => {}),
-}
+afterEach(() => {
+	vi.restoreAllMocks()
+})
 
 describe("BedrockEmbedder", () => {
-	let embedder: BedrockEmbedder
-	let mockSend: MockedFunction<any>
-
-	beforeEach(() => {
-		vitest.clearAllMocks()
-		resetRateLimitGates()
-		consoleMocks.error.mockClear()
-		consoleMocks.warn.mockClear()
-
-		mockSend = vitest.fn()
-
-		// Set up the mock implementation
-		const MockedBedrockRuntimeClient = BedrockRuntimeClient as any
-		MockedBedrockRuntimeClient.mockImplementation(function () {
-			return {
-				send: mockSend,
-			}
-		})
-
-		embedder = new BedrockEmbedder("us-east-1", "test-profile", "amazon.titan-embed-text-v2:0")
+	it("refuses an empty region", () => {
+		expect(() => new BedrockEmbedder("")).toThrow("Region is required for AWS Bedrock embedder")
 	})
 
-	afterEach(() => {
-		vitest.clearAllMocks()
+	it.each([
+		["a named profile", "dev", "ini-credentials"],
+		["the default credential chain", undefined, "chain-credentials"],
+	])("builds its client for the region with %s", (_, profile, credentials) => {
+		new BedrockEmbedder("eu-west-1", profile)
+
+		expect(BedrockRuntimeClient).toHaveBeenCalledWith({
+			userAgentAppId: `TumbleCode#${Package.version}`,
+			region: "eu-west-1",
+			credentials,
+		})
+		if (profile) expect(fromIni).toHaveBeenCalledWith({ profile })
 	})
 
-	describe("constructor", () => {
-		it("should initialize with provided region, profile and model", () => {
-			expect(embedder.embedderInfo.name).toBe("bedrock")
-		})
+	const nova = {
+		taskType: "SINGLE_EMBEDDING",
+		singleEmbeddingParams: {
+			embeddingPurpose: "GENERIC_INDEX",
+			embeddingDimension: 1024,
+			text: { truncationMode: "END", value: "code" },
+		},
+	}
+	it.each([
+		["amazon.titan-embed-text-v2:0", { inputText: "code" }, { embedding: [1, 2], inputTextTokenCount: 5 }, 5],
+		[
+			"amazon.nova-2-multimodal-embeddings-v1:0",
+			nova,
+			{ embeddings: [{ embedding: [1, 2] }], inputTextTokenCount: 4 },
+			4,
+		],
+		["amazon.nova-2-multimodal-embeddings-v1:0", nova, { embedding: [1, 2] }, 0],
+		[
+			"cohere.embed-v4:0",
+			{ texts: ["code"], input_type: "search_document", embedding_types: ["float"] },
+			{ embeddings: { float: [[1, 2]] } },
+			0,
+		],
+		[
+			"cohere.embed-v4:0",
+			{ texts: ["code"], input_type: "search_document", embedding_types: ["float"] },
+			{ embeddings: [[1, 2]] },
+			0,
+		],
+		["cohere.embed-english-v3", { texts: ["code"], input_type: "search_document" }, { embeddings: [[1, 2]] }, 0],
+		["some.future-model", { inputText: "code" }, { embedding: [1, 2], inputTextTokenCount: 2 }, 2],
+	])("%s: sends %j and reads the vector from %j", async (model, requestBody, responseBody, tokens) => {
+		send.mockResolvedValue(reply(responseBody))
 
-		it("should require region", () => {
-			expect(() => new BedrockEmbedder("", "profile", "model")).toThrow(
-				"Region is required for AWS Bedrock embedder",
-			)
-		})
+		const result = await new BedrockEmbedder("us-east-1", undefined, model).createEmbeddings(["code"])
 
-		it("should use profile for credentials", () => {
-			const profileEmbedder = new BedrockEmbedder("us-west-2", "dev-profile")
-			expect(profileEmbedder).toBeDefined()
-		})
+		expect(sentRequests()).toEqual([
+			{ modelId: model, body: requestBody, contentType: "application/json", accept: "application/json" },
+		])
+		expect(result).toEqual({ embeddings: [[1, 2]], usage: { promptTokens: tokens, totalTokens: tokens } })
 	})
 
-	describe("createEmbeddings", () => {
-		const testModelId = "amazon.titan-embed-text-v2:0"
-
-		it("should create embeddings for a single text with Titan model", async () => {
-			const testTexts = ["Hello world"]
-			const mockResponse = {
-				body: new TextEncoder().encode(
-					JSON.stringify({
-						embedding: [0.1, 0.2, 0.3],
-						inputTextTokenCount: 2,
-					}),
-				),
-			}
-			mockSend.mockResolvedValue(mockResponse)
-
-			const result = await embedder.createEmbeddings(testTexts)
-
-			expect(mockSend).toHaveBeenCalled()
-			const command = mockSend.mock.calls[0][0] as any
-			expect(command.input.modelId).toBe(testModelId)
-			const bodyStr =
-				typeof command.input.body === "string"
-					? command.input.body
-					: new TextDecoder().decode(command.input.body as Uint8Array)
-			expect(JSON.parse(bodyStr || "{}")).toEqual({
-				inputText: "Hello world",
-			})
-
-			expect(result).toEqual({
-				embeddings: [[0.1, 0.2, 0.3]],
-				usage: { promptTokens: 2, totalTokens: 2 },
-			})
+	it("sends one request per text, in order, and adds up the token counts", async () => {
+		send.mockImplementation(async (command: { input: { body: string } }) => {
+			const text = JSON.parse(command.input.body).inputText as string
+			return reply({ embedding: [text.length], inputTextTokenCount: text.length })
 		})
 
-		it("should create embeddings for multiple texts", async () => {
-			const testTexts = ["Hello world", "Another text"]
-			const mockResponses = [
-				{
-					body: new TextEncoder().encode(
-						JSON.stringify({
-							embedding: [0.1, 0.2, 0.3],
-							inputTextTokenCount: 2,
-						}),
-					),
-				},
-				{
-					body: new TextEncoder().encode(
-						JSON.stringify({
-							embedding: [0.4, 0.5, 0.6],
-							inputTextTokenCount: 3,
-						}),
-					),
-				},
-			]
+		const result = await new BedrockEmbedder("us-east-1").createEmbeddings(
+			["a", "bb", "ccc"],
+			"amazon.titan-embed-text-v1",
+		)
 
-			mockSend.mockResolvedValueOnce(mockResponses[0]).mockResolvedValueOnce(mockResponses[1])
+		expect(sentRequests().map((r) => [r.modelId, r.body.inputText])).toEqual([
+			["amazon.titan-embed-text-v1", "a"],
+			["amazon.titan-embed-text-v1", "bb"],
+			["amazon.titan-embed-text-v1", "ccc"],
+		])
+		expect(result).toEqual({ embeddings: [[1], [2], [3]], usage: { promptTokens: 6, totalTokens: 6 } })
+	})
 
-			const result = await embedder.createEmbeddings(testTexts)
+	it.each([
+		["UnrecognizedClientException", "embeddings:bedrock.invalidCredentials"],
+		["AccessDeniedException", "embeddings:bedrock.accessDenied"],
+		["ResourceNotFoundException", "embeddings:bedrock.modelNotFound | amazon.titan-embed-text-v2:0"],
+	])("validation names %s", async (name, error) => {
+		send.mockRejectedValue(awsError(name))
 
-			expect(mockSend).toHaveBeenCalledTimes(2)
-			expect(result).toEqual({
-				embeddings: [
-					[0.1, 0.2, 0.3],
-					[0.4, 0.5, 0.6],
-				],
-				usage: { promptTokens: 5, totalTokens: 5 },
-			})
-		})
+		await expect(
+			new BedrockEmbedder("us-east-1", undefined, "amazon.titan-embed-text-v2:0").validateConfiguration(),
+		).resolves.toEqual({ valid: false, error })
+	})
 
-		it("should handle Cohere model format", async () => {
-			const cohereEmbedder = new BedrockEmbedder("us-east-1", "test-profile", "cohere.embed-english-v3")
-			const testTexts = ["Hello world"]
-			const mockResponse = {
-				body: new TextEncoder().encode(
-					JSON.stringify({
-						embeddings: [[0.1, 0.2, 0.3]],
-					}),
-				),
-			}
-			mockSend.mockResolvedValue(mockResponse)
+	it("validation leaves any other AWS error to the standard handling", async () => {
+		send.mockRejectedValue(awsError("ValidationException"))
 
-			const result = await cohereEmbedder.createEmbeddings(testTexts)
-
-			const command = mockSend.mock.calls[0][0] as InvokeModelCommand
-			const bodyStr =
-				typeof command.input.body === "string"
-					? command.input.body
-					: new TextDecoder().decode(command.input.body as Uint8Array)
-			expect(JSON.parse(bodyStr || "{}")).toEqual({
-				texts: ["Hello world"],
-				input_type: "search_document",
-			})
-
-			expect(result).toEqual({
-				embeddings: [[0.1, 0.2, 0.3]],
-				usage: { promptTokens: 0, totalTokens: 0 },
-			})
-		})
-
-		it("should create embeddings with Nova multimodal model", async () => {
-			const novaMultimodalEmbedder = new BedrockEmbedder(
-				"us-east-1",
-				"test-profile",
-				"amazon.nova-2-multimodal-embeddings-v1:0",
-			)
-			const testTexts = ["Hello world"]
-			const mockResponse = {
-				body: new TextEncoder().encode(
-					JSON.stringify({
-						embeddings: [
-							{
-								embedding: [0.1, 0.2, 0.3],
-							},
-						],
-						inputTextTokenCount: 2,
-					}),
-				),
-			}
-			mockSend.mockResolvedValue(mockResponse)
-
-			const result = await novaMultimodalEmbedder.createEmbeddings(testTexts)
-
-			expect(mockSend).toHaveBeenCalled()
-			const command = mockSend.mock.calls[0][0] as any
-			expect(command.input.modelId).toBe("amazon.nova-2-multimodal-embeddings-v1:0")
-			const bodyStr =
-				typeof command.input.body === "string"
-					? command.input.body
-					: new TextDecoder().decode(command.input.body as Uint8Array)
-			// Nova multimodal embeddings use a task-based format with nested text object
-			expect(JSON.parse(bodyStr || "{}")).toEqual({
-				taskType: "SINGLE_EMBEDDING",
-				singleEmbeddingParams: {
-					embeddingPurpose: "GENERIC_INDEX",
-					embeddingDimension: 1024,
-					text: {
-						truncationMode: "END",
-						value: "Hello world",
-					},
-				},
-			})
-
-			expect(result).toEqual({
-				embeddings: [[0.1, 0.2, 0.3]],
-				usage: { promptTokens: 2, totalTokens: 2 },
-			})
-		})
-
-		it("should handle Nova multimodal model with multiple texts", async () => {
-			const novaMultimodalEmbedder = new BedrockEmbedder(
-				"us-east-1",
-				"test-profile",
-				"amazon.nova-2-multimodal-embeddings-v1:0",
-			)
-			const testTexts = ["Hello world", "Another text"]
-			const mockResponses = [
-				{
-					body: new TextEncoder().encode(
-						JSON.stringify({
-							embeddings: [
-								{
-									embedding: [0.1, 0.2, 0.3],
-								},
-							],
-							inputTextTokenCount: 2,
-						}),
-					),
-				},
-				{
-					body: new TextEncoder().encode(
-						JSON.stringify({
-							embeddings: [
-								{
-									embedding: [0.4, 0.5, 0.6],
-								},
-							],
-							inputTextTokenCount: 3,
-						}),
-					),
-				},
-			]
-
-			mockSend.mockResolvedValueOnce(mockResponses[0]).mockResolvedValueOnce(mockResponses[1])
-
-			const result = await novaMultimodalEmbedder.createEmbeddings(testTexts)
-
-			expect(mockSend).toHaveBeenCalledTimes(2)
-
-			// Verify the request format for both texts
-			const firstCommand = mockSend.mock.calls[0][0] as any
-			const firstBodyStr =
-				typeof firstCommand.input.body === "string"
-					? firstCommand.input.body
-					: new TextDecoder().decode(firstCommand.input.body as Uint8Array)
-			// Nova multimodal embeddings use a task-based format with nested text object
-			expect(JSON.parse(firstBodyStr || "{}")).toEqual({
-				taskType: "SINGLE_EMBEDDING",
-				singleEmbeddingParams: {
-					embeddingPurpose: "GENERIC_INDEX",
-					embeddingDimension: 1024,
-					text: {
-						truncationMode: "END",
-						value: "Hello world",
-					},
-				},
-			})
-
-			const secondCommand = mockSend.mock.calls[1][0] as any
-			const secondBodyStr =
-				typeof secondCommand.input.body === "string"
-					? secondCommand.input.body
-					: new TextDecoder().decode(secondCommand.input.body as Uint8Array)
-			expect(JSON.parse(secondBodyStr || "{}")).toEqual({
-				taskType: "SINGLE_EMBEDDING",
-				singleEmbeddingParams: {
-					embeddingPurpose: "GENERIC_INDEX",
-					embeddingDimension: 1024,
-					text: {
-						truncationMode: "END",
-						value: "Another text",
-					},
-				},
-			})
-
-			expect(result).toEqual({
-				embeddings: [
-					[0.1, 0.2, 0.3],
-					[0.4, 0.5, 0.6],
-				],
-				usage: { promptTokens: 5, totalTokens: 5 },
-			})
-		})
-
-		it("should use custom model when provided", async () => {
-			const testTexts = ["Hello world"]
-			const customModel = "amazon.titan-embed-text-v1"
-			const mockResponse = {
-				body: new TextEncoder().encode(
-					JSON.stringify({
-						embedding: [0.1, 0.2, 0.3],
-						inputTextTokenCount: 2,
-					}),
-				),
-			}
-			mockSend.mockResolvedValue(mockResponse)
-
-			await embedder.createEmbeddings(testTexts, customModel)
-
-			const command = mockSend.mock.calls[0][0] as InvokeModelCommand
-			expect(command.input.modelId).toBe(customModel)
-		})
-
-		it("should handle missing token count data gracefully", async () => {
-			const testTexts = ["Hello world"]
-			const mockResponse = {
-				body: new TextEncoder().encode(
-					JSON.stringify({
-						embedding: [0.1, 0.2, 0.3],
-					}),
-				),
-			}
-			mockSend.mockResolvedValue(mockResponse)
-
-			const result = await embedder.createEmbeddings(testTexts)
-
-			expect(result).toEqual({
-				embeddings: [[0.1, 0.2, 0.3]],
-				usage: { promptTokens: 0, totalTokens: 0 },
-			})
-		})
-
-		/**
-		 * Test batching logic when texts exceed token limits
-		 */
-		describe("batching logic", () => {
-			it("should warn and truncate texts exceeding maximum token limit", async () => {
-				// Create a text that exceeds MAX_ITEM_TOKENS (4 characters ≈ 1 token)
-				const oversizedText = "a".repeat(MAX_ITEM_TOKENS * 4 + 100)
-				const normalText = "normal text"
-				const testTexts = [normalText, oversizedText, "another normal"]
-
-				const response = (embedding: number[]) => ({
-					body: new TextEncoder().encode(JSON.stringify({ embedding, inputTextTokenCount: 3 })),
-				})
-				mockSend
-					.mockResolvedValueOnce(response([0.1, 0.2, 0.3]))
-					.mockResolvedValueOnce(response([0.4, 0.5, 0.6]))
-					.mockResolvedValueOnce(response([0.7, 0.8, 0.9]))
-
-				const result = await embedder.createEmbeddings(testTexts)
-
-				// Verify warning was logged
-				expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("exceeds maximum token limit"))
-
-				// The oversized text is cut to the limit, not dropped, so vectors stay aligned
-				expect(mockSend).toHaveBeenCalledTimes(3)
-				const sentText = JSON.parse((mockSend.mock.calls[1][0] as any).input.body).inputText
-				expect(sentText).toBe("a".repeat(MAX_ITEM_TOKENS * 4))
-				expect(result.embeddings).toHaveLength(3)
-			})
-		})
-
-		/**
-		 * Test retry logic for rate limiting and other errors
-		 */
-		describe("retry logic", () => {
-			beforeEach(() => {
-				vitest.useFakeTimers()
-			})
-
-			afterEach(() => {
-				vitest.useRealTimers()
-			})
-
-			it("should retry on throttling errors with exponential backoff", async () => {
-				const testTexts = ["Hello world"]
-				const throttlingError = new Error("Rate limit exceeded")
-				throttlingError.name = "ThrottlingException"
-
-				mockSend
-					.mockRejectedValueOnce(throttlingError)
-					.mockRejectedValueOnce(throttlingError)
-					.mockResolvedValueOnce({
-						body: new TextEncoder().encode(
-							JSON.stringify({
-								embedding: [0.1, 0.2, 0.3],
-								inputTextTokenCount: 2,
-							}),
-						),
-					})
-
-				const resultPromise = embedder.createEmbeddings(testTexts)
-
-				// Fast-forward through the delays: the endpoint's shared backoff (5 s, then 10 s)
-				// is longer than the exponential floor (INITIAL_RETRY_DELAY_MS, then twice that)
-				await vitest.advanceTimersByTimeAsync(5_000) // First retry delay
-				await vitest.advanceTimersByTimeAsync(10_000) // Second retry delay
-
-				const result = await resultPromise
-
-				expect(mockSend).toHaveBeenCalledTimes(3)
-				expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("Rate limit hit, retrying in"))
-				expect(result).toEqual({
-					embeddings: [[0.1, 0.2, 0.3]],
-					usage: { promptTokens: 2, totalTokens: 2 },
-				})
-			})
-
-			it("should not retry on non-throttling errors", async () => {
-				const testTexts = ["Hello world"]
-				const authError = new Error("Unauthorized")
-				authError.name = "UnrecognizedClientException"
-
-				mockSend.mockRejectedValue(authError)
-
-				await expect(embedder.createEmbeddings(testTexts)).rejects.toThrow(
-					"Failed to create embeddings after 3 attempts: Unauthorized",
-				)
-
-				expect(mockSend).toHaveBeenCalledTimes(1)
-				expect(logger.warn).not.toHaveBeenCalledWith(expect.stringContaining("Rate limit hit"))
-			})
-		})
-
-		/**
-		 * Test error handling scenarios
-		 */
-		describe("error handling", () => {
-			it("should handle API errors gracefully", async () => {
-				const testTexts = ["Hello world"]
-				const apiError = new Error("API connection failed")
-
-				mockSend.mockRejectedValue(apiError)
-
-				await expect(embedder.createEmbeddings(testTexts)).rejects.toThrow(
-					"Failed to create embeddings after 3 attempts: API connection failed",
-				)
-
-				expect(logger.error).toHaveBeenCalledWith(
-					expect.stringContaining("BedrockEmbedder error"),
-					expect.any(Error),
-				)
-			})
-
-			it("should handle empty text arrays", async () => {
-				const testTexts: string[] = []
-
-				const result = await embedder.createEmbeddings(testTexts)
-
-				expect(result).toEqual({
-					embeddings: [],
-					usage: { promptTokens: 0, totalTokens: 0 },
-				})
-				expect(mockSend).not.toHaveBeenCalled()
-			})
-
-			it("should handle malformed API responses", async () => {
-				const testTexts = ["Hello world"]
-				const malformedResponse = {
-					body: new TextEncoder().encode("not json"),
-				}
-
-				mockSend.mockResolvedValue(malformedResponse)
-
-				await expect(embedder.createEmbeddings(testTexts)).rejects.toThrow()
-			})
-
-			it("should handle AWS-specific errors", async () => {
-				const testTexts = ["Hello world"]
-
-				// Test UnrecognizedClientException
-				const authError = new Error("Invalid credentials")
-				authError.name = "UnrecognizedClientException"
-				mockSend.mockRejectedValueOnce(authError)
-
-				await expect(embedder.createEmbeddings(testTexts)).rejects.toThrow(
-					"Failed to create embeddings after 3 attempts: Invalid credentials",
-				)
-
-				// Test AccessDeniedException
-				const accessError = new Error("Access denied")
-				accessError.name = "AccessDeniedException"
-				mockSend.mockRejectedValueOnce(accessError)
-
-				await expect(embedder.createEmbeddings(testTexts)).rejects.toThrow(
-					"Failed to create embeddings after 3 attempts: Access denied",
-				)
-
-				// Test ResourceNotFoundException
-				const notFoundError = new Error("Model not found")
-				notFoundError.name = "ResourceNotFoundException"
-				mockSend.mockRejectedValueOnce(notFoundError)
-
-				await expect(embedder.createEmbeddings(testTexts)).rejects.toThrow(
-					"Failed to create embeddings after 3 attempts: Model not found",
-				)
-			})
+		await expect(new BedrockEmbedder("us-east-1").validateConfiguration()).resolves.toEqual({
+			valid: false,
+			error: "ValidationException: refused",
 		})
 	})
 
-	describe("validateConfiguration", () => {
-		it("should validate successfully with valid configuration", async () => {
-			const mockResponse = {
-				body: new TextEncoder().encode(
-					JSON.stringify({
-						embedding: [0.1, 0.2, 0.3],
-						inputTextTokenCount: 1,
-					}),
-				),
-			}
-			mockSend.mockResolvedValue(mockResponse)
+	it("validation of an answer without a vector names Bedrock's message", async () => {
+		send.mockResolvedValue(reply({}))
 
-			const result = await embedder.validateConfiguration()
-
-			expect(result.valid).toBe(true)
-			expect(result.error).toBeUndefined()
-			expect(mockSend).toHaveBeenCalled()
-		})
-
-		it("should report the dimension of the probe embedding (DEF-C17 drift 2)", async () => {
-			mockSend.mockResolvedValue({
-				body: new TextEncoder().encode(
-					JSON.stringify({ embedding: new Array(1024).fill(0.1), inputTextTokenCount: 1 }),
-				),
-			})
-
-			const result = await embedder.validateConfiguration()
-
-			expect(result).toEqual({ valid: true, dimension: 1024 })
-		})
-
-		it("should fail validation with authentication error", async () => {
-			const authError = new Error("Invalid credentials")
-			authError.name = "UnrecognizedClientException"
-			mockSend.mockRejectedValue(authError)
-
-			const result = await embedder.validateConfiguration()
-
-			expect(result.valid).toBe(false)
-			expect(result.error).toBe("Invalid AWS credentials")
-		})
-
-		it("should fail validation with access denied error", async () => {
-			const accessError = new Error("Access denied")
-			accessError.name = "AccessDeniedException"
-			mockSend.mockRejectedValue(accessError)
-
-			const result = await embedder.validateConfiguration()
-
-			expect(result.valid).toBe(false)
-			expect(result.error).toBe("Access denied to Bedrock service")
-		})
-
-		it("should fail validation with model not found error", async () => {
-			const notFoundError = new Error("Model not found")
-			notFoundError.name = "ResourceNotFoundException"
-			mockSend.mockRejectedValue(notFoundError)
-
-			const result = await embedder.validateConfiguration()
-
-			expect(result.valid).toBe(false)
-			expect(result.error).toContain("not found")
-		})
-
-		it("should fail validation with invalid response", async () => {
-			const mockResponse = {
-				body: new TextEncoder().encode(
-					JSON.stringify({
-						// Missing embedding field
-						inputTextTokenCount: 1,
-					}),
-				),
-			}
-			mockSend.mockResolvedValue(mockResponse)
-
-			const result = await embedder.validateConfiguration()
-
-			expect(result.valid).toBe(false)
-			expect(result.error).toBe("Invalid response format from Bedrock")
-		})
-
-		it("should fail validation with connection error", async () => {
-			const connectionError = new Error("ECONNREFUSED")
-			mockSend.mockRejectedValue(connectionError)
-
-			const result = await embedder.validateConfiguration()
-
-			expect(result.valid).toBe(false)
-			expect(result.error).toBe("Connection failed")
-		})
-
-		it("should fail validation with generic error", async () => {
-			const genericError = new Error("Unknown error")
-			mockSend.mockRejectedValue(genericError)
-
-			const result = await embedder.validateConfiguration()
-
-			expect(result.valid).toBe(false)
-			expect(result.error).toBe("Configuration error")
+		await expect(new BedrockEmbedder("us-east-1").validateConfiguration()).resolves.toEqual({
+			valid: false,
+			error: "embeddings:bedrock.invalidResponseFormat",
 		})
 	})
 })
