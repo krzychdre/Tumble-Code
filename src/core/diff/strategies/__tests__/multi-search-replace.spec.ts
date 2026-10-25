@@ -1,6 +1,22 @@
 import { MultiSearchReplaceDiffStrategy } from "../multi-search-replace"
 
+/** Applies `diff` and expects it to succeed with `expected` as the new content. */
+async function expectApplied(
+	strategy: MultiSearchReplaceDiffStrategy,
+	original: string,
+	diff: string,
+	expected: string,
+) {
+	const result = await strategy.applyDiff(original, diff)
+	expect(result).toMatchObject({ success: true, content: expected })
+}
+
 describe("MultiSearchReplaceDiffStrategy", () => {
+	// A diff block in parts: SEARCH lines, then REPLACE lines.
+	const block = (search: string, replace: string, open = "<<<<<<< SEARCH") =>
+		`${open}\n${search}\n=======\n${replace}\n>>>>>>> REPLACE`
+	const BAD_REPLACE_MARKER = "Line markers (:start_line: and :end_line:) are only allowed in SEARCH sections"
+
 	describe("validateMarkerSequencing", () => {
 		let strategy: MultiSearchReplaceDiffStrategy
 
@@ -8,127 +24,94 @@ describe("MultiSearchReplaceDiffStrategy", () => {
 			strategy = new MultiSearchReplaceDiffStrategy()
 		})
 
-		it("validates correct marker sequence", () => {
-			const diff = "<<<<<<< SEARCH\n" + "some content\n" + "=======\n" + "new content\n" + ">>>>>>> REPLACE"
+		it.each([
+			["a plain block", block("some content", "new content")],
+			["one stray > after SEARCH", block("some content", "new content", "<<<<<<< SEARCH>")],
+			["one stray > and trailing spaces", block("some content", "new content", "<<<<<<< SEARCH>  ")],
+			["blocks with and without the stray >", `${block("c1", "n1", "<<<<<<< SEARCH>")}\n\n${block("c2", "n2")}`],
+			["line numbers in SEARCH", block(":start_line:10\n-------\ncontent1", "new1", "<<<<<<< SEARCH>")],
+			[
+				"two blocks with line numbers",
+				`${block(":start_line:10\n-------\nc1", "n1")}\n\n${block(":start_line:10\n-------\nc2", "n2")}`,
+			],
+			[
+				"both markers in SEARCH",
+				block(":start_line:5\n:end_line:10\n-------\ncontent to find", "replacement content"),
+			],
+			[
+				"escaped markers in REPLACE",
+				block("content to find", "replacement\n\\:start_line:5\n\\:end_line:10\nmore"),
+			],
+		])("accepts %s", (_, diff) => {
 			expect(strategy["validateMarkerSequencing"](diff).success).toBe(true)
 		})
 
-		it("validates correct marker sequence with extra > in SEARCH", () => {
-			const diff = "<<<<<<< SEARCH>\n" + "some content\n" + "=======\n" + "new content\n" + ">>>>>>> REPLACE"
-			expect(strategy["validateMarkerSequencing"](diff).success).toBe(true)
-		})
-
-		it("validates correct marker sequence with multiple > in SEARCH", () => {
-			const diff = "<<<<<<< SEARCH>>\n" + "some content\n" + "=======\n" + "new content\n" + ">>>>>>> REPLACE"
-			expect(strategy["validateMarkerSequencing"](diff).success).toBe(false)
-		})
-
-		it("validates mixed cases with and without extra > in the same diff", () => {
-			const diff =
-				"<<<<<<< SEARCH>\n" +
-				"content1\n" +
-				"=======\n" +
-				"new1\n" +
-				">>>>>>> REPLACE\n\n" +
-				"<<<<<<< SEARCH\n" +
-				"content2\n" +
-				"=======\n" +
-				"new2\n" +
-				">>>>>>> REPLACE"
-			expect(strategy["validateMarkerSequencing"](diff).success).toBe(true)
-		})
-
-		it("validates extra > with whitespace variations", () => {
-			const diff1 = "<<<<<<< SEARCH>  \n" + "some content\n" + "=======\n" + "new content\n" + ">>>>>>> REPLACE"
-			expect(strategy["validateMarkerSequencing"](diff1).success).toBe(true)
-
-			const diff2 = "<<<<<<< SEARCH  >\n" + "some content\n" + "=======\n" + "new content\n" + ">>>>>>> REPLACE"
-			expect(strategy["validateMarkerSequencing"](diff2).success).toBe(false)
-		})
-
-		it("validates extra > with line numbers", () => {
-			const diff =
-				"<<<<<<< SEARCH>\n" +
-				":start_line:10\n" +
-				"-------\n" +
-				"content1\n" +
-				"=======\n" +
-				"new1\n" +
-				">>>>>>> REPLACE"
-			expect(strategy["validateMarkerSequencing"](diff).success).toBe(true)
-		})
-
-		it("validates multiple correct marker sequences", () => {
-			const diff =
-				"<<<<<<< SEARCH\n" +
-				"content1\n" +
-				"=======\n" +
-				"new1\n" +
-				">>>>>>> REPLACE\n\n" +
-				"<<<<<<< SEARCH\n" +
-				"content2\n" +
-				"=======\n" +
-				"new2\n" +
-				">>>>>>> REPLACE"
-			expect(strategy["validateMarkerSequencing"](diff).success).toBe(true)
-		})
-
-		it("validates multiple correct marker sequences with line numbers", () => {
-			const diff =
-				"<<<<<<< SEARCH\n" +
-				":start_line:10\n" +
-				"-------\n" +
-				"content1\n" +
-				"=======\n" +
-				"new1\n" +
-				">>>>>>> REPLACE\n\n" +
-				"<<<<<<< SEARCH\n" +
-				":start_line:10\n" +
-				"-------\n" +
-				"content2\n" +
-				"=======\n" +
-				"new2\n" +
-				">>>>>>> REPLACE"
-			expect(strategy["validateMarkerSequencing"](diff).success).toBe(true)
-		})
-
-		it("detects separator before search", () => {
-			const diff = "=======\n" + "content\n" + ">>>>>>> REPLACE"
+		it.each([
+			["two > after SEARCH", block("c", "n", "<<<<<<< SEARCH>>"), []],
+			["a > after spaces", block("c", "n", "<<<<<<< SEARCH  >"), []],
+			[
+				"a separator before SEARCH",
+				"=======\ncontent\n>>>>>>> REPLACE",
+				["'=======' found in your diff content", "Diff block is malformed"],
+			],
+			[
+				"a missing separator",
+				"<<<<<<< SEARCH\ncontent\n>>>>>>> REPLACE",
+				["'>>>>>>> REPLACE' found in your diff content", "Diff block is malformed"],
+			],
+			[
+				"two separators",
+				"<<<<<<< SEARCH\ncontent\n=======\n=======\n>>>>>>> REPLACE",
+				["more than one '=======' separator (the extra one is at line 4)"],
+			],
+			[
+				"a bare closer (merge conflict)",
+				"<<<<<<< SEARCH\ncontent\n>>>>>>>",
+				["'>>>>>>>' found in your diff content", "When removing merge conflict markers"],
+			],
+			[
+				"a missing closer",
+				"<<<<<<< SEARCH\ncontent\n=======\nnew content",
+				["Expected '>>>>>>> REPLACE' was not found"],
+			],
+			[
+				":start_line: in REPLACE",
+				block("content to find", ":start_line:5\nreplacement content"),
+				[
+					"Invalid line marker ':start_line:' found in REPLACE section",
+					BAD_REPLACE_MARKER,
+					"CORRECT FORMAT:",
+					"INCORRECT FORMAT:",
+					":start_line:5    <-- Invalid location",
+				],
+			],
+			[
+				":end_line: in the middle of REPLACE",
+				block("content to find", "some\n:end_line:15\nmore"),
+				["Invalid line marker ':end_line:' found in REPLACE section", BAD_REPLACE_MARKER],
+			],
+			[
+				"a marker with spaces in REPLACE",
+				block("content to find", "  :start_line:5  \nreplacement"),
+				["Invalid line marker ':start_line:'"],
+			],
+			[
+				"a marker in REPLACE of the second block",
+				`${block(":start_line:1\ncontent1", "r1")}\n\n${block("content2", ":start_line:5\nr2")}`,
+				["Invalid line marker ':start_line:'"],
+			],
+		])("rejects %s", (_, diff, messages) => {
 			const result = strategy["validateMarkerSequencing"](diff)
+
 			expect(result.success).toBe(false)
-			expect(result.error).toContain("'=======' found in your diff content")
-			expect(result.error).toContain("Diff block is malformed")
+			for (const message of messages) expect(result.error).toContain(message)
 		})
 
-		it("detects missing separator", () => {
-			const diff = "<<<<<<< SEARCH\n" + "content\n" + ">>>>>>> REPLACE"
-			const result = strategy["validateMarkerSequencing"](diff)
-			expect(result.success).toBe(false)
-			expect(result.error).toContain("'>>>>>>> REPLACE' found in your diff content")
-			expect(result.error).toContain("Diff block is malformed")
-		})
-
-		it("detects two separators", () => {
-			const diff = "<<<<<<< SEARCH\n" + "content\n" + "=======\n" + "=======\n" + ">>>>>>> REPLACE"
-			const result = strategy["validateMarkerSequencing"](diff)
-			expect(result.success).toBe(false)
-			expect(result.error).toContain("more than one '=======' separator (the extra one is at line 4)")
-			expect(result.error).not.toContain("When removing merge conflict markers")
-		})
-
-		it("detects replace before separator (merge conflict message)", () => {
-			const diff = "<<<<<<< SEARCH\n" + "content\n" + ">>>>>>>"
-			const result = strategy["validateMarkerSequencing"](diff)
-			expect(result.success).toBe(false)
-			expect(result.error).toContain("'>>>>>>>' found in your diff content")
-			expect(result.error).toContain("When removing merge conflict markers")
-		})
-
-		it("detects incomplete sequence", () => {
-			const diff = "<<<<<<< SEARCH\n" + "content\n" + "=======\n" + "new content"
-			const result = strategy["validateMarkerSequencing"](diff)
-			expect(result.success).toBe(false)
-			expect(result.error).toContain("Expected '>>>>>>> REPLACE' was not found")
+		it("does not give the merge conflict hint for two separators", () => {
+			const diff = "<<<<<<< SEARCH\ncontent\n=======\n=======\n>>>>>>> REPLACE"
+			expect(strategy["validateMarkerSequencing"](diff).error).not.toContain(
+				"When removing merge conflict markers",
+			)
 		})
 
 		describe("exact matching", () => {
@@ -151,11 +134,12 @@ function hello() {
 }
 >>>>>>> REPLACE`
 
-				const result = await strategy.applyDiff(originalContent, diffContent)
-				expect(result.success).toBe(true)
-				if (result.success) {
-					expect(result.content).toBe('function hello() {\n    console.log("hello world")\n}\n')
-				}
+				await expectApplied(
+					strategy,
+					originalContent,
+					diffContent,
+					'function hello() {\n    console.log("hello world")\n}\n',
+				)
 			})
 
 			it("should replace matching content in multiple blocks", async () => {
@@ -172,11 +156,12 @@ function helloWorld() {
     console.log("hello world")
 >>>>>>> REPLACE`
 
-				const result = await strategy.applyDiff(originalContent, diffContent)
-				expect(result.success).toBe(true)
-				if (result.success) {
-					expect(result.content).toBe('function helloWorld() {\n    console.log("hello world")\n}\n')
-				}
+				await expectApplied(
+					strategy,
+					originalContent,
+					diffContent,
+					'function helloWorld() {\n    console.log("hello world")\n}\n',
+				)
 			})
 
 			it("should replace matching content in multiple blocks with line numbers", async () => {
@@ -197,11 +182,12 @@ function helloWorld() {
     console.log("hello world")
 >>>>>>> REPLACE`
 
-				const result = await strategy.applyDiff(originalContent, diffContent)
-				expect(result.success).toBe(true)
-				if (result.success) {
-					expect(result.content).toBe('function helloWorld() {\n    console.log("hello world")\n}\n')
-				}
+				await expectApplied(
+					strategy,
+					originalContent,
+					diffContent,
+					'function helloWorld() {\n    console.log("hello world")\n}\n',
+				)
 			})
 
 			it("should replace matching content when end_line is passed in", async () => {
@@ -216,11 +202,12 @@ function hello() {
 function helloWorld() {
 >>>>>>> REPLACE`
 
-				const result = await strategy.applyDiff(originalContent, diffContent)
-				expect(result.success).toBe(true)
-				if (result.success) {
-					expect(result.content).toBe('function helloWorld() {\n    console.log("hello")\n}\n')
-				}
+				await expectApplied(
+					strategy,
+					originalContent,
+					diffContent,
+					'function helloWorld() {\n    console.log("hello")\n}\n',
+				)
 			})
 
 			it("should match content with different surrounding whitespace", async () => {
@@ -236,11 +223,12 @@ function example() {
 }
 >>>>>>> REPLACE`
 
-				const result = await strategy.applyDiff(originalContent, diffContent)
-				expect(result.success).toBe(true)
-				if (result.success) {
-					expect(result.content).toBe("\nfunction example() {\n    return 43;\n}\n\n")
-				}
+				await expectApplied(
+					strategy,
+					originalContent,
+					diffContent,
+					"\nfunction example() {\n    return 43;\n}\n\n",
+				)
 			})
 
 			it("should match content with different indentation in search block", async () => {
@@ -256,11 +244,12 @@ function test() {
 }
 >>>>>>> REPLACE`
 
-				const result = await strategy.applyDiff(originalContent, diffContent)
-				expect(result.success).toBe(true)
-				if (result.success) {
-					expect(result.content).toBe("    function test() {\n        return false;\n    }\n")
-				}
+				await expectApplied(
+					strategy,
+					originalContent,
+					diffContent,
+					"    function test() {\n        return false;\n    }\n",
+				)
 			})
 
 			it("should handle tab-based indentation", async () => {
@@ -276,11 +265,7 @@ function test() {
 }
 >>>>>>> REPLACE`
 
-				const result = await strategy.applyDiff(originalContent, diffContent)
-				expect(result.success).toBe(true)
-				if (result.success) {
-					expect(result.content).toBe("function test() {\n\treturn false;\n}\n")
-				}
+				await expectApplied(strategy, originalContent, diffContent, "function test() {\n\treturn false;\n}\n")
 			})
 
 			it("should preserve mixed tabs and spaces", async () => {
@@ -300,13 +285,12 @@ function test() {
 \t}
 >>>>>>> REPLACE`
 
-				const result = await strategy.applyDiff(originalContent, diffContent)
-				expect(result.success).toBe(true)
-				if (result.success) {
-					expect(result.content).toBe(
-						"\tclass Example {\n\t    constructor() {\n\t\tthis.value = 1;\n\t    }\n\t}",
-					)
-				}
+				await expectApplied(
+					strategy,
+					originalContent,
+					diffContent,
+					"\tclass Example {\n\t    constructor() {\n\t\tthis.value = 1;\n\t    }\n\t}",
+				)
 			})
 
 			it("should handle additional indentation with tabs", async () => {
@@ -323,11 +307,12 @@ function test() {
 }
 >>>>>>> REPLACE`
 
-				const result = await strategy.applyDiff(originalContent, diffContent)
-				expect(result.success).toBe(true)
-				if (result.success) {
-					expect(result.content).toBe("\tfunction test() {\n\t\t// Add comment\n\t\treturn false;\n\t}")
-				}
+				await expectApplied(
+					strategy,
+					originalContent,
+					diffContent,
+					"\tfunction test() {\n\t\t// Add comment\n\t\treturn false;\n\t}",
+				)
 			})
 
 			it("should preserve exact indentation characters when adding lines", async () => {
@@ -345,13 +330,12 @@ function test() {
 \t}
 >>>>>>> REPLACE`
 
-				const result = await strategy.applyDiff(originalContent, diffContent)
-				expect(result.success).toBe(true)
-				if (result.success) {
-					expect(result.content).toBe(
-						"\tfunction test() {\n\t\t// First comment\n\t\t// Second comment\n\t\treturn true;\n\t}",
-					)
-				}
+				await expectApplied(
+					strategy,
+					originalContent,
+					diffContent,
+					"\tfunction test() {\n\t\t// First comment\n\t\t// Second comment\n\t\treturn true;\n\t}",
+				)
 			})
 
 			it("should handle Windows-style CRLF line endings", async () => {
@@ -367,11 +351,12 @@ function test() {
 }
 >>>>>>> REPLACE`
 
-				const result = await strategy.applyDiff(originalContent, diffContent)
-				expect(result.success).toBe(true)
-				if (result.success) {
-					expect(result.content).toBe("function test() {\r\n    return false;\r\n}\r\n")
-				}
+				await expectApplied(
+					strategy,
+					originalContent,
+					diffContent,
+					"function test() {\r\n    return false;\r\n}\r\n",
+				)
 			})
 
 			it("should return false if search content does not match", async () => {
@@ -415,13 +400,12 @@ function hello() {
     }
 >>>>>>> REPLACE`
 
-				const result = await strategy.applyDiff(originalContent, diffContent)
-				expect(result.success).toBe(true)
-				if (result.success) {
-					expect(result.content).toBe(
-						'class Example {\n    constructor() {\n        this.value = 0\n    }\n\n    getValue() {\n        // Add logging\n        console.log("Getting value")\n        return this.value\n    }\n}\n',
-					)
-				}
+				await expectApplied(
+					strategy,
+					originalContent,
+					diffContent,
+					'class Example {\n    constructor() {\n        this.value = 0\n    }\n\n    getValue() {\n        // Add logging\n        console.log("Getting value")\n        return this.value\n    }\n}\n',
+				)
 			})
 
 			it("should preserve whitespace exactly in the output", async () => {
@@ -437,11 +421,12 @@ function hello() {
     end
 >>>>>>> REPLACE`
 
-				const result = await strategy.applyDiff(originalContent, diffContent)
-				expect(result.success).toBe(true)
-				if (result.success) {
-					expect(result.content).toBe("    modified\n        still indented\n    end\n")
-				}
+				await expectApplied(
+					strategy,
+					originalContent,
+					diffContent,
+					"    modified\n        still indented\n    end\n",
+				)
 			})
 
 			it("should preserve indentation when adding new lines after existing content", async () => {
@@ -457,13 +442,12 @@ function hello() {
 				}}
 >>>>>>> REPLACE`
 
-				const result = await strategy.applyDiff(originalContent, diffContent)
-				expect(result.success).toBe(true)
-				if (result.success) {
-					expect(result.content).toBe(
-						"				onScroll={() => updateHighlights()}\n				onDragOver={(e) => {\n					e.preventDefault()\n					e.stopPropagation()\n				}}",
-					)
-				}
+				await expectApplied(
+					strategy,
+					originalContent,
+					diffContent,
+					"				onScroll={() => updateHighlights()}\n				onDragOver={(e) => {\n					e.preventDefault()\n					e.stopPropagation()\n				}}",
+				)
 			})
 
 			it("should handle varying indentation levels correctly", async () => {
@@ -500,11 +484,11 @@ class Example {
     }
 >>>>>>> REPLACE`.trim()
 
-				const result = await strategy.applyDiff(originalContent, diffContent)
-				expect(result.success).toBe(true)
-				if (result.success) {
-					expect(result.content).toBe(
-						`
+				await expectApplied(
+					strategy,
+					originalContent,
+					diffContent,
+					`
 class Example {
     constructor() {
         this.value = 1;
@@ -515,8 +499,7 @@ class Example {
         }
     }
 }`.trim(),
-					)
-				}
+				)
 			})
 
 			it("should handle mixed indentation styles in the same file", async () => {
@@ -546,10 +529,11 @@ class Example {
     }
 >>>>>>> REPLACE`
 
-				const result = await strategy.applyDiff(originalContent, diffContent)
-				expect(result.success).toBe(true)
-				if (result.success) {
-					expect(result.content).toBe(`class Example {
+				await expectApplied(
+					strategy,
+					originalContent,
+					diffContent,
+					`class Example {
     constructor() {
         this.value = 1;
         if (true) {
@@ -557,8 +541,8 @@ class Example {
         this.validate();
         }
     }
-}`)
-				}
+}`,
+				)
 			})
 
 			it("should handle Python-style significant whitespace", async () => {
@@ -582,17 +566,18 @@ class Example {
             process(item)
 >>>>>>> REPLACE`
 
-				const result = await strategy.applyDiff(originalContent, diffContent)
-				expect(result.success).toBe(true)
-				if (result.success) {
-					expect(result.content).toBe(`def example():
+				await expectApplied(
+					strategy,
+					originalContent,
+					diffContent,
+					`def example():
     if condition:
         do_something()
         while items:
             item = items.pop()
             process(item)
-    return True`)
-				}
+    return True`,
+				)
 			})
 
 			it("should preserve empty lines with indentation", async () => {
@@ -615,18 +600,19 @@ class Example {
     if (x) {
 >>>>>>> REPLACE`
 
-				const result = await strategy.applyDiff(originalContent, diffContent)
-				expect(result.success).toBe(true)
-				if (result.success) {
-					expect(result.content).toBe(`function test() {
+				await expectApplied(
+					strategy,
+					originalContent,
+					diffContent,
+					`function test() {
     const x = 1;
     
     // Check x
     if (x) {
         return true;
     }
-}`)
-				}
+}`,
+				)
 			})
 
 			it("should handle indentation when replacing entire blocks", async () => {
@@ -656,10 +642,11 @@ class Example {
     }
 >>>>>>> REPLACE`
 
-				const result = await strategy.applyDiff(originalContent, diffContent)
-				expect(result.success).toBe(true)
-				if (result.success) {
-					expect(result.content).toBe(`class Test {
+				await expectApplied(
+					strategy,
+					originalContent,
+					diffContent,
+					`class Test {
     method() {
         try {
             if (true) {
@@ -669,8 +656,8 @@ class Example {
             console.error(e);
         }
     }
-}`)
-				}
+}`,
+				)
 			})
 
 			it("should handle negative indentation relative to search content", async () => {
@@ -691,18 +678,19 @@ class Example {
         this.setup();
 >>>>>>> REPLACE`
 
-				const result = await strategy.applyDiff(originalContent, diffContent)
-				expect(result.success).toBe(true)
-				if (result.success) {
-					expect(result.content).toBe(`class Example {
+				await expectApplied(
+					strategy,
+					originalContent,
+					diffContent,
+					`class Example {
     constructor() {
         if (true) {
         this.init();
         this.setup();
         }
     }
-}`)
-				}
+}`,
+				)
 			})
 
 			it("should handle extreme negative indentation (no indent)", async () => {
@@ -720,17 +708,18 @@ class Example {
 this.init();
 >>>>>>> REPLACE`
 
-				const result = await strategy.applyDiff(originalContent, diffContent)
-				expect(result.success).toBe(true)
-				if (result.success) {
-					expect(result.content).toBe(`class Example {
+				await expectApplied(
+					strategy,
+					originalContent,
+					diffContent,
+					`class Example {
     constructor() {
         if (true) {
 this.init();
         }
     }
-}`)
-				}
+}`,
+				)
 			})
 
 			it("should handle mixed indentation changes in replace block", async () => {
@@ -754,10 +743,11 @@ this.init();
     this.validate();
 >>>>>>> REPLACE`
 
-				const result = await strategy.applyDiff(originalContent, diffContent)
-				expect(result.success).toBe(true)
-				if (result.success) {
-					expect(result.content).toBe(`class Example {
+				await expectApplied(
+					strategy,
+					originalContent,
+					diffContent,
+					`class Example {
     constructor() {
         if (true) {
         this.init();
@@ -765,8 +755,8 @@ this.init();
     this.validate();
         }
     }
-}`)
-				}
+}`,
+				)
 			})
 
 			it("should find matches from middle out", async () => {
@@ -852,13 +842,12 @@ function getData() {
 
 			strategy = new MultiSearchReplaceDiffStrategy(0.9, 5) // Use 5 line buffer for tests
 
-			const result = await strategy.applyDiff(originalContent, diffContent)
-			expect(result.success).toBe(true)
-			if (result.success) {
-				expect(result.content).toBe(
-					"function getData() {\n    const data = fetchData();\n    return data.filter(Boolean);\n}\n",
-				)
-			}
+			await expectApplied(
+				strategy,
+				originalContent,
+				diffContent,
+				"function getData() {\n    const data = fetchData();\n    return data.filter(Boolean);\n}\n",
+			)
 		})
 
 		it("should not match when content is too different (<90% similar)", async () => {
@@ -891,11 +880,12 @@ function sum(a, b) {
 }
 >>>>>>> REPLACE`
 
-			const result = await strategy.applyDiff(originalContent, diffContent)
-			expect(result.success).toBe(true)
-			if (result.success) {
-				expect(result.content).toBe("function sum(a, b) {\n    return a + b + 1;\n}")
-			}
+			await expectApplied(
+				strategy,
+				originalContent,
+				diffContent,
+				"function sum(a, b) {\n    return a + b + 1;\n}",
+			)
 		})
 
 		it("should match content with smart quotes", async () => {
@@ -910,13 +900,12 @@ function sum(a, b) {
 You're still here?
 >>>>>>> REPLACE`
 
-			const result = await strategy.applyDiff(originalContent, diffContent)
-			expect(result.success).toBe(true)
-			if (result.success) {
-				expect(result.content).toBe(
-					"**Enjoy Roo Code!** Whether you keep it on a short leash or let it roam autonomously, we can't wait to see what you build. If you have questions or feature ideas, drop by our [Reddit community](https://www.reddit.com/r/TumbleCode/) or [Discord](https://discord.gg/tumblecode). Happy coding!\n\nYou're still here?",
-				)
-			}
+			await expectApplied(
+				strategy,
+				originalContent,
+				diffContent,
+				"**Enjoy Roo Code!** Whether you keep it on a short leash or let it roam autonomously, we can't wait to see what you build. If you have questions or feature ideas, drop by our [Reddit community](https://www.reddit.com/r/TumbleCode/) or [Discord](https://discord.gg/tumblecode). Happy coding!\n\nYou're still here?",
+			)
 		})
 
 		it("should not exact match empty lines", async () => {
@@ -929,11 +918,12 @@ import { a } from "a";
 function sum(a, b) {
 >>>>>>> REPLACE`
 
-			const result = await strategy.applyDiff(originalContent, diffContent)
-			expect(result.success).toBe(true)
-			if (result.success) {
-				expect(result.content).toBe('import { a } from "a";\nfunction sum(a, b) {\n\n    return a + b;\n}')
-			}
+			await expectApplied(
+				strategy,
+				originalContent,
+				diffContent,
+				'import { a } from "a";\nfunction sum(a, b) {\n\n    return a + b;\n}',
+			)
 		})
 	})
 
@@ -956,14 +946,15 @@ function sum(a, b) {
 =======
 >>>>>>> REPLACE`
 
-			const result = await strategy.applyDiff(originalContent, diffContent)
-			expect(result.success).toBe(true)
-			if (result.success) {
-				expect(result.content).toBe(`function test() {
+			await expectApplied(
+				strategy,
+				originalContent,
+				diffContent,
+				`function test() {
     console.log("hello");
     console.log("world");
-}`)
-			}
+}`,
+			)
 		})
 
 		it("should delete multiple lines when replace block is empty", async () => {
@@ -986,14 +977,15 @@ function sum(a, b) {
 =======
 >>>>>>> REPLACE`
 
-			const result = await strategy.applyDiff(originalContent, diffContent)
-			expect(result.success).toBe(true)
-			if (result.success) {
-				expect(result.content).toBe(`class Example {
+			await expectApplied(
+				strategy,
+				originalContent,
+				diffContent,
+				`class Example {
     constructor() {
     }
-}`)
-			}
+}`,
+			)
 		})
 
 		it("should preserve indentation when deleting nested code", async () => {
@@ -1013,15 +1005,16 @@ function sum(a, b) {
 =======
 >>>>>>> REPLACE`
 
-			const result = await strategy.applyDiff(originalContent, diffContent)
-			expect(result.success).toBe(true)
-			if (result.success) {
-				expect(result.content).toBe(`function outer() {
+			await expectApplied(
+				strategy,
+				originalContent,
+				diffContent,
+				`function outer() {
     if (true) {
     }
     return true;
-}`)
-			}
+}`,
+			)
 		})
 
 		it("should delete a line when search block has line number prefix and replace is empty", async () => {
@@ -1033,175 +1026,7 @@ function sum(a, b) {
 2 | line to delete
 =======
 >>>>>>> REPLACE`
-			const result = await strategy.applyDiff(originalContent, diffContent)
-			expect(result.success).toBe(true)
-			if (result.success) {
-				expect(result.content).toBe("line 1\nline 3")
-			}
-		})
-	})
-
-	describe("line marker validation in REPLACE sections", () => {
-		let strategy: MultiSearchReplaceDiffStrategy
-
-		beforeEach(() => {
-			strategy = new MultiSearchReplaceDiffStrategy()
-		})
-
-		it("should reject start_line marker in REPLACE section", () => {
-			const diff =
-				"<<<<<<< SEARCH\n" +
-				"content to find\n" +
-				"=======\n" +
-				":start_line:5\n" +
-				"replacement content\n" +
-				">>>>>>> REPLACE"
-			const result = strategy["validateMarkerSequencing"](diff)
-			expect(result.success).toBe(false)
-			expect(result.error).toContain("Invalid line marker ':start_line:' found in REPLACE section")
-			expect(result.error).toContain(
-				"Line markers (:start_line: and :end_line:) are only allowed in SEARCH sections",
-			)
-		})
-
-		it("should reject end_line marker in REPLACE section", () => {
-			const diff =
-				"<<<<<<< SEARCH\n" +
-				"content to find\n" +
-				"=======\n" +
-				":end_line:10\n" +
-				"replacement content\n" +
-				">>>>>>> REPLACE"
-			const result = strategy["validateMarkerSequencing"](diff)
-			expect(result.success).toBe(false)
-			expect(result.error).toContain("Invalid line marker ':end_line:' found in REPLACE section")
-			expect(result.error).toContain(
-				"Line markers (:start_line: and :end_line:) are only allowed in SEARCH sections",
-			)
-		})
-
-		it("should reject both line markers in REPLACE section", () => {
-			const diff =
-				"<<<<<<< SEARCH\n" +
-				"content to find\n" +
-				"=======\n" +
-				":start_line:5\n" +
-				":end_line:10\n" +
-				"replacement content\n" +
-				">>>>>>> REPLACE"
-			const result = strategy["validateMarkerSequencing"](diff)
-			expect(result.success).toBe(false)
-			expect(result.error).toContain("Invalid line marker ':start_line:' found in REPLACE section")
-		})
-
-		it("should reject line markers in multiple diff blocks where one has invalid markers", () => {
-			const diff =
-				"<<<<<<< SEARCH\n" +
-				":start_line:1\n" +
-				"content1\n" +
-				"=======\n" +
-				"replacement1\n" +
-				">>>>>>> REPLACE\n\n" +
-				"<<<<<<< SEARCH\n" +
-				"content2\n" +
-				"=======\n" +
-				":start_line:5\n" +
-				"replacement2\n" +
-				">>>>>>> REPLACE"
-			const result = strategy["validateMarkerSequencing"](diff)
-			expect(result.success).toBe(false)
-			expect(result.error).toContain("Invalid line marker ':start_line:' found in REPLACE section")
-		})
-
-		it("should allow valid markers in SEARCH section with content in REPLACE", () => {
-			const diff =
-				"<<<<<<< SEARCH\n" +
-				":start_line:5\n" +
-				":end_line:10\n" +
-				"-------\n" +
-				"content to find\n" +
-				"=======\n" +
-				"replacement content\n" +
-				">>>>>>> REPLACE"
-			const result = strategy["validateMarkerSequencing"](diff)
-			expect(result.success).toBe(true)
-		})
-
-		it("should allow escaped line markers in REPLACE content", () => {
-			const diff =
-				"<<<<<<< SEARCH\n" +
-				"content to find\n" +
-				"=======\n" +
-				"replacement content\n" +
-				"\\:start_line:5\n" +
-				"more content\n" +
-				">>>>>>> REPLACE"
-			const result = strategy["validateMarkerSequencing"](diff)
-			expect(result.success).toBe(true)
-		})
-
-		it("should allow escaped end_line markers in REPLACE content", () => {
-			const diff =
-				"<<<<<<< SEARCH\n" +
-				"content to find\n" +
-				"=======\n" +
-				"replacement content\n" +
-				"\\:end_line:10\n" +
-				"more content\n" +
-				">>>>>>> REPLACE"
-			const result = strategy["validateMarkerSequencing"](diff)
-			expect(result.success).toBe(true)
-		})
-
-		it("should allow both escaped line markers in REPLACE content", () => {
-			const diff =
-				"<<<<<<< SEARCH\n" +
-				"content to find\n" +
-				"=======\n" +
-				"replacement content\n" +
-				"\\:start_line:5\n" +
-				"\\:end_line:10\n" +
-				"more content\n" +
-				">>>>>>> REPLACE"
-			const result = strategy["validateMarkerSequencing"](diff)
-			expect(result.success).toBe(true)
-		})
-
-		it("should reject line markers with whitespace in REPLACE section", () => {
-			const diff =
-				"<<<<<<< SEARCH\n" +
-				"content to find\n" +
-				"=======\n" +
-				"  :start_line:5  \n" +
-				"replacement content\n" +
-				">>>>>>> REPLACE"
-			const result = strategy["validateMarkerSequencing"](diff)
-			expect(result.success).toBe(false)
-			expect(result.error).toContain("Invalid line marker ':start_line:' found in REPLACE section")
-		})
-
-		it("should reject line markers in middle of REPLACE content", () => {
-			const diff =
-				"<<<<<<< SEARCH\n" +
-				"content to find\n" +
-				"=======\n" +
-				"some replacement\n" +
-				":end_line:15\n" +
-				"more replacement\n" +
-				">>>>>>> REPLACE"
-			const result = strategy["validateMarkerSequencing"](diff)
-			expect(result.success).toBe(false)
-			expect(result.error).toContain("Invalid line marker ':end_line:' found in REPLACE section")
-		})
-
-		it("should provide helpful error message format", () => {
-			const diff =
-				"<<<<<<< SEARCH\n" + "content\n" + "=======\n" + ":start_line:5\n" + "replacement\n" + ">>>>>>> REPLACE"
-			const result = strategy["validateMarkerSequencing"](diff)
-			expect(result.success).toBe(false)
-			expect(result.error).toContain("CORRECT FORMAT:")
-			expect(result.error).toContain("INCORRECT FORMAT:")
-			expect(result.error).toContain(":start_line:5    <-- Invalid location")
+			await expectApplied(strategy, originalContent, diffContent, "line 1\nline 3")
 		})
 	})
 
