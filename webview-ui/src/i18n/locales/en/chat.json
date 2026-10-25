@@ -19,8 +19,6 @@
 		"shareWithOrganizationDescription": "Only members of your organization can access",
 		"sharePublicly": "Share Publicly",
 		"sharePubliclyDescription": "Anyone with the link can access",
-		"connectToCloud": "Connect to Cloud",
-		"connectToCloudDescription": "Sign in to Tumble Code Cloud to share tasks",
 		"sharingDisabledByOrganization": "Sharing disabled by organization",
 		"shareSuccessOrganization": "Organization link copied to clipboard",
 		"shareSuccessPublic": "Public link copied to clipboard",
