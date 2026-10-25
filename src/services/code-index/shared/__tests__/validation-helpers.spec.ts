@@ -1,4 +1,10 @@
-import { sanitizeErrorMessage, isTransientConnectionError, handleValidationError } from "../validation-helpers"
+import {
+	sanitizeErrorMessage,
+	isTransientConnectionError,
+	handleValidationError,
+	formatEmbeddingError,
+	measureEmbeddingDimension,
+} from "../validation-helpers"
 
 describe("sanitizeErrorMessage", () => {
 	it("should sanitize Unix-style file paths", () => {
@@ -162,5 +168,65 @@ describe("handleValidationError with a thrown non-Error value", () => {
 	])("reports %s", (_label, thrown, expected) => {
 		expect(handleValidationError(thrown, "openai-compatible").error).toContain(expected)
 		expect(handleValidationError(thrown, "openai-compatible").error).not.toContain("Non-error value")
+	})
+})
+
+const withStatus = (message: string, status: number) => Object.assign(new Error(message), { status })
+
+describe("handleValidationError", () => {
+	it.each([
+		["a 401", withStatus("401 Unauthorized", 401), "openai-compatible", "validation.authenticationFailed"],
+		["a 403", withStatus("403 Forbidden", 403), "openai-compatible", "validation.authenticationFailed"],
+		["an OpenAI 404", withStatus("404 not found", 404), "openai", "validation.modelNotAvailable"],
+		["a 429", withStatus("429 slow down", 429), "openai-compatible", "validation.serviceUnavailable"],
+		["a 500", withStatus("500 broken", 500), "openai-compatible", "validation.configurationError"],
+		[
+			"a status on response",
+			Object.assign(new Error("denied"), { response: { status: 401 } }),
+			"x",
+			"validation.authenticationFailed",
+		],
+		["a status only in the message", new Error("HTTP 502: bad gateway"), "x", "validation.configurationError"],
+		["a refused connection", new Error("connect ECONNREFUSED 127.0.0.1:1"), "x", "validation.connectionFailed"],
+		["no response at all", new Error("HTTP 0: No response"), "x", "validation.connectionFailed"],
+		["an unreadable answer", new Error("Failed to parse response JSON"), "x", "validation.invalidResponse"],
+		["any other error, as its own message", new Error("model is loading"), "x", "model is loading"],
+	])("reports %s", (_, error, embedderType, expected) => {
+		expect(handleValidationError(error, embedderType)).toEqual({
+			valid: false,
+			error: expect.stringContaining(expected),
+		})
+	})
+
+	it("lets a custom handler answer first", () => {
+		const result = handleValidationError(withStatus("401", 401), "x", {
+			beforeStandardHandling: () => ({ valid: false, error: "custom" }),
+		})
+		expect(result).toEqual({ valid: false, error: "custom" })
+	})
+})
+
+describe("formatEmbeddingError", () => {
+	it.each([
+		["a 401", withStatus("401 Unauthorized", 401), "embeddings:authenticationFailed"],
+		["a status", withStatus("500 broken", 500), "embeddings:failedWithStatus"],
+		["no status", new Error("socket hang up"), "embeddings:failedWithError"],
+		["a thrown string", "plain failure", "embeddings:failedWithError"],
+	])("formats %s", (_, error, key) => {
+		expect(formatEmbeddingError(error, 3).message).toContain(key.split(":")[1])
+	})
+})
+
+describe("measureEmbeddingDimension", () => {
+	const base64 = (values: number[]) => Buffer.from(new Float32Array(values).buffer).toString("base64")
+
+	it.each([
+		["a base64 vector", base64([1, 2, 3]), 3],
+		["a base64 string shorter than one float", Buffer.from([1, 2]).toString("base64"), undefined],
+		["a plain vector", [0.1, 0.2], 2],
+		["an empty vector", [], undefined],
+		["nothing", undefined, undefined],
+	])("measures %s", (_, embedding, expected) => {
+		expect(measureEmbeddingDimension(embedding)).toBe(expected)
 	})
 })
