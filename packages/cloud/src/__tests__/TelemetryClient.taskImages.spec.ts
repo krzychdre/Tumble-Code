@@ -2,6 +2,7 @@
 
 // npx vitest run src/__tests__/TelemetryClient.taskImages.spec.ts
 
+import type { MockInstance } from "vitest"
 import { mkdtemp, mkdir, rm, writeFile, utimes } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
@@ -45,6 +46,10 @@ describe("TelemetryClient: task images", () => {
 	let client: TelemetryClient
 	// Held here: the client keeps only a WeakRef to it.
 	let provider: TelemetryPropertiesProvider
+	let uploads: MockInstance<(taskId: string, messages: ClineMessage[]) => Promise<void>>
+
+	/** Waits for every upload the client started; they run detached from the event path. */
+	const uploadsSettled = () => Promise.all(uploads.mock.results.map((result) => result.value))
 
 	beforeEach(async () => {
 		vi.clearAllMocks()
@@ -71,6 +76,7 @@ describe("TelemetryClient: task images", () => {
 			getTelemetryWorkspacePath: vi.fn().mockReturnValue(workspace),
 		}
 		client.setProvider(provider)
+		uploads = vi.spyOn(client as any, "uploadTaskImages")
 	})
 
 	afterEach(async () => {
@@ -83,7 +89,8 @@ describe("TelemetryClient: task images", () => {
 	it("uploads a referenced workspace image after a finished message is sent", async () => {
 		await capture(message("Chart:\n![Ryzyko](monitoring/chart.png)\n![web](https://x.dev/a.png)"))
 
-		await vi.waitFor(() => expect(imageCalls()).toHaveLength(1))
+		await uploadsSettled()
+		expect(imageCalls()).toHaveLength(1)
 		const [url, options] = imageCalls()[0]!
 		expect(url).toBe("https://app.tumblecode.dev/api/tasks/task%2F1/images")
 		expect(options.method).toBe("POST")
@@ -101,23 +108,25 @@ describe("TelemetryClient: task images", () => {
 
 	it("sends the same file for the same message once, and again once it changes", async () => {
 		await capture(message("![a](monitoring/chart.png)"))
-		await vi.waitFor(() => expect(imageCalls()).toHaveLength(1))
+		await uploadsSettled()
+		expect(imageCalls()).toHaveLength(1)
 
 		await capture(message("![a](monitoring/chart.png)"))
-		await new Promise((resolve) => setTimeout(resolve, 20))
+		await uploadsSettled()
 		expect(imageCalls()).toHaveLength(1)
 
 		await writeFile(path.join(workspace, "monitoring", "chart.png"), Buffer.concat([PNG, PNG]))
 		await utimes(path.join(workspace, "monitoring", "chart.png"), new Date(), new Date(Date.now() + 5_000))
 		await capture(message("![a](monitoring/chart.png)"))
-		await vi.waitFor(() => expect(imageCalls()).toHaveLength(2))
+		await uploadsSettled()
+		expect(imageCalls()).toHaveLength(2)
 	})
 
 	it("sends nothing for a partial message, a missing file or an unsupported type", async () => {
 		await writeFile(path.join(workspace, "drawing.svg"), "<svg/>")
 		await capture(message("![a](monitoring/chart.png)", { partial: true }))
 		await capture(message("![b](missing.png) ![c](drawing.svg)"))
-		await new Promise((resolve) => setTimeout(resolve, 20))
+		await uploadsSettled()
 		expect(imageCalls()).toHaveLength(0)
 	})
 
@@ -132,7 +141,7 @@ describe("TelemetryClient: task images", () => {
 		authService.isAuthenticated.mockReturnValue(false)
 		await capture(message("![a](monitoring/chart.png)"))
 
-		await new Promise((resolve) => setTimeout(resolve, 20))
+		await uploadsSettled()
 		expect(imageCalls()).toHaveLength(0)
 	})
 
@@ -142,11 +151,14 @@ describe("TelemetryClient: task images", () => {
 			[
 				message("![a](monitoring/chart.png)", { ts: 1 }),
 				message(`![b](${path.join(workspace, "b.jpg")})`, { ts: 2 }),
+				message("", { ts: 3 }),
+				message("![a](monitoring/chart.png)", { ts: 4, partial: true }),
 			],
 			"task-b",
 		)
 
-		await vi.waitFor(() => expect(imageCalls()).toHaveLength(2))
+		await uploadsSettled()
+		expect(imageCalls()).toHaveLength(2)
 		const forms = imageCalls().map(([, options]) => options.body as FormData)
 		expect(forms.map((form) => form.get("messageTs"))).toEqual(["1", "2"])
 		expect((forms[1]!.get("file") as File).type).toBe("image/jpeg")
@@ -155,7 +167,7 @@ describe("TelemetryClient: task images", () => {
 	it("uploads nothing when the backfill was refused", async () => {
 		mockFetch.mockResolvedValueOnce({ ok: false, status: 403, statusText: "Forbidden" })
 		await client.backfillMessages([message("![a](monitoring/chart.png)")], "task-c")
-		await new Promise((resolve) => setTimeout(resolve, 20))
+		await uploadsSettled()
 		expect(imageCalls()).toHaveLength(0)
 	})
 
@@ -168,9 +180,10 @@ describe("TelemetryClient: task images", () => {
 		)
 
 		await capture(message("![a](monitoring/chart.png)"))
-		await vi.waitFor(() => expect(imageCalls()).toHaveLength(1))
+		await uploadsSettled()
+		expect(imageCalls()).toHaveLength(1)
 		await capture(message("![a](monitoring/chart.png)"))
-		await new Promise((resolve) => setTimeout(resolve, 20))
+		await uploadsSettled()
 		expect(imageCalls()).toHaveLength(1)
 		expect(consoleError.mock.calls.filter(([line]) => String(line).includes("415"))).toHaveLength(1)
 
@@ -180,9 +193,11 @@ describe("TelemetryClient: task images", () => {
 				: { ok: true, status: 200, statusText: "OK" },
 		)
 		await capture(message("![a](monitoring/chart.png)", { ts: 99 }))
-		await vi.waitFor(() => expect(imageCalls()).toHaveLength(2))
+		await uploadsSettled()
+		expect(imageCalls()).toHaveLength(2)
 		await capture(message("![a](monitoring/chart.png)", { ts: 99 }))
-		await vi.waitFor(() => expect(imageCalls()).toHaveLength(3))
+		await uploadsSettled()
+		expect(imageCalls()).toHaveLength(3)
 		consoleError.mockRestore()
 	})
 
@@ -196,7 +211,8 @@ describe("TelemetryClient: task images", () => {
 		})
 
 		await expect(capture(message("![a](monitoring/chart.png)"))).resolves.toBeUndefined()
-		await vi.waitFor(() => expect(imageCalls()).toHaveLength(1))
+		await uploadsSettled()
+		expect(imageCalls()).toHaveLength(1)
 		consoleError.mockRestore()
 	})
 })

@@ -275,10 +275,6 @@ export class RetryQueue extends EventEmitter<RetryQueueEvents> {
 		}, this.config.networkCheckInterval)
 	}
 
-	private delay(ms: number): Promise<void> {
-		return new Promise((resolve) => setTimeout(resolve, ms))
-	}
-
 	public getStats(): QueueStats {
 		const requests = Array.from(this.queue.values())
 		const byType: Record<string, number> = {}
@@ -330,27 +326,6 @@ export class RetryQueue extends EventEmitter<RetryQueueEvents> {
 	public resume(): void {
 		this.isPaused = false
 		this.log("[RetryQueue] Queue resumed")
-	}
-
-	/**
-	 * Check if the queue is paused
-	 */
-	public isPausedState(): boolean {
-		return this.isPaused
-	}
-
-	/**
-	 * Set the current user ID for tracking user changes
-	 */
-	public setCurrentUserId(userId: string | undefined): void {
-		this.currentUserId = userId
-	}
-
-	/**
-	 * Get the current user ID
-	 */
-	public getCurrentUserId(): string | undefined {
-		return this.currentUserId
 	}
 
 	/**
