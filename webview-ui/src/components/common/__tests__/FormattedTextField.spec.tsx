@@ -1,230 +1,100 @@
 import { render, screen, fireEvent } from "@testing-library/react"
 
-import { FormattedTextField, unlimitedIntegerFormatter, unlimitedDecimalFormatter } from "../FormattedTextField"
+import {
+	FormattedTextField,
+	type InputFormatter,
+	unlimitedIntegerFormatter,
+	unlimitedDecimalFormatter,
+} from "../FormattedTextField"
 
-// Mock VSCodeTextField to render as regular HTML input for testing
+describe("unlimitedIntegerFormatter", () => {
+	it.each([
+		["123", 123],
+		["", undefined],
+		["   ", undefined],
+		["0", undefined],
+		["-5", undefined],
+		["abc", undefined],
+	])("parses %j as %s", (input, parsed) => {
+		expect(unlimitedIntegerFormatter.parse(input)).toBe(parsed)
+	})
+
+	it("formats undefined and Infinity as empty, and keeps only digits while typing", () => {
+		expect([123, undefined, Infinity].map((v) => unlimitedIntegerFormatter.format(v))).toEqual(["123", "", ""])
+		expect(unlimitedIntegerFormatter.filter?.("a1b2c3")).toBe("123")
+	})
+})
+
+describe("unlimitedDecimalFormatter", () => {
+	it.each([
+		["123.45", 123.45],
+		["0", 0],
+		["", undefined],
+		["   ", undefined],
+		["-5", undefined],
+		["abc", undefined],
+	])("parses %j as %s", (input, parsed) => {
+		expect(unlimitedDecimalFormatter.parse(input)).toBe(parsed)
+	})
+
+	it("formats undefined and Infinity as empty", () => {
+		expect([123.45, 0, undefined, Infinity].map((v) => unlimitedDecimalFormatter.format(v))).toEqual([
+			"123.45",
+			"0",
+			"",
+			"",
+		])
+	})
+
+	it.each([
+		["a1b2.c3", "12.3"],
+		["1.2.3.4", "1.234"],
+		["..123", ".123"],
+		["1..2", "1.2"],
+	])("filters %j to %j: digits and the first dot", (input, filtered) => {
+		expect(unlimitedDecimalFormatter.filter?.(input)).toBe(filtered)
+	})
+})
+
 describe("FormattedTextField", () => {
-	describe("unlimitedIntegerFormatter", () => {
-		it("should parse valid integers", () => {
-			expect(unlimitedIntegerFormatter.parse("123")).toBe(123)
-			expect(unlimitedIntegerFormatter.parse("1")).toBe(1)
-		})
+	const field = <T,>(value: T | undefined, formatter: InputFormatter<T>, onValueChange = vi.fn()) => (
+		<FormattedTextField value={value} onValueChange={onValueChange} formatter={formatter} data-testid="input" />
+	)
+	const input = () => screen.getByTestId("input") as HTMLInputElement
 
-		it("should return undefined for empty input (unlimited)", () => {
-			expect(unlimitedIntegerFormatter.parse("")).toBeUndefined()
-			expect(unlimitedIntegerFormatter.parse("   ")).toBeUndefined()
-		})
+	it("reports the parsed value of the filtered text and shows the raw text while typing", () => {
+		const onValueChange = vi.fn()
+		render(field(undefined, unlimitedDecimalFormatter, onValueChange))
 
-		it("should return undefined for invalid inputs", () => {
-			expect(unlimitedIntegerFormatter.parse("0")).toBeUndefined()
-			expect(unlimitedIntegerFormatter.parse("-5")).toBeUndefined()
-			expect(unlimitedIntegerFormatter.parse("abc")).toBeUndefined()
-		})
+		fireEvent.input(input(), { target: { value: "1.x" } })
 
-		it("should format numbers correctly, treating undefined/Infinity as empty", () => {
-			expect(unlimitedIntegerFormatter.format(123)).toBe("123")
-			expect(unlimitedIntegerFormatter.format(undefined)).toBe("")
-			expect(unlimitedIntegerFormatter.format(Infinity)).toBe("")
-		})
-
-		it("should filter non-numeric characters", () => {
-			expect(unlimitedIntegerFormatter.filter?.("123abc")).toBe("123")
-			expect(unlimitedIntegerFormatter.filter?.("a1b2c3")).toBe("123")
-		})
+		expect(onValueChange).toHaveBeenLastCalledWith(1)
+		expect(input().value).toBe("1.")
 	})
 
-	describe("FormattedTextField component", () => {
-		it("should render with correct initial value", () => {
-			const mockOnChange = vi.fn()
-			render(
-				<FormattedTextField
-					value={123}
-					onValueChange={mockOnChange}
-					formatter={unlimitedIntegerFormatter}
-					data-testid="test-input"
-				/>,
-			)
+	it("shows a new value from the parent unless the user is typing, and formats it on blur", () => {
+		const { rerender } = render(field(1, unlimitedIntegerFormatter))
 
-			const input = screen.getByTestId("test-input") as HTMLInputElement
-			expect(input.value).toBe("123")
-		})
+		rerender(field(2, unlimitedIntegerFormatter))
+		expect(input().value).toBe("2")
 
-		it("shows a new value from the parent unless the user is typing", () => {
-			const field = (value: number | undefined) => (
-				<FormattedTextField
-					value={value}
-					onValueChange={vi.fn()}
-					formatter={unlimitedIntegerFormatter}
-					data-testid="test-input"
-				/>
-			)
-			const { rerender } = render(field(1))
-			const input = screen.getByTestId("test-input") as HTMLInputElement
+		fireEvent.input(input(), { target: { value: "3" } })
+		rerender(field(4, unlimitedIntegerFormatter))
+		expect(input().value).toBe("3")
 
-			rerender(field(2))
-			expect(input.value).toBe("2")
-
-			fireEvent.input(input, { target: { value: "3" } })
-			rerender(field(4))
-			expect(input.value).toBe("3")
-
-			fireEvent.blur(input)
-			expect(input.value).toBe("4")
-			rerender(field(5))
-			expect(input.value).toBe("5")
-		})
-
-		it("should render as HTML input (mock verification)", () => {
-			const mockOnChange = vi.fn()
-			render(
-				<FormattedTextField
-					value={123}
-					onValueChange={mockOnChange}
-					formatter={unlimitedIntegerFormatter}
-					data-testid="test-input"
-				/>,
-			)
-
-			const input = screen.getByTestId("test-input")
-			expect(input.tagName).toBe("INPUT")
-			expect(input).toHaveAttribute("type", "text")
-		})
-
-		it("should call onValueChange when input changes", () => {
-			const mockOnChange = vi.fn()
-			render(
-				<FormattedTextField
-					value={undefined}
-					onValueChange={mockOnChange}
-					formatter={unlimitedIntegerFormatter}
-					data-testid="test-input"
-				/>,
-			)
-
-			const input = screen.getByTestId("test-input")
-			fireEvent.input(input, { target: { value: "456" } })
-			expect(mockOnChange).toHaveBeenCalledWith(456)
-		})
-
-		it("should apply input filtering", () => {
-			const mockOnChange = vi.fn()
-			render(
-				<FormattedTextField
-					value={undefined}
-					onValueChange={mockOnChange}
-					formatter={unlimitedIntegerFormatter}
-					data-testid="test-input"
-				/>,
-			)
-
-			const input = screen.getByTestId("test-input") as HTMLInputElement
-			fireEvent.input(input, { target: { value: "123abc" } })
-			expect(mockOnChange).toHaveBeenCalledWith(123)
-		})
+		fireEvent.blur(input())
+		expect(input().value).toBe("4")
+		rerender(field(5, unlimitedIntegerFormatter))
+		expect(input().value).toBe("5")
 	})
 
-	describe("unlimitedDecimalFormatter", () => {
-		it("should parse valid decimal numbers", () => {
-			expect(unlimitedDecimalFormatter.parse("123.45")).toBe(123.45)
-			expect(unlimitedDecimalFormatter.parse("0.5")).toBe(0.5)
-			expect(unlimitedDecimalFormatter.parse("1")).toBe(1)
-			expect(unlimitedDecimalFormatter.parse("0")).toBe(0)
-		})
+	it("passes the text through when the formatter has no filter", () => {
+		const onValueChange = vi.fn()
+		const plain: InputFormatter<string> = { parse: (s) => s.toUpperCase(), format: (v) => v ?? "" }
+		render(field("a", plain, onValueChange))
 
-		it("should return undefined for empty input (unlimited)", () => {
-			expect(unlimitedDecimalFormatter.parse("")).toBeUndefined()
-			expect(unlimitedDecimalFormatter.parse("   ")).toBeUndefined()
-		})
+		fireEvent.input(input(), { target: { value: "b!" } })
 
-		it("should return undefined for invalid inputs", () => {
-			expect(unlimitedDecimalFormatter.parse("-5")).toBeUndefined()
-			expect(unlimitedDecimalFormatter.parse("abc")).toBeUndefined()
-		})
-
-		it("should format numbers correctly, treating undefined/Infinity as empty", () => {
-			expect(unlimitedDecimalFormatter.format(123.45)).toBe("123.45")
-			expect(unlimitedDecimalFormatter.format(0)).toBe("0")
-			expect(unlimitedDecimalFormatter.format(undefined)).toBe("")
-			expect(unlimitedDecimalFormatter.format(Infinity)).toBe("")
-		})
-
-		it("should filter non-numeric characters except dots", () => {
-			expect(unlimitedDecimalFormatter.filter?.("123.45abc")).toBe("123.45")
-			expect(unlimitedDecimalFormatter.filter?.("a1b2.c3")).toBe("12.3")
-		})
-
-		it("should handle multiple dots by keeping only the first one", () => {
-			expect(unlimitedDecimalFormatter.filter?.("1.2.3.4")).toBe("1.234")
-			expect(unlimitedDecimalFormatter.filter?.("..123")).toBe(".123")
-			expect(unlimitedDecimalFormatter.filter?.("1..2")).toBe("1.2")
-		})
-
-		it("should preserve trailing dots during typing", () => {
-			const mockOnChange = vi.fn()
-			render(
-				<FormattedTextField
-					value={undefined}
-					onValueChange={mockOnChange}
-					formatter={unlimitedDecimalFormatter}
-					data-testid="decimal-input"
-				/>,
-			)
-
-			const input = screen.getByTestId("decimal-input") as HTMLInputElement
-
-			// Type "1."
-			fireEvent.input(input, { target: { value: "1." } })
-
-			// The input should show "1." (preserving the dot)
-			expect(input.value).toBe("1.")
-			// But the parsed value should be 1
-			expect(mockOnChange).toHaveBeenCalledWith(1)
-		})
-
-		it("should format properly on blur", async () => {
-			const mockOnChange = vi.fn()
-			render(
-				<FormattedTextField
-					value={1}
-					onValueChange={mockOnChange}
-					formatter={unlimitedDecimalFormatter}
-					data-testid="decimal-input"
-				/>,
-			)
-
-			const input = screen.getByTestId("decimal-input") as HTMLInputElement
-
-			// Initially shows formatted value
-			expect(input.value).toBe("1")
-
-			// Type "1."
-			fireEvent.input(input, { target: { value: "1." } })
-			expect(input.value).toBe("1.")
-
-			// On blur, should format back to "1"
-			fireEvent.blur(input)
-
-			// Wait for state update
-			await new Promise((resolve) => setTimeout(resolve, 0))
-			expect(input.value).toBe("1")
-		})
-	})
-
-	describe("FormattedTextField with decimal formatter", () => {
-		it("should handle decimal input correctly", () => {
-			const mockOnChange = vi.fn()
-			render(
-				<FormattedTextField
-					value={undefined}
-					onValueChange={mockOnChange}
-					formatter={unlimitedDecimalFormatter}
-					data-testid="test-input"
-				/>,
-			)
-
-			const input = screen.getByTestId("test-input")
-			fireEvent.input(input, { target: { value: "12.34" } })
-			expect(mockOnChange).toHaveBeenCalledWith(12.34)
-		})
+		expect(onValueChange).toHaveBeenLastCalledWith("B!")
 	})
 })

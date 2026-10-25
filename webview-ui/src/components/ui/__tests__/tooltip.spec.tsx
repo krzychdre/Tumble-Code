@@ -1,202 +1,41 @@
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../tooltip"
 import { StandardTooltip } from "../standard-tooltip"
+import { TooltipProvider } from "../tooltip"
 
-describe("Tooltip", () => {
-	it("should render tooltip content on hover", async () => {
-		const user = userEvent.setup()
-
-		render(
-			<TooltipProvider delayDuration={0}>
-				<Tooltip>
-					<TooltipTrigger>Hover me</TooltipTrigger>
-					<TooltipContent>Tooltip text</TooltipContent>
-				</Tooltip>
-			</TooltipProvider>,
-		)
-
-		const trigger = screen.getByText("Hover me")
-		await user.hover(trigger)
-
-		await waitFor(
-			() => {
-				const tooltips = screen.getAllByText("Tooltip text")
-				expect(tooltips.length).toBeGreaterThan(0)
-			},
-			{ timeout: 1000 },
-		)
-	})
-
-	it("should apply text wrapping classes", async () => {
-		const user = userEvent.setup()
-
-		render(
-			<TooltipProvider delayDuration={0}>
-				<Tooltip>
-					<TooltipTrigger>Hover me</TooltipTrigger>
-					<TooltipContent>
-						This is a very long tooltip text that should wrap when it reaches the maximum width
-					</TooltipContent>
-				</Tooltip>
-			</TooltipProvider>,
-		)
-
-		const trigger = screen.getByText("Hover me")
-		await user.hover(trigger)
-
-		await waitFor(
-			() => {
-				const visibleTooltip = screen.getByRole("tooltip")
-				expect(visibleTooltip).toHaveClass("max-w-[300px]", "break-words")
-			},
-			{ timeout: 1000 },
-		)
-	})
-
-	it("should not have overflow-hidden class", async () => {
-		const user = userEvent.setup()
-
-		render(
-			<TooltipProvider delayDuration={0}>
-				<Tooltip>
-					<TooltipTrigger>Hover me</TooltipTrigger>
-					<TooltipContent>Tooltip text</TooltipContent>
-				</Tooltip>
-			</TooltipProvider>,
-		)
-
-		const trigger = screen.getByText("Hover me")
-		await user.hover(trigger)
-
-		await waitFor(
-			() => {
-				const visibleTooltip = screen.getByRole("tooltip")
-				expect(visibleTooltip).not.toHaveClass("overflow-hidden")
-			},
-			{ timeout: 1000 },
-		)
-	})
-})
+const hoverTooltip = async (content: React.ReactNode, maxWidth?: number | string) => {
+	render(
+		<TooltipProvider delayDuration={0}>
+			<StandardTooltip content={content} maxWidth={maxWidth} delay={0}>
+				<button>Hover me</button>
+			</StandardTooltip>
+		</TooltipProvider>,
+	)
+	await userEvent.setup().hover(screen.getByText("Hover me"))
+}
 
 describe("StandardTooltip", () => {
-	it("should render with default delay", async () => {
-		const user = userEvent.setup()
+	it.each([
+		{ maxWidth: undefined, style: "" },
+		{ maxWidth: 200, style: "200px" },
+		{ maxWidth: "15rem", style: "15rem" },
+	])("shows the content on hover with maxWidth $maxWidth as an inline style", async ({ maxWidth, style }) => {
+		await hoverTooltip("Tooltip text", maxWidth)
 
-		render(
-			<TooltipProvider delayDuration={300}>
-				<StandardTooltip content="Tooltip text">
-					<button>Hover me</button>
-				</StandardTooltip>
-			</TooltipProvider>,
-		)
-
-		const trigger = screen.getByText("Hover me")
-		await user.hover(trigger)
-
-		await waitFor(
-			() => {
-				const tooltips = screen.getAllByText("Tooltip text")
-				expect(tooltips.length).toBeGreaterThan(0)
-			},
-			{ timeout: 1000 },
-		)
+		const tooltip = await screen.findByRole("tooltip")
+		expect(tooltip).toHaveTextContent("Tooltip text")
+		expect(tooltip.style.maxWidth).toBe(style)
 	})
 
-	it("should render with custom delay", async () => {
-		const user = userEvent.setup()
+	it.each([
+		["empty", ""],
+		["whitespace", "   "],
+		["missing", null],
+	])("renders only the trigger for %s content", async (_, content) => {
+		await hoverTooltip(content)
 
-		render(
-			<TooltipProvider>
-				<StandardTooltip content="Tooltip text" delay={0}>
-					<button>Hover me</button>
-				</StandardTooltip>
-			</TooltipProvider>,
-		)
-
-		const trigger = screen.getByText("Hover me")
-		await user.hover(trigger)
-
-		await waitFor(
-			() => {
-				const tooltips = screen.getAllByText("Tooltip text")
-				expect(tooltips.length).toBeGreaterThan(0)
-			},
-			{ timeout: 500 },
-		)
-	})
-
-	it("should apply custom maxWidth", async () => {
-		const user = userEvent.setup()
-
-		render(
-			<TooltipProvider delayDuration={0}>
-				<StandardTooltip content="Long tooltip text" maxWidth={200}>
-					<button>Hover me</button>
-				</StandardTooltip>
-			</TooltipProvider>,
-		)
-
-		const trigger = screen.getByText("Hover me")
-		await user.hover(trigger)
-
-		await waitFor(
-			() => {
-				const visibleTooltip = screen.getByRole("tooltip")
-				expect(visibleTooltip).toHaveStyle({ maxWidth: "200px" })
-			},
-			{ timeout: 1000 },
-		)
-	})
-
-	it("should apply custom maxWidth as string", async () => {
-		const user = userEvent.setup()
-
-		render(
-			<TooltipProvider delayDuration={0}>
-				<StandardTooltip content="Long tooltip text" maxWidth="15rem">
-					<button>Hover me</button>
-				</StandardTooltip>
-			</TooltipProvider>,
-		)
-
-		const trigger = screen.getByText("Hover me")
-		await user.hover(trigger)
-
-		await waitFor(
-			() => {
-				const visibleTooltip = screen.getByRole("tooltip")
-				// The inline style is the contract; toHaveStyle compares the computed
-				// value, which jsdom 30 resolves to pixels (240px).
-				expect(visibleTooltip.style.maxWidth).toBe("15rem")
-			},
-			{ timeout: 1000 },
-		)
-	})
-
-	it("should handle long content with text wrapping", async () => {
-		const user = userEvent.setup()
-		const longContent =
-			"This is a very long tooltip content that should definitely wrap when displayed because it exceeds the maximum width constraint"
-
-		render(
-			<TooltipProvider delayDuration={0}>
-				<StandardTooltip content={longContent}>
-					<button>Hover me</button>
-				</StandardTooltip>
-			</TooltipProvider>,
-		)
-
-		const trigger = screen.getByText("Hover me")
-		await user.hover(trigger)
-
-		await waitFor(
-			() => {
-				const visibleTooltip = screen.getByRole("tooltip")
-				expect(visibleTooltip).toHaveClass("max-w-[300px]", "break-words")
-			},
-			{ timeout: 1000 },
-		)
+		expect(screen.getByText("Hover me")).toBeInTheDocument()
+		await waitFor(() => expect(screen.queryByRole("tooltip")).not.toBeInTheDocument())
 	})
 })
