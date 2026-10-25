@@ -254,6 +254,10 @@ export async function searchCommits(query: string, cwd: string): Promise<GitComm
 			output = hashStdout
 		}
 
+		if (!output.trim()) {
+			return []
+		}
+
 		const commits: GitCommit[] = []
 		const lines = output
 			.trim()
