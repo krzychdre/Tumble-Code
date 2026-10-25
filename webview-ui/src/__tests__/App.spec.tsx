@@ -259,20 +259,6 @@ describe("App", () => {
 		expect(screen.queryByTestId("settings-view")).not.toBeInTheDocument()
 	})
 
-	it("switches to settings view when receiving settingsButtonClicked action", async () => {
-		render(<AppWithProviders />)
-
-		act(() => {
-			triggerMessage("settingsButtonClicked")
-		})
-
-		const settingsView = await screen.findByTestId("settings-view")
-		expect(settingsView).toBeInTheDocument()
-
-		const chatView = screen.getByTestId("chat-view")
-		expect(chatView.getAttribute("data-hidden")).toBe("true")
-	})
-
 	it.each([
 		["settings", "settings-view"],
 		["marketplace", "marketplace-view"],
@@ -431,85 +417,23 @@ describe("App", () => {
 		expect(screen.queryByTestId("settings-view")).not.toBeInTheDocument()
 	})
 
-	it("switches to history view when receiving historyButtonClicked action", async () => {
-		render(<AppWithProviders />)
+	it.each(["settings", "history", "marketplace"])(
+		"%s: opens over the hidden chat and Done returns to the chat",
+		async (view) => {
+			render(<AppWithProviders />)
 
-		act(() => {
-			triggerMessage("historyButtonClicked")
-		})
+			act(() => {
+				triggerMessage(`${view}ButtonClicked`)
+			})
+			const viewElement = await screen.findByTestId(`${view}-view`)
+			expect(screen.getByTestId("chat-view").getAttribute("data-hidden")).toBe("true")
 
-		const historyView = await screen.findByTestId("history-view")
-		expect(historyView).toBeInTheDocument()
+			act(() => {
+				viewElement.click()
+			})
 
-		const chatView = screen.getByTestId("chat-view")
-		expect(chatView.getAttribute("data-hidden")).toBe("true")
-	})
-
-	it("returns to chat view when clicking done in settings view", async () => {
-		render(<AppWithProviders />)
-
-		act(() => {
-			triggerMessage("settingsButtonClicked")
-		})
-
-		const settingsView = await screen.findByTestId("settings-view")
-
-		act(() => {
-			settingsView.click()
-		})
-
-		const chatView = screen.getByTestId("chat-view")
-		expect(chatView.getAttribute("data-hidden")).toBe("false")
-		expect(screen.queryByTestId("settings-view")).not.toBeInTheDocument()
-	})
-
-	it.each(["history"])("returns to chat view when clicking done in %s view", async (view) => {
-		render(<AppWithProviders />)
-
-		act(() => {
-			triggerMessage(`${view}ButtonClicked`)
-		})
-
-		const viewElement = await screen.findByTestId(`${view}-view`)
-
-		act(() => {
-			viewElement.click()
-		})
-
-		const chatView = screen.getByTestId("chat-view")
-		expect(chatView.getAttribute("data-hidden")).toBe("false")
-		expect(screen.queryByTestId(`${view}-view`)).not.toBeInTheDocument()
-	})
-
-	it("switches to marketplace view when receiving marketplaceButtonClicked action", async () => {
-		render(<AppWithProviders />)
-
-		act(() => {
-			triggerMessage("marketplaceButtonClicked")
-		})
-
-		const marketplaceView = await screen.findByTestId("marketplace-view")
-		expect(marketplaceView).toBeInTheDocument()
-
-		const chatView = screen.getByTestId("chat-view")
-		expect(chatView.getAttribute("data-hidden")).toBe("true")
-	})
-
-	it("returns to chat view when clicking done in marketplace view", async () => {
-		render(<AppWithProviders />)
-
-		act(() => {
-			triggerMessage("marketplaceButtonClicked")
-		})
-
-		const marketplaceView = await screen.findByTestId("marketplace-view")
-
-		act(() => {
-			marketplaceView.click()
-		})
-
-		const chatView = screen.getByTestId("chat-view")
-		expect(chatView.getAttribute("data-hidden")).toBe("false")
-		expect(screen.queryByTestId("marketplace-view")).not.toBeInTheDocument()
-	})
+			expect(screen.getByTestId("chat-view").getAttribute("data-hidden")).toBe("false")
+			expect(screen.queryByTestId(`${view}-view`)).not.toBeInTheDocument()
+		},
+	)
 })

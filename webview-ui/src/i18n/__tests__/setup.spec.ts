@@ -40,4 +40,14 @@ describe("i18n setup", () => {
 
 		expect(isLanguageLoaded("xx")).toBe(true)
 	})
+
+	// React escapes the rendered text, so i18next must not escape it a second time.
+	it("interpolates values without HTML escaping", async () => {
+		vi.resetModules()
+		const { default: i18next } = await import("../setup")
+
+		expect(i18next.t("common:errors.wait_checkpoint_long_time", { timeout: "<b>5</b> & 'x'" })).toMatch(
+			/^Waited <b>5<\/b> & 'x' seconds /,
+		)
+	})
 })
