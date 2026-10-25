@@ -1,5 +1,39 @@
 # Tumble Code Changelog
 
+## 1.1.1
+
+Released 2026-10-25
+
+The CLI now ships in the same release as the extension, under the same version number, and it draws images, diagrams and math formulas in terminals that can show them.
+
+### New
+
+- **CLI: `/copy`, `/export`, `/resume` and Ctrl+R.** Copy the last answer or code block, save the conversation as Markdown, reopen an earlier task of the workspace, and search your previous prompts as in bash.
+- **CLI: `tumble doctor`.** Checks Node.js, the extension bundle, ripgrep, the global MCP servers file and the cloud API, one line per check.
+- **CLI: images and diagrams.** In terminals that draw images (kitty, Ghostty, WezTerm, iTerm2, foot, xterm, the VS Code terminal) the CLI shows the images an answer points to, and it draws mermaid diagrams everywhere, with box-drawing characters where images are not available. `TUMBLE_IMAGES=off` turns images off.
+- **CLI: math formulas.** A formula on a line of its own is drawn as an image where the terminal can show one; everywhere else formulas read as Unicode text, for example `∫_(-∞)⁰ (3x³ + 6x + ½) dx`.
+- **CLI: per-model settings.** A `models` entry in `~/.roo/cli-settings.json` can set its own provider, base URL and API key, a model size (standard, slim or compact), a limit of concurrent requests and shortening of old reasoning; `maxParallelSubagents` caps all subagents at once.
+
+### Improved
+
+- **CLI: clean exits.** Ctrl+C, a kill signal or a crash restore the terminal and print the error with the path of the debug log, and `NO_COLOR` turns colour off.
+- **CLI: diffs show the change in long lines.** When the change sits beyond the visible width, the diff starts just before it, and the changed columns are highlighted.
+- **CLI: local time.** `tumble list` and `/export` show local time with its offset, and a new `timeZone` setting covers systems without a time zone.
+- **CLI: messages typed while the task works are queued**, as in VS Code, and a task waiting for its subagents answers them right away.
+- **CLI: commands that could not work are gone.** `tumble auth login`, `logout` and `status` and `tumble list models` are removed; `tumble auth codex` stays.
+- **CLI: the same defaults as the extension.** Claude models run at their own default reasoning effort, and OpenRouter defaults to Claude Opus 5.
+- **One release for the extension and the CLI.** Both ship together under one version number, with one changelog. The installer and `tumble upgrade` take the CLI from the latest Tumble Code release.
+
+### Fixed
+
+- **CLI: settings that were silently ignored.** The base-URL environment variables (`OPENAI_BASE_URL`, `ANTHROPIC_BASE_URL` and the others) are read, a reasoning effort for the `openai` provider reaches the model, and `--base-url` with `mistral` stops with an error instead of being dropped.
+- **CLI: print and JSON output.** No message is skipped or printed twice, and a resumed task no longer emits stray events from its history.
+- **CLI: typing and layout.** The first characters typed right after start are no longer scrambled, no blank row stays under the footer, and an oversized image no longer freezes or crashes the CLI.
+- **CLI: no exit when the cloud profile cannot be read.** A signed-in CLI no longer stops in the middle of a task when the cloud answers the session refresh but fails to return the user profile; the failure is logged instead.
+- **Commit search without a match.** Searching commits in the chat input for text that matches nothing no longer shows one empty commit.
+- **Clear errors from Z.ai and Moonshot.** A refused or failed request now names the provider and the cause, for example `Connection error. (connect ECONNREFUSED 127.0.0.1:8080)`, instead of a bare "Connection error.".
+- **Reading an empty file.** The agent is told that an empty file is empty instead of being shown a single blank line.
+
 ## 1.1.0
 
 Released 2026-10-24
