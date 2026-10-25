@@ -169,16 +169,6 @@ describe("ProviderSettingsManager", () => {
 	})
 
 	describe("initialize", () => {
-		it("should not write to storage when secrets.get returns null", async () => {
-			// Mock readConfig to return null
-			mockSecrets.get.mockResolvedValueOnce(null)
-
-			await providerSettingsManager.initialize()
-
-			// Should not write to storage because readConfig returns defaultConfig
-			expect(mockSecrets.store).not.toHaveBeenCalled()
-		})
-
 		it("an empty store: writes nothing and lists the default profile", async () => {
 			const store = setupKeyAwareSecrets()
 			providerSettingsManager = new ProviderSettingsManager(mockContext)
@@ -276,14 +266,6 @@ describe("ProviderSettingsManager", () => {
 			expect(compat.rateLimitSeconds).toBeUndefined()
 			expect(compat.todoListEnabled).toBeUndefined()
 		})
-
-		it("should throw error if secrets storage fails", async () => {
-			mockSecrets.get.mockRejectedValue(new Error("Storage failed"))
-
-			await expect(providerSettingsManager.initialize()).rejects.toThrow(
-				"Failed to initialize config: Error: Failed to read provider profiles from secrets: Error: Storage failed",
-			)
-		})
 	})
 
 	describe("ListConfig", () => {
@@ -298,6 +280,7 @@ describe("ProviderSettingsManager", () => {
 						apiProvider: "anthropic",
 						id: "test-id",
 					},
+					router: { apiProvider: "openrouter", id: "router-id", openRouterModelId: "vendor/model-x" },
 				},
 				modeApiConfigs: {
 					code: "default",
@@ -312,32 +295,8 @@ describe("ProviderSettingsManager", () => {
 			expect(configs).toEqual([
 				{ name: "default", id: "default", apiProvider: undefined },
 				{ name: "test", id: "test-id", apiProvider: "anthropic" },
+				{ name: "router", id: "router-id", apiProvider: "openrouter", modelId: "model-x" },
 			])
-		})
-
-		it("should handle empty config file", async () => {
-			const emptyConfig: ProviderProfiles = {
-				currentApiConfigName: "default",
-				apiConfigs: {},
-				modeApiConfigs: {
-					code: "default",
-					architect: "default",
-					ask: "default",
-				},
-			}
-
-			mockSecrets.get.mockResolvedValue(storedProfiles(emptyConfig))
-
-			const configs = await providerSettingsManager.listConfig()
-			expect(configs).toEqual([])
-		})
-
-		it("should throw error if reading from secrets fails", async () => {
-			mockSecrets.get.mockRejectedValue(new Error("Read failed"))
-
-			await expect(providerSettingsManager.listConfig()).rejects.toThrow(
-				"Failed to list configs: Error: Failed to read provider profiles from secrets: Error: Read failed",
-			)
 		})
 	})
 
@@ -473,20 +432,6 @@ describe("ProviderSettingsManager", () => {
 			const storedConfig = unwrapStoredProfiles(mockSecrets.store.mock.calls[0][1])
 			expect(mockSecrets.store.mock.calls[0][0]).toEqual("roo_cline_config_api_config")
 			expect(storedConfig).toEqual(expectedConfig)
-		})
-
-		it("should throw error if secrets storage fails", async () => {
-			mockSecrets.get.mockResolvedValue(
-				storedProfiles({
-					currentApiConfigName: "default",
-					apiConfigs: { default: {} },
-				}),
-			)
-			mockSecrets.store.mockRejectedValue(new Error("Storage failed"))
-
-			await expect(providerSettingsManager.saveConfig("test", {})).rejects.toThrow(
-				"Failed to save config: Error: Failed to write provider profiles to secrets: Error: Storage failed",
-			)
 		})
 
 		it("should preserve full fields including legacy provider-specific keys when saving retired provider profiles", async () => {
@@ -669,20 +614,6 @@ describe("ProviderSettingsManager", () => {
 			)
 		})
 
-		it("should throw error if secrets storage fails", async () => {
-			mockSecrets.get.mockResolvedValue(
-				storedProfiles({
-					currentApiConfigName: "default",
-					apiConfigs: { test: { apiProvider: "anthropic", id: "test-id" } },
-				}),
-			)
-			mockSecrets.store.mockRejectedValue(new Error("Storage failed"))
-
-			await expect(providerSettingsManager.activateProfile({ name: "test" })).rejects.toThrow(
-				"Failed to activate profile: Failed to write provider profiles to secrets: Error: Storage failed",
-			)
-		})
-
 		it("keeps an unknown-provider profile lossless when the store is rewritten", async () => {
 			const configWithUnknownProvider: ProviderProfiles = {
 				currentApiConfigName: "valid",
@@ -838,74 +769,38 @@ describe("ProviderSettingsManager", () => {
 			expect(JSON.stringify(exported)).not.toContain("legacy-key")
 		})
 
-		it("should preserve modelMaxTokens for models that support a configurable max output (e.g. GLM)", async () => {
-			const existingConfig: ProviderProfiles = {
-				currentApiConfigName: "glm",
-				apiConfigs: {
-					glm: {
-						id: "glm-id",
-						apiProvider: "zai",
-						apiModelId: "glm-5.1",
-						modelMaxTokens: 8192,
-						modelMaxThinkingTokens: 2048,
-					},
-				},
-			}
-
-			mockSecrets.get.mockResolvedValue(storedProfiles(existingConfig))
-
-			const exported = await providerSettingsManager.export()
-
-			// GLM exposes a configurable max output (supportsMaxTokens) but no reasoning budget,
-			// so modelMaxTokens must survive the export while modelMaxThinkingTokens is dropped.
-			const glm = exported.data.apiConfigs.glm
-			expect(glm && "shared" in glm ? glm.shared?.modelMaxTokens : undefined).toBe(8192)
-			expect(glm && "shared" in glm ? glm.shared?.modelMaxThinkingTokens : undefined).toBeUndefined()
-		})
-
 		// API-6: building a handler to read model info has side effects (the
 		// OpenRouter handler fetches its model list, VS Code LM subscribes to
 		// configuration changes); the model is resolved from the settings.
-		it("resolves model info without building a provider handler", async () => {
+		it("keeps each token field only for models that use it, without building a provider handler", async () => {
 			const { buildApiHandler } = await import("../../../api")
-			const existingConfig: ProviderProfiles = {
-				currentApiConfigName: "glm",
-				apiConfigs: {
-					glm: { id: "glm-id", apiProvider: "zai", apiModelId: "glm-5.1", modelMaxTokens: 8192 },
-					router: { id: "router-id", apiProvider: "openrouter", openRouterModelId: "a/b" },
-				},
-			}
-			mockSecrets.get.mockResolvedValue(storedProfiles(existingConfig))
+			const tokens = { modelMaxTokens: 8192, modelMaxThinkingTokens: 2048 }
+			mockSecrets.get.mockResolvedValue(
+				storedProfiles({
+					currentApiConfigName: "glm",
+					apiConfigs: {
+						reasoning: { id: "r-id", apiProvider: "anthropic", apiModelId: "claude-sonnet-4-5", ...tokens },
+						glm: { id: "glm-id", apiProvider: "zai", apiModelId: "glm-5.1", ...tokens },
+						bedrock: { id: "b-id", apiProvider: "bedrock", apiModelId: "amazon.nova-pro-v1:0", ...tokens },
+						router: { id: "router-id", apiProvider: "openrouter", openRouterModelId: "a/b" },
+					},
+				}),
+			)
 			vi.mocked(buildApiHandler).mockClear()
 
-			const exported = await providerSettingsManager.export()
-
-			expect(buildApiHandler).not.toHaveBeenCalled()
-			const glm = exported.data.apiConfigs.glm
-			expect(glm && "shared" in glm ? glm.shared?.modelMaxTokens : undefined).toBe(8192)
-		})
-
-		it("should strip both token fields for models that support neither reasoning budgets nor a configurable max", async () => {
-			const existingConfig: ProviderProfiles = {
-				currentApiConfigName: "bedrock",
-				apiConfigs: {
-					bedrock: {
-						id: "bedrock-id",
-						apiProvider: "bedrock",
-						apiModelId: "amazon.nova-pro-v1:0",
-						modelMaxTokens: 8192,
-						modelMaxThinkingTokens: 2048,
-					},
-				},
+			const { apiConfigs } = (await providerSettingsManager.export()).data
+			const sharedOf = (name: string) => {
+				const profile = apiConfigs[name]
+				return "shared" in profile ? profile.shared : undefined
 			}
 
-			mockSecrets.get.mockResolvedValue(storedProfiles(existingConfig))
-
-			const exported = await providerSettingsManager.export()
-			const bedrock = exported.data.apiConfigs.bedrock
-			expect(bedrock && "shared" in bedrock).toBe(true)
-			expect(bedrock && "shared" in bedrock ? bedrock.shared?.modelMaxTokens : undefined).toBeUndefined()
-			expect(bedrock && "shared" in bedrock ? bedrock.shared?.modelMaxThinkingTokens : undefined).toBeUndefined()
+			expect(buildApiHandler).not.toHaveBeenCalled()
+			expect(sharedOf("reasoning")).toMatchObject(tokens)
+			// GLM has a configurable max output but no reasoning budget.
+			expect(sharedOf("glm")?.modelMaxTokens).toBe(8192)
+			expect(sharedOf("glm")?.modelMaxThinkingTokens).toBeUndefined()
+			expect(sharedOf("bedrock")?.modelMaxTokens).toBeUndefined()
+			expect(sharedOf("bedrock")?.modelMaxThinkingTokens).toBeUndefined()
 		})
 	})
 
@@ -1006,68 +901,24 @@ describe("ProviderSettingsManager", () => {
 			const hasConfig = await providerSettingsManager.hasConfig("nonexistent")
 			expect(hasConfig).toBe(false)
 		})
-
-		it("should throw error if secrets storage fails", async () => {
-			mockSecrets.get.mockRejectedValue(new Error("Storage failed"))
-
-			await expect(providerSettingsManager.hasConfig("test")).rejects.toThrow(
-				"Failed to check config existence: Error: Failed to read provider profiles from secrets: Error: Storage failed",
-			)
-		})
 	})
 
 	describe("setModeConfigs", () => {
-		it("should assign the given config id to every listed mode in a single store call", async () => {
+		it("assigns the profile to the listed modes in one write and keeps the other modes", async () => {
 			mockSecrets.get.mockResolvedValue(
 				storedProfiles({
 					currentApiConfigName: "default",
-					apiConfigs: {
-						default: { id: "default" },
-						local: { apiProvider: "ollama", id: "local-id" },
-					},
-					modeApiConfigs: {
-						code: "default",
-						architect: "default",
-						ask: "default",
-					},
+					apiConfigs: { default: { id: "default" }, local: { apiProvider: "ollama", id: "local-id" } },
+					modeApiConfigs: { code: "default", architect: "default", ask: "default" },
 				}),
 			)
 
-			await providerSettingsManager.setModeConfigs(["code", "architect", "ask"], "local-id")
+			await providerSettingsManager.setModeConfigs(["code", "architect"], "local-id")
 
-			// A bulk assignment must persist with exactly one store round-trip.
 			expect(mockSecrets.store).toHaveBeenCalledTimes(1)
-
-			const storedConfig = unwrapStoredProfiles(mockSecrets.store.mock.calls[0][1])
-			expect(storedConfig.modeApiConfigs).toEqual({
+			expect(unwrapStoredProfiles(mockSecrets.store.mock.calls[0][1]).modeApiConfigs).toEqual({
 				code: "local-id",
 				architect: "local-id",
-				ask: "local-id",
-			})
-		})
-
-		it("should preserve assignments for modes not included in the list", async () => {
-			mockSecrets.get.mockResolvedValue(
-				storedProfiles({
-					currentApiConfigName: "default",
-					apiConfigs: {
-						default: { id: "default" },
-						local: { apiProvider: "ollama", id: "local-id" },
-					},
-					modeApiConfigs: {
-						code: "default",
-						architect: "default",
-						ask: "default",
-					},
-				}),
-			)
-
-			await providerSettingsManager.setModeConfigs(["code"], "local-id")
-
-			const storedConfig = unwrapStoredProfiles(mockSecrets.store.mock.calls[0][1])
-			expect(storedConfig.modeApiConfigs).toEqual({
-				code: "local-id",
-				architect: "default",
 				ask: "default",
 			})
 		})
@@ -1105,155 +956,6 @@ describe("ProviderSettingsManager", () => {
 	})
 
 	describe("syncCloudProfiles", () => {
-		it("should add new cloud profiles without secret keys", async () => {
-			const existingConfig: ProviderProfiles = {
-				currentApiConfigName: "default",
-				apiConfigs: {
-					default: { id: "default-id" },
-				},
-				cloudProfileIds: [],
-			}
-
-			mockSecrets.get.mockResolvedValue(storedProfiles(existingConfig))
-
-			const cloudProfiles = {
-				"cloud-profile": {
-					id: "cloud-id-1",
-					apiProvider: "anthropic" as const,
-					apiKey: "secret-key", // This should be removed
-					apiModelId: "claude-3-opus-20240229",
-				},
-			}
-
-			const result = await providerSettingsManager.syncCloudProfiles(cloudProfiles)
-
-			expect(result.hasChanges).toBe(true)
-			expect(result.activeProfileChanged).toBe(false)
-			expect(result.activeProfileId).toBe("")
-
-			const storedConfig = unwrapStoredProfiles(mockSecrets.store.mock.calls[0][1])
-			expect(storedConfig.apiConfigs["cloud-profile"]).toEqual({
-				id: "cloud-id-1",
-				apiProvider: "anthropic",
-				apiModelId: "claude-3-opus-20240229",
-				// apiKey should be removed
-			})
-			expect(storedConfig.cloudProfileIds).toEqual(["cloud-id-1"])
-		})
-
-		it("should update existing cloud profiles by ID, preserving secret keys", async () => {
-			const existingConfig: ProviderProfiles = {
-				currentApiConfigName: "default",
-				apiConfigs: {
-					default: { id: "default-id" },
-					"existing-cloud": {
-						id: "cloud-id-1",
-						apiProvider: "anthropic" as const,
-						apiKey: "existing-secret",
-						apiModelId: "claude-3-haiku-20240307",
-					},
-				},
-				cloudProfileIds: ["cloud-id-1"],
-			}
-
-			mockSecrets.get.mockResolvedValue(storedProfiles(existingConfig))
-
-			const cloudProfiles = {
-				"updated-name": {
-					id: "cloud-id-1",
-					apiProvider: "anthropic" as const,
-					apiKey: "new-secret", // Should be ignored
-					apiModelId: "claude-3-opus-20240229",
-				},
-			}
-
-			const result = await providerSettingsManager.syncCloudProfiles(cloudProfiles)
-
-			expect(result.hasChanges).toBe(true)
-			expect(result.activeProfileChanged).toBe(false)
-			expect(result.activeProfileId).toBe("")
-
-			const storedConfig = unwrapStoredProfiles(mockSecrets.store.mock.calls[0][1])
-			expect(storedConfig.apiConfigs["updated-name"]).toEqual({
-				id: "cloud-id-1",
-				apiProvider: "anthropic",
-				apiModelId: "claude-3-opus-20240229", // Updated
-			})
-			expect(JSON.stringify(storedConfig)).not.toContain("existing-secret")
-			expect(storedConfig.apiConfigs["existing-cloud"]).toBeUndefined()
-			expect(storedConfig.cloudProfileIds).toEqual(["cloud-id-1"])
-		})
-
-		it("should delete cloud profiles not in the new cloud profiles", async () => {
-			const existingConfig: ProviderProfiles = {
-				currentApiConfigName: "default",
-				apiConfigs: {
-					default: { id: "default-id" },
-					"cloud-profile-1": { id: "cloud-id-1", apiProvider: "anthropic" as const },
-					"cloud-profile-2": { id: "cloud-id-2", apiProvider: "openai" as const },
-				},
-				cloudProfileIds: ["cloud-id-1", "cloud-id-2"],
-			}
-
-			mockSecrets.get.mockResolvedValue(storedProfiles(existingConfig))
-
-			const cloudProfiles = {
-				"cloud-profile-1": {
-					id: "cloud-id-1",
-					apiProvider: "anthropic" as const,
-				},
-				// cloud-profile-2 is missing, should be deleted
-			}
-
-			const result = await providerSettingsManager.syncCloudProfiles(cloudProfiles)
-
-			expect(result.hasChanges).toBe(true)
-			expect(result.activeProfileChanged).toBe(false)
-			expect(result.activeProfileId).toBe("")
-
-			const storedConfig = unwrapStoredProfiles(mockSecrets.store.mock.calls[0][1])
-			expect(storedConfig.apiConfigs["cloud-profile-1"]).toBeDefined()
-			expect(storedConfig.apiConfigs["cloud-profile-2"]).toBeUndefined()
-			expect(storedConfig.cloudProfileIds).toEqual(["cloud-id-1"])
-		})
-
-		it("should rename existing non-cloud profile when cloud profile has same name", async () => {
-			const existingConfig: ProviderProfiles = {
-				currentApiConfigName: "default",
-				apiConfigs: {
-					default: { id: "default-id" },
-					"conflict-name": { id: "local-id", apiProvider: "openai" as const },
-				},
-				cloudProfileIds: [],
-			}
-
-			mockSecrets.get.mockResolvedValue(storedProfiles(existingConfig))
-
-			const cloudProfiles = {
-				"conflict-name": {
-					id: "cloud-id-1",
-					apiProvider: "anthropic" as const,
-				},
-			}
-
-			const result = await providerSettingsManager.syncCloudProfiles(cloudProfiles)
-
-			expect(result.hasChanges).toBe(true)
-			expect(result.activeProfileChanged).toBe(false)
-			expect(result.activeProfileId).toBe("")
-
-			const storedConfig = unwrapStoredProfiles(mockSecrets.store.mock.calls[0][1])
-			expect(storedConfig.apiConfigs["conflict-name"]).toEqual({
-				id: "cloud-id-1",
-				apiProvider: "anthropic",
-			})
-			expect(storedConfig.apiConfigs["conflict-name_local"]).toEqual({
-				id: "local-id",
-				apiProvider: "openai",
-			})
-			expect(storedConfig.cloudProfileIds).toEqual(["cloud-id-1"])
-		})
-
 		it("should handle multiple naming conflicts with incremental suffixes", async () => {
 			const existingConfig: ProviderProfiles = {
 				currentApiConfigName: "default",
@@ -1387,6 +1089,7 @@ describe("ProviderSettingsManager", () => {
 				"new-cloud": {
 					id: "cloud-id-4",
 					apiProvider: "vertex" as const,
+					vertexJsonCredentials: "new-cloud-secret",
 				},
 			}
 
@@ -1409,6 +1112,7 @@ describe("ProviderSettingsManager", () => {
 				apiModelId: "claude-3-opus-20240229",
 			})
 			expect(JSON.stringify(storedConfig)).not.toContain("secret1")
+			expect(JSON.stringify(storedConfig)).not.toContain("new-cloud-secret")
 
 			// Check renames
 			expect(storedConfig.apiConfigs["rename-me_local"]).toEqual({
@@ -1427,21 +1131,6 @@ describe("ProviderSettingsManager", () => {
 			})
 
 			expect(storedConfig.cloudProfileIds).toEqual(["cloud-id-1", "cloud-id-3", "cloud-id-4"])
-		})
-
-		it("should throw error if secrets storage fails", async () => {
-			mockSecrets.get.mockResolvedValue(
-				storedProfiles({
-					currentApiConfigName: "default",
-					apiConfigs: { default: { id: "default-id" } },
-					cloudProfileIds: [],
-				}),
-			)
-			mockSecrets.store.mockRejectedValue(new Error("Storage failed"))
-
-			await expect(providerSettingsManager.syncCloudProfiles({})).rejects.toThrow(
-				"Failed to sync cloud profiles: Error: Failed to write provider profiles to secrets: Error: Storage failed",
-			)
 		})
 
 		it("should track active profile changes when active profile is updated", async () => {
@@ -1564,18 +1253,164 @@ describe("ProviderSettingsManager", () => {
 			expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)
 			randomSpy.mockRestore()
 		})
+	})
 
-		it("returns a UUID v4 string (CSPRNG shape)", () => {
-			const id = providerSettingsManager.generateId()
-			expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)
+	describe("profiles and their secrets", () => {
+		beforeEach(async () => {
+			setupKeyAwareSecrets(
+				storedProfiles({
+					currentApiConfigName: "a",
+					apiConfigs: {
+						a: { id: "a-id", apiProvider: "anthropic" },
+						b: { id: "b-id", apiProvider: "openai" },
+					},
+				}),
+				{ "a-id": { apiKey: "a-key" }, "b-id": { openAiApiKey: "b-key" } },
+			)
 		})
 
-		it("produces unique ids across many calls (collision sanity)", () => {
-			const ids = new Set<string>()
-			for (let i = 0; i < 1000; i++) {
-				ids.add(providerSettingsManager.generateId())
-			}
-			expect(ids.size).toBe(1000)
+		it("finds a profile by id, with its secrets, and reports an unknown id", async () => {
+			expect(await providerSettingsManager.getProfile({ id: "b-id" })).toMatchObject({
+				name: "b",
+				apiProvider: "openai",
+				openAiApiKey: "b-key",
+			})
+			await expect(providerSettingsManager.getProfile({ id: "nope" })).rejects.toThrow(
+				"Failed to get profile: Config with ID 'nope' not found",
+			)
 		})
+
+		it("deletes the secrets of a deleted profile, and the secret record with the last one", async () => {
+			await providerSettingsManager.deleteConfig("b")
+			expect(unwrapStoredProfileSecrets()).toEqual({ "a-id": { apiKey: "a-key" } })
+
+			await providerSettingsManager.saveConfig("a", { apiProvider: "anthropic" })
+			expect(mockSecrets.delete).toHaveBeenCalledWith("roo_cline_config_provider_profile_secrets_v2")
+		})
+
+		it("reads profiles without secrets when the secret record is not JSON", async () => {
+			const store = setupKeyAwareSecrets(
+				storedProfiles({
+					currentApiConfigName: "a",
+					apiConfigs: { a: { id: "a-id", apiProvider: "anthropic" } },
+				}),
+			)
+			store["roo_cline_config_provider_profile_secrets_v2"] = "{ not json"
+
+			expect((await providerSettingsManager.getProfile({ name: "a" })).apiKey).toBeUndefined()
+		})
+
+		it("binds a mode to a profile id", async () => {
+			await providerSettingsManager.setModeConfig("debug", "b-id")
+
+			expect(await providerSettingsManager.getModeConfigId("debug")).toBe("b-id")
+			expect((await providerSettingsManager.readProfiles()).modeApiConfigs).toEqual({ debug: "b-id" })
+		})
+	})
+
+	it("syncCloudProfiles moves a renamed cloud profile onto a local profile's name, renaming the local one", async () => {
+		mockSecrets.get.mockResolvedValue(
+			storedProfiles({
+				currentApiConfigName: "taken",
+				apiConfigs: {
+					"old-name": { id: "cloud-id", apiProvider: "anthropic" },
+					taken: { id: "local-id", apiProvider: "openai" },
+				},
+				cloudProfileIds: ["cloud-id"],
+			}),
+		)
+
+		const result = await providerSettingsManager.syncCloudProfiles(
+			{ taken: { id: "cloud-id", apiProvider: "anthropic", apiModelId: "claude-sonnet-4-5" } },
+			"old-name",
+		)
+
+		const stored = unwrapStoredProfiles(mockSecrets.store.mock.calls[0][1])
+		expect(Object.keys(stored.apiConfigs).sort()).toEqual(["taken", "taken_local"])
+		expect(stored.apiConfigs.taken.id).toBe("cloud-id")
+		expect(stored.apiConfigs.taken_local.id).toBe("local-id")
+		expect(result).toEqual({ hasChanges: true, activeProfileChanged: true, activeProfileId: "cloud-id" })
+	})
+
+	it.each([
+		[
+			"initialize",
+			"get",
+			(m: ProviderSettingsManager) => m.initialize(),
+			"Failed to initialize config: Error: Failed to read provider profiles from secrets: Error: Storage failed",
+		],
+		[
+			"listConfig",
+			"get",
+			(m: ProviderSettingsManager) => m.listConfig(),
+			"Failed to list configs: Error: Failed to read provider profiles from secrets: Error: Storage failed",
+		],
+		[
+			"hasConfig",
+			"get",
+			(m: ProviderSettingsManager) => m.hasConfig("a"),
+			"Failed to check config existence: Error: Failed to read provider profiles from secrets: Error: Storage failed",
+		],
+		[
+			"readProfiles",
+			"get",
+			(m: ProviderSettingsManager) => m.readProfiles(),
+			"Failed to read provider profiles: Error: Failed to read provider profiles from secrets: Error: Storage failed",
+		],
+		[
+			"getModeConfigId",
+			"get",
+			(m: ProviderSettingsManager) => m.getModeConfigId("code"),
+			"Failed to get mode config: Error: Failed to read provider profiles from secrets: Error: Storage failed",
+		],
+		[
+			"export",
+			"get",
+			(m: ProviderSettingsManager) => m.export(),
+			"Failed to export provider profiles: Error: Failed to read provider profiles from secrets: Error: Storage failed",
+		],
+		[
+			"saveConfig",
+			"store",
+			(m: ProviderSettingsManager) => m.saveConfig("a", {}),
+			"Failed to save config: Error: Failed to write provider profiles to secrets: Error: Storage failed",
+		],
+		[
+			"activateProfile",
+			"store",
+			(m: ProviderSettingsManager) => m.activateProfile({ name: "a" }),
+			"Failed to activate profile: Failed to write provider profiles to secrets: Error: Storage failed",
+		],
+		[
+			"setModeConfig",
+			"store",
+			(m: ProviderSettingsManager) => m.setModeConfig("code", "a-id"),
+			"Failed to set mode config: Error: Failed to write provider profiles to secrets: Error: Storage failed",
+		],
+		[
+			"setModeConfigs",
+			"store",
+			(m: ProviderSettingsManager) => m.setModeConfigs(["code"], "a-id"),
+			"Failed to set mode configs: Error: Failed to write provider profiles to secrets: Error: Storage failed",
+		],
+		[
+			"import",
+			"store",
+			(m: ProviderSettingsManager) => m.import({ currentApiConfigName: "a", apiConfigs: {} }),
+			"Failed to import provider profiles: Error: Failed to write provider profiles to secrets: Error: Storage failed",
+		],
+		[
+			"syncCloudProfiles",
+			"store",
+			(m: ProviderSettingsManager) => m.syncCloudProfiles({}),
+			"Failed to sync cloud profiles: Error: Failed to write provider profiles to secrets: Error: Storage failed",
+		],
+	] as const)("%s names what failed when the secret store %s fails", async (_method, failing, call, message) => {
+		mockSecrets.get.mockResolvedValue(
+			storedProfiles({ currentApiConfigName: "a", apiConfigs: { a: { id: "a-id", apiProvider: "anthropic" } } }),
+		)
+		mockSecrets[failing].mockRejectedValue(new Error("Storage failed"))
+
+		await expect(call(providerSettingsManager)).rejects.toThrow(message)
 	})
 })

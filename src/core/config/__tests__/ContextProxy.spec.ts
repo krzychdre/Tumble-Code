@@ -1,213 +1,231 @@
-// npx vitest core/config/__tests__/ContextProxy.spec.ts
+// cd src && ./node_modules/.bin/vitest run core/config/__tests__/ContextProxy.spec.ts
 
-import * as vscode from "vscode"
+import * as path from "path"
 
-import { GLOBAL_STATE_KEYS, SECRET_STATE_KEYS, REMOVED_PROVIDER_SETTINGS_KEYS } from "@tumble-code/types"
+import type * as vscode from "vscode"
+
+import { GLOBAL_STATE_KEYS, SECRET_STATE_KEYS, TelemetryEventName } from "@tumble-code/types"
+import { TelemetryService } from "@tumble-code/telemetry"
 
 import { ContextProxy } from "../ContextProxy"
+import { logger } from "../../../utils/logging"
 
-vi.mock("vscode", () => ({
-	Uri: {
-		file: vi.fn((path) => ({ path })),
-	},
-	ExtensionMode: {
-		Development: 1,
-		Production: 2,
-		Test: 3,
-	},
-}))
+/** VS Code's globalState and secrets, kept in maps; the proxy is tested against what lands there. */
+function createContext(state: Record<string, unknown> = {}, secrets: Record<string, string> = {}) {
+	const stateMap = new Map(Object.entries(state))
+	const secretMap = new Map(Object.entries(secrets))
+	const globalState = {
+		get: vi.fn((key: string) => stateMap.get(key)),
+		update: vi.fn(async (key: string, value: unknown) => {
+			if (value === undefined) stateMap.delete(key)
+			else stateMap.set(key, value)
+		}),
+	}
+	const secretStorage = {
+		get: vi.fn(async (key: string) => secretMap.get(key)),
+		store: vi.fn(async (key: string, value: string) => void secretMap.set(key, value)),
+		delete: vi.fn(async (key: string) => void secretMap.delete(key)),
+	}
+	const context = { globalState, secrets: secretStorage } as unknown as vscode.ExtensionContext
+	return { context, stateMap, secretMap, globalState, secretStorage }
+}
+
+async function startProxy(state?: Record<string, unknown>, secrets?: Record<string, string>) {
+	const storage = createContext(state, secrets)
+	const proxy = new ContextProxy(storage.context)
+	await proxy.initialize()
+	return { proxy, ...storage }
+}
 
 describe("ContextProxy", () => {
-	let proxy: ContextProxy
-	let mockContext: any
-	let mockGlobalState: any
-	let mockSecrets: any
-
-	beforeEach(async () => {
-		// Reset mocks
-		vi.clearAllMocks()
-
-		// Mock globalState
-		mockGlobalState = {
-			get: vi.fn(),
-			update: vi.fn().mockResolvedValue(undefined),
+	beforeAll(() => {
+		if (!TelemetryService.hasInstance()) {
+			TelemetryService.createInstance([])
 		}
-
-		// Mock secrets
-		mockSecrets = {
-			get: vi.fn().mockResolvedValue("test-secret"),
-			store: vi.fn().mockResolvedValue(undefined),
-			delete: vi.fn().mockResolvedValue(undefined),
-		}
-
-		// Mock the extension context
-		mockContext = {
-			globalState: mockGlobalState,
-			secrets: mockSecrets,
-			extensionUri: { path: "/test/extension" },
-			extensionPath: "/test/extension",
-			globalStorageUri: { path: "/test/storage" },
-			logUri: { path: "/test/logs" },
-			extension: { packageJSON: { version: "1.0.0" } },
-			extensionMode: vscode.ExtensionMode.Development,
-		}
-
-		// Create proxy instance
-		proxy = new ContextProxy(mockContext)
-		await proxy.initialize()
 	})
 
-	describe("read-only pass-through properties", () => {
-		it("should return extension properties from the original context", () => {
-			expect(proxy.extensionUri).toBe(mockContext.extensionUri)
-			expect(proxy.extensionPath).toBe(mockContext.extensionPath)
-			expect(proxy.globalStorageUri).toBe(mockContext.globalStorageUri)
-			expect(proxy.logUri).toBe(mockContext.logUri)
-			expect(proxy.extension).toBe(mockContext.extension)
-			expect(proxy.extensionMode).toBe(mockContext.extensionMode)
-		})
+	afterEach(() => {
+		vi.restoreAllMocks()
 	})
 
-	describe("constructor / initialize", () => {
-		it("does NOT clear legacy task history keys during initialize (migration owns cleanup)", () => {
-			// initialize() must not touch the legacy keys — ClineProvider
-			// clears them only after a successful migration. Unconditional
-			// cleanup here would orphan data on a failed migration.
-			expect(mockGlobalState.update).not.toHaveBeenCalledWith("taskHistory", undefined)
-			expect(mockGlobalState.update).not.toHaveBeenCalledWith("taskHistoryMigratedToFiles", undefined)
-		})
-
-		it("clearLegacyTaskHistoryKeys clears both legacy keys best-effort", async () => {
-			mockGlobalState.update.mockClear()
-			await proxy.clearLegacyTaskHistoryKeys()
-			expect(mockGlobalState.update).toHaveBeenCalledWith("taskHistory", undefined)
-			expect(mockGlobalState.update).toHaveBeenCalledWith("taskHistoryMigratedToFiles", undefined)
-		})
-
-		it("clearLegacyTaskHistoryKeys continues when clearing one key fails", async () => {
-			const update = vi
-				.fn()
-				.mockImplementation((key: string) =>
-					key === "taskHistory" ? Promise.reject(new Error("cleanup failed")) : Promise.resolve(undefined),
-				)
-			const context = {
-				...mockContext,
-				globalState: { get: vi.fn(), update },
-			}
-			const newProxy = new ContextProxy(context)
-			await newProxy.initialize()
-
-			// Must not throw, and must still attempt the other key.
-			await expect(newProxy.clearLegacyTaskHistoryKeys()).resolves.toBeUndefined()
-			expect(update).toHaveBeenCalledWith("taskHistoryMigratedToFiles", undefined)
-			expect(update).toHaveBeenCalledWith("taskHistory", undefined)
-		})
-
-		it("hasLegacyTaskHistory / getLegacyTaskHistory read the key lazily", () => {
-			mockGlobalState.get.mockClear()
-			// No legacy value present -> false, and no array materialized
-			mockGlobalState.get.mockReturnValue(undefined)
-			expect(proxy.hasLegacyTaskHistory()).toBe(false)
-			expect(proxy.getLegacyTaskHistory()).toBeUndefined()
-
-			// Legacy array present -> true, and the array is returned
-			const legacy = [{ id: "legacy-1", ts: 1, task: "x" }]
-			mockGlobalState.get.mockReturnValue(legacy)
-			expect(proxy.hasLegacyTaskHistory()).toBe(true)
-			expect(proxy.getLegacyTaskHistory()).toBe(legacy)
-		})
-
-		it("should initialize state cache with all global state keys", () => {
-			// Plus one read per removed provider settings key, to migrate it.
-			expect(mockGlobalState.get).toHaveBeenCalledTimes(
-				GLOBAL_STATE_KEYS.length + REMOVED_PROVIDER_SETTINGS_KEYS.length,
+	describe("initialize", () => {
+		it("loads every global state key and secret, and deletes the removed image generation key", async () => {
+			const { proxy, globalState, secretStorage, secretMap } = await startProxy(
+				{ apiModelId: "gpt-4", mode: "code" },
+				{ openAiApiKey: "sk-1", openRouterImageApiKey: "sk-image" },
 			)
-			for (const key of GLOBAL_STATE_KEYS) {
-				expect(mockGlobalState.get).toHaveBeenCalledWith(key)
-			}
-		})
 
-		it("should initialize secret cache with all secret keys", () => {
-			expect(mockSecrets.get).toHaveBeenCalledTimes(SECRET_STATE_KEYS.length)
-			for (const key of SECRET_STATE_KEYS) {
-				expect(mockSecrets.get).toHaveBeenCalledWith(key)
-			}
-		})
-
-		it("deletes the API key of the removed image generation feature instead of reading it", () => {
-			expect(mockSecrets.get).not.toHaveBeenCalledWith("openRouterImageApiKey")
-			expect(mockSecrets.delete).toHaveBeenCalledWith("openRouterImageApiKey")
-		})
-	})
-
-	describe("getGlobalState", () => {
-		it("should return value from cache when it exists", async () => {
-			// Manually set a value in the cache
-			await proxy.updateGlobalState("apiProvider", "deepseek")
-
-			// Should return the cached value
-			const result = proxy.getGlobalState("apiProvider")
-			expect(result).toBe("deepseek")
-
-			// Original context should be read only during initialization
-			expect(mockGlobalState.get).toHaveBeenCalledTimes(
-				GLOBAL_STATE_KEYS.length + REMOVED_PROVIDER_SETTINGS_KEYS.length,
+			expect(proxy.isInitialized).toBe(true)
+			expect(proxy.getValue("apiModelId")).toBe("gpt-4")
+			expect(proxy.getValue("openAiApiKey")).toBe("sk-1")
+			expect(globalState.get.mock.calls.map(([key]) => key)).toEqual(
+				expect.arrayContaining([...GLOBAL_STATE_KEYS]),
 			)
+			expect(secretStorage.get.mock.calls.map(([key]) => key).sort()).toEqual([...SECRET_STATE_KEYS].sort())
+			expect(secretMap.has("openRouterImageApiKey")).toBe(false)
 		})
 
-		it("should handle default values correctly", async () => {
-			// No value in cache
-			const result = proxy.getGlobalState("apiProvider", "deepseek")
-			expect(result).toBe("deepseek")
+		it("logs a key it cannot read or delete and still loads the others", async () => {
+			const storage = createContext({ apiModelId: "gpt-4" }, { openAiApiKey: "sk-1" })
+			storage.globalState.get.mockImplementation((key: string) => {
+				if (key === "mode") throw new Error("bad state")
+				return storage.stateMap.get(key)
+			})
+			storage.secretStorage.get.mockImplementation(async (key: string) => {
+				if (key === "apiKey") throw new Error("bad secret")
+				return storage.secretMap.get(key)
+			})
+			storage.secretStorage.delete.mockRejectedValue(new Error("locked"))
+			const loggerError = vi.spyOn(logger, "error").mockImplementation(() => {})
+			const proxy = new ContextProxy(storage.context)
+
+			await proxy.initialize()
+
+			expect(proxy.getValue("apiModelId")).toBe("gpt-4")
+			expect(proxy.getValue("openAiApiKey")).toBe("sk-1")
+			expect(loggerError.mock.calls.map(([message]) => message)).toEqual([
+				"Error loading global mode: bad state",
+				"Error loading secret apiKey: bad secret",
+				"Error deleting removed secret openRouterImageApiKey: locked",
+			])
 		})
 
-		it("should bypass cache for pass-through state keys", async () => {
-			// Setup mock return value
-			mockGlobalState.get.mockReturnValue(false)
+		// ClineProvider clears them only after a successful migration; clearing
+		// here would lose the history when that migration fails.
+		it("leaves the legacy task history keys alone", async () => {
+			const { stateMap } = await startProxy({ taskHistory: [{ id: "t" }], taskHistoryMigratedToFiles: false })
 
-			const result = proxy.getGlobalState("autoMemoryEnabled")
-
-			// Should get value directly from original context
-			expect(result).toBe(false)
-			expect(mockGlobalState.get).toHaveBeenCalledWith("autoMemoryEnabled")
+			expect(stateMap.get("taskHistory")).toEqual([{ id: "t" }])
+			expect(stateMap.has("taskHistoryMigratedToFiles")).toBe(true)
 		})
 
-		it("should respect default values for pass-through state keys", async () => {
-			// Setup mock to return undefined
-			mockGlobalState.get.mockReturnValue(undefined)
+		// The live provider settings are read from global state at start-up, before any profile is.
+		it.each([
+			["moves openAiR1FormatEnabled to openAiPreserveReasoning", { openAiR1FormatEnabled: true }, true],
+			[
+				"keeps an openAiPreserveReasoning value already set",
+				{ openAiR1FormatEnabled: true, openAiPreserveReasoning: false },
+				false,
+			],
+		])("%s and drops the removed key", async (_label, state, expected) => {
+			const { proxy, stateMap } = await startProxy({ apiProvider: "openai", ...state })
 
-			const result = proxy.getGlobalState("autoMemoryEnabled", false)
+			expect(proxy.getProviderSettings().openAiPreserveReasoning).toBe(expected)
+			expect(stateMap.get("openAiPreserveReasoning")).toBe(expected)
+			expect(stateMap.has("openAiR1FormatEnabled")).toBe(false)
+		})
 
-			// Should return default value when original context returns undefined
-			expect(result).toBe(false)
+		it("writes nothing when no removed key or secret is stored", async () => {
+			const { globalState, secretStorage } = await startProxy({
+				apiProvider: "openai",
+				autoMemoryDirectory: "relative/dir",
+				customCondensingPrompt: "legacy prompt",
+			})
+
+			expect(globalState.update).not.toHaveBeenCalled()
+			expect(secretStorage.store).not.toHaveBeenCalled()
 		})
 	})
 
-	describe("updateGlobalState", () => {
-		it("should update state directly in original context", async () => {
-			await proxy.updateGlobalState("apiProvider", "deepseek")
+	describe("legacy task history", () => {
+		it("reads the legacy array and reports whether it is there", async () => {
+			const legacy = [{ id: "legacy-1" }]
+			const { proxy: withHistory } = await startProxy({ taskHistory: legacy })
+			const { proxy: without } = await startProxy({ taskHistory: "not an array" })
+			const { proxy: none } = await startProxy()
 
-			// Should have called original context
-			expect(mockGlobalState.update).toHaveBeenCalledWith("apiProvider", "deepseek")
-
-			// Should have stored the value in cache
-			const storedValue = await proxy.getGlobalState("apiProvider")
-			expect(storedValue).toBe("deepseek")
+			expect([withHistory.hasLegacyTaskHistory(), withHistory.getLegacyTaskHistory()]).toEqual([true, legacy])
+			expect([without.hasLegacyTaskHistory(), without.getLegacyTaskHistory()]).toEqual([true, undefined])
+			expect([none.hasLegacyTaskHistory(), none.getLegacyTaskHistory()]).toEqual([false, undefined])
 		})
 
-		it("should bypass cache for pass-through state keys", async () => {
-			await proxy.updateGlobalState("autoMemoryEnabled", false)
+		it("clears both legacy keys, the second even when the first fails", async () => {
+			const { proxy, globalState, stateMap } = await startProxy({
+				taskHistory: [],
+				taskHistoryMigratedToFiles: true,
+			})
+			globalState.update.mockRejectedValueOnce(new Error("cleanup failed"))
+			const loggerError = vi.spyOn(logger, "error").mockImplementation(() => {})
 
-			// Should update original context
-			expect(mockGlobalState.update).toHaveBeenCalledWith("autoMemoryEnabled", false)
+			await expect(proxy.clearLegacyTaskHistoryKeys()).resolves.toBeUndefined()
 
-			// Setup mock for subsequent get
-			mockGlobalState.get.mockReturnValue(false)
+			expect(stateMap.has("taskHistoryMigratedToFiles")).toBe(false)
+			expect(loggerError).toHaveBeenCalledWith("Error clearing legacy taskHistory key: cleanup failed")
+		})
+	})
 
-			// Should get fresh value from original context
-			const storedValue = proxy.getGlobalState("autoMemoryEnabled")
-			expect(storedValue).toBe(false)
-			expect(mockGlobalState.get).toHaveBeenCalledWith("autoMemoryEnabled")
+	describe("values", () => {
+		it("caches global state, falls back to the default and writes through", async () => {
+			const { proxy, stateMap, globalState } = await startProxy()
+
+			expect(proxy.getGlobalState("apiProvider", "deepseek")).toBe("deepseek")
+			await proxy.setValue("apiProvider", "anthropic")
+			stateMap.set("apiProvider", "changed behind the proxy")
+
+			expect(proxy.getGlobalState("apiProvider", "deepseek")).toBe("anthropic")
+			expect(globalState.update).toHaveBeenCalledWith("apiProvider", "anthropic")
+		})
+
+		it.each([undefined, null])(
+			"reads a pass-through key from storage each time, %s meaning the default",
+			async (unset) => {
+				const { proxy, stateMap } = await startProxy({ autoMemoryEnabled: unset })
+
+				expect(proxy.getGlobalState("autoMemoryEnabled", true)).toBe(true)
+				stateMap.set("autoMemoryEnabled", false)
+				expect(proxy.getGlobalState("autoMemoryEnabled", true)).toBe(false)
+				await proxy.updateGlobalState("autoMemoryEnabled", true)
+				expect(stateMap.get("autoMemoryEnabled")).toBe(true)
+			},
+		)
+
+		it("keeps secrets in secret storage, never in global state, and deletes a cleared one", async () => {
+			const { proxy, secretMap, stateMap } = await startProxy()
+			const vertexJson = JSON.stringify({ type: "service_account" })
+
+			await proxy.setValues({ apiModelId: "gpt-4", openAiApiKey: "sk-1", vertexJsonCredentials: vertexJson })
+
+			expect(secretMap.get("openAiApiKey")).toBe("sk-1")
+			expect(secretMap.get("vertexJsonCredentials")).toBe(vertexJson)
+			expect(stateMap.has("openAiApiKey")).toBe(false)
+			expect(stateMap.get("apiModelId")).toBe("gpt-4")
+
+			await proxy.setValue("openAiApiKey", undefined)
+			expect(secretMap.has("openAiApiKey")).toBe(false)
+			expect(proxy.getSecret("openAiApiKey")).toBeUndefined()
+		})
+
+		it("re-reads the secrets from storage on refresh and logs one it cannot read", async () => {
+			const { proxy, secretMap, secretStorage } = await startProxy({}, { apiKey: "old" })
+			secretMap.set("apiKey", "new")
+			secretStorage.get.mockImplementation(async (key: string) => {
+				if (key === "openAiApiKey") throw new Error("bad secret")
+				return secretMap.get(key)
+			})
+			const loggerError = vi.spyOn(logger, "error").mockImplementation(() => {})
+
+			await proxy.refreshSecrets()
+
+			expect(proxy.getSecret("apiKey")).toBe("new")
+			expect(loggerError).toHaveBeenCalledWith("Error refreshing secret openAiApiKey: bad secret")
+		})
+
+		// Decision 18: the Settings view clears the memory folder by saving "".
+		it.each([
+			["an empty string as it is", "", ""],
+			[
+				"an absolute path with one trailing separator",
+				path.resolve("/memory"),
+				path.resolve("/memory") + path.sep,
+			],
+			["a relative path as unset", "relative/dir", undefined],
+		])("stores autoMemoryDirectory: %s", async (_label, value, expected) => {
+			const { proxy, stateMap } = await startProxy()
+			vi.spyOn(logger, "error").mockImplementation(() => {})
+
+			await proxy.setValue("autoMemoryDirectory", value)
+
+			expect(stateMap.get("autoMemoryDirectory")).toBe(expected)
 		})
 	})
 
@@ -215,30 +233,24 @@ describe("ContextProxy", () => {
 		// The sidebar and the editor tabs share one proxy and refresh their
 		// webviews from this event when another panel writes a setting.
 		it("fires after every write, once the cache holds the new value", async () => {
+			const { proxy } = await startProxy()
 			const seen: unknown[] = []
 			proxy.onDidChangeValues(() => seen.push(proxy.getValue("alwaysAllowWrite")))
 
 			await proxy.setValue("alwaysAllowWrite", true)
-			await proxy.updateGlobalState("autoApprovalEnabled", true)
+			await proxy.setValue("autoMemoryEnabled", false)
 			await proxy.storeSecret("apiKey", "secret")
 			await proxy.setValues({ alwaysAllowWrite: false })
-
-			expect(seen).toEqual([true, true, true, false])
-		})
-
-		it("fires for a pass-through key and for a full reset", async () => {
-			const listener = vi.fn()
-			proxy.onDidChangeValues(listener)
-
-			await proxy.setValue("autoMemoryEnabled", false)
 			await proxy.resetAllState()
 
-			expect(listener).toHaveBeenCalledTimes(2)
+			expect(seen).toEqual([true, true, true, false, undefined])
 		})
 
 		it("stops after dispose, and a throwing listener does not block the others", async () => {
+			const { proxy } = await startProxy()
 			const disposed = vi.fn()
 			const after = vi.fn()
+			const loggerError = vi.spyOn(logger, "error").mockImplementation(() => {})
 			proxy.onDidChangeValues(() => {
 				throw new Error("listener failed")
 			})
@@ -249,422 +261,123 @@ describe("ContextProxy", () => {
 
 			expect(disposed).not.toHaveBeenCalled()
 			expect(after).toHaveBeenCalledTimes(1)
+			expect(loggerError).toHaveBeenCalledWith("ContextProxy change listener failed: listener failed")
 		})
 	})
 
-	describe("getSecret", () => {
-		it("should return value from cache when it exists", async () => {
-			// Manually set a value in the cache
-			await proxy.storeSecret("apiKey", "cached-secret")
-
-			// Should return the cached value
-			const result = proxy.getSecret("apiKey")
-			expect(result).toBe("cached-secret")
-		})
-	})
-
-	describe("storeSecret", () => {
-		it("should store secret directly in original context", async () => {
-			await proxy.storeSecret("apiKey", "new-secret")
-
-			// Should have called original context
-			expect(mockSecrets.store).toHaveBeenCalledWith("apiKey", "new-secret")
-
-			// Should have stored the value in cache
-			const storedValue = await proxy.getSecret("apiKey")
-			expect(storedValue).toBe("new-secret")
-		})
-
-		it("should handle undefined value for secret deletion", async () => {
-			await proxy.storeSecret("apiKey", undefined)
-
-			// Should have called delete on original context
-			expect(mockSecrets.delete).toHaveBeenCalledWith("apiKey")
-
-			// Should have stored undefined in cache
-			const storedValue = await proxy.getSecret("apiKey")
-			expect(storedValue).toBeUndefined()
-		})
-	})
-
-	describe("setValue", () => {
-		it("should route secret keys to storeSecret", async () => {
-			// Spy on storeSecret
-			const storeSecretSpy = vi.spyOn(proxy, "storeSecret")
-
-			// Test with a known secret key
-			await proxy.setValue("openAiApiKey", "test-api-key")
-
-			// Should have called storeSecret
-			expect(storeSecretSpy).toHaveBeenCalledWith("openAiApiKey", "test-api-key")
-
-			// Should have stored the value in secret cache
-			const storedValue = proxy.getSecret("openAiApiKey")
-			expect(storedValue).toBe("test-api-key")
-		})
-
-		it("should route global state keys to updateGlobalState", async () => {
-			// Spy on updateGlobalState
-			const updateGlobalStateSpy = vi.spyOn(proxy, "updateGlobalState")
-
-			// Test with a known global state key
-			await proxy.setValue("apiModelId", "gpt-4")
-
-			// Should have called updateGlobalState
-			expect(updateGlobalStateSpy).toHaveBeenCalledWith("apiModelId", "gpt-4")
-
-			// Should have stored the value in state cache
-			const storedValue = proxy.getGlobalState("apiModelId")
-			expect(storedValue).toBe("gpt-4")
-		})
-	})
-
-	// Decision 18: the Settings view clears the memory folder by saving "".
-	describe("cleared memory directory", () => {
-		it("stores an empty autoMemoryDirectory as an empty string", async () => {
-			await proxy.setValue("autoMemoryDirectory", "")
-
-			expect(proxy.getValue("autoMemoryDirectory")).toBe("")
-			expect(mockGlobalState.update).toHaveBeenCalledWith("autoMemoryDirectory", "")
-		})
-
-		it("keeps a stored empty autoMemoryDirectory on initialize (it means the default folder)", async () => {
-			vi.clearAllMocks()
-			mockGlobalState.get.mockImplementation((key: string) => (key === "autoMemoryDirectory" ? "" : undefined))
-
-			const reloaded = new ContextProxy(mockContext)
-			await reloaded.initialize()
-
-			expect(mockGlobalState.update).not.toHaveBeenCalledWith("autoMemoryDirectory", undefined)
-			expect(reloaded.getValue("autoMemoryDirectory")).toBe("")
-		})
-
-		it("writes nothing for an invalid stored autoMemoryDirectory on initialize (memory paths ignore it)", async () => {
-			vi.clearAllMocks()
-			mockGlobalState.get.mockImplementation((key: string) =>
-				key === "autoMemoryDirectory" ? "relative/dir" : undefined,
-			)
-
-			const reloaded = new ContextProxy(mockContext)
-			await reloaded.initialize()
-
-			expect(mockGlobalState.update).not.toHaveBeenCalled()
-		})
-	})
-
-	describe("setValues", () => {
-		it("should process multiple values correctly", async () => {
-			// Spy on setValue
-			const setValueSpy = vi.spyOn(proxy, "setValue")
-
-			// Test with multiple values
-			await proxy.setValues({
-				apiModelId: "gpt-4",
-				apiProvider: "openai",
-				mode: "test-mode",
+	describe("provider settings", () => {
+		it("replaces the previous provider's values, keeping an empty headers object", async () => {
+			const { proxy } = await startProxy({
+				apiModelId: "old-model",
+				openAiBaseUrl: "https://old-url.com",
+				modelTemperature: 0.7,
 			})
 
-			// Should have called setValue for each key
-			expect(setValueSpy).toHaveBeenCalledTimes(3)
-			expect(setValueSpy).toHaveBeenCalledWith("apiModelId", "gpt-4")
-			expect(setValueSpy).toHaveBeenCalledWith("apiProvider", "openai")
-			expect(setValueSpy).toHaveBeenCalledWith("mode", "test-mode")
-
-			// Should have stored all values in state cache
-			expect(proxy.getGlobalState("apiModelId")).toBe("gpt-4")
-			expect(proxy.getGlobalState("apiProvider")).toBe("openai")
-			expect(proxy.getGlobalState("mode")).toBe("test-mode")
-		})
-
-		it("should handle both secret and global state keys", async () => {
-			// Spy on storeSecret and updateGlobalState
-			const storeSecretSpy = vi.spyOn(proxy, "storeSecret")
-			const updateGlobalStateSpy = vi.spyOn(proxy, "updateGlobalState")
-
-			// Test with mixed keys
-			await proxy.setValues({
-				apiModelId: "gpt-4", // global state
-				openAiApiKey: "test-api-key", // secret
-			})
-
-			// Should have called appropriate methods
-			expect(storeSecretSpy).toHaveBeenCalledWith("openAiApiKey", "test-api-key")
-			expect(updateGlobalStateSpy).toHaveBeenCalledWith("apiModelId", "gpt-4")
-
-			// Should have stored values in appropriate caches
-			expect(proxy.getSecret("openAiApiKey")).toBe("test-api-key")
-			expect(proxy.getGlobalState("apiModelId")).toBe("gpt-4")
-		})
-	})
-
-	describe("setProviderSettings", () => {
-		it("should clear old API configuration values and set new ones", async () => {
-			// Set up initial API configuration values
-			await proxy.updateGlobalState("apiModelId", "old-model")
-			await proxy.updateGlobalState("openAiBaseUrl", "https://old-url.com")
-			await proxy.updateGlobalState("modelTemperature", 0.7)
-
-			// Spy on setValues
-			const setValuesSpy = vi.spyOn(proxy, "setValues")
-
-			// Call setProviderSettings with new configuration
 			await proxy.setProviderSettings({
-				apiModelId: "new-model",
 				apiProvider: "anthropic",
-				// Note: openAiBaseUrl is not included in the new config
+				apiModelId: "new-model",
+				openAiHeaders: null as any,
 			})
 
-			// Verify setValues was called with the correct parameters
-			// It should include undefined for openAiBaseUrl (to clear it)
-			// and the new values for apiModelId and apiProvider
-			expect(setValuesSpy).toHaveBeenCalledWith(
-				expect.objectContaining({
-					apiModelId: "new-model",
-					apiProvider: "anthropic",
-					openAiBaseUrl: undefined,
-					modelTemperature: undefined,
-				}),
+			expect(proxy.getProviderSettings()).toMatchObject({ apiProvider: "anthropic", apiModelId: "new-model" })
+			expect(proxy.getValue("openAiHeaders")).toEqual({})
+			expect(proxy.getValue("openAiBaseUrl")).toBeUndefined()
+			expect(proxy.getValue("modelTemperature")).toBeUndefined()
+		})
+
+		it.each([
+			["drops an unknown provider", { apiProvider: "invalid-removed-provider", apiModelId: "m" }, undefined],
+			["keeps a retired provider", { apiProvider: "groq", apiModelId: "m" }, "groq"],
+			["keeps an active provider", { apiProvider: "anthropic", apiModelId: "m" }, "anthropic"],
+		])("%s and the other fields", async (_label, state, apiProvider) => {
+			vi.spyOn(logger, "info").mockImplementation(() => {})
+			const { proxy } = await startProxy(state)
+
+			const settings = proxy.getProviderSettings()
+
+			expect(settings.apiProvider).toBe(apiProvider)
+			expect(settings.apiModelId).toBe("m")
+		})
+
+		it("returns the raw values and reports to telemetry when a value fails the schema", async () => {
+			const capture = vi.spyOn(TelemetryService.instance, "capture")
+			const { proxy } = await startProxy({ apiProvider: "anthropic", modelTemperature: "hot" })
+
+			expect(proxy.getProviderSettings()).toMatchObject({ apiProvider: "anthropic", modelTemperature: "hot" })
+			expect(capture).toHaveBeenCalledWith(TelemetryEventName.SCHEMA_VALIDATION_ERROR, {
+				schemaName: "ProviderSettings",
+				error: expect.anything(),
+			})
+		})
+	})
+
+	describe("global settings and export", () => {
+		it("returns the raw values and reports to telemetry when a global setting fails the schema", async () => {
+			const capture = vi.spyOn(TelemetryService.instance, "capture")
+			const { proxy } = await startProxy({ mode: "code", autoApprovalEnabled: "yes" })
+
+			expect(proxy.getGlobalSettings()).toMatchObject({ mode: "code", autoApprovalEnabled: "yes" })
+			expect(capture).toHaveBeenCalledWith(TelemetryEventName.SCHEMA_VALIDATION_ERROR, {
+				schemaName: "GlobalSettings",
+				error: expect.anything(),
+			})
+		})
+
+		it("exports the set global settings with the global custom modes only", async () => {
+			const customMode = (slug: string, source: "global" | "project") => ({
+				slug,
+				name: slug,
+				roleDefinition: "role",
+				groups: ["read"],
+				source,
+			})
+			const { proxy } = await startProxy(
+				{
+					mode: "code",
+					currentApiConfigName: "default",
+					listApiConfigMeta: [{ id: "x", name: "default" }],
+					customModes: [customMode("g", "global"), customMode("p", "project")],
+				},
+				{ apiKey: "secret" },
 			)
 
-			// Verify the state cache has been updated correctly
-			expect(proxy.getGlobalState("apiModelId")).toBe("new-model")
-			expect(proxy.getGlobalState("apiProvider")).toBe("anthropic")
-			expect(proxy.getGlobalState("openAiBaseUrl")).toBeUndefined()
-			expect(proxy.getGlobalState("modelTemperature")).toBeUndefined()
+			expect(await proxy.export()).toEqual({ mode: "code", customModes: [customMode("g", "global")] })
+			expect(proxy.getGlobalSettings().mode).toBe("code")
 		})
 
-		it("should handle empty API configuration", async () => {
-			// Set up initial API configuration values
-			await proxy.updateGlobalState("apiModelId", "old-model")
-			await proxy.updateGlobalState("openAiBaseUrl", "https://old-url.com")
+		it("exports nothing and reports to telemetry when a global setting fails the schema", async () => {
+			const capture = vi.spyOn(TelemetryService.instance, "capture")
+			const { proxy } = await startProxy({ autoApprovalEnabled: "yes" })
 
-			// Spy on setValues
-			const setValuesSpy = vi.spyOn(proxy, "setValues")
-
-			// Call setProviderSettings with empty configuration
-			await proxy.setProviderSettings({})
-
-			// Verify setValues was called with undefined for all existing API config keys
-			expect(setValuesSpy).toHaveBeenCalledWith(
-				expect.objectContaining({
-					apiModelId: undefined,
-					openAiBaseUrl: undefined,
-				}),
-			)
-
-			// Verify the state cache has been cleared
-			expect(proxy.getGlobalState("apiModelId")).toBeUndefined()
-			expect(proxy.getGlobalState("openAiBaseUrl")).toBeUndefined()
+			expect(await proxy.export()).toBeUndefined()
+			expect(capture).toHaveBeenCalledWith(TelemetryEventName.SCHEMA_VALIDATION_ERROR, {
+				schemaName: "GlobalSettings",
+				error: expect.anything(),
+			})
 		})
 	})
 
-	describe("vertex JSON credentials", () => {
-		const VERTEX_JSON = JSON.stringify({ type: "service_account", client_email: "sa@p.iam.gserviceaccount.com" })
+	it("resetAllState clears every key and secret and the caches", async () => {
+		const { proxy, stateMap, secretMap } = await startProxy({ apiModelId: "gpt-4" }, { openAiApiKey: "sk-1" })
 
-		it("stores vertexJsonCredentials in secret storage, not in global state", async () => {
-			mockGlobalState.update.mockClear()
-			await proxy.setProviderSettings({ apiProvider: "vertex", vertexJsonCredentials: VERTEX_JSON })
+		await proxy.resetAllState()
 
-			expect(mockSecrets.store).toHaveBeenCalledWith("vertexJsonCredentials", VERTEX_JSON)
-			expect(mockGlobalState.update).not.toHaveBeenCalledWith("vertexJsonCredentials", VERTEX_JSON)
-		})
+		expect(proxy.getValue("apiModelId")).toBeUndefined()
+		expect(proxy.getValue("openAiApiKey")).toBeUndefined()
+		expect([...stateMap.keys()]).toEqual([])
+		expect([...secretMap.keys()]).toEqual([])
 	})
 
-	describe("resetAllState", () => {
-		it("should clear all in-memory caches", async () => {
-			// Setup initial state in caches
-			await proxy.setValues({
-				apiModelId: "gpt-4", // global state
-				openAiApiKey: "test-api-key", // secret
-			})
+	it("has one shared instance, built and initialized on first use", async () => {
+		;(ContextProxy as any)._instance = null
+		expect(() => ContextProxy.instance).toThrow("ContextProxy not initialized")
 
-			// Verify initial state
-			expect(proxy.getGlobalState("apiModelId")).toBe("gpt-4")
-			expect(proxy.getSecret("openAiApiKey")).toBe("test-api-key")
+		const { context } = createContext({ apiModelId: "gpt-4" })
+		const first = await ContextProxy.getInstance(context)
 
-			// Reset all state
-			await proxy.resetAllState()
-
-			// Caches should be reinitialized with values from the context
-			// Since our mock globalState.get returns undefined by default,
-			// the cache should now contain undefined values
-			expect(proxy.getGlobalState("apiModelId")).toBeUndefined()
-		})
-
-		it("should update all global state keys to undefined", async () => {
-			// Setup initial state
-			await proxy.updateGlobalState("apiModelId", "gpt-4")
-			await proxy.updateGlobalState("apiProvider", "openai")
-
-			// Reset all state
-			await proxy.resetAllState()
-
-			// Should have called update with undefined for each key
-			for (const key of GLOBAL_STATE_KEYS) {
-				expect(mockGlobalState.update).toHaveBeenCalledWith(key, undefined)
-			}
-
-			// 2 initial setup writes (apiModelId, apiProvider) plus one clear per
-			// key; initialize() itself writes nothing.
-			expect(mockGlobalState.update).toHaveBeenCalledTimes(2 + GLOBAL_STATE_KEYS.length)
-		})
-
-		it("should delete all secrets", async () => {
-			// Setup initial secrets
-			await proxy.storeSecret("apiKey", "test-api-key")
-			await proxy.storeSecret("openAiApiKey", "test-openai-key")
-
-			// Reset all state
-			await proxy.resetAllState()
-
-			// Should have called delete for each key
-			for (const key of SECRET_STATE_KEYS) {
-				expect(mockSecrets.delete).toHaveBeenCalledWith(key)
-			}
-
-			// One call per secret key, plus the removed-feature secret the
-			// re-initialization deletes.
-			const removedSecretDeletes = mockSecrets.delete.mock.calls.filter(
-				([key]: [string]) => key === "openRouterImageApiKey",
-			).length
-			expect(removedSecretDeletes).toBeGreaterThan(0)
-			expect(mockSecrets.delete).toHaveBeenCalledTimes(SECRET_STATE_KEYS.length + removedSecretDeletes)
-		})
-
-		it("should reinitialize caches after reset", async () => {
-			// Spy on initialization methods
-			const initializeSpy = vi.spyOn(proxy, "initialize")
-
-			// Reset all state
-			await proxy.resetAllState()
-
-			// Should reinitialize caches
-			expect(initializeSpy).toHaveBeenCalledTimes(1)
-		})
-	})
-
-	describe("getProviderSettings", () => {
-		it("should sanitize invalid apiProvider before parsing", async () => {
-			// Reset and create a new proxy with an unknown provider in state
-			vi.clearAllMocks()
-			mockGlobalState.get.mockImplementation((key: string) => {
-				if (key === "apiProvider") {
-					return "invalid-removed-provider"
-				}
-				if (key === "apiModelId") {
-					return "some-model"
-				}
-				return undefined
-			})
-
-			const proxyWithInvalidProvider = new ContextProxy(mockContext)
-			await proxyWithInvalidProvider.initialize()
-
-			const settings = proxyWithInvalidProvider.getProviderSettings()
-
-			// The invalid apiProvider should be sanitized (removed)
-			expect(settings.apiProvider).toBeUndefined()
-			// Other settings should still be present
-			expect(settings.apiModelId).toBe("some-model")
-		})
-
-		it("should preserve retired apiProvider and provider fields", async () => {
-			await proxy.setValues({
-				apiProvider: "groq",
-				apiModelId: "llama3-70b",
-				openAiBaseUrl: "https://api.retired-provider.example/v1",
-				apiKey: "retired-provider-key",
-			})
-
-			const settings = proxy.getProviderSettings()
-
-			expect(settings.apiProvider).toBe("groq")
-			expect(settings.apiModelId).toBe("llama3-70b")
-			expect(settings.openAiBaseUrl).toBe("https://api.retired-provider.example/v1")
-			expect(settings.apiKey).toBe("retired-provider-key")
-		})
-
-		it("should pass through valid apiProvider", async () => {
-			// Set a valid provider in state
-			await proxy.updateGlobalState("apiProvider", "anthropic")
-			await proxy.updateGlobalState("apiModelId", "claude-3-opus-20240229")
-
-			const settings = proxy.getProviderSettings()
-
-			// Valid provider should be returned
-			expect(settings.apiProvider).toBe("anthropic")
-			expect(settings.apiModelId).toBe("claude-3-opus-20240229")
-		})
-
-		it("should handle undefined apiProvider gracefully", async () => {
-			// Ensure no provider is set
-			await proxy.updateGlobalState("apiProvider", undefined)
-
-			const settings = proxy.getProviderSettings()
-
-			// Should not throw and should return undefined
-			expect(settings.apiProvider).toBeUndefined()
-		})
-	})
-
-	describe("retired one-time migrations", () => {
-		// The old start-up migrations for the nested image-generation settings and the two condensing prompt
-		// migrations were deleted (ai_plans/2026-09-28_delete-old-config-migrations.md). Their legacy keys are
-		// neither read nor rewritten any more.
-		it("does not touch customCondensingPrompt, customSupportPrompts or openRouterImageGenerationSettings", async () => {
-			vi.clearAllMocks()
-			const storedPrompts = { CONDENSE: "1. Previous Conversation:\n2. Current Work:" }
-			mockGlobalState.get.mockImplementation((key: string) => {
-				if (key === "customSupportPrompts") return storedPrompts
-				if (key === "customCondensingPrompt") return "legacy prompt"
-				if (key === "openRouterImageGenerationSettings") return { openRouterApiKey: "k", selectedModel: "m" }
-				return undefined
-			})
-
-			await new ContextProxy(mockContext).initialize()
-
-			const touchedKeys = mockGlobalState.update.mock.calls.map((call: any[]) => call[0])
-			expect(touchedKeys).not.toContain("customSupportPrompts")
-			expect(touchedKeys).not.toContain("customCondensingPrompt")
-			expect(touchedKeys).not.toContain("openRouterImageGenerationSettings")
-			expect(mockGlobalState.get).not.toHaveBeenCalledWith("openRouterImageGenerationSettings")
-		})
-	})
-
-	// The live provider settings are read from global state at start-up, before any profile is.
-	describe("removed provider settings keys", () => {
-		const startWith = async (state: Record<string, unknown>) => {
-			vi.clearAllMocks()
-			mockGlobalState.get.mockImplementation((key: string) => state[key])
-			const started = new ContextProxy(mockContext)
-			await started.initialize()
-			return started
-		}
-
-		it("turns openAiR1FormatEnabled into openAiPreserveReasoning and drops the old key", async () => {
-			const started = await startWith({ apiProvider: "openai", openAiR1FormatEnabled: true })
-
-			expect(started.getProviderSettings().openAiPreserveReasoning).toBe(true)
-			expect(mockGlobalState.update).toHaveBeenCalledWith("openAiPreserveReasoning", true)
-			expect(mockGlobalState.update).toHaveBeenCalledWith("openAiR1FormatEnabled", undefined)
-		})
-
-		it("keeps an openAiPreserveReasoning value already set", async () => {
-			const started = await startWith({
-				apiProvider: "openai",
-				openAiR1FormatEnabled: true,
-				openAiPreserveReasoning: false,
-			})
-
-			expect(started.getProviderSettings().openAiPreserveReasoning).toBe(false)
-			expect(mockGlobalState.update).not.toHaveBeenCalledWith("openAiPreserveReasoning", expect.anything())
-			expect(mockGlobalState.update).toHaveBeenCalledWith("openAiR1FormatEnabled", undefined)
-		})
-
-		it("writes nothing when no removed key is stored", async () => {
-			await startWith({ apiProvider: "openai" })
-
-			expect(mockGlobalState.update).not.toHaveBeenCalled()
-		})
+		expect(first.isInitialized).toBe(true)
+		expect(await ContextProxy.getInstance(createContext().context)).toBe(first)
+		expect(ContextProxy.instance).toBe(first)
+		;(ContextProxy as any)._instance = null
 	})
 })

@@ -364,19 +364,6 @@ export class ContextProxy {
 	 * Active and retired providers are preserved.
 	 */
 	private sanitizeProviderValues(values: TumbleCodeSettings): TumbleCodeSettings {
-		// Remove legacy Claude Code CLI wrapper keys that may still exist in global state.
-		// These keys were used by a removed local CLI runner and are no longer part of ProviderSettings.
-		const legacyKeys = ["claudeCodePath", "claudeCodeMaxOutputTokens"] as const
-
-		let sanitizedValues = values
-		for (const key of legacyKeys) {
-			if (key in sanitizedValues) {
-				const copy = { ...sanitizedValues } as Record<string, unknown>
-				delete copy[key as string]
-				sanitizedValues = copy as TumbleCodeSettings
-			}
-		}
-
 		const isKnownProvider =
 			typeof values.apiProvider === "string" &&
 			(isProviderName(values.apiProvider) || isRetiredProvider(values.apiProvider))
@@ -384,10 +371,10 @@ export class ContextProxy {
 		if (values.apiProvider !== undefined && !isKnownProvider) {
 			logger.info(`[ContextProxy] Sanitizing invalid provider "${values.apiProvider}" - resetting to undefined`)
 			// Return a new values object without the invalid apiProvider
-			const { apiProvider, ...restValues } = sanitizedValues
+			const { apiProvider, ...restValues } = values
 			return restValues as TumbleCodeSettings
 		}
-		return sanitizedValues
+		return values
 	}
 
 	public async setProviderSettings(values: ProviderSettings) {
