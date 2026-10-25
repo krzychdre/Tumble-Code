@@ -260,3 +260,69 @@ describe("mode-validator", () => {
 		})
 	})
 })
+
+describe("isToolAllowedForMode with an edit fileRegex", () => {
+	const customModes: ModeConfig[] = [
+		{
+			slug: "markdown-editor",
+			name: "Markdown Editor",
+			roleDefinition: "r",
+			groups: ["read", ["edit", { fileRegex: "\\.md$" }]],
+		},
+		{
+			slug: "docs-editor",
+			name: "Documentation Editor",
+			roleDefinition: "r",
+			groups: ["read", ["edit", { fileRegex: "\\.(md|txt)$", description: "Documentation files only" }]],
+		},
+		{ slug: "broken-regex", name: "Broken", roleDefinition: "r", groups: [["edit", { fileRegex: "([" }]] },
+		{ slug: "plain-edit", name: "Plain Edit", roleDefinition: "r", groups: ["read", "edit"] },
+		{ slug: "read-only", name: "Read Only", roleDefinition: "r", groups: ["read"] },
+	]
+	const patch = (file: string) => `*** Begin Patch\n*** Update File: ${file}\n@@ \n-old\n+new\n*** End Patch`
+	const replace = (file: string) => ({ file_path: file, old_string: "a", new_string: "b" })
+
+	it.each([
+		["write_to_file", "markdown-editor", { path: "a.md", content: "x" }, undefined],
+		["apply_diff", "markdown-editor", { path: "a.md", diff: "- a\n+ b" }, undefined],
+		["write_to_file", "docs-editor", { path: "a.txt", content: "x" }, undefined],
+		["write_to_file", "architect", { path: "plan.md", content: "x" }, undefined],
+		// Only the path has streamed in yet: nothing to check.
+		["write_to_file", "markdown-editor", { path: "a.js" }, undefined],
+		["apply_patch", "markdown-editor", { patch: patch("a.md") }, ["apply_patch"]],
+		["search_replace", "markdown-editor", replace("a.md"), ["search_replace"]],
+		["edit_file", "architect", replace("a.md"), ["edit_file"]],
+	])("allows %s in %s for %j", (tool, mode, params, included) => {
+		expect(isToolAllowedForMode(tool, mode, customModes, undefined, params, undefined, included)).toBe(true)
+	})
+
+	it.each([
+		["write_to_file", "markdown-editor", { path: "a.js", content: "x" }, undefined, "\\.md$. Got: a.js"],
+		["apply_diff", "architect", { path: "a.py", diff: "- a\n+ b" }, undefined, "(Markdown files only)"],
+		["write_to_file", "docs-editor", { path: "a.js", content: "x" }, undefined, "(Documentation files only)"],
+		["apply_patch", "markdown-editor", { patch: patch("a.js") }, ["apply_patch"], "Got: a.js"],
+		["search_replace", "markdown-editor", replace("a.js"), ["search_replace"], "Got: a.js"],
+		["edit_file", "architect", replace("a.js"), ["edit_file"], "Got: a.js"],
+		// An invalid pattern matches nothing rather than crashing the validation.
+		["write_to_file", "broken-regex", { path: "a.md", content: "x" }, undefined, "Got: a.md"],
+	])("refuses %s in %s for %j", (tool, mode, params, included, message) => {
+		expect(() => isToolAllowedForMode(tool, mode, customModes, undefined, params, undefined, included)).toThrow(
+			expect.objectContaining({ name: "FileRestrictionError", message: expect.stringContaining(message) }),
+		)
+	})
+
+	it.each([
+		["an unknown mode", "write_to_file", "non-existent", undefined, false],
+		["an opt-in tool not included", "search_and_replace", "plain-edit", undefined, false],
+		["an opt-in tool included", "search_and_replace", "plain-edit", ["search_and_replace"], true],
+		[
+			"an included opt-in tool outside the mode's groups",
+			"search_and_replace",
+			"read-only",
+			["search_and_replace"],
+			false,
+		],
+	])("for %s answers %s", (_, tool, mode, included, allowed) => {
+		expect(isToolAllowedForMode(tool, mode, customModes, undefined, undefined, undefined, included)).toBe(allowed)
+	})
+})
