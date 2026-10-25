@@ -1,4 +1,7 @@
-import type { ExtensionState, ModeConfig } from "@tumble-code/types"
+// The readable cases of the auto-approval policy, each one a decision someone asked for.
+// approvalMatrix.spec.ts pins every settings combination; this table names the ones that matter.
+
+import type { ClineAsk, ExtensionState, ModeConfig } from "@tumble-code/types"
 
 import {
 	checkAutoApproval,
@@ -32,299 +35,177 @@ const baseState = (overrides: Partial<State> = {}): State =>
 		...overrides,
 	}) as State
 
-const writeToolText = JSON.stringify({
-	tool: "editedExistingFile",
-	isOutsideWorkspace: true,
-})
+const tool = (action: string, extra: Record<string, unknown> = {}) => JSON.stringify({ tool: action, ...extra })
+const followup = (suggest: unknown[]) => JSON.stringify({ question: "Pick one", suggest })
 
-const mcpText = JSON.stringify({ type: "use_mcp_tool", serverName: "s", toolName: "t" })
+const bypass = { autoApprovalMode: "bypass" } as const
+const autonomous = { autoApprovalMode: "autonomous" } as const
+const architect = { mode: "architect" }
+const planner: ModeConfig = {
+	slug: "my-planner",
+	name: "My Planner",
+	roleDefinition: "You plan things.",
+	groups: ["read"],
+	planApprovalRequired: true,
+}
 
-const followupText = (withSuggestion: boolean) =>
-	JSON.stringify({
-		question: "Pick one",
-		suggest: withSuggestion ? [{ answer: "first answer" }] : [],
+describe("checkAutoApproval", () => {
+	it.each<[string, Partial<State>, ClineAsk, string | undefined, boolean, "approve" | "ask"]>([
+		// bypass approves every permission ask, guards included, but no other kind of ask
+		["bypass: an unknown command", bypass, "command", "rm -rf /tmp/whatever", false, "approve"],
+		[
+			"bypass: a protected write outside the workspace",
+			bypass,
+			"tool",
+			tool("editedExistingFile", { isOutsideWorkspace: true }),
+			true,
+			"approve",
+		],
+		[
+			"bypass: MCP without per-tool allow",
+			bypass,
+			"use_mcp_server",
+			JSON.stringify({ type: "use_mcp_tool", serverName: "s", toolName: "t" }),
+			false,
+			"approve",
+		],
+		["bypass: a follow-up question", bypass, "followup", followup([{ answer: "first" }]), false, "ask"],
+		["bypass: a failed request", bypass, "api_req_failed", undefined, false, "ask"],
+		["bypass: resuming a task", bypass, "resume_task", undefined, false, "ask"],
+		["autonomous: an unknown command", autonomous, "command", "some-unknown-cmd", false, "approve"],
+		["the kill switch, even in bypass", { ...bypass, autoApprovalEnabled: false }, "command", "ls", false, "ask"],
+		[
+			"default: a command outside the allowlist",
+			{ alwaysAllowExecute: true },
+			"command",
+			"definitely-not-allowed",
+			false,
+			"ask",
+		],
+		// The plan gate: a planning mode must not leave planning without the user, unless the
+		// user turned plan review off; it survives bypass, autonomous skips it.
+		[
+			"architect: switching mode",
+			{ ...architect, alwaysAllowModeSwitch: true },
+			"tool",
+			tool("switchMode"),
+			false,
+			"ask",
+		],
+		[
+			"architect: switching mode, plans pre-approved",
+			{ ...architect, alwaysAllowModeSwitch: true, alwaysApprovePlan: true },
+			"tool",
+			tool("switchMode"),
+			false,
+			"approve",
+		],
+		[
+			"architect: plans pre-approved without the mode switch toggle",
+			{ ...architect, alwaysApprovePlan: true },
+			"tool",
+			tool("switchMode"),
+			false,
+			"ask",
+		],
+		["architect: a subtask", { ...architect, alwaysAllowSubtasks: true }, "tool", tool("newTask"), false, "ask"],
+		[
+			"architect: a subtask, plans pre-approved",
+			{ ...architect, alwaysAllowSubtasks: true, alwaysApprovePlan: true },
+			"tool",
+			tool("newTask"),
+			false,
+			"approve",
+		],
+		[
+			"architect: finishing a subtask",
+			{ ...architect, alwaysAllowSubtasks: true },
+			"tool",
+			tool("finishTask"),
+			false,
+			"approve",
+		],
+		["code: switching mode", { alwaysAllowModeSwitch: true }, "tool", tool("switchMode"), false, "approve"],
+		[
+			"a custom planning mode: switching mode",
+			{ mode: "my-planner", customModes: [planner], alwaysAllowModeSwitch: true },
+			"tool",
+			tool("switchMode"),
+			false,
+			"ask",
+		],
+		["bypass + architect: switching mode", { ...bypass, ...architect }, "tool", tool("switchMode"), false, "ask"],
+		["bypass + architect: a subtask", { ...bypass, ...architect }, "tool", tool("newTask"), false, "ask"],
+		[
+			"bypass + architect: switching mode, plans pre-approved",
+			{ ...bypass, ...architect, alwaysApprovePlan: true },
+			"tool",
+			tool("switchMode"),
+			false,
+			"approve",
+		],
+		["bypass + architect: another tool", { ...bypass, ...architect }, "tool", tool("finishTask"), false, "approve"],
+		[
+			"autonomous + architect: switching mode",
+			{ ...autonomous, ...architect },
+			"tool",
+			tool("switchMode"),
+			false,
+			"approve",
+		],
+		["the plan review pause", {}, "tool", tool("reviewPlan", { path: "plans/plan.md" }), false, "ask"],
+		[
+			"the plan review pause, plans pre-approved",
+			{ alwaysApprovePlan: true },
+			"tool",
+			tool("reviewPlan"),
+			false,
+			"approve",
+		],
+		["bypass: the plan review pause", bypass, "tool", tool("reviewPlan"), false, "ask"],
+		["autonomous: the plan review pause", autonomous, "tool", tool("reviewPlan"), false, "approve"],
+	])("%s: %s", async (_, state, ask, text, isProtected, decision) => {
+		expect((await checkAutoApproval({ state: baseState(state), ask, text, isProtected })).decision).toBe(decision)
 	})
 
-describe("checkAutoApproval modes", () => {
-	describe("bypass mode", () => {
-		const state = baseState({ autoApprovalMode: "bypass" })
+	// Weak models (GLM, Qwen, local Llamas) send follow-up suggestions with a blank, missing or
+	// non-string answer. Auto-approval must never answer the question with that.
+	const autoAnswer = { alwaysAllowFollowupQuestions: true, followupAutoApproveTimeoutMs: 1000 }
+	it.each<[string, Partial<State>, unknown[], number, string]>([
+		["autonomous: the first suggestion", autonomous, [{ answer: "first answer" }], 0, "first answer"],
+		[
+			"autonomous: the configured wait",
+			{ ...autonomous, followupAutoApproveTimeoutMs: 5000 },
+			[{ answer: "a" }],
+			5000,
+			"a",
+		],
+		["autonomous: empty text without suggestions", autonomous, [], 0, ""],
+		[
+			"autonomous: the first usable answer",
+			autonomous,
+			[{ answer: "" }, { answer: 7 }, { answer: "second" }],
+			0,
+			"second",
+		],
+		["autonomous: empty text, never a non-string", autonomous, [{ answer: 7 }], 0, ""],
+		[
+			"default: the first usable answer",
+			autoAnswer,
+			[{ answer: "   " }, { mode: "code" }, { answer: 42 }, { answer: "real answer" }],
+			1000,
+			"real answer",
+		],
+	])("answers a follow-up with %s", async (_, state, suggest, timeout, text) => {
+		const result = await checkAutoApproval({ state: baseState(state), ask: "followup", text: followup(suggest) })
 
-		it("approves unknown commands not on the allowlist", async () => {
-			const result = await checkAutoApproval({ state, ask: "command", text: "rm -rf /tmp/whatever" })
-			expect(result.decision).toBe("approve")
-		})
-
-		it("approves writes outside the workspace, ignoring guards", async () => {
-			const result = await checkAutoApproval({ state, ask: "tool", text: writeToolText, isProtected: true })
-			expect(result.decision).toBe("approve")
-		})
-
-		it("approves MCP usage without per-tool allow", async () => {
-			const result = await checkAutoApproval({ state, ask: "use_mcp_server", text: mcpText })
-			expect(result.decision).toBe("approve")
-		})
-
-		it("still interrupts on follow-up questions", async () => {
-			const result = await checkAutoApproval({ state, ask: "followup", text: followupText(true) })
-			expect(result.decision).toBe("ask")
-		})
-
-		it("does not blanket-approve non-permission asks (api_req_failed)", async () => {
-			const result = await checkAutoApproval({ state, ask: "api_req_failed" })
-			expect(result.decision).toBe("ask")
-		})
-
-		it("does not blanket-approve resume_task", async () => {
-			const result = await checkAutoApproval({ state, ask: "resume_task" })
-			expect(result.decision).toBe("ask")
-		})
+		expect(result).toMatchObject({ decision: "timeout", timeout })
+		expect(result.decision === "timeout" && result.fn()).toEqual({ askResponse: "messageResponse", text })
 	})
 
-	describe("autonomous mode", () => {
-		const state = baseState({ autoApprovalMode: "autonomous" })
+	it("leaves a follow-up without a usable answer to the user", async () => {
+		const text = followup([{ answer: "" }, { mode: "code" }, null])
 
-		it("approves commands like bypass", async () => {
-			const result = await checkAutoApproval({ state, ask: "command", text: "some-unknown-cmd" })
-			expect(result.decision).toBe("approve")
-		})
-
-		it("auto-answers follow-ups with the first suggestion", async () => {
-			const result = await checkAutoApproval({ state, ask: "followup", text: followupText(true) })
-			expect(result.decision).toBe("timeout")
-			if (result.decision === "timeout") {
-				expect(result.fn()).toEqual({ askResponse: "messageResponse", text: "first answer" })
-			}
-		})
-
-		it("proceeds with empty text when a follow-up has no suggestions", async () => {
-			const result = await checkAutoApproval({ state, ask: "followup", text: followupText(false) })
-			expect(result.decision).toBe("timeout")
-			if (result.decision === "timeout") {
-				expect(result.fn()).toEqual({ askResponse: "messageResponse", text: "" })
-			}
-		})
-
-		it("honors the configured follow-up timeout", async () => {
-			const result = await checkAutoApproval({
-				state: baseState({ autoApprovalMode: "autonomous", followupAutoApproveTimeoutMs: 5000 }),
-				ask: "followup",
-				text: followupText(true),
-			})
-			expect(result.decision).toBe("timeout")
-			if (result.decision === "timeout") {
-				expect(result.timeout).toBe(5000)
-			}
-		})
-	})
-
-	describe("kill switch and default mode", () => {
-		it("prompts for everything when autoApprovalEnabled is off, even in bypass", async () => {
-			const state = baseState({ autoApprovalMode: "bypass", autoApprovalEnabled: false })
-			const result = await checkAutoApproval({ state, ask: "command", text: "ls" })
-			expect(result.decision).toBe("ask")
-		})
-
-		it("default mode still respects the command allowlist", async () => {
-			const state = baseState({ autoApprovalMode: "default", alwaysAllowExecute: true })
-			const result = await checkAutoApproval({ state, ask: "command", text: "definitely-not-allowed" })
-			expect(result.decision).toBe("ask")
-		})
-	})
-
-	describe("plan-approval gate", () => {
-		const switchModeText = JSON.stringify({ tool: "switchMode", mode: "code" })
-		const newTaskText = JSON.stringify({ tool: "newTask", mode: "code" })
-		const finishTaskText = JSON.stringify({ tool: "finishTask" })
-
-		it("architect + switchMode + alwaysAllowModeSwitch ON + alwaysApprovePlan OFF → ask", async () => {
-			const state = baseState({ mode: "architect", alwaysAllowModeSwitch: true, alwaysApprovePlan: false })
-			const result = await checkAutoApproval({ state, ask: "tool", text: switchModeText })
-			expect(result.decision).toBe("ask")
-		})
-
-		it("architect + switchMode + alwaysAllowModeSwitch ON + alwaysApprovePlan ON → approve", async () => {
-			const state = baseState({ mode: "architect", alwaysAllowModeSwitch: true, alwaysApprovePlan: true })
-			const result = await checkAutoApproval({ state, ask: "tool", text: switchModeText })
-			expect(result.decision).toBe("approve")
-		})
-
-		it("architect + newTask + alwaysAllowSubtasks ON → ask (subtask is implementation escape hatch)", async () => {
-			const state = baseState({ mode: "architect", alwaysAllowSubtasks: true, alwaysApprovePlan: false })
-			const result = await checkAutoApproval({ state, ask: "tool", text: newTaskText })
-			expect(result.decision).toBe("ask")
-		})
-
-		it("architect + finishTask + alwaysAllowSubtasks ON → approve (finishTask not gated)", async () => {
-			const state = baseState({ mode: "architect", alwaysAllowSubtasks: true, alwaysApprovePlan: false })
-			const result = await checkAutoApproval({ state, ask: "tool", text: finishTaskText })
-			expect(result.decision).toBe("approve")
-		})
-
-		it("code mode + switchMode + alwaysAllowModeSwitch ON → approve (non-planning mode unaffected)", async () => {
-			const state = baseState({ mode: "code", alwaysAllowModeSwitch: true, alwaysApprovePlan: false })
-			const result = await checkAutoApproval({ state, ask: "tool", text: switchModeText })
-			expect(result.decision).toBe("approve")
-		})
-
-		it("custom mode with planApprovalRequired + switchMode → ask", async () => {
-			const customModes: ModeConfig[] = [
-				{
-					slug: "my-planner",
-					name: "My Planner",
-					roleDefinition: "You plan things.",
-					groups: ["read"],
-					planApprovalRequired: true,
-				},
-			]
-			const state = baseState({ mode: "my-planner", customModes, alwaysAllowModeSwitch: true })
-			const result = await checkAutoApproval({ state, ask: "tool", text: switchModeText })
-			expect(result.decision).toBe("ask")
-		})
-
-		it("bypass mode + architect + switchMode → ask (gate survives bypass)", async () => {
-			const state = baseState({ mode: "architect", autoApprovalMode: "bypass", alwaysAllowModeSwitch: true })
-			const result = await checkAutoApproval({ state, ask: "tool", text: switchModeText })
-			expect(result.decision).toBe("ask")
-		})
-
-		it("bypass mode + architect + newTask → ask (gate survives bypass)", async () => {
-			const state = baseState({ mode: "architect", autoApprovalMode: "bypass", alwaysAllowSubtasks: true })
-			const result = await checkAutoApproval({ state, ask: "tool", text: newTaskText })
-			expect(result.decision).toBe("ask")
-		})
-
-		it("bypass mode + architect + switchMode + alwaysApprovePlan ON → approve", async () => {
-			const state = baseState({ mode: "architect", autoApprovalMode: "bypass", alwaysApprovePlan: true })
-			const result = await checkAutoApproval({ state, ask: "tool", text: switchModeText })
-			expect(result.decision).toBe("approve")
-		})
-
-		it("bypass mode + non-planning mode + switchMode → approve (gate not applicable)", async () => {
-			const state = baseState({ mode: "code", autoApprovalMode: "bypass" })
-			const result = await checkAutoApproval({ state, ask: "tool", text: switchModeText })
-			expect(result.decision).toBe("approve")
-		})
-
-		it("bypass mode + architect + non-gated tool ask → approve (gate only guards switchMode/newTask)", async () => {
-			const state = baseState({ mode: "architect", autoApprovalMode: "bypass" })
-			const result = await checkAutoApproval({
-				state,
-				ask: "tool",
-				text: JSON.stringify({ tool: "finishTask" }),
-			})
-			expect(result.decision).toBe("approve")
-		})
-
-		it("autonomous mode + architect + switchMode → approve (autonomous bypasses the gate)", async () => {
-			const state = baseState({ mode: "architect", autoApprovalMode: "autonomous", alwaysApprovePlan: false })
-			const result = await checkAutoApproval({ state, ask: "tool", text: switchModeText })
-			expect(result.decision).toBe("approve")
-		})
-
-		it("architect + switchMode + alwaysAllowModeSwitch OFF + alwaysApprovePlan ON → ask (plan toggle doesn't grant approval by itself)", async () => {
-			const state = baseState({ mode: "architect", alwaysAllowModeSwitch: false, alwaysApprovePlan: true })
-			const result = await checkAutoApproval({ state, ask: "tool", text: switchModeText })
-			expect(result.decision).toBe("ask")
-		})
-
-		it("architect + newTask + alwaysAllowSubtasks ON + alwaysApprovePlan ON → approve", async () => {
-			const state = baseState({ mode: "architect", alwaysAllowSubtasks: true, alwaysApprovePlan: true })
-			const result = await checkAutoApproval({ state, ask: "tool", text: newTaskText })
-			expect(result.decision).toBe("approve")
-		})
-	})
-
-	describe("reviewPlan pause ask", () => {
-		const reviewPlanText = JSON.stringify({ tool: "reviewPlan", path: "plans/plan.md" })
-
-		it("default mode → ask (user must review)", async () => {
-			const state = baseState({ alwaysApprovePlan: false })
-			const result = await checkAutoApproval({ state, ask: "tool", text: reviewPlanText })
-			expect(result.decision).toBe("ask")
-		})
-
-		it("alwaysApprovePlan true → approve (user opted out of plan review)", async () => {
-			const state = baseState({ alwaysApprovePlan: true })
-			const result = await checkAutoApproval({ state, ask: "tool", text: reviewPlanText })
-			expect(result.decision).toBe("approve")
-		})
-
-		it("bypass mode → ask (gate survives bypass)", async () => {
-			const state = baseState({ autoApprovalMode: "bypass", alwaysApprovePlan: false })
-			const result = await checkAutoApproval({ state, ask: "tool", text: reviewPlanText })
-			expect(result.decision).toBe("ask")
-		})
-
-		it("bypass mode + alwaysApprovePlan true → approve", async () => {
-			const state = baseState({ autoApprovalMode: "bypass", alwaysApprovePlan: true })
-			const result = await checkAutoApproval({ state, ask: "tool", text: reviewPlanText })
-			expect(result.decision).toBe("approve")
-		})
-
-		it("autonomous mode → approve (autonomous bypasses the gate)", async () => {
-			const state = baseState({ autoApprovalMode: "autonomous", alwaysApprovePlan: false })
-			const result = await checkAutoApproval({ state, ask: "tool", text: reviewPlanText })
-			expect(result.decision).toBe("approve")
-		})
-	})
-
-	// Weak models (GLM, Qwen, local Llamas) sometimes emit follow-up suggestions with a blank,
-	// missing or non-string answer. Auto-approval must never answer the question with that.
-	describe("malformed follow-up suggestions", () => {
-		const malformedFollowup = (suggest: unknown[]) => JSON.stringify({ question: "Pick one", suggest })
-
-		it("default mode skips blank and missing answers and uses the first usable one", async () => {
-			const state = baseState({ alwaysAllowFollowupQuestions: true, followupAutoApproveTimeoutMs: 1000 })
-			const result = await checkAutoApproval({
-				state,
-				ask: "followup",
-				text: malformedFollowup([
-					{ answer: "   " },
-					{ mode: "code" },
-					{ answer: 42 },
-					{ answer: "real answer" },
-				]),
-			})
-			expect(result.decision).toBe("timeout")
-			if (result.decision === "timeout") {
-				expect(result.fn()).toEqual({ askResponse: "messageResponse", text: "real answer" })
-			}
-		})
-
-		it("default mode asks the user when no suggestion has a usable answer", async () => {
-			const state = baseState({ alwaysAllowFollowupQuestions: true, followupAutoApproveTimeoutMs: 1000 })
-			const result = await checkAutoApproval({
-				state,
-				ask: "followup",
-				text: malformedFollowup([{ answer: "" }, { mode: "code" }, null]),
-			})
-			expect(result.decision).toBe("ask")
-		})
-
-		it("autonomous mode skips blank and missing answers and uses the first usable one", async () => {
-			const state = baseState({ autoApprovalMode: "autonomous" })
-			const result = await checkAutoApproval({
-				state,
-				ask: "followup",
-				text: malformedFollowup([{ answer: "" }, { answer: 7 }, { answer: "second" }]),
-			})
-			expect(result.decision).toBe("timeout")
-			if (result.decision === "timeout") {
-				expect(result.fn()).toEqual({ askResponse: "messageResponse", text: "second" })
-			}
-		})
-
-		it("autonomous mode proceeds with empty text, never a non-string, when nothing is usable", async () => {
-			const state = baseState({ autoApprovalMode: "autonomous" })
-			const result = await checkAutoApproval({
-				state,
-				ask: "followup",
-				text: malformedFollowup([{ answer: 7 }]),
-			})
-			expect(result.decision).toBe("timeout")
-			if (result.decision === "timeout") {
-				expect(result.fn()).toEqual({ askResponse: "messageResponse", text: "" })
-			}
-		})
+		expect((await checkAutoApproval({ state: baseState(autoAnswer), ask: "followup", text })).decision).toBe("ask")
 	})
 })

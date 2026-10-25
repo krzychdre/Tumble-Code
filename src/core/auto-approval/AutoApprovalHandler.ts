@@ -12,8 +12,6 @@ export interface AutoApprovalResult {
 
 export class AutoApprovalHandler {
 	private lastResetMessageIndex: number = 0
-	private consecutiveAutoApprovedRequestsCount: number = 0
-	private consecutiveAutoApprovedCost: number = 0
 
 	/**
 	 * Check if auto-approval limits have been reached and handle user approval if needed
@@ -53,10 +51,10 @@ export class AutoApprovalHandler {
 		// Calculate request count from messages after the last reset point
 		const messagesAfterReset = messages.slice(this.lastResetMessageIndex)
 		// Count API request messages (simplified - you may need to adjust based on your message structure)
-		this.consecutiveAutoApprovedRequestsCount =
+		const requestCount =
 			messagesAfterReset.filter((msg) => msg.type === "say" && msg.say === "api_req_started").length + 1 // +1 for the current request being checked
 
-		if (this.consecutiveAutoApprovedRequestsCount > maxRequests) {
+		if (requestCount > maxRequests) {
 			const { response } = await askForApproval(
 				"auto_approval_max_req_reached",
 				JSON.stringify({ count: maxRequests, type: "requests" }),
@@ -100,11 +98,11 @@ export class AutoApprovalHandler {
 
 		// Calculate total cost from messages after the last reset point
 		const messagesAfterReset = messages.slice(this.lastResetMessageIndex)
-		this.consecutiveAutoApprovedCost = consolidateTokenUsage(messagesAfterReset).totalCost
+		const cost = consolidateTokenUsage(messagesAfterReset).totalCost
 
 		// Use epsilon for floating-point comparison to avoid precision issues
 		const EPSILON = 0.0001
-		if (this.consecutiveAutoApprovedCost > maxCost + EPSILON) {
+		if (cost > maxCost + EPSILON) {
 			const { response } = await askForApproval(
 				"auto_approval_max_req_reached",
 				JSON.stringify({ count: maxCost.toFixed(2), type: "cost" }),
@@ -132,24 +130,5 @@ export class AutoApprovalHandler {
 		}
 
 		return { shouldProceed: true, requiresApproval: false }
-	}
-
-	/**
-	 * Reset the tracking (typically called when starting a new task)
-	 */
-	resetRequestCount(): void {
-		this.lastResetMessageIndex = 0
-		this.consecutiveAutoApprovedRequestsCount = 0
-		this.consecutiveAutoApprovedCost = 0
-	}
-
-	/**
-	 * Get current approval state for debugging/testing
-	 */
-	getApprovalState(): { requestCount: number; currentCost: number } {
-		return {
-			requestCount: this.consecutiveAutoApprovedRequestsCount,
-			currentCost: this.consecutiveAutoApprovedCost,
-		}
 	}
 }
