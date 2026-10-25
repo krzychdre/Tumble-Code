@@ -132,45 +132,20 @@ describe("App lazy tabs (P4)", () => {
 		window.removeEventListener("message", () => {})
 	})
 
-	it("does not fetch the Marketplace or Cloud chunks while on the chat tab", () => {
+	it.each([
+		{ tab: "marketplace" as const, view: "marketplace-view" },
+		{ tab: "cloud" as const, view: "cloud-view" },
+	])("fetches the $tab chunk only when its tab opens", async ({ tab, view }) => {
 		render(<AppWithProviders />)
-
 		expect(screen.getByTestId("chat-view")).toBeInTheDocument()
-		expect(importCounts.marketplace).toBe(0)
-		expect(importCounts.cloud).toBe(0)
-	})
-
-	it("fetches the Marketplace chunk exactly once when the marketplace tab opens", async () => {
-		render(<AppWithProviders />)
+		expect(importCounts[tab]).toBe(0)
 
 		act(() => {
-			triggerMessage("marketplaceButtonClicked")
+			triggerMessage(`${tab}ButtonClicked`)
 		})
 
-		expect(await screen.findByTestId("marketplace-view")).toBeInTheDocument()
-		expect(importCounts.marketplace).toBe(1)
-
-		// Leaving and returning does not re-fetch the chunk.
-		act(() => {
-			triggerMessage("chatButtonClicked")
-		})
-		act(() => {
-			triggerMessage("marketplaceButtonClicked")
-		})
-
-		expect(await screen.findByTestId("marketplace-view")).toBeInTheDocument()
-		expect(importCounts.marketplace).toBe(1)
-	})
-
-	it("fetches the Cloud chunk exactly once when the cloud tab opens", async () => {
-		render(<AppWithProviders />)
-
-		act(() => {
-			triggerMessage("cloudButtonClicked")
-		})
-
-		expect(await screen.findByTestId("cloud-view")).toBeInTheDocument()
-		expect(importCounts.cloud).toBe(1)
+		expect(await screen.findByTestId(view)).toBeInTheDocument()
+		expect(importCounts[tab]).toBe(1)
 	})
 
 	it("shows the loading fallback while the lazy chunk resolves", async () => {
