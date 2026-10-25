@@ -1,6 +1,6 @@
 # Test refactor round 5 (2026-10-25): tests of our logic only
 
-**Status:** in progress; per-lane status lines below.
+**Status:** done 2026-10-25 (#1061 to #1139, final verification in `chore/r5-final-verification`); results below.
 **Related plans:** `2026-10-23_17-20_maintenance-audit-round-4.md` (E1 to E9; E9 deferred the large spec families to
 this round), `simplification_round3_audit_2026-10-02.md`.
 **Touched:** spec files under `src/`, `webview-ui/src/`, `packages/cloud`, `packages/core`, `apps/cli`; production
@@ -108,13 +108,50 @@ anything red, and makes main's CI green.
 
 ## Status
 
-| Lane | PRs | Tests before | Tests after | Notes |
-| ---- | --- | ------------ | ----------- | ----- |
-| L1   |     |              |             |       |
-| L2   |     |              |             |       |
-| L3   |     |              |             |       |
-| L4   |     |              |             |       |
-| L5   |     |              |             |       |
-| L6   |     |              |             |       |
-| L7   |     |              |             |       |
-| L8   |     |              |             |       |
+Every lane is merged. Spec lines are each lane's own count of its area (L5 counts the `src` folders no other lane
+owns); branch coverage of the subject files did not drop in any PR, and every PR names at least three mutation checks
+that turned a test red.
+
+| Lane | PRs                                                                        | Spec lines before | after  |
+| ---- | -------------------------------------------------------------------------- | ----------------- | ------ |
+| L1   | #1065 #1071 #1077 #1083 #1087 #1092                                        | 22 415            | 14 817 |
+| L2   | #1076 #1080 #1082 #1088 #1091 #1094 #1097 #1099                            | 26 868            | 18 015 |
+| L3   | #1062 #1063 #1066 #1068 #1069 #1072 #1074 #1075 #1078 #1079 #1081 #1084    | 47 073            | 26 123 |
+| L4   | #1086 #1090 #1093 #1096 #1102 #1105 #1108                                  | 23 578            | 12 677 |
+| L5   | #1103 #1107 #1112 #1113 #1117 #1119 #1121 #1125 #1127 #1129 #1131 to #1139 | 96 098            | 77 067 |
+| L6   | #1061 #1064 #1067 #1070 #1073                                              | 19 730            | 13 106 |
+| L7   | #1095 #1098 #1100 #1104 #1106 #1109 #1110 #1114 #1116 #1120 #1122          | 38 851            | 29 991 |
+| L8   | #1111 #1115 #1118 #1123 #1124                                              | 46 521            | 39 347 |
+
+Per area, measured the same way as the table under "Goal" (main at `5abbe4da4` before, after the final pass):
+
+| Area             | Tests before | Tests after | Ratio before | Ratio after |
+| ---------------- | ------------ | ----------- | ------------ | ----------- |
+| `src`            | 225 113      | 157 757     | 1.95x        | 1.37x       |
+| `webview-ui/src` | 59 446       | 43 983      | 1.27x        | 0.94x       |
+| `packages/cloud` | 7 805        | 4 925       | 1.82x        | 1.15x       |
+| `packages/core`  | 7 404        | 4 760       | 1.50x        | 0.97x       |
+| `apps/cli/src`   | 23 826       | 22 929      | 1.00x        | 0.96x       |
+
+Snapshot files: 99 (56 179 lines) before, 70 (46 842 lines) after.
+
+What the pruning found besides excess tests:
+
+- Specs that exercised no production line: they re-implemented the logic and tested the copy
+  (`AssistantMessageAssembler` had 0 of 42 branches covered, now 39), or asserted right after an async
+  `postMessage` before the state arrived, so they passed whatever the code did (ChatView sounds).
+- Bugs, each fixed with a test that was red first: Z.ai and Moonshot skipped the provider error handler on a
+  rejected request (#1085); a failed `/v1/me` after a session refresh was an unhandled rejection that made a signed-in
+  CLI exit (#1126); `read_file` showed "1 | " for an empty file (#1131); `searchCommits` returned one empty commit
+  for no match (#1138); the webview's initial `showRooIgnoredFiles` disagreed with `SETTINGS_DEFAULTS` (#1128).
+- Dead code removed where a pruned test exposed it: provider branches for states that cannot happen (#1089), the
+  forced-rebuild comparison in `ModeProfileBinding` (#1077), unused exports and options in the webview, cloud, core
+  and types packages, two unused translation keys (#1101).
+
+Noted and left as they are (no defect, or not worth the churn):
+
+- `getModelParams`' `"disable"` check and MiniMax's free-form base URL (reachable from the CLI's `--base-url`).
+- The ByteString catch around `new OpenAI()` in three embedders (the SDK reports a bad key on the first request).
+- `CloudTelemetryClient`'s debug branches (`debug` is always false) and `RefreshTimer.reset()` (no caller).
+- `RunParallelTasksTool` specs (about 2.2x, mostly regressions of real incidents), the code-index parser,
+  `NativeToolCallParser`, tiktoken, json-schema, storage and shell specs: candidates for a later round.

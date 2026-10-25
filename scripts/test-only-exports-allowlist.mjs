@@ -50,14 +50,6 @@ export const allowlist = [
 	"packages/types/src/followup.ts: suggestionItemSchema",
 	"packages/types/src/provider-settings.ts: providerSettingsSchemaDiscriminated",
 
-	// Cloud organization settings contract: the types mirror the self-hosted
-	// cloudapi payloads; the zod schemas derive them and the specs pin the
-	// shape (packages/types/src/__tests__/cloud.test.ts).
-	"packages/types/src/cloud.ts: OrganizationCloudSettings",
-	"packages/types/src/cloud.ts: OrganizationDefaultSettings",
-	"packages/types/src/cloud.ts: OrganizationFeatures",
-	"packages/types/src/cloud.ts: WorkspaceTaskVisibility",
-
 	// Provider registry derived tables asserted by characterization specs
 	// against the descriptor list (provider-registry, provider-model-id).
 	"packages/types/src/provider-registry.ts: getActiveProviderDefinitions",
