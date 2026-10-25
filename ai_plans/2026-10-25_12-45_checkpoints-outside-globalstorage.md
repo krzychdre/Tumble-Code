@@ -1,6 +1,6 @@
 # Checkpoints move out of globalStorage (2026-10-25)
 
-**Status:** in progress.
+**Status:** done 2026-10-25, merged as #1144 (`cda718280`).
 **Touched:** `src/services/checkpoints/`, `src/core/checkpoints/index.ts`, `src/core/webview/TaskHistoryGateway.ts`,
 `src/extension.ts`.
 
