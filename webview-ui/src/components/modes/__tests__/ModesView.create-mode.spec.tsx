@@ -9,6 +9,7 @@ import type { ToolGroup } from "@tumble-code/types"
 import ModesView from "../ModesView"
 import { ExtensionStateContext } from "@src/context/ExtensionStateContext"
 import { vscode } from "@src/utils/vscode"
+import { defaultModeSlug } from "@shared/modes"
 
 vi.mock("@src/utils/vscode", () => ({
 	vscode: { postMessage: vi.fn() },
@@ -85,6 +86,32 @@ describe("ModesView create-mode dialog", () => {
 
 		await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
 		expect(sent("updateCustomMode")).toHaveLength(0)
+	})
+
+	it("prefills a unique default name and slug", async () => {
+		renderModesView({
+			customModes: [{ slug: "new-custom-mode", name: "New Custom Mode", roleDefinition: "r", groups: [] }],
+		})
+		await openCreateDialog()
+
+		// "New Custom Mode" is taken, so the dialog offers the next free name.
+		expect(field(NAME).value).toBe("New Custom Mode 2")
+		expect(field(SLUG).value).toBe("new-custom-mode-2")
+	})
+
+	it("reopening after cancel drops the previous input and prefills again", async () => {
+		renderModesView()
+		await openCreateDialog()
+		type(ROLE, "Leftover role")
+		type(NAME, "Leftover")
+		fireEvent.click(screen.getByRole("button", { name: "prompts:createModeDialog.buttons.cancel" }))
+		await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
+
+		await openCreateDialog()
+
+		expect(field(NAME).value).toBe("New Custom Mode")
+		expect(field(SLUG).value).toBe("new-custom-mode")
+		expect(field(ROLE).value).toBe("")
 	})
 
 	describe("validation", () => {
@@ -258,6 +285,30 @@ describe("ModesView import and export", () => {
 
 		await waitFor(() => expect(screen.queryByText("prompts:importMode.selectLevel")).not.toBeInTheDocument())
 		expect(screen.getByTestId("import-mode-toolbar-button")).not.toBeDisabled()
+	})
+
+	// A freshly imported mode may not be in the state yet; then the default mode is selected.
+	it.each([
+		{
+			name: "the imported mode when the state has it",
+			customModes: [{ slug: "imported", name: "I", roleDefinition: "r", groups: [] }],
+			expected: "imported",
+		},
+		{ name: "the default mode while the state lacks it", customModes: [], expected: defaultModeSlug },
+	])("a successful import switches to $name", ({ customModes, expected }) => {
+		renderModesView({ customModes })
+
+		hostMessage({ type: "importModeResult", success: true, slug: "imported" })
+
+		expect(sent("mode")).toEqual([[{ type: "mode", text: expected }]])
+	})
+
+	it.each(["Import failed", "cancelled"])("a failed import (%s) switches no mode", (error) => {
+		renderModesView()
+
+		hostMessage({ type: "importModeResult", success: false, error })
+
+		expect(sent("mode")).toEqual([])
 	})
 
 	it("reopens the import dialog at the project level after a cancel", async () => {

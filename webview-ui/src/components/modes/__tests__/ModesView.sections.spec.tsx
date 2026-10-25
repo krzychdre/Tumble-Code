@@ -280,10 +280,26 @@ describe("ModesView sections", () => {
 			expect(posted()).toContainEqual({ type: "deleteCustomMode", slug: "reviewer" })
 		})
 
-		it("exports the selected mode", () => {
-			renderView({ mode: "reviewer" })
-			fireEvent.click(screen.getByTestId("export-mode-toolbar-button"))
-			expect(posted()).toContainEqual({ type: "exportMode", slug: "reviewer" })
+		it("lists only the modes whose name matches the search", async () => {
+			renderView()
+			fireEvent.click(screen.getByTestId("mode-select-trigger"))
+
+			fireEvent.change(screen.getByTestId("mode-search-input"), { target: { value: "ASK" } })
+
+			expect(await screen.findByTestId("mode-option-ask")).toBeInTheDocument()
+			expect(screen.queryByTestId("mode-option-code")).not.toBeInTheDocument()
+			expect(screen.queryByTestId("mode-option-reviewer")).not.toBeInTheDocument()
+		})
+
+		it("Escape closes the mode list", async () => {
+			renderView()
+			const trigger = screen.getByTestId("mode-select-trigger")
+			fireEvent.click(trigger)
+			await waitFor(() => expect(trigger).toHaveAttribute("aria-expanded", "true"))
+
+			fireEvent.keyDown(window, { key: "Escape" })
+
+			await waitFor(() => expect(trigger).toHaveAttribute("aria-expanded", "false"))
 		})
 
 		it("follows a mode change pushed by the host", () => {
@@ -354,6 +370,7 @@ describe("ModesView sections", () => {
 			}
 			renderView({ customModePrompts: { code: stored } })
 
+			fireEvent.click(screen.getByTestId("role-definition-reset"))
 			fireEvent.click(screen.getByTestId("description-reset"))
 			fireEvent.click(screen.getByTestId("when-to-use-reset"))
 			fireEvent.click(screen.getByTestId("custom-instructions-reset"))
@@ -364,6 +381,7 @@ describe("ModesView sections", () => {
 				return copy
 			}
 			expect(postedOfType("updatePrompt")).toEqual([
+				{ type: "updatePrompt", promptMode: "code", customPrompt: without("roleDefinition") },
 				{ type: "updatePrompt", promptMode: "code", customPrompt: without("description") },
 				{ type: "updatePrompt", promptMode: "code", customPrompt: without("whenToUse") },
 				{ type: "updatePrompt", promptMode: "code", customPrompt: without("customInstructions") },
@@ -565,6 +583,10 @@ describe("ModesView sections", () => {
 			changeTextArea(textarea, " New rules ")
 			expect(setCustomInstructions).toHaveBeenCalledWith(" New rules ")
 			expect(posted()).toContainEqual({ type: "customInstructions", text: " New rules " })
+
+			changeTextArea(textarea, "")
+			expect(setCustomInstructions).toHaveBeenLastCalledWith("")
+			expect(posted()).toContainEqual({ type: "customInstructions", text: "" })
 		})
 
 		it("the load-from-file link opens the workspace rules file", () => {
