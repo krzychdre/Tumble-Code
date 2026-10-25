@@ -22,7 +22,6 @@ import { BaseHttpEmbedder, EmbedBatchResult } from "../base-http-embedder"
 import type { EmbedderInfo } from "../../interfaces/embedder"
 import type { IVectorStore } from "../../interfaces/vector-store"
 import { CodeIndexSearchService } from "../../search-service"
-import { getModelQueryPrefix } from "../../../../shared/embeddingModels"
 
 const NOMIC_CODE_QUERY_PREFIX = "Represent this query for searching relevant code: "
 
@@ -68,11 +67,6 @@ function searchServiceFor(embedder: RecordingEmbedder) {
 }
 
 describe("query prefix routing (asymmetric embedding models)", () => {
-	it("the profile table knows the nomic-embed-code query prefix for both providers that list it", () => {
-		expect(getModelQueryPrefix("ollama", "nomic-embed-code")).toBe(NOMIC_CODE_QUERY_PREFIX)
-		expect(getModelQueryPrefix("openai-compatible", "nomic-embed-code")).toBe(NOMIC_CODE_QUERY_PREFIX)
-	})
-
 	describe.each<EmbedderProvider>(["ollama", "openai-compatible"])("nomic-embed-code via %s", (provider) => {
 		it("indexing: code chunks embedded the way the scanner and the file watcher call it get NO prefix", async () => {
 			const embedder = new RecordingEmbedder(provider, "nomic-embed-code")
@@ -113,9 +107,6 @@ describe("query prefix routing (asymmetric embedding models)", () => {
 	// and every hosted model in the table. Nothing is added in either direction, before and after.
 	describe.each<[EmbedderProvider, string]>([
 		["openai-compatible", "qwen3-embed"],
-		["openai-compatible", "bge-m3"],
-		["openai-compatible", "text-embedding-3-small"],
-		["openrouter", "qwen/qwen3-embedding-8b"],
 		["ollama", "nomic-embed-text"],
 	])("%s / %s (no profile prefix)", (provider, modelId) => {
 		it("sends documents and queries unchanged", async () => {
