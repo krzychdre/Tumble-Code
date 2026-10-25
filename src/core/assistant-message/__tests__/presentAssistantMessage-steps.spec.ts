@@ -11,6 +11,7 @@ import { TelemetryEventName } from "@tumble-code/types"
 import { TelemetryService } from "@tumble-code/telemetry"
 
 import { presentAssistantMessage } from "../presentAssistantMessage"
+import { makePresentTask } from "./presentTask"
 import { getToolHandler } from "../toolHandlers"
 import { isValidToolName, validateToolUse } from "../../tools/validateToolUse"
 import { tryAutoMaterializeDirectCall } from "../../task/deferred-tools-resolver"
@@ -33,26 +34,10 @@ let task: any
 let experiments: Record<string, boolean>
 
 function makeTask() {
-	const t: any = {
-		taskId: "task-1",
-		instanceId: "i-1",
-		cwd: "/ws",
-		abort: false,
-		presentAssistantMessageLocked: false,
-		presentAssistantMessageHasPendingUpdates: false,
-		currentStreamingContentIndex: 0,
-		assistantMessageContent: [],
-		userMessageContent: [],
+	const t: any = makePresentTask({
 		didCompleteReadingStream: true,
-		didRejectTool: false,
-		didAlreadyUseTool: false,
-		consecutiveMistakeCount: 0,
-		consecutiveMistakeLimit: 3,
-		currentStreamingDidCheckpoint: false,
 		apiConfiguration: { apiProvider: "anthropic" },
-		api: { getModel: () => ({ id: "test-model", info: {} }) },
 		recordToolUsage: vi.fn((name: string) => void log.push(`recordToolUsage:${name}`)),
-		recordToolError: vi.fn(),
 		toolRepetitionDetector: {
 			check: vi.fn(() => {
 				log.push("repetitionCheck")
@@ -60,18 +45,13 @@ function makeTask() {
 			}),
 		},
 		checkpointSave: vi.fn(async () => void log.push("checkpointSave")),
-		getTaskMode: vi.fn().mockResolvedValue("code"),
 		providerRef: {
 			deref: () => ({
 				getState: vi.fn(async () => ({ mode: "code", customModes: [], experiments })),
 				getMcpHub: () => undefined,
 			}),
 		},
-		askSay: {
-			ask: vi.fn().mockResolvedValue({ response: "yesButtonClicked" }),
-			say: vi.fn().mockResolvedValue(undefined),
-		},
-	}
+	})
 	t.pushToolResultToUserContent = vi.fn((result: any) => {
 		log.push("pushToolResult")
 		t.userMessageContent.push(result)
@@ -158,7 +138,7 @@ describe("tool_use steps", () => {
 			"handle",
 		])
 		expect(TelemetryService.instance.capture).toHaveBeenCalledWith(TelemetryEventName.TOOL_USED, {
-			taskId: "task-1",
+			taskId: "test-task-id",
 			tool: "write_to_file",
 		})
 		expect(task.currentStreamingDidCheckpoint).toBe(true)
@@ -229,7 +209,7 @@ describe("tool_use steps", () => {
 
 		expect(TelemetryService.instance.captureEvent).toHaveBeenCalledWith(
 			TelemetryEventName.READ_FILE_LEGACY_FORMAT_USED,
-			{ taskId: "task-1", model: "test-model" },
+			{ taskId: "test-task-id", model: "test-model" },
 		)
 	})
 
@@ -252,7 +232,7 @@ describe("tool_use steps", () => {
 		})
 		expect(task.askSay.say).toHaveBeenCalledWith("user_feedback", "try else", undefined)
 		expect(TelemetryService.instance.capture).toHaveBeenCalledWith(TelemetryEventName.CONSECUTIVE_MISTAKE_ERROR, {
-			taskId: "task-1",
+			taskId: "test-task-id",
 		})
 		expect(TelemetryService.instance.captureException).toHaveBeenCalledTimes(1)
 		expect(task.pushToolResultToUserContent).toHaveBeenCalledWith(

@@ -8,6 +8,7 @@
 import { describe, it, expect, vi } from "vitest"
 
 import { presentAssistantMessage } from "../presentAssistantMessage"
+import { makePresentTask } from "./presentTask"
 
 const handles = vi.hoisted(() => {
 	const stub = () => ({ handle: vi.fn().mockResolvedValue(undefined) })
@@ -44,33 +45,13 @@ vi.mock("@tumble-code/telemetry", () => ({
 }))
 
 function makeTask(name: string) {
-	return {
-		taskId: "t",
-		instanceId: "i",
-		abort: false,
-		presentAssistantMessageLocked: false,
-		presentAssistantMessageHasPendingUpdates: false,
-		currentStreamingContentIndex: 0,
-		currentStreamingDidCheckpoint: false,
-		checkpointSave: vi.fn().mockResolvedValue(undefined),
+	return makePresentTask({
 		assistantMessageContent: [
 			{ type: "tool_use", id: `call_${name}`, name, params: {}, nativeArgs: {}, partial: false },
 		],
-		userMessageContent: [],
-		didCompleteReadingStream: false,
-		didRejectTool: false,
-		didAlreadyUseTool: false,
-		consecutiveMistakeCount: 0,
 		apiConfiguration: { apiProvider: "openai" },
-		api: { getModel: () => ({ id: "m", info: {} }) },
-		recordToolUsage: vi.fn(),
-		recordToolError: vi.fn(),
-		toolRepetitionDetector: { check: vi.fn().mockReturnValue({ allowExecution: true }) },
-		getTaskMode: vi.fn().mockResolvedValue("code"),
-		providerRef: { deref: () => ({ getState: vi.fn().mockResolvedValue({ mode: "code", customModes: [] }) }) },
-		askSay: { ask: vi.fn(), say: vi.fn().mockResolvedValue(undefined) },
 		pushToolResultToUserContent: vi.fn().mockReturnValue(true),
-	} as any
+	}) as any
 }
 
 describe("toolCallId for every built-in tool (CORE-R4)", () => {

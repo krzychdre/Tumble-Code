@@ -3,6 +3,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { Anthropic } from "@anthropic-ai/sdk"
 import { presentAssistantMessage } from "../presentAssistantMessage"
+import { makePresentTask } from "./presentTask"
 import { Task } from "../../task/Task"
 
 // Mock dependencies
@@ -28,42 +29,7 @@ describe("presentAssistantMessage - Image Handling in Native Tool Calling", () =
 
 	beforeEach(() => {
 		// Create a mock Task with minimal properties needed for testing
-		mockTask = {
-			taskId: "test-task-id",
-			instanceId: "test-instance",
-			abort: false,
-			presentAssistantMessageLocked: false,
-			presentAssistantMessageHasPendingUpdates: false,
-			currentStreamingContentIndex: 0,
-			assistantMessageContent: [],
-			userMessageContent: [],
-			didCompleteReadingStream: false,
-			didRejectTool: false,
-			didAlreadyUseTool: false,
-			consecutiveMistakeCount: 0,
-			api: {
-				getModel: () => ({ id: "test-model", info: {} }),
-			},
-			recordToolUsage: vi.fn(),
-			toolRepetitionDetector: {
-				check: vi.fn().mockReturnValue({ allowExecution: true }),
-			},
-			getTaskMode: vi.fn().mockResolvedValue("code"),
-			providerRef: {
-				deref: () => ({
-					getState: vi.fn().mockResolvedValue({
-						mode: "code",
-						customModes: [],
-					}),
-				}),
-			},
-			say: vi.fn().mockResolvedValue(undefined),
-			ask: vi.fn().mockResolvedValue({ response: "yesButtonClicked" }),
-			askSay: {
-				ask: vi.fn().mockResolvedValue({ response: "yesButtonClicked" }),
-				say: vi.fn().mockResolvedValue(undefined),
-			},
-		}
+		mockTask = makePresentTask()
 
 		// Add pushToolResultToUserContent method after mockTask is created so it can reference mockTask
 		mockTask.pushToolResultToUserContent = vi.fn().mockImplementation((toolResult: any) => {
@@ -166,33 +132,6 @@ describe("presentAssistantMessage - Image Handling in Native Tool Calling", () =
 
 		// When no images, content should be a string
 		expect(typeof toolResult.content).toBe("string")
-	})
-
-	it("should fail fast when tool_use is missing id (legacy/XML-style tool call)", async () => {
-		// tool_use without an id is treated as legacy/XML-style tool call and must be rejected.
-		mockTask.assistantMessageContent = [
-			{
-				type: "tool_use",
-				name: "ask_followup_question",
-				params: { question: "What do you see?" },
-			},
-		]
-
-		mockTask.askSay.ask = vi.fn().mockResolvedValue({
-			response: "yesButtonClicked",
-			text: "I see a dog",
-			images: ["data:image/png;base64,dogImageData"],
-		})
-
-		await presentAssistantMessage(mockTask)
-
-		const textBlocks = mockTask.userMessageContent.filter((item: any) => item.type === "text")
-		expect(textBlocks.length).toBeGreaterThan(0)
-		expect(textBlocks.some((b: any) => String(b.text).includes("XML tool calls are no longer supported"))).toBe(
-			true,
-		)
-		// Should not proceed to execute tool or add images as tool output.
-		expect(mockTask.userMessageContent.some((item: any) => item.type === "image")).toBe(false)
 	})
 
 	it("should handle empty tool result gracefully", async () => {

@@ -9,6 +9,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 
 import { presentAssistantMessage } from "../presentAssistantMessage"
+import { makePresentTask } from "./presentTask"
 import { validateToolUse } from "../../tools/validateToolUse"
 
 const handle = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
@@ -36,32 +37,12 @@ function makeTask() {
 		return { mode: "code", customModes: [{ slug: `modes-v${version}` }] }
 	})
 
-	const task = {
-		taskId: "t",
-		instanceId: "i",
-		abort: false,
-		presentAssistantMessageLocked: false,
-		presentAssistantMessageHasPendingUpdates: false,
-		currentStreamingContentIndex: 0,
-		currentStreamingDidCheckpoint: false,
-		checkpointSave: vi.fn().mockResolvedValue(undefined),
-		assistantMessageContent: [] as any[],
-		userMessageContent: [],
-		didCompleteReadingStream: false,
-		didRejectTool: false,
-		didAlreadyUseTool: false,
-		consecutiveMistakeCount: 0,
+	const task = makePresentTask({
 		apiConfiguration: { apiProvider: "openai" },
-		api: { getModel: () => ({ id: "m", info: {} }) },
-		recordToolUsage: vi.fn(),
-		recordToolError: vi.fn(),
-		toolRepetitionDetector: { check: vi.fn().mockReturnValue({ allowExecution: true }) },
-		getTaskMode: vi.fn().mockResolvedValue("code"),
 		providerRef: { deref: () => ({ getState }) },
-		askSay: { ask: vi.fn(), say: vi.fn().mockResolvedValue(undefined) },
 		pushToolResultToUserContent: vi.fn().mockReturnValue(true),
 		ensureToolResultSpill: vi.fn().mockResolvedValue(undefined),
-	} as any
+	}) as any
 
 	/** Streams one chunk of the block with `id` (partial) or finishes it. */
 	const present = async (id: string, command: string, partial: boolean) => {

@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 
 import { formatResponse } from "../../prompts/responses"
 import { presentAssistantMessage } from "../presentAssistantMessage"
+import { makePresentTask } from "./presentTask"
 import { logger } from "../../../utils/logging"
 
 /**
@@ -78,41 +79,14 @@ describe.each<BlockKind>(["tool_use", "mcp_tool_use"])("tool callbacks for a %s 
 	beforeEach(() => {
 		useMcpToolHandle.mockReset()
 
-		mockTask = {
-			taskId: "test-task-id",
-			instanceId: "test-instance",
-			abort: false,
-			abandoned: false,
-			presentAssistantMessageLocked: false,
-			presentAssistantMessageHasPendingUpdates: false,
-			currentStreamingContentIndex: 0,
+		mockTask = makePresentTask({
 			assistantMessageContent: [makeBlock(kind, toolCallId)],
-			userMessageContent: [],
-			didCompleteReadingStream: false,
-			didRejectTool: false,
-			didAlreadyUseTool: false,
-			consecutiveMistakeCount: 0,
-			consecutiveMistakeLimit: 3,
-			clineMessages: [],
 			apiConfiguration: { apiProvider: "openai" },
-			api: { getModel: () => ({ id: "test-model", info: {} }) },
-			recordToolUsage: vi.fn(),
-			recordToolError: vi.fn(),
-			toolRepetitionDetector: {
-				check: vi.fn().mockReturnValue({ allowExecution: true }),
-			},
-			getTaskMode: vi.fn().mockResolvedValue("code"),
-			providerRef: {
-				deref: () => ({
-					getState: vi.fn().mockResolvedValue({ mode: "code", customModes: [] }),
-					getMcpHub: () => undefined,
-				}),
-			},
 			askSay: {
 				ask: vi.fn().mockResolvedValue({ response: "yesButtonClicked" }),
 				say: vi.fn().mockResolvedValue(undefined),
 			},
-		}
+		})
 
 		// Records every push, duplicates included, so the tests see what the callbacks sent.
 		mockTask.pushToolResultToUserContent = vi.fn().mockImplementation((toolResult: any) => {

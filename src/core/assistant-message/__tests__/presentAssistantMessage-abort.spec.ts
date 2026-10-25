@@ -2,6 +2,7 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { presentAssistantMessage } from "../presentAssistantMessage"
+import { makePresentTask } from "./presentTask"
 import { logger } from "../../../utils/logging"
 
 // Mock dependencies
@@ -29,43 +30,19 @@ describe("presentAssistantMessage - abort crash regression (handleError -> say r
 	beforeEach(() => {
 		vi.clearAllMocks()
 
-		mockTask = {
-			taskId: "test-task-id",
-			instanceId: "test-instance",
-			abort: false,
-			presentAssistantMessageLocked: false,
-			presentAssistantMessageHasPendingUpdates: false,
-			currentStreamingContentIndex: 0,
-			assistantMessageContent: [],
-			userMessageContent: [],
-			didCompleteReadingStream: false,
-			didRejectTool: false,
-			didAlreadyUseTool: false,
-			consecutiveMistakeCount: 0,
-			clineMessages: [],
-			api: {
-				getModel: () => ({ id: "test-model", info: {} }),
-			},
-			recordToolUsage: vi.fn(),
-			recordToolError: vi.fn(),
-			toolRepetitionDetector: {
-				check: vi.fn().mockReturnValue({ allowExecution: true }),
-			},
-			getTaskMode: vi.fn().mockResolvedValue("code"),
+		mockTask = makePresentTask({
 			providerRef: {
 				deref: () => ({
 					getState: vi.fn().mockResolvedValue({ mode: "code", customModes: [], experiments: {} }),
 					getMcpHub: () => undefined,
 				}),
 			},
-			say: vi.fn().mockResolvedValue(undefined),
-			ask: vi.fn().mockResolvedValue({ response: "yesButtonClicked", text: "", images: [] }),
 			askSay: {
 				ask: vi.fn().mockResolvedValue({ response: "yesButtonClicked", text: "", images: [] }),
 				say: vi.fn().mockResolvedValue(undefined),
 				supersedePendingAsk: vi.fn(),
 			},
-		}
+		})
 
 		mockTask.pushToolResultToUserContent = vi.fn().mockImplementation((toolResult: any) => {
 			const existing = mockTask.userMessageContent.find(
