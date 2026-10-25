@@ -11,6 +11,7 @@ import { downloadTask, getTaskFileName } from "../../integrations/misc/export-ma
 import { resolveDefaultSaveUri, saveLastExportPath } from "../../utils/export"
 import { fileExistsAtPath } from "../../utils/fs"
 import { ShadowCheckpointService } from "../../services/checkpoints/ShadowCheckpointService"
+import { getTaskCheckpointsDir } from "../../services/checkpoints/paths"
 
 import type { ContextProxy } from "../config/ContextProxy"
 import { TaskHistoryStore, type TaskHistoryStoreHandle } from "../task-persistence"
@@ -627,11 +628,13 @@ export class TaskHistoryGateway {
 					)
 				}
 
-				// Delete the task directory
+				// Delete the task directory and the task's checkpoints, which live in
+				// ~/.roo/checkpoints/<taskId> rather than inside the task directory.
 				try {
 					const dirPath = await getTaskDirectoryPath(globalStoragePath, taskId)
 					await fs.rm(dirPath, { recursive: true, force: true })
-					logger.info(`[deleteTaskWithId${taskId}] removed task directory`)
+					await fs.rm(getTaskCheckpointsDir(taskId), { recursive: true, force: true })
+					logger.info(`[deleteTaskWithId${taskId}] removed task directory and checkpoints`)
 				} catch (error) {
 					logger.error(
 						`[deleteTaskWithId${taskId}] failed to remove task directory: ${error instanceof Error ? error.message : String(error)}`,

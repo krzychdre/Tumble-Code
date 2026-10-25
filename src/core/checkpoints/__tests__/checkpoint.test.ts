@@ -1,3 +1,6 @@
+import * as os from "os"
+import * as path from "path"
+
 import { describe, it, expect, vi, beforeEach, afterEach, Mock } from "vitest"
 import { Task } from "../../task/Task"
 import { ClineProvider } from "../../webview/ClineProvider"
@@ -56,7 +59,12 @@ vi.mock("p-wait-for", () => ({
 	default: vi.fn(),
 }))
 
-vi.mock("../../../services/checkpoints")
+// The service is replaced, but the checkpoint root helper stays real: these tests assert
+// which directory the checkpoints are created in.
+vi.mock("../../../services/checkpoints", async (importOriginal) => ({
+	...(await importOriginal<typeof import("../../../services/checkpoints")>()),
+	ShadowCheckpointService: { create: vi.fn() },
+}))
 
 describe("Checkpoint functionality", () => {
 	let mockProvider: any
@@ -435,7 +443,7 @@ describe("Checkpoint functionality", () => {
 			expect(vi.mocked(checkpointsModule.ShadowCheckpointService.create)).toHaveBeenCalledWith({
 				taskId: "test-task-id",
 				workspaceDir: "/test/workspace",
-				shadowDir: "/test/storage",
+				checkpointsRoot: path.join(os.homedir(), ".roo", "checkpoints"),
 				log: expect.any(Function),
 			})
 		})

@@ -88,14 +88,14 @@ describe("CheckpointService", () => {
 	let service: ShadowCheckpointService
 
 	beforeEach(async () => {
-		const shadowDir = path.join(tmpDir, `${prefix}-${Date.now()}`)
+		const checkpointsRoot = path.join(tmpDir, `${prefix}-${Date.now()}`)
 		const workspaceDir = path.join(tmpDir, `workspace-${Date.now()}`)
 		const repo = await initWorkspaceRepo({ workspaceDir })
 
 		workspaceGit = repo.git
 		testFile = repo.testFile
 
-		service = await klass.create({ taskId, shadowDir, workspaceDir, log: () => {} })
+		service = await klass.create({ taskId, checkpointsRoot, workspaceDir, log: () => {} })
 		await service.initShadowGit()
 	})
 
@@ -370,7 +370,7 @@ describe("CheckpointService", () => {
 
 	describe(`${klass.name}#create`, () => {
 		it("initializes a git repository if one does not already exist", async () => {
-			const shadowDir = path.join(tmpDir, `${prefix}2-${Date.now()}`)
+			const checkpointsRoot = path.join(tmpDir, `${prefix}2-${Date.now()}`)
 			const workspaceDir = path.join(tmpDir, `workspace2-${Date.now()}`)
 			await fs.mkdir(workspaceDir)
 
@@ -379,7 +379,7 @@ describe("CheckpointService", () => {
 			expect(await fs.readFile(newTestFile, "utf-8")).toBe("Hello, world!")
 
 			// Ensure the git repository was initialized.
-			const newService = await klass.create({ taskId, shadowDir, workspaceDir, log: () => {} })
+			const newService = await klass.create({ taskId, checkpointsRoot, workspaceDir, log: () => {} })
 			const { created } = await newService.initShadowGit()
 			expect(created).toBeTruthy()
 
@@ -408,7 +408,7 @@ describe("CheckpointService", () => {
 	describe(`${klass.name}#hasNestedGitRepositories`, () => {
 		it("throws error when nested git repositories are detected during initialization", async () => {
 			// Create a new temporary workspace and service for this test.
-			const shadowDir = path.join(tmpDir, `${prefix}-nested-git-${Date.now()}`)
+			const checkpointsRoot = path.join(tmpDir, `${prefix}-nested-git-${Date.now()}`)
 			const workspaceDir = path.join(tmpDir, `workspace-nested-git-${Date.now()}`)
 
 			// Create a primary workspace repo.
@@ -464,7 +464,7 @@ describe("CheckpointService", () => {
 				}
 			})
 
-			const service = new klass(taskId, shadowDir, workspaceDir, () => {})
+			const service = new klass(taskId, checkpointsRoot, workspaceDir, () => {})
 
 			// Verify that initialization throws an error when nested git repos are detected
 			// The error message now includes the specific path of the nested repository
@@ -474,13 +474,13 @@ describe("CheckpointService", () => {
 
 			// Clean up.
 			vitest.restoreAllMocks()
-			await fs.rm(shadowDir, { recursive: true, force: true })
+			await fs.rm(checkpointsRoot, { recursive: true, force: true })
 			await fs.rm(workspaceDir, { recursive: true, force: true })
 		})
 
 		it("succeeds when no nested git repositories are detected", async () => {
 			// Create a new temporary workspace and service for this test.
-			const shadowDir = path.join(tmpDir, `${prefix}-no-nested-git-${Date.now()}`)
+			const checkpointsRoot = path.join(tmpDir, `${prefix}-no-nested-git-${Date.now()}`)
 			const workspaceDir = path.join(tmpDir, `workspace-no-nested-git-${Date.now()}`)
 
 			// Create a primary workspace repo without any nested repos.
@@ -502,7 +502,7 @@ describe("CheckpointService", () => {
 				return Promise.resolve([])
 			})
 
-			const service = new klass(taskId, shadowDir, workspaceDir, () => {})
+			const service = new klass(taskId, checkpointsRoot, workspaceDir, () => {})
 
 			// Verify that initialization succeeds when no nested git repos are detected
 			await expect(service.initShadowGit()).resolves.not.toThrow()
@@ -510,14 +510,14 @@ describe("CheckpointService", () => {
 
 			// Clean up.
 			vitest.restoreAllMocks()
-			await fs.rm(shadowDir, { recursive: true, force: true })
+			await fs.rm(checkpointsRoot, { recursive: true, force: true })
 			await fs.rm(workspaceDir, { recursive: true, force: true })
 		})
 	})
 
 	describe(`${klass.name}#events`, () => {
 		it("emits initialize event when service is created", async () => {
-			const shadowDir = path.join(tmpDir, `${prefix}3-${Date.now()}`)
+			const checkpointsRoot = path.join(tmpDir, `${prefix}3-${Date.now()}`)
 			const workspaceDir = path.join(tmpDir, `workspace3-${Date.now()}`)
 			await fs.mkdir(workspaceDir, { recursive: true })
 
@@ -528,7 +528,7 @@ describe("CheckpointService", () => {
 			const emitSpy = vitest.spyOn(EventEmitter.prototype, "emit")
 
 			// Create the service - this will trigger the initialize event.
-			const newService = await klass.create({ taskId, shadowDir, workspaceDir, log: () => {} })
+			const newService = await klass.create({ taskId, checkpointsRoot, workspaceDir, log: () => {} })
 			await newService.initShadowGit()
 
 			// Find the initialize event in the emit calls.
@@ -563,7 +563,7 @@ describe("CheckpointService", () => {
 			expect(typeof initializeEvent.duration).toBe("number")
 
 			// Clean up.
-			await fs.rm(shadowDir, { recursive: true, force: true })
+			await fs.rm(checkpointsRoot, { recursive: true, force: true })
 			await fs.rm(workspaceDir, { recursive: true, force: true })
 		})
 
@@ -762,7 +762,7 @@ describe("CheckpointService", () => {
 			const logMessages: string[] = []
 			const testService = await klass.create({
 				taskId: "log-test",
-				shadowDir: path.join(tmpDir, `log-test-${Date.now()}`),
+				checkpointsRoot: path.join(tmpDir, `log-test-${Date.now()}`),
 				workspaceDir: service.workspaceDir,
 				log: (message: string) => logMessages.push(message),
 			})
@@ -862,7 +862,7 @@ describe("CheckpointService", () => {
 			await fs.mkdir(hooksDir, { recursive: true })
 			await fs.writeFile(path.join(hooksDir, "pre-commit"), "#!/bin/sh\nexit 1", { mode: 0o755 })
 
-			const testShadowDir = path.join(tmpDir, `shadow-template-test-${Date.now()}`)
+			const testCheckpointsRoot = path.join(tmpDir, `shadow-template-test-${Date.now()}`)
 			const testWorkspaceDir = path.join(tmpDir, `workspace-template-test-${Date.now()}`)
 			await initWorkspaceRepo({ workspaceDir: testWorkspaceDir })
 
@@ -872,14 +872,14 @@ describe("CheckpointService", () => {
 			try {
 				const testService = await klass.create({
 					taskId: `test-template-${Date.now()}`,
-					shadowDir: testShadowDir,
+					checkpointsRoot: testCheckpointsRoot,
 					workspaceDir: testWorkspaceDir,
 					log: () => {},
 				})
 				await testService.initShadowGit()
 
 				// Verify no hooks were copied from the template
-				const shadowHooksDir = path.join(testShadowDir, ".git", "hooks")
+				const shadowHooksDir = path.join(testCheckpointsRoot, ".git", "hooks")
 				let hookFiles: string[] = []
 
 				try {
@@ -897,14 +897,14 @@ describe("CheckpointService", () => {
 					delete process.env.GIT_TEMPLATE_DIR
 				}
 
-				await fs.rm(testShadowDir, { recursive: true, force: true })
+				await fs.rm(testCheckpointsRoot, { recursive: true, force: true })
 				await fs.rm(testWorkspaceDir, { recursive: true, force: true })
 				await fs.rm(templateDir, { recursive: true, force: true })
 			}
 		})
 
 		it("isolates checkpoint operations from simple-git blocked environment variables", async () => {
-			const testShadowDir = path.join(tmpDir, `shadow-blocked-env-test-${Date.now()}`)
+			const testCheckpointsRoot = path.join(tmpDir, `shadow-blocked-env-test-${Date.now()}`)
 			const testWorkspaceDir = path.join(tmpDir, `workspace-blocked-env-test-${Date.now()}`)
 			await initWorkspaceRepo({ workspaceDir: testWorkspaceDir })
 
@@ -917,7 +917,7 @@ describe("CheckpointService", () => {
 			try {
 				const testService = await klass.create({
 					taskId: `test-blocked-env-${Date.now()}`,
-					shadowDir: testShadowDir,
+					checkpointsRoot: testCheckpointsRoot,
 					workspaceDir: testWorkspaceDir,
 					log: () => {},
 				})
@@ -944,7 +944,7 @@ describe("CheckpointService", () => {
 				delete process.env.VISUAL
 				delete process.env.GIT_CONFIG_PARAMETERS
 
-				await fs.rm(testShadowDir, { recursive: true, force: true })
+				await fs.rm(testCheckpointsRoot, { recursive: true, force: true })
 				await fs.rm(testWorkspaceDir, { recursive: true, force: true })
 			}
 		})
@@ -976,7 +976,7 @@ describe("CheckpointService", () => {
 
 			// Initialize the workspace repo BEFORE setting GIT_DIR
 			// (In Dev Containers, the workspace repo already exists before GIT_DIR is set)
-			const testShadowDir = path.join(tmpDir, `shadow-git-dir-test-${Date.now()}`)
+			const testCheckpointsRoot = path.join(tmpDir, `shadow-git-dir-test-${Date.now()}`)
 			const testWorkspaceDir = path.join(tmpDir, `workspace-git-dir-test-${Date.now()}`)
 			const testRepo = await initWorkspaceRepo({ workspaceDir: testWorkspaceDir })
 
@@ -992,7 +992,7 @@ describe("CheckpointService", () => {
 				// while GIT_DIR is set, just like in a real Dev Container
 				const testService = await klass.create({
 					taskId: `test-git-dir-${Date.now()}`,
-					shadowDir: testShadowDir,
+					checkpointsRoot: testCheckpointsRoot,
 					workspaceDir: testWorkspaceDir,
 					log: () => {},
 				})
@@ -1043,7 +1043,7 @@ describe("CheckpointService", () => {
 
 describe("worktree path comparison", () => {
 	it("accepts core.worktree with trailing newline from git output", async () => {
-		const shadowDir = path.join(tmpDir, `worktree-trim-${Date.now()}`)
+		const checkpointsRoot = path.join(tmpDir, `worktree-trim-${Date.now()}`)
 		const workspaceDir = path.join(tmpDir, `workspace-trim-${Date.now()}`)
 
 		try {
@@ -1063,23 +1063,23 @@ describe("worktree path comparison", () => {
 			})
 
 			// First init to create the shadow repo
-			const service1 = new ShadowCheckpointService("trim-test", shadowDir, workspaceDir, () => {})
+			const service1 = new ShadowCheckpointService("trim-test", checkpointsRoot, workspaceDir, () => {})
 			await service1.initShadowGit()
 
 			// Second init with stubbed worktree returning a trailing newline
-			const service2 = new ShadowCheckpointService("trim-test-2", shadowDir, workspaceDir, () => {})
+			const service2 = new ShadowCheckpointService("trim-test-2", checkpointsRoot, workspaceDir, () => {})
 			vitest.spyOn(service2 as any, "getShadowGitConfigWorktree").mockResolvedValue(workspaceDir + "\n")
 
 			await service2.initShadowGit()
 		} finally {
 			vitest.restoreAllMocks()
-			await fs.rm(shadowDir, { recursive: true, force: true })
+			await fs.rm(checkpointsRoot, { recursive: true, force: true })
 			await fs.rm(workspaceDir, { recursive: true, force: true })
 		}
 	})
 
 	it("throws when core.worktree is missing", async () => {
-		const shadowDir = path.join(tmpDir, `worktree-missing-${Date.now()}`)
+		const checkpointsRoot = path.join(tmpDir, `worktree-missing-${Date.now()}`)
 		const workspaceDir = path.join(tmpDir, `workspace-missing-${Date.now()}`)
 
 		try {
@@ -1099,19 +1099,19 @@ describe("worktree path comparison", () => {
 			})
 
 			// First init to create the shadow repo
-			const service1 = new ShadowCheckpointService("missing-test", shadowDir, workspaceDir, () => {})
+			const service1 = new ShadowCheckpointService("missing-test", checkpointsRoot, workspaceDir, () => {})
 			await service1.initShadowGit()
 
 			// Remove core.worktree from the shadow git config
-			const shadowGit = simpleGit(shadowDir)
+			const shadowGit = simpleGit(checkpointsRoot)
 			await shadowGit.raw(["config", "--unset", "core.worktree"])
 
 			// Second init should throw because core.worktree is missing
-			const service2 = new ShadowCheckpointService("missing-test-2", shadowDir, workspaceDir, () => {})
+			const service2 = new ShadowCheckpointService("missing-test-2", checkpointsRoot, workspaceDir, () => {})
 			await expect(service2.initShadowGit()).rejects.toThrowError(/core\.worktree to be set/)
 		} finally {
 			vitest.restoreAllMocks()
-			await fs.rm(shadowDir, { recursive: true, force: true })
+			await fs.rm(checkpointsRoot, { recursive: true, force: true })
 			await fs.rm(workspaceDir, { recursive: true, force: true })
 		}
 	})
