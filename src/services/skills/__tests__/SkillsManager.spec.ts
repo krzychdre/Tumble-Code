@@ -1,6 +1,7 @@
 // SkillsManager on a real temporary home and project directory; nothing of the file system is
 // faked. Only the provider (cwd and custom modes) is a stand-in.
 
+import { realpathSync } from "fs"
 import * as fs from "fs/promises"
 import * as os from "os"
 import * as path from "path"
@@ -61,7 +62,8 @@ function makeManager(cwd: string | null = project) {
 }
 
 beforeEach(async () => {
-	root = await fs.mkdtemp(path.join(os.tmpdir(), "skills-spec-"))
+	// The long path: Windows temp dirs come as 8.3 short names (RUNNER~1), the skill paths as long ones.
+	root = realpathSync.native(await fs.mkdtemp(path.join(os.tmpdir(), "skills-spec-")))
 	home = path.join(root, "home")
 	project = path.join(root, "project")
 	await fs.mkdir(home, { recursive: true })
