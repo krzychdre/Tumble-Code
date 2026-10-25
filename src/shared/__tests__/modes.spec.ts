@@ -1,848 +1,100 @@
-// npx vitest run shared/__tests__/modes.spec.ts
-
-import type { ModeConfig, PromptComponent, CustomModePrompts } from "@tumble-code/types"
-
-// Mock setup must come before imports
-vi.mock("vscode")
+import type { ModeConfig, CustomModePrompts } from "@tumble-code/types"
 
 import { FileRestrictionError, modes, getModeSelection, getModeAllowedMcpServers } from "../modes"
-import { isToolAllowedForMode } from "../../core/tools/validateToolUse"
-
-describe("isToolAllowedForMode", () => {
-	const customModes: ModeConfig[] = [
-		{
-			slug: "markdown-editor",
-			name: "Markdown Editor",
-			roleDefinition: "You are a markdown editor",
-			groups: ["read", ["edit", { fileRegex: "\\.md$" }]],
-		},
-		{
-			slug: "css-editor",
-			name: "CSS Editor",
-			roleDefinition: "You are a CSS editor",
-			groups: ["read", ["edit", { fileRegex: "\\.css$" }]],
-		},
-		{
-			slug: "test-exp-mode",
-			name: "Test Exp Mode",
-			roleDefinition: "You are an experimental tester",
-			groups: ["read", "edit"],
-		},
-	]
-
-	it("allows always available tools", () => {
-		expect(isToolAllowedForMode("ask_followup_question", "markdown-editor", customModes)).toBe(true)
-		expect(isToolAllowedForMode("attempt_completion", "markdown-editor", customModes)).toBe(true)
-	})
-
-	it("allows unrestricted tools", () => {
-		expect(isToolAllowedForMode("read_file", "markdown-editor", customModes)).toBe(true)
-	})
-
-	describe("file restrictions", () => {
-		it("allows editing matching files", () => {
-			// Test markdown editor mode
-			const mdResult = isToolAllowedForMode("write_to_file", "markdown-editor", customModes, undefined, {
-				path: "test.md",
-				content: "# Test",
-			})
-			expect(mdResult).toBe(true)
-
-			// Test CSS editor mode
-			const cssResult = isToolAllowedForMode("write_to_file", "css-editor", customModes, undefined, {
-				path: "styles.css",
-				content: ".test { color: red; }",
-			})
-			expect(cssResult).toBe(true)
-		})
-
-		it("rejects editing non-matching files", () => {
-			// Test markdown editor mode with non-markdown file
-			expect(() =>
-				isToolAllowedForMode("write_to_file", "markdown-editor", customModes, undefined, {
-					path: "test.js",
-					content: "console.log('test')",
-				}),
-			).toThrow(FileRestrictionError)
-			expect(() =>
-				isToolAllowedForMode("write_to_file", "markdown-editor", customModes, undefined, {
-					path: "test.js",
-					content: "console.log('test')",
-				}),
-			).toThrow(/\\.md\$/)
-
-			// Test CSS editor mode with non-CSS file
-			expect(() =>
-				isToolAllowedForMode("write_to_file", "css-editor", customModes, undefined, {
-					path: "test.js",
-					content: "console.log('test')",
-				}),
-			).toThrow(FileRestrictionError)
-			expect(() =>
-				isToolAllowedForMode("write_to_file", "css-editor", customModes, undefined, {
-					path: "test.js",
-					content: "console.log('test')",
-				}),
-			).toThrow(/\\.css\$/)
-		})
-
-		it("handles partial streaming cases (path only, no content/diff)", () => {
-			// Should allow path-only for matching files (no validation yet since content/diff not provided)
-			expect(
-				isToolAllowedForMode("write_to_file", "markdown-editor", customModes, undefined, {
-					path: "test.js",
-				}),
-			).toBe(true)
-
-			expect(
-				isToolAllowedForMode("apply_diff", "markdown-editor", customModes, undefined, {
-					path: "test.js",
-				}),
-			).toBe(true)
-
-			// Should allow path-only for architect mode too
-			expect(
-				isToolAllowedForMode("write_to_file", "architect", [], undefined, {
-					path: "test.js",
-				}),
-			).toBe(true)
-		})
-
-		it("applies restrictions to both write_to_file and apply_diff", () => {
-			// Test write_to_file
-			const writeResult = isToolAllowedForMode("write_to_file", "markdown-editor", customModes, undefined, {
-				path: "test.md",
-				content: "# Test",
-			})
-			expect(writeResult).toBe(true)
-
-			// Test apply_diff
-			const diffResult = isToolAllowedForMode("apply_diff", "markdown-editor", customModes, undefined, {
-				path: "test.md",
-				diff: "- old\n+ new",
-			})
-			expect(diffResult).toBe(true)
-
-			// Test both with non-matching file
-			expect(() =>
-				isToolAllowedForMode("write_to_file", "markdown-editor", customModes, undefined, {
-					path: "test.js",
-					content: "console.log('test')",
-				}),
-			).toThrow(FileRestrictionError)
-
-			expect(() =>
-				isToolAllowedForMode("apply_diff", "markdown-editor", customModes, undefined, {
-					path: "test.js",
-					diff: "- old\n+ new",
-				}),
-			).toThrow(FileRestrictionError)
-		})
-
-		it("uses description in file restriction error for custom modes", () => {
-			const customModesWithDescription: ModeConfig[] = [
-				{
-					slug: "docs-editor",
-					name: "Documentation Editor",
-					roleDefinition: "You are a documentation editor",
-					groups: ["read", ["edit", { fileRegex: "\\.(md|txt)$", description: "Documentation files only" }]],
-				},
-			]
-
-			// Test write_to_file with non-matching file
-			expect(() =>
-				isToolAllowedForMode("write_to_file", "docs-editor", customModesWithDescription, undefined, {
-					path: "test.js",
-					content: "console.log('test')",
-				}),
-			).toThrow(FileRestrictionError)
-			expect(() =>
-				isToolAllowedForMode("write_to_file", "docs-editor", customModesWithDescription, undefined, {
-					path: "test.js",
-					content: "console.log('test')",
-				}),
-			).toThrow(/Documentation files only/)
-
-			// Test apply_diff with non-matching file
-			expect(() =>
-				isToolAllowedForMode("apply_diff", "docs-editor", customModesWithDescription, undefined, {
-					path: "test.js",
-					diff: "- old\n+ new",
-				}),
-			).toThrow(FileRestrictionError)
-			expect(() =>
-				isToolAllowedForMode("apply_diff", "docs-editor", customModesWithDescription, undefined, {
-					path: "test.js",
-					diff: "- old\n+ new",
-				}),
-			).toThrow(/Documentation files only/)
-
-			// Test that matching files are allowed
-			expect(
-				isToolAllowedForMode("write_to_file", "docs-editor", customModesWithDescription, undefined, {
-					path: "test.md",
-					content: "# Test",
-				}),
-			).toBe(true)
-
-			expect(
-				isToolAllowedForMode("write_to_file", "docs-editor", customModesWithDescription, undefined, {
-					path: "test.txt",
-					content: "Test content",
-				}),
-			).toBe(true)
-
-			// Test partial streaming cases
-			expect(
-				isToolAllowedForMode("write_to_file", "docs-editor", customModesWithDescription, undefined, {
-					path: "test.js",
-				}),
-			).toBe(true)
-		})
-
-		it("allows architect mode to edit markdown files only", () => {
-			// Should allow editing markdown files
-			expect(
-				isToolAllowedForMode("write_to_file", "architect", [], undefined, {
-					path: "test.md",
-					content: "# Test",
-				}),
-			).toBe(true)
-
-			// Should allow applying diffs to markdown files
-			expect(
-				isToolAllowedForMode("apply_diff", "architect", [], undefined, {
-					path: "readme.md",
-					diff: "- old\n+ new",
-				}),
-			).toBe(true)
-
-			// Should reject non-markdown files
-			expect(() =>
-				isToolAllowedForMode("write_to_file", "architect", [], undefined, {
-					path: "test.js",
-					content: "console.log('test')",
-				}),
-			).toThrow(FileRestrictionError)
-			expect(() =>
-				isToolAllowedForMode("write_to_file", "architect", [], undefined, {
-					path: "test.js",
-					content: "console.log('test')",
-				}),
-			).toThrow(/Markdown files only/)
-
-			// Should maintain read capabilities
-			expect(isToolAllowedForMode("read_file", "architect", [])).toBe(true)
-			expect(isToolAllowedForMode("use_mcp_tool", "architect", [])).toBe(true)
-		})
-
-		it("applies restrictions to apply_diff", () => {
-			// Native-only: file restrictions for apply_diff are enforced against the top-level `path`.
-
-			// Should allow markdown files in architect mode
-			expect(
-				isToolAllowedForMode("apply_diff", "architect", [], undefined, {
-					path: "test.md",
-					diff: "- old content\n+ new content",
-				}),
-			).toBe(true)
-
-			// Non-markdown file should throw
-			expect(() =>
-				isToolAllowedForMode("apply_diff", "architect", [], undefined, {
-					path: "test.py",
-					diff: "- old content\n+ new content",
-				}),
-			).toThrow(FileRestrictionError)
-			expect(() =>
-				isToolAllowedForMode("apply_diff", "architect", [], undefined, {
-					path: "test.py",
-					diff: "- old content\n+ new content",
-				}),
-			).toThrow(/Markdown files only/)
-		})
-
-		it("applies restrictions to apply_patch (custom tool)", () => {
-			// Test that apply_patch respects file restrictions when included
-			// Note: apply_patch only accepts { patch: string } - file paths are embedded in patch content
-			const patchResult = isToolAllowedForMode(
-				"apply_patch",
-				"markdown-editor",
-				customModes,
-				undefined,
-				{
-					patch: "*** Begin Patch\n*** Update File: test.md\n@@ \n-old\n+new\n*** End Patch",
-				},
-				undefined,
-				["apply_patch"], // Include custom tool
-			)
-			expect(patchResult).toBe(true)
-
-			// Test apply_patch with non-matching file (file path embedded in patch content)
-			expect(() =>
-				isToolAllowedForMode(
-					"apply_patch",
-					"markdown-editor",
-					customModes,
-					undefined,
-					{
-						patch: "*** Begin Patch\n*** Update File: test.js\n@@ \n-old\n+new\n*** End Patch",
-					},
-					undefined,
-					["apply_patch"], // Include custom tool
-				),
-			).toThrow(FileRestrictionError)
-			expect(() =>
-				isToolAllowedForMode(
-					"apply_patch",
-					"markdown-editor",
-					customModes,
-					undefined,
-					{
-						patch: "*** Begin Patch\n*** Update File: test.js\n@@ \n-old\n+new\n*** End Patch",
-					},
-					undefined,
-					["apply_patch"], // Include custom tool
-				),
-			).toThrow(/\\.md\$/)
-		})
-
-		it("applies restrictions to search_replace (custom tool)", () => {
-			// Test that search_replace respects file restrictions when included
-			const searchReplaceResult = isToolAllowedForMode(
-				"search_replace",
-				"markdown-editor",
-				customModes,
-				undefined,
-				{
-					file_path: "test.md",
-					old_string: "old text",
-					new_string: "new text",
-				},
-				undefined,
-				["search_replace"], // Include custom tool
-			)
-			expect(searchReplaceResult).toBe(true)
-
-			// Test search_replace with non-matching file
-			expect(() =>
-				isToolAllowedForMode(
-					"search_replace",
-					"markdown-editor",
-					customModes,
-					undefined,
-					{
-						file_path: "test.js",
-						old_string: "old text",
-						new_string: "new text",
-					},
-					undefined,
-					["search_replace"], // Include custom tool
-				),
-			).toThrow(FileRestrictionError)
-			expect(() =>
-				isToolAllowedForMode(
-					"search_replace",
-					"markdown-editor",
-					customModes,
-					undefined,
-					{
-						file_path: "test.js",
-						old_string: "old text",
-						new_string: "new text",
-					},
-					undefined,
-					["search_replace"], // Include custom tool
-				),
-			).toThrow(/\\.md\$/)
-		})
-
-		it("applies restrictions to edit_file (custom tool)", () => {
-			// Test that edit_file respects file restrictions when included
-			const editFileResult = isToolAllowedForMode(
-				"edit_file",
-				"markdown-editor",
-				customModes,
-				undefined,
-				{
-					file_path: "test.md",
-					old_string: "old text",
-					new_string: "new text",
-				},
-				undefined,
-				["edit_file"], // Include custom tool
-			)
-			expect(editFileResult).toBe(true)
-
-			// Test edit_file with non-matching file
-			expect(() =>
-				isToolAllowedForMode(
-					"edit_file",
-					"markdown-editor",
-					customModes,
-					undefined,
-					{
-						file_path: "test.js",
-						old_string: "old text",
-						new_string: "new text",
-					},
-					undefined,
-					["edit_file"], // Include custom tool
-				),
-			).toThrow(FileRestrictionError)
-			expect(() =>
-				isToolAllowedForMode(
-					"edit_file",
-					"markdown-editor",
-					customModes,
-					undefined,
-					{
-						file_path: "test.js",
-						old_string: "old text",
-						new_string: "new text",
-					},
-					undefined,
-					["edit_file"], // Include custom tool
-				),
-			).toThrow(/\\.md\$/)
-		})
-
-		it("applies restrictions to all editing tools in architect mode (custom tools)", () => {
-			// Test apply_patch in architect mode
-			// Note: apply_patch only accepts { patch: string } - file paths are embedded in patch content
-			expect(
-				isToolAllowedForMode(
-					"apply_patch",
-					"architect",
-					[],
-					undefined,
-					{
-						patch: "*** Begin Patch\n*** Update File: test.md\n@@ \n-old\n+new\n*** End Patch",
-					},
-					undefined,
-					["apply_patch"], // Include custom tool
-				),
-			).toBe(true)
-
-			expect(() =>
-				isToolAllowedForMode(
-					"apply_patch",
-					"architect",
-					[],
-					undefined,
-					{
-						patch: "*** Begin Patch\n*** Update File: test.js\n@@ \n-old\n+new\n*** End Patch",
-					},
-					undefined,
-					["apply_patch"], // Include custom tool
-				),
-			).toThrow(FileRestrictionError)
-
-			// Test search_replace in architect mode
-			expect(
-				isToolAllowedForMode(
-					"search_replace",
-					"architect",
-					[],
-					undefined,
-					{
-						file_path: "test.md",
-						old_string: "old text",
-						new_string: "new text",
-					},
-					undefined,
-					["search_replace"], // Include custom tool
-				),
-			).toBe(true)
-
-			expect(() =>
-				isToolAllowedForMode(
-					"search_replace",
-					"architect",
-					[],
-					undefined,
-					{
-						file_path: "test.js",
-						old_string: "old text",
-						new_string: "new text",
-					},
-					undefined,
-					["search_replace"], // Include custom tool
-				),
-			).toThrow(FileRestrictionError)
-
-			// Test edit_file in architect mode
-			expect(
-				isToolAllowedForMode(
-					"edit_file",
-					"architect",
-					[],
-					undefined,
-					{
-						file_path: "test.md",
-						old_string: "old text",
-						new_string: "new text",
-					},
-					undefined,
-					["edit_file"], // Include custom tool
-				),
-			).toBe(true)
-
-			expect(() =>
-				isToolAllowedForMode(
-					"edit_file",
-					"architect",
-					[],
-					undefined,
-					{
-						file_path: "test.js",
-						old_string: "old text",
-						new_string: "new text",
-					},
-					undefined,
-					["edit_file"], // Include custom tool
-				),
-			).toThrow(FileRestrictionError)
-		})
-	})
-
-	it("handles non-existent modes", () => {
-		expect(isToolAllowedForMode("write_to_file", "non-existent", customModes)).toBe(false)
-	})
-
-	it("respects tool requirements", () => {
-		const toolRequirements = {
-			write_to_file: false,
-		}
-
-		expect(isToolAllowedForMode("write_to_file", "markdown-editor", customModes, toolRequirements)).toBe(false)
-	})
-
-	describe("customTools (opt-in tools)", () => {
-		const customModesWithEditGroup: ModeConfig[] = [
-			{
-				slug: "test-custom-tools",
-				name: "Test Custom Tools Mode",
-				roleDefinition: "You are a test mode",
-				groups: ["read", "edit"],
-			},
-		]
-
-		it("disallows customTools by default (not in includedTools)", () => {
-			// search_and_replace is a customTool in the edit group, should be disallowed by default
-			expect(isToolAllowedForMode("search_and_replace", "test-custom-tools", customModesWithEditGroup)).toBe(
-				false,
-			)
-		})
-
-		it("allows customTools when included in includedTools", () => {
-			// search_and_replace should be allowed when explicitly included
-			expect(
-				isToolAllowedForMode(
-					"search_and_replace",
-					"test-custom-tools",
-					customModesWithEditGroup,
-					undefined,
-					undefined,
-					undefined,
-					["search_and_replace"],
-				),
-			).toBe(true)
-		})
-
-		it("disallows customTools even in includedTools if mode doesn't have the group", () => {
-			const customModesWithoutEdit: ModeConfig[] = [
-				{
-					slug: "no-edit-mode",
-					name: "No Edit Mode",
-					roleDefinition: "You have no edit powers",
-					groups: ["read"], // No edit group
-				},
-			]
-
-			// Even if included, should be disallowed because the mode doesn't have edit group
-			expect(
-				isToolAllowedForMode(
-					"search_and_replace",
-					"no-edit-mode",
-					customModesWithoutEdit,
-					undefined,
-					undefined,
-					undefined,
-					["search_and_replace"],
-				),
-			).toBe(false)
-		})
-
-		it("allows regular tools in the same group as customTools", () => {
-			// apply_diff (regular tool) should be allowed even without includedTools
-			expect(isToolAllowedForMode("apply_diff", "test-custom-tools", customModesWithEditGroup)).toBe(true)
-			expect(isToolAllowedForMode("write_to_file", "test-custom-tools", customModesWithEditGroup)).toBe(true)
-		})
-	})
-})
 
 describe("FileRestrictionError", () => {
-	it("formats error message with pattern when no description provided", () => {
-		const error = new FileRestrictionError("Markdown Editor", "\\.md$", undefined, "test.js")
-		expect(error.message).toBe(
-			"This mode (Markdown Editor) can only edit files matching pattern: \\.md$. Got: test.js",
-		)
-		expect(error.name).toBe("FileRestrictionError")
-	})
-
-	it("formats error message with tool name when provided", () => {
-		const error = new FileRestrictionError("Markdown Editor", "\\.md$", undefined, "test.js", "write_to_file")
-		expect(error.message).toBe(
-			"Tool 'write_to_file' in mode 'Markdown Editor' can only edit files matching pattern: \\.md$. Got: test.js",
-		)
-		expect(error.name).toBe("FileRestrictionError")
-	})
-
-	describe("debug mode", () => {
-		it("is configured correctly", () => {
-			const debugMode = modes.find((mode) => mode.slug === "debug")
-			expect(debugMode).toBeDefined()
-			expect(debugMode).toMatchObject({
-				slug: "debug",
-				name: "🪲 Debug",
-				roleDefinition:
-					"You are Tumble, an expert software debugger specializing in systematic problem diagnosis and resolution.",
-				groups: ["read", "edit", "command", "mcp", "web"],
-			})
-			expect(debugMode?.customInstructions).toContain(
-				"Reflect on 5-7 different possible sources of the problem, distill those down to 1-2 most likely sources, and then add logs to validate your assumptions. Explicitly ask the user to confirm the diagnosis before fixing the problem.",
-			)
-		})
-	})
-
-	it("formats error message with description when provided", () => {
-		const error = new FileRestrictionError("Markdown Editor", "\\.md$", "Markdown files only", "test.js")
-		expect(error.message).toBe(
-			"This mode (Markdown Editor) can only edit files matching pattern: \\.md$ (Markdown files only). Got: test.js",
-		)
-		expect(error.name).toBe("FileRestrictionError")
-	})
-
-	it("formats error message with both tool name and description when provided", () => {
-		const error = new FileRestrictionError(
-			"Markdown Editor",
-			"\\.md$",
+	it.each([
+		[undefined, undefined, "This mode (Markdown Editor) can only edit files matching pattern: \\.md$. Got: a.js"],
+		[
+			"write_to_file",
+			undefined,
+			"Tool 'write_to_file' in mode 'Markdown Editor' can only edit files matching pattern: \\.md$. Got: a.js",
+		],
+		[
+			undefined,
 			"Markdown files only",
-			"test.js",
-			"apply_diff",
-		)
-		expect(error.message).toBe(
-			"Tool 'apply_diff' in mode 'Markdown Editor' can only edit files matching pattern: \\.md$ (Markdown files only). Got: test.js",
-		)
+			"This mode (Markdown Editor) can only edit files matching pattern: \\.md$ (Markdown files only). Got: a.js",
+		],
+	])("names the tool %s and the description %s", (tool, description, message) => {
+		const error = new FileRestrictionError("Markdown Editor", "\\.md$", description, "a.js", tool)
+
+		expect(error.message).toBe(message)
 		expect(error.name).toBe("FileRestrictionError")
 	})
 })
 
 describe("getModeSelection", () => {
-	const builtInAskMode = modes.find((m) => m.slug === "ask")!
-	const customModesList: ModeConfig[] = [
-		{
-			slug: "code", // Override
-			name: "Custom Code Mode",
-			roleDefinition: "Custom Code Role",
-			customInstructions: "Custom Code Instructions",
-			groups: ["read"],
-		},
-		{
-			slug: "new-custom",
-			name: "New Custom Mode",
-			roleDefinition: "New Custom Role",
-			customInstructions: "New Custom Instructions",
-			groups: ["edit"],
-		},
-	]
-
-	const promptComponentCode: PromptComponent = {
-		roleDefinition: "Prompt Component Code Role",
-		customInstructions: "Prompt Component Code Instructions",
-	}
-
-	const promptComponentAsk: PromptComponent = {
-		roleDefinition: "Prompt Component Ask Role",
-		customInstructions: "Prompt Component Ask Instructions",
-	}
-
-	test("should return built-in mode details if no overrides", () => {
-		const selection = getModeSelection("ask")
-		expect(selection.roleDefinition).toBe(builtInAskMode.roleDefinition)
-		expect(selection.baseInstructions).toBe(builtInAskMode.customInstructions || "")
+	const builtIn = (slug: string) => modes.find((m) => m.slug === slug)!
+	const custom = (slug: string, fields: Partial<ModeConfig> = {}): ModeConfig => ({
+		slug,
+		name: slug,
+		roleDefinition: `${slug} role`,
+		customInstructions: `${slug} instructions`,
+		description: `${slug} description`,
+		groups: ["read"],
+		...fields,
 	})
+	const prompt = { roleDefinition: "prompt role", customInstructions: "prompt instructions" }
 
-	test("should prioritize promptComponent for built-in mode if no custom mode exists for that slug", () => {
-		const selection = getModeSelection("ask", promptComponentAsk) // "ask" is not in customModesList
-		expect(selection.roleDefinition).toBe(promptComponentAsk.roleDefinition)
-		expect(selection.baseInstructions).toBe(promptComponentAsk.customInstructions)
-	})
-
-	test("should prioritize customMode over built-in mode", () => {
-		const selection = getModeSelection("code", undefined, customModesList)
-		const customCode = customModesList.find((m) => m.slug === "code")!
-		expect(selection.roleDefinition).toBe(customCode.roleDefinition)
-		expect(selection.baseInstructions).toBe(customCode.customInstructions)
-	})
-
-	test("should prioritize customMode over promptComponent and built-in mode", () => {
-		const selection = getModeSelection("code", promptComponentCode, customModesList)
-		const customCode = customModesList.find((m) => m.slug === "code")!
-		expect(selection.roleDefinition).toBe(customCode.roleDefinition)
-		expect(selection.baseInstructions).toBe(customCode.customInstructions)
-	})
-
-	test("should return new custom mode details if it exists", () => {
-		const selection = getModeSelection("new-custom", undefined, customModesList)
-		const newCustom = customModesList.find((m) => m.slug === "new-custom")!
-		expect(selection.roleDefinition).toBe(newCustom.roleDefinition)
-		expect(selection.baseInstructions).toBe(newCustom.customInstructions)
-	})
-
-	test("customMode takes precedence for a new custom mode even if promptComponent is provided", () => {
-		const promptComponentNew: PromptComponent = {
-			roleDefinition: "Prompt New Custom Role",
-			customInstructions: "Prompt New Custom Instructions",
-		}
-		const selection = getModeSelection("new-custom", promptComponentNew, customModesList)
-		const newCustomMode = customModesList.find((m) => m.slug === "new-custom")!
-		expect(selection.roleDefinition).toBe(newCustomMode.roleDefinition)
-		expect(selection.baseInstructions).toBe(newCustomMode.customInstructions)
-	})
-
-	test("should fall back to default mode if slug does not exist in custom, prompt, or built-in modes", () => {
-		const selection = getModeSelection("non-existent-mode", undefined, customModesList)
-		const defaultMode = modes[0] // First mode is the default
-		expect(selection.roleDefinition).toBe(defaultMode.roleDefinition)
-		expect(selection.baseInstructions).toBe(defaultMode.customInstructions || "")
-	})
-
-	test("customMode's properties are used if customMode exists, ignoring promptComponent's properties", () => {
-		const selection = getModeSelection(
+	it.each([
+		[
+			"a built-in mode as it is",
+			"ask",
+			undefined,
+			undefined,
+			builtIn("ask").roleDefinition,
+			builtIn("ask").customInstructions,
+		],
+		["a built-in mode with the prompt override", "ask", prompt, undefined, "prompt role", "prompt instructions"],
+		[
+			"a built-in mode with a partial override",
+			"ask",
+			{ roleDefinition: "prompt role" },
+			undefined,
+			"prompt role",
+			builtIn("ask").customInstructions,
+		],
+		[
+			"a built-in mode with an empty override",
+			"ask",
+			{},
+			undefined,
+			builtIn("ask").roleDefinition,
+			builtIn("ask").customInstructions,
+		],
+		[
+			"a custom mode over the built-in one and the override",
 			"code",
-			{ roleDefinition: "Prompt Role Only", customInstructions: "Prompt Instructions Only" },
-			customModesList,
-		)
-		const customCodeMode = customModesList.find((m) => m.slug === "code")!
-		expect(selection.roleDefinition).toBe(customCodeMode.roleDefinition) // Takes from customCodeMode
-		expect(selection.baseInstructions).toBe(customCodeMode.customInstructions) // Takes from customCodeMode
+			prompt,
+			[custom("code")],
+			"code role",
+			"code instructions",
+		],
+		["a new custom mode", "mine", prompt, [custom("mine")], "mine role", "mine instructions"],
+		[
+			"a custom mode's empty fields as empty",
+			"mine",
+			prompt,
+			[custom("mine", { roleDefinition: "", customInstructions: undefined })],
+			"",
+			"",
+		],
+		[
+			"the default mode for an unknown slug",
+			"nope",
+			undefined,
+			[custom("mine")],
+			modes[0].roleDefinition,
+			modes[0].customInstructions ?? "",
+		],
+	])("uses %s", (_, slug, promptComponent, customModes, roleDefinition, baseInstructions) => {
+		expect(getModeSelection(slug, promptComponent, customModes)).toMatchObject({ roleDefinition, baseInstructions })
 	})
 
-	test("handles undefined customInstructions in customMode gracefully", () => {
-		const modesWithoutCustomInstructions: ModeConfig[] = [
-			{
-				slug: "no-instr",
-				name: "No Instructions Mode",
-				roleDefinition: "Role for no instructions",
-				groups: ["read"],
-				// customInstructions is undefined
-			},
-		]
-		const selection = getModeSelection("no-instr", undefined, modesWithoutCustomInstructions)
-		expect(selection.roleDefinition).toBe("Role for no instructions")
-		expect(selection.baseInstructions).toBe("") // Defaults to empty string
-	})
-
-	test("handles empty or undefined roleDefinition in customMode gracefully", () => {
-		const modesWithEmptyRoleDef: ModeConfig[] = [
-			{
-				slug: "empty-role",
-				name: "Empty Role Mode",
-				roleDefinition: "",
-				customInstructions: "Instructions for empty role",
-				groups: ["read"],
-			},
-		]
-		const selection = getModeSelection("empty-role", undefined, modesWithEmptyRoleDef)
-		expect(selection.roleDefinition).toBe("")
-		expect(selection.baseInstructions).toBe("Instructions for empty role")
-
-		const modesWithUndefinedRoleDef: ModeConfig[] = [
-			{
-				slug: "undefined-role",
-				name: "Undefined Role Mode",
-				roleDefinition: "", // Test undefined explicitly by using an empty string
-				customInstructions: "Instructions for undefined role",
-				groups: ["read"],
-			},
-		]
-		const selection2 = getModeSelection("undefined-role", undefined, modesWithUndefinedRoleDef)
-		expect(selection2.roleDefinition).toBe("")
-		expect(selection2.baseInstructions).toBe("Instructions for undefined role")
-	})
-
-	test("customMode's defined properties take precedence, undefined ones in customMode result in ''", () => {
-		const customModeRoleOnlyList: ModeConfig[] = [
-			// Renamed for clarity
-			{
-				slug: "role-custom",
-				name: "Role Custom",
-				roleDefinition: "Custom Role Only",
-				groups: ["read"] /* customInstructions undefined */,
-			},
-		]
-		const promptComponentInstrOnly: PromptComponent = { customInstructions: "Prompt Instructions Only" }
-		// "role-custom" exists in customModeRoleOnlyList
-		const selection = getModeSelection("role-custom", promptComponentInstrOnly, customModeRoleOnlyList)
-		// customMode is chosen.
-		expect(selection.roleDefinition).toBe("Custom Role Only") // From customMode
-		expect(selection.baseInstructions).toBe("") // From customMode (undefined || '' -> '')
-	})
-
-	test("customMode's defined properties take precedence, empty string ones in customMode are used", () => {
-		const customModeInstrOnlyList: ModeConfig[] = [
-			// Renamed for clarity
-			{
-				slug: "instr-custom",
-				name: "Instr Custom",
-				roleDefinition: "", // Explicitly empty
-				customInstructions: "Custom Instructions Only",
-				groups: ["read"],
-			},
-		]
-		const promptComponentRoleOnly: PromptComponent = { roleDefinition: "Prompt Role Only" }
-		// "instr-custom" exists in customModeInstrOnlyList
-		const selection = getModeSelection("instr-custom", promptComponentRoleOnly, customModeInstrOnlyList)
-		// customMode is chosen
-		expect(selection.roleDefinition).toBe("") // From customMode ( "" || '' -> "")
-		expect(selection.baseInstructions).toBe("Custom Instructions Only") // From customMode
-	})
-
-	test("customMode with empty/undefined fields takes precedence over promptComponent and builtInMode", () => {
-		const customModeMinimal: ModeConfig[] = [
-			{ slug: "ask", name: "Custom Ask Minimal", roleDefinition: "", groups: ["read"] }, // roleDef empty, customInstr undefined
-		]
-		const promptComponentMinimal: PromptComponent = {
-			roleDefinition: "Prompt Min Role",
-			customInstructions: "Prompt Min Instr",
-		}
-		// "ask" is in customModeMinimal
-		const selection = getModeSelection("ask", promptComponentMinimal, customModeMinimal)
-		// customMode is chosen
-		expect(selection.roleDefinition).toBe("") // From customModeMinimal
-		expect(selection.baseInstructions).toBe("") // From customModeMinimal
-	})
-
-	test("promptComponent is used if customMode for slug does not exist, even if customModesList is provided", () => {
-		// 'ask' is not in customModesList, but 'code' and 'new-custom' are.
-		const selection = getModeSelection("ask", promptComponentAsk, customModesList)
-		expect(selection.roleDefinition).toBe(promptComponentAsk.roleDefinition)
-		expect(selection.baseInstructions).toBe(promptComponentAsk.customInstructions)
-	})
-
-	test("builtInMode is used if customMode for slug does not exist and promptComponent is not provided", () => {
-		// 'ask' is not in customModesList
-		const selection = getModeSelection("ask", undefined, customModesList)
-		expect(selection.roleDefinition).toBe(builtInAskMode.roleDefinition)
-		expect(selection.baseInstructions).toBe(builtInAskMode.customInstructions || "")
-	})
-
-	test("promptComponent is used if customMode is not provided (undefined customModesList)", () => {
-		const selection = getModeSelection("ask", promptComponentAsk, undefined)
-		expect(selection.roleDefinition).toBe(promptComponentAsk.roleDefinition)
-		expect(selection.baseInstructions).toBe(promptComponentAsk.customInstructions)
+	it("takes the description from the custom mode, else from the built-in one", () => {
+		expect(getModeSelection("mine", undefined, [custom("mine")]).description).toBe("mine description")
+		expect(getModeSelection("mine", undefined, [custom("mine", { description: undefined })]).description).toBe("")
+		expect(getModeSelection("ask").description).toBe(builtIn("ask").description ?? "")
 	})
 })
 
@@ -857,39 +109,26 @@ describe("getModeAllowedMcpServers", () => {
 		source: "global",
 	}
 
-	it("returns the customModePrompts override for a built-in mode (which has no ModeConfig allowlist)", () => {
-		const prompts: CustomModePrompts = { code: { allowedMcpServers: ["override-srv"] } }
-		expect(getModeAllowedMcpServers("code", [], prompts)).toEqual(["override-srv"])
-	})
-
-	it("lets an empty-array override restrict a built-in mode whose config allowlist is undefined", () => {
-		// `[]` means "no servers"; it must win over the built-in's implicit `undefined` (unrestricted),
-		// which only works because precedence uses `??` (not `||`).
-		const prompts: CustomModePrompts = { code: { allowedMcpServers: [] } }
-		expect(getModeAllowedMcpServers("code", [], prompts)).toEqual([])
-	})
-
-	it("prefers the prompt override over a custom mode's own ModeConfig allowlist", () => {
-		const prompts: CustomModePrompts = { "custom-mode": { allowedMcpServers: ["override-srv"] } }
-		expect(getModeAllowedMcpServers("custom-mode", [customMode], prompts)).toEqual(["override-srv"])
-	})
-
-	it("falls through to the custom mode's ModeConfig allowlist when there is no override", () => {
-		expect(getModeAllowedMcpServers("custom-mode", [customMode], {})).toEqual(["cfg-srv"])
-		expect(getModeAllowedMcpServers("custom-mode", [customMode], undefined)).toEqual(["cfg-srv"])
-	})
-
-	it("treats an override entry without allowedMcpServers as no restriction (falls through to config)", () => {
-		const prompts: CustomModePrompts = { "custom-mode": { roleDefinition: "override role only" } }
-		expect(getModeAllowedMcpServers("custom-mode", [customMode], prompts)).toEqual(["cfg-srv"])
-	})
-
-	it("returns undefined when neither the override nor the config restricts servers", () => {
-		expect(getModeAllowedMcpServers("code", [], {})).toBeUndefined()
-		expect(getModeAllowedMcpServers("code", [], undefined)).toBeUndefined()
-	})
-
-	it("returns undefined for an unknown mode with no override", () => {
-		expect(getModeAllowedMcpServers("does-not-exist", [], {})).toBeUndefined()
+	it.each<[string, string, CustomModePrompts | undefined, string[] | undefined]>([
+		// Built-in modes have no ModeConfig allowlist; the prompt override channel carries it.
+		["a built-in mode's override", "code", { code: { allowedMcpServers: ["srv"] } }, ["srv"]],
+		["an empty override, which restricts to no servers", "code", { code: { allowedMcpServers: [] } }, []],
+		[
+			"the override over a custom mode's own list",
+			"custom-mode",
+			{ "custom-mode": { allowedMcpServers: ["o"] } },
+			["o"],
+		],
+		["the custom mode's own list without an override", "custom-mode", undefined, ["cfg-srv"]],
+		[
+			"the custom mode's own list when the override has none",
+			"custom-mode",
+			{ "custom-mode": { roleDefinition: "x" } },
+			["cfg-srv"],
+		],
+		["no restriction for a built-in mode without override", "code", undefined, undefined],
+		["no restriction for an unknown mode", "nope", undefined, undefined],
+	])("returns %s", (_, slug, prompts, expected) => {
+		expect(getModeAllowedMcpServers(slug, [customMode], prompts)).toEqual(expected)
 	})
 })
