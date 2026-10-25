@@ -1,808 +1,409 @@
 import type { Mock } from "vitest"
-import type { ExtensionContext } from "vscode"
+
 import { RetryQueue } from "../RetryQueue.js"
-import type { QueuedRequest } from "../types.js"
+import type { QueuedRequest, RetryQueueConfig, RetryQueueStorage } from "../types.js"
 
-// Mock ExtensionContext
-const createMockContext = (): ExtensionContext => {
-	const storage = new Map<string, unknown>()
+const STORAGE_KEY = "roo.retryQueue"
 
+const createStorage = (initial?: QueuedRequest[]) => {
+	const data = new Map<string, unknown>(initial ? [[STORAGE_KEY, initial]] : [])
 	return {
-		workspaceState: {
-			get: vi.fn((key: string) => storage.get(key)),
-			update: vi.fn(async (key: string, value: unknown) => {
-				storage.set(key, value)
-			}),
-		},
-	} as unknown as ExtensionContext
+		data,
+		get: <T>(key: string) => data.get(key) as T | undefined,
+		update: vi.fn(async (key: string, value: unknown) => {
+			data.set(key, value)
+		}),
+	}
 }
 
+const stored = (id: string, url: string, timestamp: number, extra: Partial<QueuedRequest> = {}): QueuedRequest => ({
+	id,
+	url,
+	options: { method: "POST" },
+	timestamp,
+	retryCount: 0,
+	type: "telemetry",
+	...extra,
+})
+
+const response = (status: number, retryAfter?: string) => ({
+	ok: status < 400,
+	status,
+	statusText: `status ${status}`,
+	headers: new Headers(retryAfter === undefined ? {} : { "Retry-After": retryAfter }),
+})
+
 describe("RetryQueue", () => {
-	let mockContext: ExtensionContext
-	let retryQueue: RetryQueue
+	let fetchMock: Mock
+	let storage: ReturnType<typeof createStorage>
+	let log: Mock
+	const queues: RetryQueue[] = []
+
+	const makeQueue = (
+		config: Partial<RetryQueueConfig> = {},
+		authHeaders?: () => Record<string, string> | undefined,
+	) => {
+		// retryDelay 0: back-to-back retryAll() cycles are immediate (per-item backoff is covered in its own spec).
+		const queue = new RetryQueue(storage, { retryDelay: 0, ...config }, log, authHeaders)
+		queues.push(queue)
+		return queue
+	}
+
+	const queuedUrls = () => (storage.data.get(STORAGE_KEY) as QueuedRequest[]).map((request) => request.url)
 
 	beforeEach(() => {
-		vi.clearAllMocks()
-		mockContext = createMockContext()
-		retryQueue = new RetryQueue(mockContext.workspaceState)
+		vi.useFakeTimers()
+		fetchMock = vi.fn().mockResolvedValue(response(200))
+		global.fetch = fetchMock
+		storage = createStorage()
+		log = vi.fn()
 	})
 
 	afterEach(() => {
-		retryQueue.dispose()
+		queues.splice(0).forEach((queue) => queue.dispose())
+		vi.useRealTimers()
 	})
 
-	describe("enqueue", () => {
-		it("should add a request to the queue", async () => {
-			const url = "https://api.example.com/test"
-			const options = { method: "POST", body: JSON.stringify({ test: "data" }) }
+	describe("queue and storage", () => {
+		it("persists and announces an enqueued request", async () => {
+			const queue = makeQueue()
+			const queued = vi.fn()
+			queue.on("request-queued", queued)
 
-			await retryQueue.enqueue(url, options, "telemetry")
+			await queue.enqueue("https://api.example.com/a", { method: "POST" }, "telemetry", "op")
 
-			const stats = retryQueue.getStats()
-			expect(stats.totalQueued).toBe(1)
-			expect(stats.byType["telemetry"]).toBe(1)
+			const [request] = storage.data.get(STORAGE_KEY) as QueuedRequest[]
+			expect(request).toMatchObject({
+				url: "https://api.example.com/a",
+				type: "telemetry",
+				operation: "op",
+				retryCount: 0,
+			})
+			expect(queued).toHaveBeenCalledWith(request)
 		})
 
-		it("should enforce max queue size with FIFO eviction", async () => {
-			// Create a queue with max size of 3
-			retryQueue = new RetryQueue(mockContext.workspaceState, { maxQueueSize: 3 })
+		it("evicts the oldest request when full", async () => {
+			const queue = makeQueue({ maxQueueSize: 3 })
 
-			// Add 4 requests
 			for (let i = 1; i <= 4; i++) {
-				await retryQueue.enqueue(`https://api.example.com/test${i}`, { method: "POST" }, "telemetry")
+				await queue.enqueue(`https://api.example.com/${i}`, { method: "POST" }, "telemetry")
 			}
 
-			const stats = retryQueue.getStats()
-			expect(stats.totalQueued).toBe(3) // Should only have 3 items (oldest was evicted)
-		})
-	})
-
-	describe("persistence", () => {
-		it("should persist queue to workspace state", async () => {
-			await retryQueue.enqueue("https://api.example.com/test", { method: "POST" }, "telemetry")
-
-			expect(mockContext.workspaceState.update).toHaveBeenCalledWith(
-				"roo.retryQueue",
-				expect.arrayContaining([
-					expect.objectContaining({
-						url: "https://api.example.com/test",
-						type: "telemetry",
-					}),
-				]),
-			)
+			expect(queuedUrls()).toEqual([
+				"https://api.example.com/2",
+				"https://api.example.com/3",
+				"https://api.example.com/4",
+			])
 		})
 
-		it("should load persisted queue on initialization", () => {
-			const persistedRequests: QueuedRequest[] = [
-				{
-					id: "test-1",
-					url: "https://api.example.com/test1",
-					options: { method: "POST" },
-					timestamp: Date.now(),
-					retryCount: 0,
-					type: "telemetry",
+		it("keeps requests and their retry counts across a restart", async () => {
+			fetchMock.mockRejectedValue(new Error("Network error"))
+			const first = makeQueue()
+			await first.enqueue("https://api.example.com/a", { method: "POST" }, "telemetry")
+			await first.retryAll()
+			await first.retryAll()
+			first.dispose()
+
+			const second = makeQueue()
+			expect(second.getStats()).toMatchObject({ totalQueued: 1, totalRetries: 2 })
+
+			// 2 persisted + 3 new failures reach the default limit of 5.
+			for (let i = 0; i < 3; i++) {
+				await second.retryAll()
+			}
+			expect(second.getStats().totalQueued).toBe(0)
+		})
+
+		it("neither loads nor stores anything with persistQueue off", async () => {
+			storage = createStorage([stored("old", "https://api.example.com/old", 1)])
+			const queue = makeQueue({ persistQueue: false })
+
+			await queue.enqueue("https://api.example.com/a", { method: "POST" }, "telemetry")
+
+			expect(queue.getStats().totalQueued).toBe(1)
+			expect(storage.update).not.toHaveBeenCalled()
+		})
+
+		it("logs, and keeps working, when the storage fails", async () => {
+			const broken: RetryQueueStorage = {
+				get: () => {
+					throw new Error("read failed")
 				},
-			]
+				update: () => Promise.reject(new Error("write failed")),
+			}
+			const queue = new RetryQueue(broken, {}, log)
+			queues.push(queue)
 
-			// Set up mock to return persisted data
-			const storage = new Map([["roo.retryQueue", persistedRequests]])
-			mockContext = {
-				workspaceState: {
-					get: vi.fn((key: string) => storage.get(key)),
-					update: vi.fn(),
-				},
-			} as unknown as ExtensionContext
+			await queue.enqueue("https://api.example.com/a", { method: "POST" }, "telemetry")
 
-			retryQueue = new RetryQueue(mockContext.workspaceState)
+			expect(queue.getStats().totalQueued).toBe(1)
+			expect(log).toHaveBeenCalledWith("[RetryQueue] Failed to load persisted queue:", expect.any(Error))
+			expect(log).toHaveBeenCalledWith("[RetryQueue] Failed to persist queue:", expect.any(Error))
+		})
 
-			const stats = retryQueue.getStats()
-			expect(stats.totalQueued).toBe(1)
-			expect(mockContext.workspaceState.get).toHaveBeenCalledWith("roo.retryQueue")
+		it("reports counts by type, retries, failures and the oldest and newest request", async () => {
+			storage = createStorage([
+				stored("a", "https://api.example.com/a", 1_000, { retryCount: 2, lastError: "boom" }),
+				stored("b", "https://api.example.com/b", 3_000, { type: "api-call" }),
+				stored("c", "https://api.example.com/c", 2_000, { retryCount: 1 }),
+			])
+
+			expect(makeQueue().getStats()).toEqual({
+				totalQueued: 3,
+				byType: { telemetry: 2, "api-call": 1 },
+				oldestRequest: new Date(1_000),
+				newestRequest: new Date(3_000),
+				totalRetries: 3,
+				failedRetries: 1,
+			})
+		})
+
+		it("clears, stores the empty queue and announces it", async () => {
+			const queue = makeQueue()
+			const cleared = vi.fn()
+			queue.on("queue-cleared", cleared)
+			await queue.enqueue("https://api.example.com/a", { method: "POST" }, "telemetry")
+
+			queue.clear()
+
+			expect(queue.getStats().totalQueued).toBe(0)
+			expect(storage.data.get(STORAGE_KEY)).toEqual([])
+			expect(cleared).toHaveBeenCalledTimes(1)
 		})
 	})
 
-	describe("clear", () => {
-		it("should clear all queued requests", async () => {
-			await retryQueue.enqueue("https://api.example.com/test1", { method: "POST" }, "telemetry")
-			await retryQueue.enqueue("https://api.example.com/test2", { method: "POST" }, "api-call")
+	it("clears the queue when the signed-in user changes, but not on the first sign-in", async () => {
+		const queue = makeQueue()
+		const enqueue = () => queue.enqueue("https://api.example.com/a", { method: "POST" }, "telemetry")
+		const steps: Array<[string | undefined, boolean]> = [
+			["u1", false], // first sign-in keeps what was queued before it
+			["u1", false],
+			[undefined, true], // sign-out
+			["u2", true],
+			["u2", false],
+			["u3", true],
+		]
 
-			let stats = retryQueue.getStats()
-			expect(stats.totalQueued).toBe(2)
-
-			retryQueue.clear()
-
-			stats = retryQueue.getStats()
-			expect(stats.totalQueued).toBe(0)
-		})
-	})
-
-	describe("getStats", () => {
-		it("should return correct statistics", async () => {
-			const now = Date.now()
-
-			await retryQueue.enqueue("https://api.example.com/test1", { method: "POST" }, "telemetry")
-			await retryQueue.enqueue("https://api.example.com/test2", { method: "POST" }, "api-call")
-			await retryQueue.enqueue("https://api.example.com/test3", { method: "POST" }, "telemetry")
-
-			const stats = retryQueue.getStats()
-
-			expect(stats.totalQueued).toBe(3)
-			expect(stats.byType["telemetry"]).toBe(2)
-			expect(stats.byType["api-call"]).toBe(1)
-			expect(stats.oldestRequest).toBeDefined()
-			expect(stats.newestRequest).toBeDefined()
-			expect(stats.oldestRequest!.getTime()).toBeGreaterThanOrEqual(now)
-			expect(stats.newestRequest!.getTime()).toBeGreaterThanOrEqual(now)
-		})
-	})
-
-	describe("events", () => {
-		it("should emit request-queued event when enqueueing", async () => {
-			const listener = vi.fn()
-			retryQueue.on("request-queued", listener)
-
-			await retryQueue.enqueue("https://api.example.com/test", { method: "POST" }, "telemetry")
-
-			expect(listener).toHaveBeenCalledWith(
-				expect.objectContaining({
-					url: "https://api.example.com/test",
-					type: "telemetry",
-				}),
-			)
-		})
-
-		it("should emit queue-cleared event when clearing", () => {
-			const listener = vi.fn()
-			retryQueue.on("queue-cleared", listener)
-
-			retryQueue.clear()
-
-			expect(listener).toHaveBeenCalled()
-		})
-	})
-
-	describe("auth state management", () => {
-		it("should pause and resume the queue", () => {
-			expect(retryQueue.isPausedState()).toBe(false)
-
-			retryQueue.pause()
-			expect(retryQueue.isPausedState()).toBe(true)
-
-			retryQueue.resume()
-			expect(retryQueue.isPausedState()).toBe(false)
-		})
-
-		it("should not process retries when paused", async () => {
-			const fetchMock = vi.fn().mockResolvedValue({ ok: true })
-			global.fetch = fetchMock
-
-			await retryQueue.enqueue("https://api.example.com/test", { method: "POST" }, "telemetry")
-
-			// Pause the queue
-			retryQueue.pause()
-
-			// Try to retry all
-			await retryQueue.retryAll()
-
-			// Fetch should not be called because queue is paused
-			expect(fetchMock).not.toHaveBeenCalled()
-
-			// Resume and retry
-			retryQueue.resume()
-			await retryQueue.retryAll()
-
-			// Now fetch should be called
-			expect(fetchMock).toHaveBeenCalledTimes(1)
-		})
-
-		it("should track and update current user ID", () => {
-			expect(retryQueue.getCurrentUserId()).toBeUndefined()
-
-			retryQueue.setCurrentUserId("user_123")
-			expect(retryQueue.getCurrentUserId()).toBe("user_123")
-
-			retryQueue.setCurrentUserId("user_456")
-			expect(retryQueue.getCurrentUserId()).toBe("user_456")
-
-			retryQueue.setCurrentUserId(undefined)
-			expect(retryQueue.getCurrentUserId()).toBeUndefined()
-		})
-
-		it("should clear queue when user changes", async () => {
-			// Add some requests
-			await retryQueue.enqueue("https://api.example.com/test1", { method: "POST" }, "telemetry")
-			await retryQueue.enqueue("https://api.example.com/test2", { method: "POST" }, "telemetry")
-
-			let stats = retryQueue.getStats()
-			expect(stats.totalQueued).toBe(2)
-
-			// Set initial user
-			retryQueue.setCurrentUserId("user_123")
-
-			// Same user login - should not clear
-			let wasCleared = retryQueue.clearIfUserChanged("user_123")
-			expect(wasCleared).toBe(false)
-			stats = retryQueue.getStats()
-			expect(stats.totalQueued).toBe(2)
-
-			// Different user login - should clear
-			wasCleared = retryQueue.clearIfUserChanged("user_456")
-			expect(wasCleared).toBe(true)
-			stats = retryQueue.getStats()
-			expect(stats.totalQueued).toBe(0)
-			expect(retryQueue.getCurrentUserId()).toBe("user_456")
-		})
-
-		it("should clear queue on logout (undefined user)", async () => {
-			// Set initial user
-			retryQueue.setCurrentUserId("user_123")
-
-			// Add some requests
-			await retryQueue.enqueue("https://api.example.com/test1", { method: "POST" }, "telemetry")
-			await retryQueue.enqueue("https://api.example.com/test2", { method: "POST" }, "telemetry")
-
-			let stats = retryQueue.getStats()
-			expect(stats.totalQueued).toBe(2)
-
-			// Logout (undefined user) - should clear
-			const wasCleared = retryQueue.clearIfUserChanged(undefined)
-			expect(wasCleared).toBe(true)
-			stats = retryQueue.getStats()
-			expect(stats.totalQueued).toBe(0)
-			expect(retryQueue.getCurrentUserId()).toBeUndefined()
-		})
-
-		it("should not clear on first login (no previous user)", async () => {
-			// Add some requests before any user is set
-			await retryQueue.enqueue("https://api.example.com/test1", { method: "POST" }, "telemetry")
-			await retryQueue.enqueue("https://api.example.com/test2", { method: "POST" }, "telemetry")
-
-			let stats = retryQueue.getStats()
-			expect(stats.totalQueued).toBe(2)
-
-			// First login - should not clear
-			const wasCleared = retryQueue.clearIfUserChanged("user_123")
-			expect(wasCleared).toBe(false)
-			stats = retryQueue.getStats()
-			expect(stats.totalQueued).toBe(2)
-			expect(retryQueue.getCurrentUserId()).toBe("user_123")
-		})
-
-		it("should handle multiple user transitions correctly", async () => {
-			const clearListener = vi.fn()
-			retryQueue.on("queue-cleared", clearListener)
-
-			// First user logs in
-			retryQueue.clearIfUserChanged("user_123")
-			await retryQueue.enqueue("https://api.example.com/user1-req", { method: "POST" }, "telemetry")
-
-			// User logs out
-			const clearedOnLogout = retryQueue.clearIfUserChanged(undefined)
-			expect(clearedOnLogout).toBe(true)
-			expect(clearListener).toHaveBeenCalledTimes(1)
-
-			// Different user logs in
-			await retryQueue.enqueue("https://api.example.com/user2-req", { method: "POST" }, "telemetry")
-			const clearedOnNewUser = retryQueue.clearIfUserChanged("user_456")
-			expect(clearedOnNewUser).toBe(true)
-			expect(clearListener).toHaveBeenCalledTimes(2)
-
-			// Same user logs back in
-			await retryQueue.enqueue("https://api.example.com/user2-req2", { method: "POST" }, "telemetry")
-			const notCleared = retryQueue.clearIfUserChanged("user_456")
-			expect(notCleared).toBe(false)
-			expect(clearListener).toHaveBeenCalledTimes(2) // Still 2, not cleared
-
-			const stats = retryQueue.getStats()
-			expect(stats.totalQueued).toBe(1) // Only the last request remains
-		})
+		for (const [user, clears] of steps) {
+			await enqueue()
+			const before = queue.getStats().totalQueued
+			expect(queue.clearIfUserChanged(user)).toBe(clears)
+			expect(queue.getStats().totalQueued).toBe(clears ? 0 : before)
+		}
 	})
 
 	describe("retryAll", () => {
-		let fetchMock: Mock
+		it("sends the oldest request first and drops each delivered one", async () => {
+			storage = createStorage([
+				stored("b", "https://api.example.com/b", 2),
+				stored("a", "https://api.example.com/a", 1),
+			])
+			const queue = makeQueue()
+			const delivered = vi.fn()
+			queue.on("request-retry-success", delivered)
 
-		beforeEach(() => {
-			// Mock global fetch
-			fetchMock = vi.fn()
-			global.fetch = fetchMock
+			await queue.retryAll()
+
+			expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+				"https://api.example.com/a",
+				"https://api.example.com/b",
+			])
+			expect(delivered).toHaveBeenCalledTimes(2)
+			expect(queue.getStats().totalQueued).toBe(0)
+			expect(storage.data.get(STORAGE_KEY)).toEqual([])
 		})
 
-		afterEach(() => {
-			vi.restoreAllMocks()
-		})
-
-		it("should process requests in FIFO order", async () => {
-			const successListener = vi.fn()
-			retryQueue.on("request-retry-success", successListener)
-
-			// Add multiple requests
-			await retryQueue.enqueue("https://api.example.com/test1", { method: "POST" }, "telemetry")
-			await retryQueue.enqueue("https://api.example.com/test2", { method: "POST" }, "telemetry")
-			await retryQueue.enqueue("https://api.example.com/test3", { method: "POST" }, "telemetry")
-
-			// Mock successful responses
-			fetchMock.mockResolvedValue({ ok: true })
-
-			await retryQueue.retryAll()
-
-			// Check that fetch was called in FIFO order
-			expect(fetchMock).toHaveBeenCalledTimes(3)
-			expect(fetchMock.mock.calls[0]?.[0]).toBe("https://api.example.com/test1")
-			expect(fetchMock.mock.calls[1]?.[0]).toBe("https://api.example.com/test2")
-			expect(fetchMock.mock.calls[2]?.[0]).toBe("https://api.example.com/test3")
-
-			// Check that success events were emitted
-			expect(successListener).toHaveBeenCalledTimes(3)
-
-			// Queue should be empty after successful retries
-			const stats = retryQueue.getStats()
-			expect(stats.totalQueued).toBe(0)
-		})
-
-		it("should handle failed retries and increment retry count", async () => {
-			const failListener = vi.fn()
-			retryQueue.on("request-retry-failed", failListener)
-
-			await retryQueue.enqueue("https://api.example.com/test", { method: "POST" }, "telemetry")
-
-			// Mock failed response
-			fetchMock.mockRejectedValue(new Error("Network error"))
-
-			await retryQueue.retryAll()
-
-			// Check that failure event was emitted
-			expect(failListener).toHaveBeenCalledWith(
-				expect.objectContaining({
-					url: "https://api.example.com/test",
-					retryCount: 1,
-					lastError: "Network error",
-				}),
-				expect.any(Error),
-			)
-
-			// Request should still be in queue
-			const stats = retryQueue.getStats()
-			expect(stats.totalQueued).toBe(1)
-		})
-
-		it("should enforce max retries limit", async () => {
-			// Create queue with max retries of 2; retryDelay 0 keeps back-to-back
-			// retryAll() cycles immediate (per-item backoff, R11).
-			retryQueue = new RetryQueue(mockContext.workspaceState, { maxRetries: 2, retryDelay: 0 })
-
-			const maxRetriesListener = vi.fn()
-			retryQueue.on("request-max-retries-exceeded", maxRetriesListener)
-
-			await retryQueue.enqueue("https://api.example.com/test", { method: "POST" }, "telemetry")
-
-			// Mock failed responses
-			fetchMock.mockRejectedValue(new Error("Network error"))
-
-			// First retry
-			await retryQueue.retryAll()
-			let stats = retryQueue.getStats()
-			expect(stats.totalQueued).toBe(1) // Still in queue
-
-			// Second retry - should hit max retries
-			await retryQueue.retryAll()
-
-			// Check that max retries event was emitted
-			expect(maxRetriesListener).toHaveBeenCalledWith(
-				expect.objectContaining({
-					url: "https://api.example.com/test",
-					retryCount: 2,
-				}),
-				expect.any(Error),
-			)
-
-			// Request should be removed from queue after exceeding max retries
-			stats = retryQueue.getStats()
-			expect(stats.totalQueued).toBe(0)
-		})
-
-		it("should default to maxRetries=5 and discard after 5 failures", async () => {
-			// Default config should be maxRetries=5 (not 0/infinite);
-			// retryDelay 0 keeps consecutive retryAll() cycles immediate.
-			retryQueue = new RetryQueue(mockContext.workspaceState, { retryDelay: 0 })
-
-			const maxRetriesListener = vi.fn()
-			retryQueue.on("request-max-retries-exceeded", maxRetriesListener)
-
-			// Enqueue 3 requests
-			await retryQueue.enqueue("https://api.example.com/test1", { method: "POST" }, "telemetry")
-			await retryQueue.enqueue("https://api.example.com/test2", { method: "POST" }, "telemetry")
-			await retryQueue.enqueue("https://api.example.com/test3", { method: "POST" }, "telemetry")
-
-			// All fetches fail
-			fetchMock.mockRejectedValue(new Error("Network error"))
-
-			// Run retryAll 10 times — after 5 failures each, all should be discarded
-			for (let i = 0; i < 10; i++) {
-				await retryQueue.retryAll()
-			}
-
-			// All 3 requests should have been discarded after 5 retries
-			const stats = retryQueue.getStats()
-			expect(stats.totalQueued).toBe(0)
-
-			// max-retries-exceeded should have been emitted for each request
-			expect(maxRetriesListener).toHaveBeenCalledTimes(3)
-		})
-
-		it("should persist retryCount across restarts via workspaceState", async () => {
-			// Enqueue a request and fail it twice to increment retryCount
-			const storage = new Map<string, unknown>()
-
-			const context1 = {
-				workspaceState: {
-					get: vi.fn((key: string) => storage.get(key)),
-					update: vi.fn(async (key: string, value: unknown) => {
-						storage.set(key, value)
-					}),
-				},
-			} as unknown as ExtensionContext
-
-			const queue1 = new RetryQueue(context1.workspaceState, { maxRetries: 5, retryDelay: 0 })
-			await queue1.enqueue("https://api.example.com/test", { method: "POST" }, "telemetry")
-
-			const failFetch = vi.fn().mockRejectedValue(new Error("Network error"))
-			global.fetch = failFetch
-
-			// Fail twice
-			await queue1.retryAll()
-			await queue1.retryAll()
-			queue1.dispose()
-
-			// Verify retryCount was persisted
-			const persisted = storage.get("roo.retryQueue") as QueuedRequest[]
-			expect(persisted).toHaveLength(1)
-			expect(persisted[0]!.retryCount).toBe(2)
-
-			// Create a new queue loading from the same storage
-			const context2 = {
-				workspaceState: {
-					get: vi.fn((key: string) => storage.get(key)),
-					update: vi.fn(async (key: string, value: unknown) => {
-						storage.set(key, value)
-					}),
-				},
-			} as unknown as ExtensionContext
-
-			const queue2 = new RetryQueue(context2.workspaceState, { maxRetries: 5, retryDelay: 0 })
-			const stats = queue2.getStats()
-			expect(stats.totalQueued).toBe(1)
-
-			// The persisted retryCount should have survived the restart
-			// queue2 loaded the request with retryCount=2
-			// 3 more failures (total 5) should discard it
-			for (let i = 0; i < 3; i++) {
-				await queue2.retryAll()
-			}
-
-			// Should be discarded now (2 persisted + 3 new = 5 >= maxRetries)
-			expect(queue2.getStats().totalQueued).toBe(0)
-			queue2.dispose()
-		})
-
-		it("should not process if already processing", async () => {
-			// Add a request
-			await retryQueue.enqueue("https://api.example.com/test", { method: "POST" }, "telemetry")
-
-			// Mock a slow response
-			fetchMock.mockImplementation(() => new Promise((resolve) => setTimeout(() => resolve({ ok: true }), 100)))
-
-			// Start first retryAll (don't await)
-			const firstCall = retryQueue.retryAll()
-
-			// Try to call retryAll again immediately
-			const secondCall = retryQueue.retryAll()
-
-			// Both should complete without errors
-			await Promise.all([firstCall, secondCall])
-
-			// Fetch should only be called once (from the first call)
-			expect(fetchMock).toHaveBeenCalledTimes(1)
-		})
-
-		it("should handle empty queue gracefully", async () => {
-			// Call retryAll on empty queue
-			await expect(retryQueue.retryAll()).resolves.toBeUndefined()
-
-			// No fetch calls should be made
-			expect(fetchMock).not.toHaveBeenCalled()
-		})
-
-		it("should use auth header provider if available", async () => {
-			const authHeaderProvider = vi.fn().mockReturnValue({
-				Authorization: "Bearer fresh-token",
-			})
-
-			retryQueue = new RetryQueue(mockContext.workspaceState, {}, undefined, authHeaderProvider)
-
-			await retryQueue.enqueue(
-				"https://api.example.com/test",
-				{
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-				},
+		it("sends fresh auth headers over the stored ones, marked as a retry, with a timeout signal", async () => {
+			const queue = makeQueue({}, () => ({ Authorization: "Bearer fresh" }))
+			await queue.enqueue(
+				"https://api.example.com/a",
+				{ method: "POST", headers: { Authorization: "Bearer stale", "Content-Type": "application/json" } },
 				"telemetry",
 			)
 
-			fetchMock.mockResolvedValue({ ok: true })
+			await queue.retryAll()
 
-			await retryQueue.retryAll()
-
-			// Check that fresh auth headers were used
-			expect(fetchMock).toHaveBeenCalledWith(
-				"https://api.example.com/test",
-				expect.objectContaining({
-					headers: expect.objectContaining({
-						Authorization: "Bearer fresh-token",
-						"Content-Type": "application/json",
-						"X-Retry-Queue": "true",
-					}),
-				}),
-			)
-
-			expect(authHeaderProvider).toHaveBeenCalled()
-		})
-
-		it("should respect configurable timeout", async () => {
-			// Create queue with custom timeout (short timeout for testing)
-			retryQueue = new RetryQueue(mockContext.workspaceState, { requestTimeout: 100 })
-
-			await retryQueue.enqueue("https://api.example.com/test", { method: "POST" }, "telemetry")
-
-			// Mock fetch to reject with abort error
-			const abortError = new Error("The operation was aborted")
-			abortError.name = "AbortError"
-			fetchMock.mockRejectedValue(abortError)
-
-			const failListener = vi.fn()
-			retryQueue.on("request-retry-failed", failListener)
-
-			await retryQueue.retryAll()
-
-			// Check that the request failed with an abort error
-			expect(failListener).toHaveBeenCalledWith(
-				expect.objectContaining({
-					url: "https://api.example.com/test",
-					lastError: "The operation was aborted",
-				}),
-				expect.any(Error),
-			)
-
-			// The timeout configuration is being used (verified by the constructor accepting it)
-			// The actual timeout behavior is handled by the browser's AbortController
-		})
-
-		it("should retry on 500+ status codes", async () => {
-			// retryDelay 0: the second retryAll() below runs immediately after the
-			// first failure (per-item backoff, R11).
-			retryQueue = new RetryQueue(mockContext.workspaceState, { retryDelay: 0 })
-			const failListener = vi.fn()
-			const successListener = vi.fn()
-			retryQueue.on("request-retry-failed", failListener)
-			retryQueue.on("request-retry-success", successListener)
-
-			await retryQueue.enqueue("https://api.example.com/test", { method: "POST" }, "telemetry")
-
-			// First attempt: 500 error
-			fetchMock.mockResolvedValueOnce({ ok: false, status: 500, statusText: "Internal Server Error" })
-
-			await retryQueue.retryAll()
-
-			// Should fail and remain in queue
-			expect(failListener).toHaveBeenCalledWith(
-				expect.objectContaining({
-					url: "https://api.example.com/test",
-					retryCount: 1,
-					lastError: "Server error: 500 Internal Server Error",
-				}),
-				expect.any(Error),
-			)
-
-			let stats = retryQueue.getStats()
-			expect(stats.totalQueued).toBe(1)
-
-			// Second attempt: success
-			fetchMock.mockResolvedValueOnce({ ok: true, status: 200 })
-
-			await retryQueue.retryAll()
-
-			// Should succeed and be removed from queue
-			expect(successListener).toHaveBeenCalled()
-			stats = retryQueue.getStats()
-			expect(stats.totalQueued).toBe(0)
-		})
-
-		it("should pause entire queue on 429 rate limiting with Retry-After header", async () => {
-			// Add multiple requests to test queue-wide pause
-			await retryQueue.enqueue("https://api.example.com/test1", { method: "POST" }, "telemetry")
-			await retryQueue.enqueue("https://api.example.com/test2", { method: "POST" }, "telemetry")
-			await retryQueue.enqueue("https://api.example.com/test3", { method: "POST" }, "telemetry")
-
-			// Mock 429 response with Retry-After header (in seconds) for the first request
-			const retryAfterResponse = {
-				ok: false,
-				status: 429,
-				headers: {
-					get: vi.fn((header: string) => {
-						if (header === "Retry-After") return "2" // 2 seconds
-						return null
-					}),
-				},
-			}
-
-			fetchMock.mockResolvedValueOnce(retryAfterResponse)
-
-			await retryQueue.retryAll()
-
-			// All requests should still be in queue
-			const stats = retryQueue.getStats()
-			expect(stats.totalQueued).toBe(3)
-
-			// Only the first request should have been attempted
-			expect(fetchMock).toHaveBeenCalledTimes(1)
-			expect(fetchMock).toHaveBeenCalledWith("https://api.example.com/test1", expect.any(Object))
-
-			// Try to retry immediately - should be skipped due to queue-wide rate limiting
-			fetchMock.mockClear()
-			await retryQueue.retryAll()
-
-			// No fetch calls should be made because the entire queue is paused
-			expect(fetchMock).not.toHaveBeenCalled()
-		})
-
-		it("should process all requests after rate limit period expires", async () => {
-			// Add multiple requests
-			await retryQueue.enqueue("https://api.example.com/test1", { method: "POST" }, "telemetry")
-			await retryQueue.enqueue("https://api.example.com/test2", { method: "POST" }, "telemetry")
-
-			// Mock 429 response with very short Retry-After (for testing)
-			const retryAfterResponse = {
-				ok: false,
-				status: 429,
-				headers: {
-					get: vi.fn((header: string) => {
-						if (header === "Retry-After") return "0" // 0 seconds (immediate)
-						return null
-					}),
-				},
-			}
-
-			fetchMock.mockResolvedValueOnce(retryAfterResponse)
-
-			await retryQueue.retryAll()
-
-			// Queue should be paused but requests still in queue
-			expect(retryQueue.getStats().totalQueued).toBe(2)
-
-			// Wait a tiny bit for the rate limit to "expire"
-			await new Promise((resolve) => setTimeout(resolve, 10))
-
-			// Mock successful responses for both requests
-			fetchMock.mockResolvedValue({ ok: true })
-
-			// Now retry should process all requests
-			await retryQueue.retryAll()
-
-			// All requests should be processed and removed from queue
-			expect(retryQueue.getStats().totalQueued).toBe(0)
-			// First request will be retried plus the second one
-			expect(fetchMock).toHaveBeenCalledTimes(3) // 1 (429) + 2 (success)
-		})
-
-		it("should not retry on 401/403 auth errors", async () => {
-			const successListener = vi.fn()
-			retryQueue.on("request-retry-success", successListener)
-
-			await retryQueue.enqueue("https://api.example.com/test", { method: "POST" }, "telemetry")
-
-			// Mock 401 error
-			fetchMock.mockResolvedValueOnce({ ok: false, status: 401, statusText: "Unauthorized" })
-
-			await retryQueue.retryAll()
-
-			// Should be removed from queue without retry (401 is a client error)
-			expect(successListener).toHaveBeenCalled()
-			const stats = retryQueue.getStats()
-			expect(stats.totalQueued).toBe(0)
-
-			// Test 403 as well
-			await retryQueue.enqueue("https://api.example.com/test2", { method: "POST" }, "telemetry")
-			fetchMock.mockResolvedValueOnce({ ok: false, status: 403, statusText: "Forbidden" })
-
-			await retryQueue.retryAll()
-
-			// Should also be removed from queue without retry
-			expect(successListener).toHaveBeenCalledTimes(2)
-			const stats2 = retryQueue.getStats()
-			expect(stats2.totalQueued).toBe(0)
-		})
-
-		it("should not retry on 400/404/422 client errors", async () => {
-			const successListener = vi.fn()
-			retryQueue.on("request-retry-success", successListener)
-
-			// Test various 4xx errors that should not be retried
-			const clientErrors = [
-				{ status: 400, statusText: "Bad Request" },
-				{ status: 404, statusText: "Not Found" },
-				{ status: 422, statusText: "Unprocessable Entity" },
-			]
-
-			for (const error of clientErrors) {
-				await retryQueue.enqueue(
-					`https://api.example.com/test-${error.status}`,
-					{ method: "POST" },
-					"telemetry",
-				)
-				fetchMock.mockResolvedValueOnce({ ok: false, ...error })
-			}
-
-			await retryQueue.retryAll()
-
-			// All requests should be removed from queue without retry
-			expect(successListener).toHaveBeenCalledTimes(3)
-			const stats = retryQueue.getStats()
-			expect(stats.totalQueued).toBe(0)
-		})
-
-		it("should prevent concurrent processing", async () => {
-			// Add a single request
-			await retryQueue.enqueue("https://api.example.com/test1", { method: "POST" }, "telemetry")
-
-			// Mock slow response
-			let resolveFirst: () => void
-			const firstPromise = new Promise<{ ok: boolean }>((resolve) => {
-				resolveFirst = () => resolve({ ok: true })
+			const [, options] = fetchMock.mock.calls[0]!
+			expect(options.method).toBe("POST")
+			expect(options.signal).toBeInstanceOf(AbortSignal)
+			expect(options.headers).toEqual({
+				Authorization: "Bearer fresh",
+				"Content-Type": "application/json",
+				"X-Retry-Queue": "true",
 			})
-
-			fetchMock.mockReturnValueOnce(firstPromise)
-
-			// Start first retryAll (don't await)
-			const firstCall = retryQueue.retryAll()
-
-			// Try to call retryAll again immediately - should return immediately without processing
-			const secondCall = retryQueue.retryAll()
-
-			// Second call should return immediately
-			await secondCall
-
-			// Fetch should only be called once (from first call)
-			expect(fetchMock).toHaveBeenCalledTimes(1)
-
-			// Resolve the promise
-			resolveFirst!()
-
-			// Wait for first call to complete
-			await firstCall
-
-			// Queue should be empty
-			const stats = retryQueue.getStats()
-			expect(stats.totalQueued).toBe(0)
 		})
-	})
 
-	describe("storage interface", () => {
-		it("persists to and restores from any get/update store, not only a VS Code Memento", async () => {
-			const data = new Map<string, unknown>()
-			const storage = {
-				get: <T>(key: string) => data.get(key) as T | undefined,
-				update: async (key: string, value: unknown) => {
-					data.set(key, value)
-				},
+		it("keeps the stored headers when the auth provider has none", async () => {
+			const queue = makeQueue({}, () => undefined)
+			await queue.enqueue(
+				"https://api.example.com/a",
+				{ headers: { Authorization: "Bearer stored" } },
+				"telemetry",
+			)
+
+			await queue.retryAll()
+
+			expect(fetchMock.mock.calls[0]![1].headers).toEqual({
+				Authorization: "Bearer stored",
+				"X-Retry-Queue": "true",
+			})
+		})
+
+		it.each([
+			["a network error", () => fetchMock.mockRejectedValueOnce(new Error("Network error")), "Network error"],
+			["a server error", () => fetchMock.mockResolvedValueOnce(response(503)), "Server error: 503 status 503"],
+		])("keeps a request after %s and counts the failure", async (_name, fail, lastError) => {
+			const queue = makeQueue()
+			const failed = vi.fn()
+			queue.on("request-retry-failed", failed)
+			await queue.enqueue("https://api.example.com/a", { method: "POST" }, "telemetry")
+
+			fail()
+			await queue.retryAll()
+
+			expect(failed).toHaveBeenCalledWith(
+				expect.objectContaining({ retryCount: 1, lastError }),
+				expect.any(Error),
+			)
+			expect(queue.getStats().totalQueued).toBe(1)
+
+			await queue.retryAll()
+			expect(queue.getStats().totalQueued).toBe(0)
+		})
+
+		it("aborts a request that outlives requestTimeout and counts it as a failure", async () => {
+			fetchMock.mockImplementation(
+				(_url: string, options: RequestInit) =>
+					new Promise((_resolve, reject) => {
+						options.signal!.addEventListener("abort", () => reject(new Error("aborted")))
+					}),
+			)
+			const queue = makeQueue({ requestTimeout: 1_000 })
+			await queue.enqueue("https://api.example.com/a", { method: "POST" }, "telemetry")
+
+			const cycle = queue.retryAll()
+			await vi.advanceTimersByTimeAsync(1_000)
+			await cycle
+
+			expect(queue.getStats()).toMatchObject({ totalQueued: 1, totalRetries: 1, failedRetries: 1 })
+		})
+
+		it.each([
+			[5, undefined],
+			[2, 2],
+		])("discards a request after %i failures (maxRetries %s)", async (failures, maxRetries) => {
+			fetchMock.mockRejectedValue(new Error("Network error"))
+			const queue = makeQueue(maxRetries === undefined ? {} : { maxRetries })
+			const exceeded = vi.fn()
+			queue.on("request-max-retries-exceeded", exceeded)
+			await queue.enqueue("https://api.example.com/a", { method: "POST" }, "telemetry")
+
+			for (let i = 1; i < failures; i++) {
+				await queue.retryAll()
+			}
+			expect(queue.getStats().totalQueued).toBe(1)
+
+			await queue.retryAll()
+			expect(queue.getStats().totalQueued).toBe(0)
+			expect(exceeded).toHaveBeenCalledWith(expect.objectContaining({ retryCount: failures }), expect.any(Error))
+		})
+
+		it("never discards with maxRetries 0", async () => {
+			fetchMock.mockRejectedValue(new Error("Network error"))
+			const queue = makeQueue({ maxRetries: 0 })
+			await queue.enqueue("https://api.example.com/a", { method: "POST" }, "telemetry")
+
+			for (let i = 0; i < 8; i++) {
+				await queue.retryAll()
 			}
 
-			const first = new RetryQueue(storage)
-			await first.enqueue("https://example.test/a", { method: "POST" }, "telemetry")
-			first.dispose()
+			expect(queue.getStats()).toMatchObject({ totalQueued: 1, totalRetries: 8 })
+		})
 
-			const second = new RetryQueue(storage)
-			expect(second.getStats().totalQueued).toBe(1)
-			expect(second.getStats().byType).toEqual({ telemetry: 1 })
-			second.dispose()
+		it.each([400, 401, 403, 404, 413, 422])(
+			"drops a request refused with %i without retrying it",
+			async (status) => {
+				fetchMock.mockResolvedValueOnce(response(status))
+				const queue = makeQueue()
+				await queue.enqueue("https://api.example.com/a", { method: "POST" }, "telemetry")
+
+				await queue.retryAll()
+
+				expect(queue.getStats().totalQueued).toBe(0)
+				expect(fetchMock).toHaveBeenCalledTimes(1)
+			},
+		)
+
+		it.each([
+			["seconds", () => "2", 2_000],
+			["an HTTP date", () => new Date(Date.now() + 3_000).toUTCString(), 3_000],
+			["an unreadable value", () => "soon", 60_000],
+		])("pauses the whole queue on 429 for a Retry-After in %s", async (_name, retryAfter, pauseMs) => {
+			vi.setSystemTime(new Date("2026-10-25T00:00:00Z"))
+			const queue = makeQueue()
+			await queue.enqueue("https://api.example.com/a", { method: "POST" }, "telemetry")
+			await queue.enqueue("https://api.example.com/b", { method: "POST" }, "telemetry")
+			fetchMock.mockResolvedValueOnce(response(429, retryAfter()))
+
+			await queue.retryAll()
+			expect(fetchMock).toHaveBeenCalledTimes(1)
+			expect(queue.getStats().totalQueued).toBe(2)
+
+			await vi.advanceTimersByTimeAsync(pauseMs - 1)
+			await queue.retryAll()
+			expect(fetchMock).toHaveBeenCalledTimes(1)
+
+			await vi.advanceTimersByTimeAsync(1)
+			await queue.retryAll()
+			expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+				"https://api.example.com/a",
+				"https://api.example.com/a",
+				"https://api.example.com/b",
+			])
+			expect(queue.getStats().totalQueued).toBe(0)
+		})
+
+		it("drops a 429 that names no Retry-After like any other refusal", async () => {
+			fetchMock.mockResolvedValueOnce(response(429))
+			const queue = makeQueue()
+			await queue.enqueue("https://api.example.com/a", { method: "POST" }, "telemetry")
+
+			await queue.retryAll()
+
+			expect(queue.getStats().totalQueued).toBe(0)
+		})
+
+		it("skips a cycle while paused or while another cycle runs", async () => {
+			const queue = makeQueue()
+			await queue.enqueue("https://api.example.com/a", { method: "POST" }, "telemetry")
+
+			queue.pause()
+			await queue.retryAll()
+			expect(fetchMock).not.toHaveBeenCalled()
+			queue.resume()
+
+			let deliver!: (value: unknown) => void
+			fetchMock.mockReturnValueOnce(new Promise((resolve) => (deliver = resolve)))
+			const first = queue.retryAll()
+			await queue.retryAll()
+			expect(fetchMock).toHaveBeenCalledTimes(1)
+
+			deliver(response(200))
+			await first
+			expect(queue.getStats().totalQueued).toBe(0)
+		})
+
+		it("runs on its own every networkCheckInterval until disposed", async () => {
+			const queue = makeQueue({ networkCheckInterval: 5_000 })
+			await queue.enqueue("https://api.example.com/a", { method: "POST" }, "telemetry")
+
+			await vi.advanceTimersByTimeAsync(5_000)
+			expect(fetchMock).toHaveBeenCalledTimes(1)
+
+			await queue.enqueue("https://api.example.com/b", { method: "POST" }, "telemetry")
+			queue.dispose()
+			await vi.advanceTimersByTimeAsync(5_000)
+			expect(fetchMock).toHaveBeenCalledTimes(1)
 		})
 	})
 })

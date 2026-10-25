@@ -1,7 +1,7 @@
 import type { Mock } from "vitest"
 import type { ExtensionContext } from "vscode"
 
-import type { OrganizationSettings, AuthService } from "@tumble-code/types"
+import type { AuthService, OrganizationSettings, UserSettingsData } from "@tumble-code/types"
 
 import { CloudSettingsService } from "../CloudSettingsService.js"
 import { RefreshTimer } from "../RefreshTimer.js"
@@ -12,752 +12,334 @@ vi.mock("../config", () => ({
 	getTumbleCodeApiUrl: vi.fn().mockReturnValue("http://localhost:8080"),
 }))
 
-global.fetch = vi.fn()
+const fetchMock = vi.fn()
+global.fetch = fetchMock
+
+const ORG: OrganizationSettings = {
+	version: 1,
+	defaultSettings: {},
+	allowList: { allowAll: false, providers: { anthropic: { allowAll: true } } },
+}
+
+const USER: UserSettingsData = { features: {}, settings: { taskSyncEnabled: false }, version: 1 }
+
+const ok = (body: unknown) => ({ ok: true, status: 200, json: async () => body })
+const refused = (status: number) => ({ ok: false, status, statusText: `status ${status}` })
 
 describe("CloudSettingsService", () => {
-	let mockContext: ExtensionContext
-	let mockAuthService: {
+	let cache: Map<string, unknown>
+	let context: ExtensionContext
+	let authService: {
 		getState: Mock
 		getSessionToken: Mock
 		hasActiveSession: Mock
 		on: Mock
 		getStoredOrganizationId: Mock
 	}
-	let mockRefreshTimer: {
-		start: Mock
-		stop: Mock
-	}
-	let cloudSettingsService: CloudSettingsService
-	let mockLog: Mock
+	let timer: { start: Mock; stop: Mock }
+	let log: Mock
+	let service: CloudSettingsService
 
-	const mockSettings: OrganizationSettings = {
-		version: 1,
-		defaultSettings: {},
-		allowList: {
-			allowAll: true,
-			providers: {},
-		},
+	const makeService = async (cached: { org?: OrganizationSettings; user?: UserSettingsData } = {}) => {
+		cache.set("organization-settings", cached.org)
+		cache.set("user-settings", cached.user)
+		service = new CloudSettingsService(context, authService as unknown as AuthService, log)
+		await service.initialize()
+		return service
 	}
 
-	const mockUserSettings = {
-		features: {},
-		settings: {},
-		version: 1,
-	}
+	/** Runs one scheduled settings fetch, as the refresh timer does. */
+	const refresh = (): Promise<boolean> => vi.mocked(RefreshTimer).mock.calls.at(-1)![0].callback()
 
-	const mockExtensionSettingsResponse = {
-		organization: mockSettings,
-		user: mockUserSettings,
+	const changeAuthState = (state: string, previousState: string) => {
+		const [, handler] = authService.on.mock.calls.find(([event]) => event === "auth-state-changed")!
+		return handler({ state, previousState })
 	}
 
 	beforeEach(() => {
 		vi.clearAllMocks()
-
-		mockContext = {
+		cache = new Map()
+		context = {
 			globalState: {
-				get: vi.fn(),
-				update: vi.fn().mockResolvedValue(undefined),
+				get: vi.fn((key: string) => cache.get(key)),
+				update: vi.fn(async (key: string, value: unknown) => {
+					cache.set(key, value)
+				}),
 			},
 		} as unknown as ExtensionContext
-
-		mockAuthService = {
-			getState: vi.fn().mockReturnValue("logged-out"),
-			getSessionToken: vi.fn(),
+		authService = {
+			getState: vi.fn().mockReturnValue("active-session"),
+			getSessionToken: vi.fn().mockReturnValue("valid-token"),
 			hasActiveSession: vi.fn().mockReturnValue(false),
 			on: vi.fn(),
 			getStoredOrganizationId: vi.fn().mockReturnValue(null),
 		}
-
-		mockRefreshTimer = {
-			start: vi.fn(),
-			stop: vi.fn(),
-		}
-
-		mockLog = vi.fn()
-
-		// Mock RefreshTimer constructor
+		timer = { start: vi.fn(), stop: vi.fn() }
 		vi.mocked(RefreshTimer).mockImplementation(function () {
-			return mockRefreshTimer as unknown as RefreshTimer
+			return timer as unknown as RefreshTimer
 		})
-
-		cloudSettingsService = new CloudSettingsService(mockContext, mockAuthService as unknown as AuthService, mockLog)
+		log = vi.fn()
 	})
 
 	afterEach(() => {
-		cloudSettingsService.dispose()
-	})
-
-	describe("constructor", () => {
-		it("should create CloudSettingsService with proper dependencies", () => {
-			expect(cloudSettingsService).toBeInstanceOf(CloudSettingsService)
-			expect(RefreshTimer).toHaveBeenCalledWith({
-				callback: expect.any(Function),
-				successInterval: 3_600_000,
-				initialBackoffMs: 1000,
-				maxBackoffMs: 3_600_000,
-			})
-		})
-
-		it("should use console.log as default logger when none provided", () => {
-			const service = new CloudSettingsService(mockContext, mockAuthService as unknown as AuthService)
-			expect(service).toBeInstanceOf(CloudSettingsService)
-		})
+		service.dispose()
 	})
 
 	describe("initialize", () => {
-		it("should load cached settings on initialization", async () => {
-			const cachedSettings = {
-				version: 1,
-				defaultSettings: {},
-				allowList: { allowAll: true, providers: {} },
-			}
+		it("serves the cached settings while signed in", async () => {
+			await makeService({ org: ORG, user: USER })
 
-			// Create a fresh mock context for this test
-			const testContext = {
-				globalState: {
-					get: vi.fn((key: string) => {
-						if (key === "organization-settings") return cachedSettings
-						if (key === "user-settings") return mockUserSettings
-						return undefined
-					}),
-					update: vi.fn().mockResolvedValue(undefined),
-				},
-			} as unknown as ExtensionContext
-
-			// Mock auth service to not be logged out
-			const testAuthService = {
-				getState: vi.fn().mockReturnValue("active"),
-				getSessionToken: vi.fn(),
-				hasActiveSession: vi.fn().mockReturnValue(false),
-				on: vi.fn(),
-			}
-
-			// Create a new instance to test initialization
-			const testService = new CloudSettingsService(
-				testContext,
-				testAuthService as unknown as AuthService,
-				mockLog,
-			)
-			await testService.initialize()
-
-			expect(testContext.globalState.get).toHaveBeenCalledWith("organization-settings")
-			expect(testContext.globalState.get).toHaveBeenCalledWith("user-settings")
-			expect(testService.getSettings()).toEqual(cachedSettings)
-
-			testService.dispose()
+			expect(service.getSettings()).toEqual(ORG)
+			expect(service.getAllowList()).toEqual(ORG.allowList)
+			expect(service.getUserSettings()).toEqual(USER)
+			expect(service.getUserSettingsConfig()).toEqual(USER.settings)
+			expect(service.getUserFeatures()).toEqual(USER.features)
 		})
 
-		it("should clear cached settings if user is logged out", async () => {
-			const cachedSettings = {
-				version: 1,
-				defaultSettings: {},
-				allowList: { allowAll: true, providers: {} },
-			}
-			mockContext.globalState.get = vi.fn((key: string) => {
-				if (key === "organization-settings") return cachedSettings
-				if (key === "user-settings") return mockUserSettings
-				return undefined
-			})
-			mockAuthService.getState.mockReturnValue("logged-out")
+		it("drops the cache when a sign-out was missed", async () => {
+			authService.getState.mockReturnValue("logged-out")
 
-			await cloudSettingsService.initialize()
+			await makeService({ org: ORG, user: USER })
 
-			// Check that both cache keys are cleared
-			const updateCalls = vi.mocked(mockContext.globalState.update).mock.calls
-			const orgSettingsCall = updateCalls.find((call) => call[0] === "organization-settings")
-			const userSettingsCall = updateCalls.find((call) => call[0] === "user-settings")
-
-			expect(orgSettingsCall).toBeDefined()
-			expect(orgSettingsCall?.[1]).toBeUndefined()
-			expect(userSettingsCall).toBeDefined()
-			expect(userSettingsCall?.[1]).toBeUndefined()
+			expect(service.getSettings()).toBeUndefined()
+			expect(cache.get("organization-settings")).toBeUndefined()
+			expect(cache.get("user-settings")).toBeUndefined()
 		})
 
-		it("should set up auth service event listeners", async () => {
-			await cloudSettingsService.initialize()
+		it("falls back to allow-all and empty user settings without any settings", async () => {
+			await makeService()
 
-			expect(mockAuthService.on).toHaveBeenCalledWith("auth-state-changed", expect.any(Function))
+			expect(service.getAllowList()).toEqual({ allowAll: true, providers: {} })
+			expect(service.getUserFeatures()).toEqual({})
+			expect(service.getUserSettingsConfig()).toEqual({})
 		})
 
-		it("should start timer if user has active session", async () => {
-			mockAuthService.hasActiveSession.mockReturnValue(true)
+		it.each([
+			[true, 1],
+			[false, 0],
+		])("starts the refresh timer only with an active session (%s)", async (active, starts) => {
+			authService.hasActiveSession.mockReturnValue(active)
 
-			await cloudSettingsService.initialize()
+			await makeService()
 
-			expect(mockRefreshTimer.start).toHaveBeenCalled()
-		})
-
-		it("should not start timer if user has no active session", async () => {
-			mockAuthService.hasActiveSession.mockReturnValue(false)
-
-			await cloudSettingsService.initialize()
-
-			expect(mockRefreshTimer.start).not.toHaveBeenCalled()
+			expect(timer.start).toHaveBeenCalledTimes(starts)
 		})
 	})
 
-	describe("event emission", () => {
-		beforeEach(async () => {
-			await cloudSettingsService.initialize()
+	describe("auth state changes", () => {
+		it.each([
+			["active-session", "attempting-session", { start: 1, stop: 0, cleared: false }],
+			["logged-out", "active-session", { start: 0, stop: 1, cleared: true }],
+			["inactive-session", "active-session", { start: 0, stop: 1, cleared: false }],
+			["logged-out", "attempting-session", { start: 0, stop: 0, cleared: false }],
+		])("%s after %s", async (state, previousState, expected) => {
+			await makeService({ org: ORG, user: USER })
+
+			await changeAuthState(state, previousState)
+
+			expect(timer.start).toHaveBeenCalledTimes(expected.start)
+			expect(timer.stop).toHaveBeenCalledTimes(expected.stop)
+			expect(service.getSettings() === undefined).toBe(expected.cleared)
+			expect(cache.get("user-settings") === undefined).toBe(expected.cleared)
 		})
 
-		it("should emit 'settings-updated' event when settings change", async () => {
-			const eventSpy = vi.fn()
-			cloudSettingsService.on("settings-updated", eventSpy)
+		it("logs a failure while handling a sign-out", async () => {
+			await makeService({ org: ORG, user: USER })
+			vi.mocked(context.globalState.update).mockRejectedValue(new Error("disk full"))
 
-			mockAuthService.getSessionToken.mockReturnValue("valid-token")
-			vi.mocked(fetch).mockResolvedValue({
-				ok: true,
-				json: vi.fn().mockResolvedValue(mockExtensionSettingsResponse),
-			} as unknown as Response)
+			await changeAuthState("logged-out", "active-session")
 
-			// Get the callback function passed to RefreshTimer
-			const timerCallback = vi.mocked(RefreshTimer).mock.calls[0]?.[0]?.callback
+			expect(log).toHaveBeenCalledWith(
+				expect.stringContaining("error processing auth-state-changed"),
+				expect.any(Error),
+			)
+		})
+	})
 
-			await timerCallback?.()
+	describe("refresh", () => {
+		it("fetches with the session token and a timeout, stores both settings and announces the change", async () => {
+			await makeService()
+			const updated = vi.fn()
+			service.on("settings-updated", updated)
+			fetchMock.mockResolvedValue(ok({ organization: ORG, user: USER }))
 
-			expect(eventSpy).toHaveBeenCalledWith({})
+			expect(await refresh()).toBe(true)
+
+			const [url, options] = fetchMock.mock.calls[0]!
+			expect(url).toBe("http://localhost:8080/api/extension-settings")
+			expect(options.headers).toEqual({ Authorization: "Bearer valid-token" })
+			expect(options.signal).toBeInstanceOf(AbortSignal)
+			expect(service.getSettings()).toEqual(ORG)
+			expect(service.getUserSettings()).toEqual(USER)
+			expect(cache.get("organization-settings")).toEqual(ORG)
+			expect(cache.get("user-settings")).toEqual(USER)
+			expect(updated).toHaveBeenCalledTimes(1)
 		})
 
-		it("should emit event when either org or user settings change", async () => {
-			const eventSpy = vi.fn()
+		it.each([
+			["nothing", ORG, USER, false],
+			["the organization version", { ...ORG, version: 2 }, USER, true],
+			["the user version", ORG, { ...USER, version: 2 }, true],
+		])("announces and stores a change only when %s changed", async (_name, org, user, changes) => {
+			await makeService({ org: ORG, user: USER })
+			const updated = vi.fn()
+			service.on("settings-updated", updated)
+			fetchMock.mockResolvedValue(ok({ organization: org, user }))
 
-			const previousSettings = {
-				version: 1,
-				defaultSettings: {},
-				allowList: { allowAll: true, providers: {} },
-			}
-			const newSettings = {
+			expect(await refresh()).toBe(true)
+
+			expect(updated).toHaveBeenCalledTimes(changes ? 1 : 0)
+			expect(context.globalState.update).toHaveBeenCalledTimes(changes ? 2 : 0)
+			expect(service.getSettings()).toEqual(org)
+			expect(service.getUserSettings()).toEqual(user)
+		})
+
+		it("does not fetch without a session token", async () => {
+			authService.getSessionToken.mockReturnValue(null)
+			await makeService()
+
+			expect(await refresh()).toBe(false)
+			expect(fetchMock).not.toHaveBeenCalled()
+		})
+
+		it.each([
+			["a refused request", () => fetchMock.mockResolvedValue(refused(500))],
+			["a network error", () => fetchMock.mockRejectedValue(new Error("Network error"))],
+			["an unknown body", () => fetchMock.mockResolvedValue(ok({ invalid: "data" }))],
+			[
+				"an invalid organization",
+				() => fetchMock.mockResolvedValue(ok({ organization: { version: 2 }, user: USER })),
+			],
+			["an invalid user", () => fetchMock.mockResolvedValue(ok({ organization: ORG, user: { version: 2 } }))],
+		])("keeps the current settings after %s", async (_name, arrange) => {
+			await makeService({ org: ORG, user: USER })
+			arrange()
+
+			expect(await refresh()).toBe(false)
+
+			expect(service.getSettings()).toEqual(ORG)
+			expect(service.getUserSettings()).toEqual(USER)
+			expect(context.globalState.update).not.toHaveBeenCalled()
+		})
+
+		// Since #126 a provider profile keeps its settings under a nested
+		// `provider`; a payload on the old flat shape failed the whole blob.
+		it("accepts organization provider profiles in the nested shape", async () => {
+			await makeService()
+			const org = {
+				...ORG,
 				version: 2,
-				defaultSettings: {},
-				allowList: { allowAll: true, providers: {} },
-			}
-
-			// Create a fresh mock context for this test
-			const testContext = {
-				globalState: {
-					get: vi.fn((key: string) => {
-						if (key === "organization-settings") return previousSettings
-						if (key === "user-settings") return mockUserSettings
-						return undefined
-					}),
-					update: vi.fn().mockResolvedValue(undefined),
-				},
-			} as unknown as ExtensionContext
-
-			// Mock auth service to not be logged out
-			const testAuthService = {
-				getState: vi.fn().mockReturnValue("active"),
-				getSessionToken: vi.fn().mockReturnValue("valid-token"),
-				hasActiveSession: vi.fn().mockReturnValue(false),
-				on: vi.fn(),
-			}
-
-			// Create a new service instance with cached settings
-			const testService = new CloudSettingsService(
-				testContext,
-				testAuthService as unknown as AuthService,
-				mockLog,
-			)
-			testService.on("settings-updated", eventSpy)
-			await testService.initialize()
-
-			vi.mocked(fetch).mockResolvedValue({
-				ok: true,
-				json: vi.fn().mockResolvedValue({
-					organization: newSettings,
-					user: mockUserSettings,
-				}),
-			} as unknown as Response)
-
-			// Get the callback function passed to RefreshTimer for this instance
-			const timerCallback =
-				vi.mocked(RefreshTimer).mock.calls[vi.mocked(RefreshTimer).mock.calls.length - 1]?.[0]?.callback
-
-			await timerCallback?.()
-
-			expect(eventSpy).toHaveBeenCalledWith({})
-
-			testService.dispose()
-		})
-
-		it("should not emit event when settings version is unchanged", async () => {
-			const eventSpy = vi.fn()
-
-			// Create a fresh mock context for this test
-			const testContext = {
-				globalState: {
-					get: vi.fn((key: string) => {
-						if (key === "organization-settings") return mockSettings
-						if (key === "user-settings") return mockUserSettings
-						return undefined
-					}),
-					update: vi.fn().mockResolvedValue(undefined),
-				},
-			} as unknown as ExtensionContext
-
-			// Mock auth service to not be logged out
-			const testAuthService = {
-				getState: vi.fn().mockReturnValue("active"),
-				getSessionToken: vi.fn().mockReturnValue("valid-token"),
-				hasActiveSession: vi.fn().mockReturnValue(false),
-				on: vi.fn(),
-			}
-
-			// Create a new service instance with cached settings
-			const testService = new CloudSettingsService(
-				testContext,
-				testAuthService as unknown as AuthService,
-				mockLog,
-			)
-			testService.on("settings-updated", eventSpy)
-			await testService.initialize()
-
-			vi.mocked(fetch).mockResolvedValue({
-				ok: true,
-				json: vi.fn().mockResolvedValue(mockExtensionSettingsResponse), // Same version
-			} as unknown as Response)
-
-			// Get the callback function passed to RefreshTimer for this instance
-			const timerCallback =
-				vi.mocked(RefreshTimer).mock.calls[vi.mocked(RefreshTimer).mock.calls.length - 1]?.[0]?.callback
-
-			await timerCallback?.()
-
-			expect(eventSpy).not.toHaveBeenCalled()
-
-			testService.dispose()
-		})
-
-		it("should not emit event when fetch fails", async () => {
-			const eventSpy = vi.fn()
-			cloudSettingsService.on("settings-updated", eventSpy)
-
-			mockAuthService.getSessionToken.mockReturnValue("valid-token")
-			vi.mocked(fetch).mockResolvedValue({
-				ok: false,
-				status: 500,
-				statusText: "Internal Server Error",
-			} as unknown as Response)
-
-			// Get the callback function passed to RefreshTimer
-			const timerCallback = vi.mocked(RefreshTimer).mock.calls[0]?.[0]?.callback
-
-			await timerCallback?.()
-
-			expect(eventSpy).not.toHaveBeenCalled()
-		})
-
-		it("should not emit event when no auth token available", async () => {
-			const eventSpy = vi.fn()
-			cloudSettingsService.on("settings-updated", eventSpy)
-
-			mockAuthService.getSessionToken.mockReturnValue(null)
-
-			// Get the callback function passed to RefreshTimer
-			const timerCallback = vi.mocked(RefreshTimer).mock.calls[0]?.[0]?.callback
-
-			await timerCallback?.()
-
-			expect(eventSpy).not.toHaveBeenCalled()
-			expect(fetch).not.toHaveBeenCalled()
-		})
-	})
-
-	describe("fetchSettings", () => {
-		beforeEach(async () => {
-			await cloudSettingsService.initialize()
-		})
-
-		it("should fetch and cache settings successfully", async () => {
-			mockAuthService.getSessionToken.mockReturnValue("valid-token")
-			vi.mocked(fetch).mockResolvedValue({
-				ok: true,
-				json: vi.fn().mockResolvedValue(mockExtensionSettingsResponse),
-			} as unknown as Response)
-
-			// Get the callback function passed to RefreshTimer
-			const timerCallback = vi.mocked(RefreshTimer).mock.calls[0]?.[0]?.callback
-
-			const result = await timerCallback?.()
-
-			expect(result).toBe(true)
-
-			expect(fetch).toHaveBeenCalledWith(
-				"http://localhost:8080/api/extension-settings",
-				expect.objectContaining({
-					headers: {
-						Authorization: "Bearer valid-token",
+				providerProfiles: {
+					default: {
+						id: "default",
+						provider: { providerId: "anthropic", opaqueLegacyPayload: { apiModelId: "claude-3-opus" } },
 					},
-				}),
-			)
+				},
+			}
+			fetchMock.mockResolvedValue(ok({ organization: org, user: USER }))
 
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("organization-settings", mockSettings)
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("user-settings", mockUserSettings)
-		})
-
-		it("should handle fetch errors gracefully", async () => {
-			mockAuthService.getSessionToken.mockReturnValue("valid-token")
-			vi.mocked(fetch).mockRejectedValue(new Error("Network error"))
-
-			// Get the callback function passed to RefreshTimer
-			const timerCallback = vi.mocked(RefreshTimer).mock.calls[0]?.[0]?.callback
-
-			const result = await timerCallback?.()
-
-			expect(result).toBe(false)
-
-			expect(mockLog).toHaveBeenCalledWith(
-				"[cloud-settings] Error fetching extension settings:",
-				expect.any(Error),
-			)
-		})
-
-		it("should handle invalid response format", async () => {
-			mockAuthService.getSessionToken.mockReturnValue("valid-token")
-			vi.mocked(fetch).mockResolvedValue({
-				ok: true,
-				json: vi.fn().mockResolvedValue({ invalid: "data" }),
-			} as unknown as Response)
-
-			// Get the callback function passed to RefreshTimer
-			const timerCallback = vi.mocked(RefreshTimer).mock.calls[0]?.[0]?.callback
-
-			const result = await timerCallback?.()
-
-			expect(result).toBe(false)
-
-			expect(mockLog).toHaveBeenCalledWith(
-				"[cloud-settings] Invalid extension settings format:",
-				expect.any(Object),
-			)
-		})
-
-		it("should pass a 30s AbortSignal timeout on the fetch call", async () => {
-			mockAuthService.getSessionToken.mockReturnValue("valid-token")
-			vi.mocked(fetch).mockResolvedValue({
-				ok: true,
-				json: vi.fn().mockResolvedValue(mockExtensionSettingsResponse),
-			} as unknown as Response)
-
-			const timerCallback = vi.mocked(RefreshTimer).mock.calls[0]?.[0]?.callback
-			await timerCallback?.()
-
-			const callArgs = vi.mocked(fetch).mock.calls[0]
-			expect(callArgs?.[1]).toHaveProperty("signal")
-			// AbortSignal.timeout returns a signal that will abort after 30s
-			expect(callArgs?.[1]?.signal).toBeInstanceOf(AbortSignal)
-		})
-
-		it("should handle fetch timeout gracefully (AbortError treated as failure)", async () => {
-			mockAuthService.getSessionToken.mockReturnValue("valid-token")
-			const abortError = new DOMException("The operation was aborted", "AbortError")
-			vi.mocked(fetch).mockRejectedValue(abortError)
-
-			const timerCallback = vi.mocked(RefreshTimer).mock.calls[0]?.[0]?.callback
-
-			const result = await timerCallback?.()
-
-			// A timeout must behave like any failed fetch: return false
-			expect(result).toBe(false)
-			expect(mockLog).toHaveBeenCalledWith(
-				"[cloud-settings] Error fetching extension settings:",
-				expect.any(Error),
-			)
+			expect(await refresh()).toBe(true)
+			expect(service.getSettings()).toEqual(org)
 		})
 	})
 
-	describe("getAllowList", () => {
-		it("should return settings allowList when available", async () => {
-			mockContext.globalState.get = vi.fn((key: string) => {
-				if (key === "organization-settings") return mockSettings
-				return undefined
-			})
-			await cloudSettingsService.initialize()
+	describe("updateUserSettings", () => {
+		const update = () => service.updateUserSettings({ taskSyncEnabled: true })
 
-			const allowList = cloudSettingsService.getAllowList()
-			expect(allowList).toEqual(mockSettings.allowList)
+		it("patches with the cached version and adopts a newer answer", async () => {
+			await makeService({ user: USER })
+			const updated = vi.fn()
+			service.on("settings-updated", updated)
+			const newer = { ...USER, settings: { taskSyncEnabled: true }, version: 2 }
+			fetchMock.mockResolvedValue(ok(newer))
+
+			expect(await update()).toBe(true)
+
+			const [url, options] = fetchMock.mock.calls[0]!
+			expect(url).toBe("http://localhost:8080/api/user-settings")
+			expect(options.method).toBe("PATCH")
+			expect(options.headers).toEqual({ "Content-Type": "application/json", Authorization: "Bearer valid-token" })
+			expect(options.signal).toBeInstanceOf(AbortSignal)
+			expect(JSON.parse(options.body)).toEqual({ settings: { taskSyncEnabled: true }, version: 1 })
+			expect(service.getUserSettings()).toEqual(newer)
+			expect(cache.get("user-settings")).toEqual(newer)
+			expect(updated).toHaveBeenCalledTimes(1)
 		})
 
-		it("should return default allow all when no settings available", () => {
-			const allowList = cloudSettingsService.getAllowList()
-			expect(allowList).toEqual({ allowAll: true, providers: {} })
-		})
-	})
+		it("sends no version without cached settings, and adopts any answer", async () => {
+			await makeService()
+			fetchMock.mockResolvedValue(ok(USER))
 
-	describe("getSettings", () => {
-		it("should return current settings", async () => {
-			// Create a fresh mock context for this test
-			const testContext = {
-				globalState: {
-					get: vi.fn((key: string) => {
-						if (key === "organization-settings") return mockSettings
-						return undefined
-					}),
-					update: vi.fn().mockResolvedValue(undefined),
-				},
-			} as unknown as ExtensionContext
+			expect(await update()).toBe(true)
 
-			// Mock auth service to not be logged out
-			const testAuthService = {
-				getState: vi.fn().mockReturnValue("active"),
-				getSessionToken: vi.fn(),
-				hasActiveSession: vi.fn().mockReturnValue(false),
-				on: vi.fn(),
-			}
-
-			const testService = new CloudSettingsService(
-				testContext,
-				testAuthService as unknown as AuthService,
-				mockLog,
-			)
-			await testService.initialize()
-
-			const settings = testService.getSettings()
-			expect(settings).toEqual(mockSettings)
-
-			testService.dispose()
+			expect(JSON.parse(fetchMock.mock.calls[0]![1].body)).toEqual({ settings: { taskSyncEnabled: true } })
+			expect(service.getUserSettings()).toEqual(USER)
 		})
 
-		it("should return undefined when no settings available", () => {
-			const settings = cloudSettingsService.getSettings()
-			expect(settings).toBeUndefined()
-		})
-	})
+		it("keeps the cached settings when the answer is not newer", async () => {
+			await makeService({ user: { ...USER, version: 3 } })
+			const updated = vi.fn()
+			service.on("settings-updated", updated)
+			fetchMock.mockResolvedValue(ok({ ...USER, version: 3 }))
 
-	describe("dispose", () => {
-		it("should remove all listeners and stop timer", () => {
-			const removeAllListenersSpy = vi.spyOn(cloudSettingsService, "removeAllListeners")
+			expect(await update()).toBe(true)
 
-			cloudSettingsService.dispose()
-
-			expect(removeAllListenersSpy).toHaveBeenCalled()
-			expect(mockRefreshTimer.stop).toHaveBeenCalled()
-		})
-	})
-
-	describe("auth service event handlers", () => {
-		it("should start timer when auth-state-changed event is triggered with active-session", async () => {
-			await cloudSettingsService.initialize()
-
-			// Get the auth-state-changed handler
-			const authStateChangedHandler = mockAuthService.on.mock.calls.find(
-				(call: string[]) => call[0] === "auth-state-changed",
-			)?.[1]
-			expect(authStateChangedHandler).toBeDefined()
-
-			// Simulate active-session state change
-			authStateChangedHandler({
-				state: "active-session",
-				previousState: "attempting-session",
-			})
-			expect(mockRefreshTimer.start).toHaveBeenCalled()
+			expect(updated).not.toHaveBeenCalled()
+			expect(service.getUserSettings()?.version).toBe(3)
 		})
 
-		it("should stop timer and remove settings when auth-state-changed event is triggered with logged-out", async () => {
-			await cloudSettingsService.initialize()
+		it("does not send without a session token", async () => {
+			authService.getSessionToken.mockReturnValue(null)
+			await makeService()
 
-			// Get the auth-state-changed handler
-			const authStateChangedHandler = mockAuthService.on.mock.calls.find(
-				(call: string[]) => call[0] === "auth-state-changed",
-			)?.[1]
-			expect(authStateChangedHandler).toBeDefined()
+			expect(await update()).toBe(false)
+			expect(fetchMock).not.toHaveBeenCalled()
+		})
 
-			// Simulate logged-out state change from active-session
-			await authStateChangedHandler({
-				state: "logged-out",
-				previousState: "active-session",
-			})
-			expect(mockRefreshTimer.stop).toHaveBeenCalled()
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("organization-settings", undefined)
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("user-settings", undefined)
+		it.each([
+			["a version conflict", () => fetchMock.mockResolvedValue(refused(409)), "Version conflict"],
+			["a refusal", () => fetchMock.mockResolvedValue(refused(500)), "Failed to update user settings"],
+			["an invalid answer", () => fetchMock.mockResolvedValue(ok({ version: 2 })), "Invalid user settings"],
+			["a network error", () => fetchMock.mockRejectedValue(new Error("down")), "Error updating user settings"],
+		])("reports failure after %s", async (_name, arrange, logged) => {
+			await makeService({ user: USER })
+			arrange()
+
+			expect(await update()).toBe(false)
+
+			expect(service.getUserSettings()).toEqual(USER)
+			expect(log.mock.calls.map(([line]) => String(line)).join("\n")).toContain(logged)
 		})
 	})
 
-	describe("isTaskSyncEnabled", () => {
-		beforeEach(async () => {
-			await cloudSettingsService.initialize()
+	it.each([
+		[
+			"the organization's recordTaskMessages",
+			"org-1",
+			{ recordTaskMessages: true },
+			{ taskSyncEnabled: false },
+			true,
+		],
+		["the organization over the user", "org-1", { recordTaskMessages: false }, { taskSyncEnabled: true }, false],
+		["false for an organization that says nothing", "org-1", undefined, { taskSyncEnabled: true }, false],
+		["the user's taskSyncEnabled", null, undefined, { taskSyncEnabled: false }, false],
+		["true for a user who says nothing", null, undefined, {}, true],
+		["false without any settings", null, undefined, undefined, false],
+	])("isTaskSyncEnabled follows %s", async (_name, orgId, cloudSettings, userSettings, expected) => {
+		authService.getStoredOrganizationId.mockReturnValue(orgId)
+		await makeService({
+			org: { ...ORG, ...(cloudSettings ? { cloudSettings } : {}) },
+			user: userSettings ? { ...USER, settings: userSettings } : undefined,
 		})
 
-		it("should return true when org recordTaskMessages is true", () => {
-			// Set up mock settings with org recordTaskMessages = true
-			const mockSettings = {
-				version: 1,
-				cloudSettings: {
-					recordTaskMessages: true,
-				},
-				defaultSettings: {},
-				allowList: { allowAll: true, providers: {} },
-			}
+		expect(service.isTaskSyncEnabled()).toBe(expected)
+	})
 
-			// Mock that user has organization ID (indicating org settings should be used)
-			mockAuthService.getStoredOrganizationId.mockReturnValue("org-123")
+	it("stops the refresh timer on dispose", async () => {
+		await makeService()
 
-			// Use reflection to set private settings
-			;(cloudSettingsService as unknown as { settings: typeof mockSettings }).settings = mockSettings
+		service.dispose()
 
-			expect(cloudSettingsService.isTaskSyncEnabled()).toBe(true)
-		})
-
-		it("should return false when org recordTaskMessages is false", () => {
-			// Set up mock settings with org recordTaskMessages = false
-			const mockSettings = {
-				version: 1,
-				cloudSettings: {
-					recordTaskMessages: false,
-				},
-				defaultSettings: {},
-				allowList: { allowAll: true, providers: {} },
-			}
-
-			// Mock that user has organization ID (indicating org settings should be used)
-			mockAuthService.getStoredOrganizationId.mockReturnValue("org-123")
-
-			// Use reflection to set private settings
-			;(cloudSettingsService as unknown as { settings: typeof mockSettings }).settings = mockSettings
-
-			expect(cloudSettingsService.isTaskSyncEnabled()).toBe(false)
-		})
-
-		it("should fall back to user taskSyncEnabled when org recordTaskMessages is undefined", () => {
-			// Set up mock settings with org recordTaskMessages undefined
-			const mockSettings = {
-				version: 1,
-				cloudSettings: {},
-				defaultSettings: {},
-				allowList: { allowAll: true, providers: {} },
-			}
-
-			const mockUserSettings = {
-				version: 1,
-				features: {},
-				settings: {
-					taskSyncEnabled: true,
-				},
-			}
-
-			// Mock that user has no organization ID (indicating user settings should be used)
-			mockAuthService.getStoredOrganizationId.mockReturnValue(null)
-
-			// Use reflection to set private settings
-			;(cloudSettingsService as unknown as { settings: typeof mockSettings }).settings = mockSettings
-			;(cloudSettingsService as unknown as { userSettings: typeof mockUserSettings }).userSettings =
-				mockUserSettings
-
-			expect(cloudSettingsService.isTaskSyncEnabled()).toBe(true)
-		})
-
-		it("should return false when user taskSyncEnabled is false", () => {
-			// Set up mock settings with org recordTaskMessages undefined
-			const mockSettings = {
-				version: 1,
-				cloudSettings: {},
-				defaultSettings: {},
-				allowList: { allowAll: true, providers: {} },
-			}
-
-			const mockUserSettings = {
-				version: 1,
-				features: {},
-				settings: {
-					taskSyncEnabled: false,
-				},
-			}
-
-			// Mock that user has no organization ID (indicating user settings should be used)
-			mockAuthService.getStoredOrganizationId.mockReturnValue(null)
-
-			// Use reflection to set private settings
-			;(cloudSettingsService as unknown as { settings: typeof mockSettings }).settings = mockSettings
-			;(cloudSettingsService as unknown as { userSettings: typeof mockUserSettings }).userSettings =
-				mockUserSettings
-
-			expect(cloudSettingsService.isTaskSyncEnabled()).toBe(false)
-		})
-
-		it("should return true when user taskSyncEnabled is undefined (default)", () => {
-			// Set up mock settings with org recordTaskMessages undefined
-			const mockSettings = {
-				version: 1,
-				cloudSettings: {},
-				defaultSettings: {},
-				allowList: { allowAll: true, providers: {} },
-			}
-
-			const mockUserSettings = {
-				version: 1,
-				features: {},
-				settings: {},
-			}
-
-			// Mock that user has no organization ID (indicating user settings should be used)
-			mockAuthService.getStoredOrganizationId.mockReturnValue(null)
-
-			// Use reflection to set private settings
-			;(cloudSettingsService as unknown as { settings: typeof mockSettings }).settings = mockSettings
-			;(cloudSettingsService as unknown as { userSettings: typeof mockUserSettings }).userSettings =
-				mockUserSettings
-
-			expect(cloudSettingsService.isTaskSyncEnabled()).toBe(true)
-		})
-
-		it("should return false when no settings are available", () => {
-			// Mock that user has no organization ID
-			mockAuthService.getStoredOrganizationId.mockReturnValue(null)
-
-			// Clear both settings
-			;(cloudSettingsService as unknown as { settings: undefined }).settings = undefined
-			;(cloudSettingsService as unknown as { userSettings: undefined }).userSettings = undefined
-
-			expect(cloudSettingsService.isTaskSyncEnabled()).toBe(false)
-		})
-
-		it("should return false when only org settings are available but cloudSettings is undefined", () => {
-			const mockSettings = {
-				version: 1,
-				defaultSettings: {},
-				allowList: { allowAll: true, providers: {} },
-			}
-
-			// Mock that user has organization ID (indicating org settings should be used)
-			mockAuthService.getStoredOrganizationId.mockReturnValue("org-123")
-
-			// Use reflection to set private settings
-			;(cloudSettingsService as unknown as { settings: typeof mockSettings }).settings = mockSettings
-			;(cloudSettingsService as unknown as { userSettings: undefined }).userSettings = undefined
-
-			expect(cloudSettingsService.isTaskSyncEnabled()).toBe(false)
-		})
-
-		it("should prioritize org settings over user settings", () => {
-			// Set up conflicting settings: org = false, user = true
-			const mockSettings = {
-				version: 1,
-				cloudSettings: {
-					recordTaskMessages: false,
-				},
-				defaultSettings: {},
-				allowList: { allowAll: true, providers: {} },
-			}
-
-			const mockUserSettings = {
-				version: 1,
-				features: {},
-				settings: {
-					taskSyncEnabled: true,
-				},
-			}
-
-			// Mock that user has organization ID (indicating org settings should be used)
-			mockAuthService.getStoredOrganizationId.mockReturnValue("org-123")
-
-			// Use reflection to set private settings
-			;(cloudSettingsService as unknown as { settings: typeof mockSettings }).settings = mockSettings
-			;(cloudSettingsService as unknown as { userSettings: typeof mockUserSettings }).userSettings =
-				mockUserSettings
-
-			// Should return false (org setting takes precedence)
-			expect(cloudSettingsService.isTaskSyncEnabled()).toBe(false)
-		})
+		expect(timer.stop).toHaveBeenCalled()
 	})
 })
