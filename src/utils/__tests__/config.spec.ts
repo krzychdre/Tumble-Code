@@ -1,259 +1,86 @@
-// npx vitest utils/__tests__/config.spec.ts
-
 import { injectVariables } from "../config"
 import { logger } from "../logging"
 
-const injectVariablesWithEnv = (config: Parameters<typeof injectVariables>[0], notFoundValue: string = "") =>
-	injectVariables(config, { env: process.env }, notFoundValue)
-
-describe("injectVariables with the process env", () => {
-	const originalEnv = process.env
-
+describe("injectVariables", () => {
 	beforeEach(() => {
-		// Assign a new / reset process.env before each test
-		vitest.resetModules()
-		process.env = { ...originalEnv }
+		vi.spyOn(logger, "warn").mockImplementation(() => {})
 	})
 
-	afterAll(() => {
-		// Restore original process.env after all tests
-		process.env = originalEnv
+	afterEach(() => {
+		vi.restoreAllMocks()
 	})
 
-	it("should replace env variables in a string", async () => {
-		process.env.TEST_VAR = "testValue"
-		const configString = "Hello ${env:TEST_VAR}"
-		const expectedString = "Hello testValue"
-		const result = await injectVariablesWithEnv(configString)
-		expect(result).toBe(expectedString)
-	})
+	const env = { API_KEY: "12345", ENDPOINT: "https://example.com", EMPTY: "" }
 
-	it("should replace env variables in an object", async () => {
-		process.env.API_KEY = "12345"
-		process.env.ENDPOINT = "https://example.com"
-		const configObject = {
+	it("replaces variables everywhere in an object without touching the original", async () => {
+		const config = {
 			key: "${env:API_KEY}",
-			url: "${env:ENDPOINT}",
 			nested: {
 				string: "Keep this ${env:API_KEY}",
 				number: 123,
 				boolean: true,
-				stringArr: ["${env:API_KEY}", "${env:ENDPOINT}"],
-				numberArr: [123, 456],
-				booleanArr: [true, false],
-			},
-			deeply: {
-				nested: {
-					string: "Keep this ${env:API_KEY}",
-					number: 123,
-					boolean: true,
-					stringArr: ["${env:API_KEY}", "${env:ENDPOINT}"],
-					numberArr: [123, 456],
-					booleanArr: [true, false],
-				},
+				list: ["${env:API_KEY}", "${env:ENDPOINT}", 5, false, null],
+				deeper: { url: "${env:ENDPOINT}/v1" },
 			},
 		}
-		const expectedObject = {
+		const copy = structuredClone(config)
+
+		const result = await injectVariables(config, { env })
+
+		expect(result).toEqual({
 			key: "12345",
-			url: "https://example.com",
 			nested: {
 				string: "Keep this 12345",
 				number: 123,
 				boolean: true,
-				stringArr: ["12345", "https://example.com"],
-				numberArr: [123, 456],
-				booleanArr: [true, false],
+				list: ["12345", "https://example.com", 5, false, null],
+				deeper: { url: "https://example.com/v1" },
 			},
-			deeply: {
-				nested: {
-					string: "Keep this 12345",
-					number: 123,
-					boolean: true,
-					stringArr: ["12345", "https://example.com"],
-					numberArr: [123, 456],
-					booleanArr: [true, false],
-				},
-			},
-		}
-		const result = await injectVariablesWithEnv(configObject)
-		expect(result).toEqual(expectedObject)
+		})
+		expect(config).toEqual(copy)
 	})
 
-	it("should use notFoundValue for missing env variables", async () => {
-		const loggerWarnSpy = vitest.spyOn(logger, "warn").mockImplementation(() => {})
-		process.env.EXISTING_VAR = "exists"
-		const configString = "Value: ${env:EXISTING_VAR}, Missing: ${env:MISSING_VAR}"
-		const expectedString = "Value: exists, Missing: NOT_FOUND"
-		const result = await injectVariablesWithEnv(configString, "NOT_FOUND")
-		expect(result).toBe(expectedString)
-		expect(loggerWarnSpy).toHaveBeenCalledWith(
-			`[injectVariables] variable "MISSING_VAR" referenced but not found in "env"`,
+	it.each([
+		["a plain variable", "Hello ${v}", { v: "Hola" }, undefined, "Hello Hola"],
+		["an undefined variable, left as is", "Hello ${v}", { v: undefined }, undefined, "Hello ${v}"],
+		["an empty variable", "Hello ${v}", { v: "" }, undefined, "Hello "],
+		["a nested variable", "Hello ${env:API_KEY}", { env }, undefined, "Hello 12345"],
+		["an empty nested variable", "x${env:EMPTY}y", { env }, undefined, "xy"],
+		["a missing nested variable, left as is", "${env:MISSING}", { env }, undefined, "${env:MISSING}"],
+		["a missing nested variable, replaced", "${env:MISSING}", { env }, "", ""],
+		["text without variables", "no variables here", { env }, undefined, "no variables here"],
+		["an empty string", "", { env }, undefined, ""],
+		// Paths are written with forward slashes, whatever the platform.
+		[
+			"a Windows path",
+			"${workspaceFolder}\\scripts",
+			{ workspaceFolder: "C:\\Users\\project" },
+			undefined,
+			"C:/Users/project\\scripts",
+		],
+		["a nested Windows path", "${env:HOME}", { env: { HOME: "C:\\Users\\me" } }, undefined, "C:/Users/me"],
+	])("replaces %s", async (_, config, variables, notFound, expected) => {
+		expect(await injectVariables(config, variables, notFound)).toBe(expected)
+	})
+
+	it("normalizes path variables inside JSON values", async () => {
+		const result = await injectVariables(
+			{ args: ["${workspaceFolder}", "${dataPath}"] },
+			{ workspaceFolder: "C:\\Program Files\\My Project", dataPath: "D:\\data" },
 		)
-		loggerWarnSpy.mockRestore()
+
+		expect(result).toEqual({ args: ["C:/Program Files/My Project", "D:/data"] })
 	})
 
-	it("should use default empty string for missing env variables if notFoundValue is not provided", async () => {
-		const loggerWarnSpy = vitest.spyOn(logger, "warn").mockImplementation(() => {})
-		const configString = "Missing: ${env:ANOTHER_MISSING}"
-		const expectedString = "Missing: "
-		const result = await injectVariablesWithEnv(configString)
-		expect(result).toBe(expectedString)
-		expect(loggerWarnSpy).toHaveBeenCalledWith(
-			`[injectVariables] variable "ANOTHER_MISSING" referenced but not found in "env"`,
+	it("warns about a missing nested variable", async () => {
+		await injectVariables("${env:MISSING}", { env })
+
+		expect(logger.warn).toHaveBeenCalledWith(
+			'[injectVariables] variable "MISSING" referenced but not found in "env"',
 		)
-		loggerWarnSpy.mockRestore()
 	})
 
-	it("should handle strings without env variables", async () => {
-		const configString = "Just a regular string"
-		const result = await injectVariablesWithEnv(configString)
-		expect(result).toBe(configString)
+	it("returns an empty object unchanged", async () => {
+		expect(await injectVariables({}, { env })).toEqual({})
 	})
-
-	it("should handle objects without env variables", async () => {
-		const configObject = { key: "value", number: 123 }
-		const result = await injectVariablesWithEnv(configObject)
-		expect(result).toEqual(configObject)
-	})
-
-	it("should not mutate the original object", async () => {
-		process.env.MUTATE_TEST = "mutated"
-		const originalObject = { value: "${env:MUTATE_TEST}" }
-		const copyOfOriginal = { ...originalObject } // Shallow copy for comparison
-		await injectVariablesWithEnv(originalObject)
-		expect(originalObject).toEqual(copyOfOriginal) // Check if the original object remains unchanged
-	})
-
-	it("should handle empty string input", async () => {
-		const result = await injectVariablesWithEnv("")
-		expect(result).toBe("")
-	})
-
-	it("should handle empty object input", async () => {
-		const result = await injectVariablesWithEnv({})
-		expect(result).toEqual({})
-	})
-})
-
-describe("injectVariables", () => {
-	it("should replace singular variable", async () => {
-		const result = await injectVariables("Hello ${v}", { v: "Hola" })
-		expect(result).toEqual("Hello Hola")
-	})
-
-	it("should handle undefined singular variable input", async () => {
-		const result = await injectVariables("Hello ${v}", { v: undefined })
-		expect(result).toEqual("Hello ${v}")
-	})
-
-	it("should handle empty string singular variable input", async () => {
-		const result = await injectVariables("Hello ${v}", { v: "" })
-		expect(result).toEqual("Hello ")
-	})
-
-	it("should normalize Windows paths with backslashes to use forward slashes in JSON objects", async () => {
-		const config = {
-			command: "mcp-server",
-			args: ["${workspaceFolder}"],
-		}
-		const result = await injectVariables(config, { workspaceFolder: "C:\\Users\\project" })
-		expect(result).toEqual({
-			command: "mcp-server",
-			args: ["C:/Users/project"],
-		})
-	})
-
-	it("should handle complex Windows paths in nested objects", async () => {
-		const config = {
-			servers: {
-				git: {
-					command: "node",
-					args: ["${workspaceFolder}\\scripts\\mcp.js", "${workspaceFolder}\\data"],
-				},
-			},
-		}
-		const result = await injectVariables(config, { workspaceFolder: "C:\\Program Files\\My Project" })
-		expect(result).toEqual({
-			servers: {
-				git: {
-					command: "node",
-					args: ["C:/Program Files/My Project\\scripts\\mcp.js", "C:/Program Files/My Project\\data"],
-				},
-			},
-		})
-	})
-
-	it("should handle Windows paths when entire path is a variable", async () => {
-		const config = {
-			servers: {
-				git: {
-					command: "node",
-					args: ["${scriptPath}", "${dataPath}"],
-				},
-			},
-		}
-		const result = await injectVariables(config, {
-			scriptPath: "C:\\Program Files\\My Project\\scripts\\mcp.js",
-			dataPath: "C:\\Program Files\\My Project\\data",
-		})
-		expect(result).toEqual({
-			servers: {
-				git: {
-					command: "node",
-					args: ["C:/Program Files/My Project/scripts/mcp.js", "C:/Program Files/My Project/data"],
-				},
-			},
-		})
-	})
-
-	it("should normalize backslashes in plain string replacements", async () => {
-		const result = await injectVariables("Path: ${path}", { path: "C:\\Users\\test" })
-		expect(result).toEqual("Path: C:/Users/test")
-	})
-
-	it("should handle paths with mixed slashes", async () => {
-		const config = {
-			path: "${testPath}",
-		}
-		const result = await injectVariables(config, { testPath: "C:\\Users/test/mixed\\path" })
-		expect(result).toEqual({
-			path: "C:/Users/test/mixed/path",
-		})
-	})
-
-	it("should not affect non-path strings", async () => {
-		const config = {
-			message: "This is a string with a backslash \\ and a value: ${myValue}",
-		}
-		const result = await injectVariables(config, { myValue: "test" })
-		expect(result).toEqual({
-			message: "This is a string with a backslash \\ and a value: test",
-		})
-	})
-
-	it("should handle various non-path variables correctly", async () => {
-		const config = {
-			apiKey: "${key}",
-			url: "${endpoint}",
-			port: "${port}",
-			enabled: "${enabled}",
-			description: "${desc}",
-		}
-		const result = await injectVariables(config, {
-			key: "sk-1234567890abcdef",
-			endpoint: "https://api.example.com",
-			port: "8080",
-			enabled: "true",
-			desc: "This is a description with special chars: @#$%^&*()",
-		})
-		expect(result).toEqual({
-			apiKey: "sk-1234567890abcdef",
-			url: "https://api.example.com",
-			port: "8080",
-			enabled: "true",
-			description: "This is a description with special chars: @#$%^&*()",
-		})
-	})
-
-	// Variable maps are already tested by the injectVariables tests above.
 })
