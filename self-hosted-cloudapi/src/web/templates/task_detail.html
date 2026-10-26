@@ -31,6 +31,16 @@
   </div>
   {% if workspace %}<div class="detail-workspace" title="{{ workspace }}"><span aria-hidden="true">📁</span> {{ workspace }}</div>{% endif %}
   {% if client_label %}<div class="detail-workspace detail-client">Client: {{ client_label }}</div>{% endif %}
+  {% if task.project_id %}
+  {# Recall reaches this session only when its project allows it (Settings, Projects). #}
+  <form class="detail-workspace detail-recall" method="post" action="/app/tasks/{{ task.id }}/recall">
+    {% if task.recall_excluded %}
+    Kept out of recall. <button class="btn ghost small" type="submit">Let recall find it</button>
+    {% else %}
+    Recall may find this session. <button class="btn ghost small" type="submit">Keep it out of recall</button>
+    {% endif %}
+  </form>
+  {% endif %}
   {% if models %}
   {# What answered. A run is not necessarily one model, so each is named with
      the modes it ran in and how many requests it took — the same figures the

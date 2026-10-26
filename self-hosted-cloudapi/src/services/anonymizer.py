@@ -673,3 +673,8 @@ class Anonymizer:
         ]
         rows.sort(key=lambda row: (row["category"], -row["count"], row["original"]))
         return rows
+
+
+def redact_secrets(text: str) -> str:
+    """Rule 1 alone: the secrets of ``text`` replaced, nothing else touched."""
+    return Anonymizer()._secrets(text)

@@ -20,6 +20,7 @@ from src.middleware.cors import setup_cors
 from src.middleware.csrf import CsrfOriginMiddleware
 from src.middleware.request_logging import RequestLoggingMiddleware
 from src.middleware.rate_limit import limiter
+from src.services.recall_cards import run_recall_loop
 from src.routers import (
     auth,
     extension,
@@ -109,13 +110,17 @@ async def lifespan(app: FastAPI):
 
         sweeper = asyncio.create_task(run_retention_loop())
 
+    card_builder = asyncio.create_task(run_recall_loop())
+
     yield
 
     # Shutdown
-    if sweeper is not None:
-        sweeper.cancel()
+    for loop_task in (sweeper, card_builder):
+        if loop_task is None:
+            continue
+        loop_task.cancel()
         try:
-            await sweeper
+            await loop_task
         except asyncio.CancelledError:
             pass
     if settings.bridge_enabled:
