@@ -301,3 +301,23 @@ reader may not see (the same answer as for an unknown one); 400 for an empty or 
   org on backfill, the case-insensitive e-mail match.
 - Relied on, not changed: switching the organization in the extension re-runs the session state machine, which
   stops and restarts the bridge with a token for the new organization.
+
+### Phase 3 of the stack: projects (`feat/recall-projects`)
+
+- `models/project.py`: `projects` (unique `tenant_id` + `key`; `tenant_id` is the organization id or the user id, so
+  one unique index serves both kinds of space) and `project_bindings` (unique user + tenant + folder);
+  `tasks.project_id` (named key `fk_tasks_project_id` for the downgrade). Migration `b0c1d2e3f4a5`.
+- `services/projects.resolve_project` runs on `extension:register` (a failure is logged, never breaks the
+  registration) and on `GET /api/recall/context`. Both inserts use `ON CONFLICT DO NOTHING` and read the winner
+  back, so a register and a context call racing on a new folder bind it once.
+- A new task row takes its folder's project (`telemetry_service._stamp_project`, once, on creation, from both
+  the bridge and the backfill); a folder bound later claims its earlier tasks of the same tenant.
+- Sharing a folder without git: merge the folder projects on `/app/projects`; there is no per-folder rebind.
+- `/app/projects` under Settings lists the personal space and each organization. The owner manages a personal
+  project, admins an organization's; others see the scope read-only and get 404 on the forms. A personal project
+  offers Off / Only this project / All my projects (stored `none` / `owner` / `organization`).
+- Phone layout: the space heading is a flex row and did not wrap an unbroken organization name; a `select` is as
+  wide as its longest option. Both caught by `test_phone_layout.py` with seeded long names.
+- Tests: `test_projects.py` (14). Mutations checked red: the binding taking precedence (no orphan project), the
+  tenant condition when claiming earlier tasks, stamping on backfill, the admin check, the personal scope list,
+  the same-tenant merge rule, case folding of the key, binding on register.

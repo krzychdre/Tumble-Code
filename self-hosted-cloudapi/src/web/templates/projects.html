@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Projects · Tumble Code{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">Projects</h1>
+</div>
+
+{% if error %}<div class="notice" role="alert">{{ error }}</div>{% endif %}
+
+<p class="settings-lead">
+  A project is a git repository, or a folder without git. Every clone and worktree of a repository is one project.
+  Recall lets Tumble Code look up earlier sessions; it is off until you choose who it may reach.
+</p>
+
+{% for t in tenants %}
+<section class="panel settings-panel" aria-labelledby="space-{{ loop.index }}">
+  <h2 class="chart-title project-space" id="space-{{ loop.index }}">{{ t.title }}</h2>
+  {% if not t.projects %}
+  <p class="settings-lead">No projects yet. A project appears when Tumble Code opens a folder while signed in{{ '' if t.is_personal else ' to this organization' }}.</p>
+  {% endif %}
+  {% for v in t.projects %}
+  {% set p = v.project %}
+  <div class="project-item">
+    <h3 class="project-name">{{ p.name }}</h3>
+    <p class="settings-meta">
+      {{ v.task_count }} session{{ '' if v.task_count == 1 else 's' }} ·
+      {% if p.key.startswith('folder:') %}folder without git{% else %}{{ p.key }}{% endif %}
+    </p>
+    {% if v.folders %}
+    <details class="project-folders">
+      <summary>{{ v.folders|length }} folder{{ '' if v.folders|length == 1 else 's' }}</summary>
+      <ul>
+        {% for f in v.folders %}<li><code>{{ f.path }}</code>{% if not t.is_personal %} · {{ f.email }}{% endif %}</li>{% endfor %}
+      </ul>
+    </details>
+    {% endif %}
+    {% if t.can_manage %}
+    <form method="post" action="/app/projects/{{ p.id }}" class="settings-form">
+      <div class="field-grid">
+        <label class="field">
+          <span class="field-label">Name</span>
+          <span class="field-input"><input type="text" name="name" value="{{ p.name }}" required maxlength="{{ name_max }}"></span>
+        </label>
+        <label class="field">
+          <span class="field-label">Recall</span>
+          <span class="field-input">
+            <select name="scope">
+              {% for value, label in t.scopes.items() %}<option value="{{ value }}"{{ ' selected' if value == p.recall_scope }}>{{ label }}</option>{% endfor %}
+            </select>
+          </span>
+        </label>
+      </div>
+      <div class="settings-actions"><button class="btn" type="submit">Save</button></div>
+    </form>
+    {% if t.projects|length > 1 %}
+    <form method="post" action="/app/projects/{{ p.id }}/merge" class="settings-actions"
+          data-confirm="Merge {{ p.name }} into the chosen project? Its folders and sessions move there.">
+      <label class="field field-inline">
+        <span class="field-label">Merge into</span>
+        <span class="field-input">
+          <select name="into">
+            {% for other in t.projects if other.project.id != p.id %}<option value="{{ other.project.id }}">{{ other.project.name }}</option>{% endfor %}
+          </select>
+        </span>
+      </label>
+      <button class="btn" type="submit">Merge</button>
+    </form>
+    {% endif %}
+    {% else %}
+    <p class="settings-meta">Recall: {{ t.scopes.get(p.recall_scope, p.recall_scope) }}</p>
+    {% endif %}
+  </div>
+  {% endfor %}
+  {% if t.is_personal %}
+  <p class="field-hint">"Only this project": earlier sessions of the same project. "All my projects": every personal project set to "All my projects" can reach the others.</p>
+  {% else %}
+  <p class="field-hint">"Whole organization": every project of {{ t.title }} set to "Whole organization" can reach the others. Only admins change these settings.</p>
+  {% endif %}
+</section>
+{% endfor %}
+{% endblock %}

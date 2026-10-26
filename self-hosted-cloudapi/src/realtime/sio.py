@@ -26,6 +26,7 @@ from src.auth.network_access import client_allowed, scope_client
 from src.auth.origins import is_trusted_origin
 from src.auth.web_session import COOKIE_NAME, resolve_web_user
 from src.database import async_session_factory
+from src.services.projects import resolve_project
 from src.services.task_access import task_owner
 from src.services.telemetry_service import upsert_task_message
 from src.realtime.hub import registry
@@ -182,10 +183,28 @@ async def on_extension_register(sid, data):
     meta = registry.meta(sid)
     if not meta or meta["role"] != "extension":
         return {"success": False, "error": "not an extension socket"}
-    registry.register_extension(
-        sid, meta["user_id"], data if isinstance(data, dict) else {}
-    )
+    instance = data if isinstance(data, dict) else {}
+    registry.register_extension(sid, meta["user_id"], instance)
+    if instance.get("workspacePath"):
+        await _bind_folder(meta, instance)
     return {"success": True}
+
+
+async def _bind_folder(meta, instance: dict) -> None:
+    """Resolve the window's folder to its project, binding it on first sight
+    (services/projects), so the tasks it streams get their project."""
+    try:
+        async with async_session_factory() as db:
+            await resolve_project(
+                db,
+                meta["user_id"],
+                meta["org_id"],
+                instance["workspacePath"],
+                instance.get("repositoryUrl") or "",
+            )
+            await db.commit()
+    except Exception as exc:  # a binding must never break the registration
+        logger.warning("[bridge] failed to bind the window's folder: %s", exc)
 
 
 @sio.on(EXT_HEARTBEAT)

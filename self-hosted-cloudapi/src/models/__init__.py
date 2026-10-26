@@ -3,6 +3,7 @@
 from src.models.base import Base, TimestampMixin
 from src.models.user import User, Session, ClientToken, Ticket
 from src.models.organization import Organization, Membership
+from src.models.project import Project, ProjectBinding
 from src.models.settings import OrganizationSettings, UserSettings
 from src.models.task import Task, TaskImage, TaskMessage, TaskShare
 from src.models.relation import TaskRelation
@@ -21,6 +22,8 @@ __all__ = [
     "Ticket",
     "Organization",
     "Membership",
+    "Project",
+    "ProjectBinding",
     "OrganizationSettings",
     "UserSettings",
     "Task",
