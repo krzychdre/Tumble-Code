@@ -8,7 +8,7 @@
    travel together and none of them is silently dropped. #}
 {% macro chip_list(view) -%}
 <ul class="filter-chips" aria-label="Active filters">
-  {% for c in view.chips() %}
+  {% for c in view.chips(only_label) %}
   <li><a class="filter-chip" href="{{ c.href }}" aria-label="Remove filter {{ c.label }}{% if c.value %}: {{ c.value }}{% endif %}">{{ c.label }}{% if c.value %}: <b>{{ c.value }}</b>{% endif %} <span class="filter-chip-x" aria-hidden="true">✕</span></a></li>
   {% endfor %}
   <li><a class="filter-chip-clear" href="{{ view.cleared_url() }}">Clear all</a></li>
@@ -20,12 +20,88 @@
 {%- set how = view.sorted_as(key) -%}
 <span class="head-sort{{ ' sorted' if how else '' }}"><a class="sort-link" href="{{ view.sort_url(key) }}">{{ label }}<span class="sr-only">{% if how %}, sorted {{ how }}{% endif %}</span>{% if how %}<span class="sort-arrow" aria-hidden="true">{{ '↑' if how == 'ascending' else '↓' }}</span>{% endif %}</a></span>
 {%- endmacro %}
+{# One task row, and recursively the subtasks nested under it. Shared by the
+   plain list and every group. #}
+{% macro task_rows(rows) -%}
+    {# Recursive: a subtask renders the same row as a run, one level deeper,
+       with its own subtasks nested under it in turn. Collapsed by default so
+       the page still scans as a list of runs. #}
+    {% for t in rows recursive %}
+    <li class="task-node">
+    <div class="task-item{{ ' is-subtask' if t.is_subtask else '' }}"{% if tree_view %} style="--depth: {{ loop.depth0 }}"{% endif %}>
+      <label class="task-check">
+        <input type="checkbox" name="task_ids" value="{{ t.id }}"
+               data-child-count="{{ t.descendant_count }}"
+               aria-label="Select “{{ t.title }}”">
+      </label>
+      {% if tree_view %}
+      {# The gutter widens with depth, which is what indents a subtask. The
+         figure columns are fixed tracks anchored at the right, so they still
+         line up with the rows above. #}
+      <span class="tree-gutter">
+        {% if t.children %}
+        <button type="button" class="tree-toggle" aria-expanded="false" aria-controls="subtree-{{ t.id }}"
+                aria-label="Subtasks of “{{ t.title }}” ({{ t.child_count }})"></button>
+        {% endif %}
+      </span>
+      {% endif %}
+      {#
+        Fixed grid, not a flex row: every cell is emitted even when empty, so the
+        numbers line up into scannable columns down the whole page. A row that
+        simply omits an absent value would shift every figure after it.
+      #}
+      {# Attribute omitted rather than empty when there is nothing to say: a
+         bare `title="{{ … }}"` renders the string "None" for a task with no
+         prompt and no figures. #}
+      <a class="task-link" href="/app/tasks/{{ t.id }}"{% if t.hover_title %} title="{{ t.hover_title }}"{% endif %}>
+        {# The title takes the free width; where the work happened and what
+           did it ride on a second line under it, so neither costs the title
+           a column. #}
+        <span class="cell-main">
+          <span class="cell-title">{% if t.is_subtask and not tree_view %}<span class="subtask-mark" title="Subtask of another run">↳</span>{% endif %}{{ t.title }}{% if t.child_count %}<span class="child-count" title="{{ t.child_count }} subtask{{ '' if t.child_count == 1 else 's' }}">{{ t.child_count }}</span>{% endif %}</span>
+          <span class="cell-meta">
+            {#- Inside a group the badge would repeat its header. #}
+            {%- if t.workspace_label and not (groups and view.group == 'project') %}<span class="badge badge-workspace" title="{{ t.workspace }}">{{ t.workspace_label }}</span>{% endif -%}
+            {#- VS Code is what nearly every row is, so only the CLI is marked. #}
+            {%- if t.client == 'cli' %}<span class="badge badge-client" title="Ran in the CLI">CLI</span>{% endif -%}
+            {%- if t.models and not (groups and view.group == 'model' and t.models.count == 1) %}<span class="badge badge-model" title="{{ t.models.title }}"><span class="badge-name">{{ t.models.name }}</span>{% if t.models.more %}<span class="badge-more">{{ t.models.more }}</span>{% endif %}</span>{% endif -%}
+          </span>
+        </span>
+        <span class="cell-num">{{ t.message_count }}<span class="unit">msg</span></span>
+        <span class="cell-num">{{ t.duration or '' }}</span>
+        {{ spend.cells(t) }}
+        <span class="cell-grade"><span class="grade grade-{{ t.grade }}" title="{{ t.grade_title }}">{{ t.grade_label }}</span></span>
+        <span class="cell-date"{% if t.updated_at %} title="{{ t.updated_at | localtime }}"{% endif %}>{{ t.updated_at | localtime(false) }}</span>
+      </a>
+      <div class="task-delete">
+        <button class="btn ghost small icon-btn btn-delete" type="submit" formaction="/app/tasks/{{ t.id }}/delete"
+                title="Delete task" aria-label="Delete “{{ t.title }}”"
+                data-confirm="Delete “{{ t.title }}” and its conversation permanently? This cannot be undone."><svg class="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2.5 4.5h11M6.5 4.5V3h3v1.5M4 4.5l.6 8.5h6.8l.6-8.5M6.75 7v3.5M9.25 7v3.5"/></svg></button>
+      </div>
+    </div>
+    {% if t.children %}
+    <ul class="task-children" id="subtree-{{ t.id }}" hidden>
+      {{ loop(t.children) }}
+    </ul>
+    {% endif %}
+    </li>
+    {% endfor %}
+{%- endmacro %}
 <div class="list-head">
   {# The pill counts the rows of this view, so it names them: under "Runs" a
      run is a top-level task with its subtasks folded in, fewer than "All". #}
   {%- set unit = ('run' if scope == 'roots' else 'task') ~ ('' if total == 1 else 's') %}
-  <h1 class="page-title">Your tasks<span id="list-count" data-swap>{% if total %} <span class="count-pill">{{ total }} {{ unit }}</span>{% endif %}</span></h1>
+  <h1 class="page-title">Your tasks<span id="list-count" data-swap>{% if total %} <span class="count-pill">{{ total }} {{ unit }}{% if view.grouped %} · {{ group_count }} {{ group_unit }}{{ '' if group_count == 1 else 's' }}{% endif %}</span>{% endif %}</span></h1>
   <div class="list-tools">
+    {# One header per project (or model, or user) with its totals; "None" is
+       the plain list. #}
+    <span class="group-control-label" id="group-label">Group</span>
+    <nav class="scope-control" id="group-control" data-swap aria-labelledby="group-label">
+      {% for key, label in (('project', 'Project'), ('model', 'Model'), ('user', 'User'), ('none', 'None')) %}
+      <a class="scope-opt{{ ' active' if view.group == key else '' }}"
+         href="{{ view.group_url(key) }}"{% if view.group == key %} aria-current="true"{% endif %}>{{ label }}</a>
+      {% endfor %}
+    </nav>
     {# Subtasks sit under the run that spawned them, as a tree folded shut by
        default; the flat list is one click away. #}
     <nav class="scope-control" id="scope-control" data-swap aria-label="Which tasks to list">
@@ -87,7 +163,7 @@
 <p id="list-status" class="sr-only" role="status" aria-live="polite"></p>
 
 <div id="task-results" class="task-results" data-swap>
-{% if tasks %}
+{% if tasks or groups %}
 {% if view.has_filters %}{{ chip_list(view) }}{% endif %}
 {# One form wraps the whole list, so the checkboxes, the per-row delete and the
    bulk action are all the same submission and nothing has to be mirrored into
@@ -112,8 +188,8 @@
       <span>Select page</span>
     </label>
     <span class="spacer"></span>
-    {% if tree_view %}
-    {# Revealed by tasklist.js only when some run on the page has subtasks. #}
+    {% if tree_view or groups %}
+    {# Revealed by tasklist.js only when the page has a subtree or a group. #}
     <button type="button" class="tree-expand-all" id="tree-expand-all" hidden>Expand all</button>
     {% endif %}
     {# A preference, kept in localStorage by tasklist.js, which reveals it. #}
@@ -143,70 +219,37 @@
      and the toggles that could not work are not. #}
   <noscript><link rel="stylesheet" href="/static/noscript.css?v={{ asset_v }}"></noscript>
 
-  <ul class="task-list">
-    {# Recursive: a subtask renders the same row as a run, one level deeper,
-       with its own subtasks nested under it in turn. Collapsed by default so
-       the page still scans as a list of runs. #}
-    {% for t in tasks recursive %}
-    <li class="task-node">
-    <div class="task-item{{ ' is-subtask' if t.is_subtask else '' }}"{% if tree_view %} style="--depth: {{ loop.depth0 }}"{% endif %}>
-      <label class="task-check">
-        <input type="checkbox" name="task_ids" value="{{ t.id }}"
-               data-child-count="{{ t.descendant_count }}"
-               aria-label="Select “{{ t.title }}”">
-      </label>
-      {% if tree_view %}
-      {# The gutter widens with depth, which is what indents a subtask. The
-         figure columns are fixed tracks anchored at the right, so they still
-         line up with the rows above. #}
-      <span class="tree-gutter">
-        {% if t.children %}
-        <button type="button" class="tree-toggle" aria-expanded="false" aria-controls="subtree-{{ t.id }}"
-                aria-label="Subtasks of “{{ t.title }}” ({{ t.child_count }})"></button>
-        {% endif %}
+  {% if groups %}
+  {%- set row_unit = 'run' if scope == 'roots' else 'task' %}
+  {# A header per group on the same tracks as the rows: the group's totals sit
+     under the column labels. The first group in the current sort starts open. #}
+  {% for g in groups %}
+  <details class="task-group"{% if loop.first %} open{% endif %}>
+    <summary class="group-head">
+      <span class="head-check group-chev" aria-hidden="true"></span>
+      {% if tree_view %}<span class="tree-gutter" aria-hidden="true"></span>{% endif %}
+      <span class="group-cells">
+        <span class="group-name"><span class="group-label" title="{{ g.sub or g.label }}">{{ g.label }}</span><span class="group-count">{{ g.count }} {{ row_unit }}{{ '' if g.count == 1 else 's' }}</span>{% if g.sub %}<span class="group-sub">{{ g.sub }}</span>{% endif %}</span>
+        <span class="cell-num">{{ g.messages }}<span class="unit">msg</span></span>
+        <span class="cell-num"></span>
+        <span class="cell-num">{% if g.tokens %}<span class="rollup-mark">Σ</span>{{ g.tokens }}<span class="unit">tok</span>{% endif %}</span>
+        <span class="cell-num cell-cost">{% if g.cost %}<span class="rollup-mark">Σ</span>{{ g.cost }}{% endif %}</span>
+        <span class="cell-grade"></span>
+        <span class="cell-date" title="{{ g.updated | localtime }}">{{ g.updated | localtime(false) }}</span>
       </span>
-      {% endif %}
-      {#
-        Fixed grid, not a flex row: every cell is emitted even when empty, so the
-        numbers line up into scannable columns down the whole page. A row that
-        simply omits an absent value would shift every figure after it.
-      #}
-      {# Attribute omitted rather than empty when there is nothing to say: a
-         bare `title="{{ … }}"` renders the string "None" for a task with no
-         prompt and no figures. #}
-      <a class="task-link" href="/app/tasks/{{ t.id }}"{% if t.hover_title %} title="{{ t.hover_title }}"{% endif %}>
-        {# The title takes the free width; where the work happened and what
-           did it ride on a second line under it, so neither costs the title
-           a column. #}
-        <span class="cell-main">
-          <span class="cell-title">{% if t.is_subtask and not tree_view %}<span class="subtask-mark" title="Subtask of another run">↳</span>{% endif %}{{ t.title }}{% if t.child_count %}<span class="child-count" title="{{ t.child_count }} subtask{{ '' if t.child_count == 1 else 's' }}">{{ t.child_count }}</span>{% endif %}</span>
-          <span class="cell-meta">
-            {%- if t.workspace_label %}<span class="badge badge-workspace" title="{{ t.workspace }}">{{ t.workspace_label }}</span>{% endif -%}
-            {#- VS Code is what nearly every row is, so only the CLI is marked. #}
-            {%- if t.client == 'cli' %}<span class="badge badge-client" title="Ran in the CLI">CLI</span>{% endif -%}
-            {%- if t.models %}<span class="badge badge-model" title="{{ t.models.title }}"><span class="badge-name">{{ t.models.name }}</span>{% if t.models.more %}<span class="badge-more">{{ t.models.more }}</span>{% endif %}</span>{% endif -%}
-          </span>
-        </span>
-        <span class="cell-num">{{ t.message_count }}<span class="unit">msg</span></span>
-        <span class="cell-num">{{ t.duration or '' }}</span>
-        {{ spend.cells(t) }}
-        <span class="cell-grade"><span class="grade grade-{{ t.grade }}" title="{{ t.grade_title }}">{{ t.grade_label }}</span></span>
-        <span class="cell-date"{% if t.updated_at %} title="{{ t.updated_at | localtime }}"{% endif %}>{{ t.updated_at | localtime(false) }}</span>
-      </a>
-      <div class="task-delete">
-        <button class="btn ghost small icon-btn btn-delete" type="submit" formaction="/app/tasks/{{ t.id }}/delete"
-                title="Delete task" aria-label="Delete “{{ t.title }}”"
-                data-confirm="Delete “{{ t.title }}” and its conversation permanently? This cannot be undone."><svg class="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2.5 4.5h11M6.5 4.5V3h3v1.5M4 4.5l.6 8.5h6.8l.6-8.5M6.75 7v3.5M9.25 7v3.5"/></svg></button>
-      </div>
-    </div>
-    {% if t.children %}
-    <ul class="task-children" id="subtree-{{ t.id }}" hidden>
-      {{ loop(t.children) }}
+      <span class="task-delete head-spacer" aria-hidden="true"><span class="btn ghost small icon-btn btn-delete"></span></span>
+    </summary>
+    <ul class="task-list">
+    {{ task_rows(g.rows) }}
     </ul>
-    {% endif %}
-    </li>
-    {% endfor %}
+    {% if g.more_url %}<a class="group-more" href="{{ g.more_url }}">Show all {{ g.count }} {{ row_unit }}s in {{ g.label }} →</a>{% endif %}
+  </details>
+  {% endfor %}
+  {% else %}
+  <ul class="task-list">
+    {{ task_rows(tasks) }}
   </ul>
+  {% endif %}
 
   {# Appears only once something is selected, and states exactly what will go. #}
   <div id="bulk-bar" class="bulk-bar" hidden>

@@ -84,12 +84,12 @@
 			return toArray(form.querySelectorAll('input[name="task_ids"]'))
 		}
 
-		// The rows a reader can see: not inside a folded subtree. "Select page" and
-		// shift-click ranges act on these only: a range dragged across a folded run
-		// must not quietly pick up subtasks nobody looked at.
+		// The rows a reader can see: not inside a folded subtree or a closed group.
+		// "Select page" and shift-click ranges act on these only: a range dragged
+		// across a folded run must not quietly pick up subtasks nobody looked at.
 		function visibleBoxes() {
 			return boxes().filter(function (b) {
-				return !b.closest(".task-children[hidden]")
+				return !b.closest(".task-children[hidden]") && !b.closest(".task-group:not([open])")
 			})
 		}
 
@@ -211,14 +211,25 @@
 			toggle.setAttribute("aria-expanded", open ? "true" : "false")
 		}
 
+		function groups() {
+			return toArray(form.querySelectorAll(".task-group"))
+		}
+
 		function allOpen() {
 			var all = toggles()
-			return all.length > 0 && all.every(isOpen)
+			var folds = groups()
+			return (
+				all.length + folds.length > 0 &&
+				all.every(isOpen) &&
+				folds.every(function (g) {
+					return g.open
+				})
+			)
 		}
 
 		function refreshExpandAll() {
 			if (!expandAll) return
-			expandAll.hidden = toggles().length === 0
+			expandAll.hidden = toggles().length === 0 && groups().length === 0
 			expandAll.textContent = allOpen() ? "Collapse all" : "Expand all"
 		}
 
@@ -237,10 +248,23 @@
 				toggles().forEach(function (t) {
 					setOpen(t, open)
 				})
+				groups().forEach(function (g) {
+					g.open = open
+				})
 				refreshExpandAll()
 				refresh()
 			})
 		}
+
+		// "toggle" does not bubble, so it is caught on the way down.
+		form.addEventListener(
+			"toggle",
+			function () {
+				refreshExpandAll()
+				refresh()
+			},
+			true,
+		)
 
 		refreshExpandAll()
 

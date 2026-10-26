@@ -640,6 +640,106 @@ textarea::placeholder {
 	font-weight: 600;
 }
 
+.group-control-label {
+	font-family: var(--mono);
+	font-size: var(--t-label);
+	text-transform: uppercase;
+	letter-spacing: var(--track-caps);
+	color: var(--text-faint);
+}
+
+/* A group of the task list: a header row on the row tracks, so the group's
+   totals stand under the column labels, and the group's first tasks below. */
+.task-group {
+	border-bottom: 1px solid var(--line);
+}
+.group-head {
+	display: flex;
+	align-items: stretch;
+	list-style: none;
+	cursor: pointer;
+	background: var(--surface-1);
+}
+.group-head::-webkit-details-marker {
+	display: none;
+}
+.group-head:hover {
+	background: var(--surface-2);
+}
+.group-chev {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--text-faint);
+}
+.group-chev::before {
+	content: "▶";
+	font-size: var(--t-tick);
+	transition: transform 0.12s ease;
+}
+.task-group[open] > .group-head .group-chev::before {
+	transform: rotate(90deg);
+}
+.group-cells {
+	flex: 1;
+	min-width: 0;
+	display: grid;
+	grid-template-columns: var(--task-cols);
+	align-items: center;
+	gap: var(--s3);
+	padding: var(--s2) var(--s3) var(--s2) var(--s4);
+}
+.group-name {
+	display: flex;
+	align-items: baseline;
+	gap: var(--s2);
+	min-width: 0;
+}
+.group-label {
+	min-width: 0;
+	color: var(--text);
+	font-size: var(--t-row);
+	font-weight: 650;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.group-count {
+	flex: none;
+	font-family: var(--mono);
+	font-size: var(--t-label);
+	color: var(--text-dim);
+	border: 1px solid var(--line);
+	border-radius: var(--r-pill);
+	padding: 0 var(--s2);
+	white-space: nowrap;
+}
+.group-sub {
+	flex-shrink: 2;
+	min-width: 0;
+	font-family: var(--mono);
+	font-size: var(--t-label);
+	color: var(--text-faint);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.group-cells .cell-num {
+	color: var(--text-dim);
+}
+.group-cells .cell-cost {
+	color: var(--d-cost);
+}
+.task-group .task-list {
+	border-top: none;
+}
+.group-more {
+	display: block;
+	padding: var(--s2) var(--s4) var(--s3) calc(var(--s4) + 2.25rem);
+	font-family: var(--mono);
+	font-size: var(--t-micro);
+}
+
 /* A subtask in the flat list: marked, and set back from the run rows so the
    two kinds are distinguishable without reading. */
 .subtask-mark {
@@ -881,7 +981,8 @@ textarea::placeholder {
    a long worktree name or local model id can still not eat the title: each
    badge is capped and truncates on its own, the full value in its tooltip. */
 .task-link,
-.task-head-cells {
+.task-head-cells,
+.group-cells {
 	/* Cost is 6rem: "Σ $1234.5678" ran 10px into the grade at 5rem. */
 	--task-cols: minmax(0, 1fr) 4rem 4rem 5.5rem 6rem 6rem 7.5rem;
 }
@@ -3848,11 +3949,20 @@ table.diag-table th.diag-num {
 	   column that sized to it, set the width of the whole page: 738px of it for
 	   one long prompt on a 390px phone. */
 	.task-link,
-	.subtask-link {
+	.subtask-link,
+	.group-cells {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
 		gap: var(--s1) var(--s3);
+	}
+	.group-cells .group-name {
+		flex: 1 0 100%;
+		flex-wrap: wrap;
+	}
+	.group-cells > :empty,
+	.group-head .head-spacer {
+		display: none;
 	}
 	.task-link .cell-main,
 	.subtask-link .cell-title {
@@ -3883,7 +3993,7 @@ table.diag-table th.diag-num {
 	.task-head {
 		align-items: center;
 	}
-	.head-check,
+	.task-head .head-check,
 	.task-head .tree-gutter,
 	.head-spacer,
 	.head-label {

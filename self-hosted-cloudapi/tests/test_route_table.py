@@ -232,6 +232,8 @@ def test_web_routes_keep_their_openapi_operations():
                 ("page", "query", False),
                 ("q", "query", False),
                 ("scope", "query", False),
+                ("group", "query", False),
+                ("only", "query", False),
                 ("project", "query", False),
                 ("model", "query", False),
                 ("client", "query", False),
