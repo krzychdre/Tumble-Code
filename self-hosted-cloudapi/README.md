@@ -379,7 +379,8 @@ In short:
   extension is signed in, duplicates by id ignored, 1 MB limit), `GET /api/llm-exchanges/config`,
   `POST /api/llm-exchanges` and `POST /api/llm-exchanges/outcome` (LLM exchange recording for the training
   dataset: only when the user switched it on at `/app/dataset`; incremental, gzip, 32 MB limit).
-- Web panel: `/app` (task list, task pages, metrics, the problem report at `/app/diagnostics` with filters in the
+- Web panel: `/app` (task list, grouped by project, model or user with `group=` and narrowed to one group with
+  `only=`; task pages, metrics, the problem report at `/app/diagnostics` with filters in the
   query string, one report at `/app/diagnostics/reports/{id}`, and the agent brief as Markdown for the filtered
   list at `/app/diagnostics/report.md` and for one problem at `/app/diagnostics/problems/{key}/brief.md`,
   the dataset page at `/app/dataset` with the anonymized JSONL export, its audit and the full reconstruction of

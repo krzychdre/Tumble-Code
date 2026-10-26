@@ -996,8 +996,8 @@ async def test_task_list_is_paginated(client, db_session, session_factory):
 
     _override_web_user(client.app)
     try:
-        first = client.get("/app")
-        second = client.get("/app?page=2")
+        first = client.get("/app?group=none")
+        second = client.get("/app?group=none&page=2")
     finally:
         client.app.dependency_overrides.pop(get_web_user_optional, None)
 
@@ -1036,7 +1036,7 @@ async def test_pager_links_every_page_in_the_window(
 
     _override_web_user(client.app)
     try:
-        resp = client.get("/app")
+        resp = client.get("/app?group=none")
     finally:
         client.app.dependency_overrides.pop(get_web_user_optional, None)
 
@@ -1044,10 +1044,10 @@ async def test_pager_links_every_page_in_the_window(
     # The window around page 1, plus the far end, each as its own link.
     # (Built by ListView.url, so the "&" is entity-encoded like any other.)
     for n in (2, 3, 4, 5, 10):
-        assert f'href="/app?scope=roots&amp;page={n}"' in resp.text
+        assert f'href="/app?scope=roots&amp;group=none&amp;page={n}"' in resp.text
     # The page you are on is stated, not offered as a link to itself.
     assert 'aria-current="page"' in resp.text
-    assert 'href="/app?scope=roots&amp;page=1"' not in resp.text
+    assert 'href="/app?scope=roots&amp;group=none&amp;page=1"' not in resp.text
     # Pages 6..9 are elided rather than silently dropped.
     assert "pager-gap" in resp.text
 
@@ -1061,9 +1061,9 @@ async def test_pager_jump_box_appears_only_when_numbers_stop_covering_the_range(
 
     _override_web_user(client.app)
     try:
-        short = client.get("/app")
+        short = client.get("/app?group=none")
         await _seed_pages(session_factory, 12, prefix="task-m")  # now 10 pages
-        long = client.get("/app")
+        long = client.get("/app?group=none")
     finally:
         client.app.dependency_overrides.pop(get_web_user_optional, None)
 
@@ -1081,7 +1081,7 @@ async def test_pager_jumps_straight_to_a_far_page(
 
     _override_web_user(client.app)
     try:
-        resp = client.get("/app?page=7")
+        resp = client.get("/app?group=none&page=7")
     finally:
         client.app.dependency_overrides.pop(get_web_user_optional, None)
 
@@ -1102,8 +1102,8 @@ async def test_pager_out_of_range_lands_on_the_nearest_real_page(
 
     _override_web_user(client.app)
     try:
-        beyond = client.get("/app?page=999")
-        below = client.get("/app?page=0")
+        beyond = client.get("/app?group=none&page=999")
+        below = client.get("/app?group=none&page=0")
     finally:
         client.app.dependency_overrides.pop(get_web_user_optional, None)
 
@@ -1403,8 +1403,8 @@ async def test_run_view_nests_subtasks_under_their_run(
 
     _override_web_user(client.app)
     try:
-        roots = client.get("/app")
-        everything = client.get("/app?scope=all")
+        roots = client.get("/app?group=none")
+        everything = client.get("/app?scope=all&group=none")
     finally:
         client.app.dependency_overrides.pop(get_web_user_optional, None)
 

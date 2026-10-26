@@ -63,6 +63,8 @@ async def task_list(
     page: int = Query(1),
     q: str = Query("", max_length=200),
     scope: str = Query("roots"),
+    group: str = Query(""),
+    only: str = Query(""),
     # The rest of the view (web/presenters/task_list.ListView): read as plain
     # strings and normalized there, so a bad value is dropped, never a 422.
     project: str = Query(""),
@@ -89,11 +91,16 @@ async def task_list(
     fragments, and hiding them outright left no way to see a run's shape
     without opening it. ``scope=all`` restores the flat list.
 
+    ``group`` (project by default, model, user or none) folds the list into
+    one header per group; ``only`` narrows it to one group's tasks.
+
     Sorting (updated, cost, tokens, messages) and the filters are allow-listed
     GET parameters (``ListView``); the default is newest first.
     """
     view = ListView.parse(
         scope=scope,
+        group=group,
+        only=only,
         q=q,
         project=project,
         model=model,
@@ -115,7 +122,14 @@ async def task_list(
         scope=view.scope,
         # What the empty state tells the reader to point the extension at.
         api_url=settings.api_base_url,
-        **await list_page(web["db"], view, web["user"]["user_id"], web["zone"], page),
+        **await list_page(
+            web["db"],
+            view,
+            web["user"]["user_id"],
+            web["user"]["email"],
+            web["zone"],
+            page,
+        ),
     )
 
 
@@ -266,6 +280,8 @@ async def bulk_delete_tasks(
 
 _VIEW_FIELDS = (
     "scope",
+    "group",
+    "only",
     "q",
     "project",
     "model",

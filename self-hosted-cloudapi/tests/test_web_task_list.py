@@ -76,13 +76,15 @@ async def test_the_count_names_what_it_counts(client, db_session, session_factor
     def pill(html):
         return re.search(r'<span class="count-pill">([^<]*)</span>', html).group(1)
 
-    runs = _get(client, "/app").text
+    runs = _get(client, "/app", group="none").text
     assert pill(runs) == "2 runs"
     assert re.search(r">All 3</a>", runs)
-    assert pill(_get(client, "/app", scope="all").text) == "3 tasks"
+    assert pill(_get(client, "/app", scope="all", group="none").text) == "3 tasks"
     # One row, one noun.
-    assert pill(_get(client, "/app", q="Run A").text) == "1 run"
-    assert pill(_get(client, "/app", scope="all", q="Sub").text) == "1 task"
+    assert pill(_get(client, "/app", group="none", q="Run A").text) == "1 run"
+    assert (
+        pill(_get(client, "/app", scope="all", group="none", q="Sub").text) == "1 task"
+    )
 
 
 async def test_every_column_has_a_header(client, db_session, session_factory):
@@ -122,7 +124,7 @@ async def test_the_title_gets_the_free_width_and_project_and_model_ride_under_it
         session_factory, {"id": "t1", "title": "One", "workspace_path": "/home/a/proj"}
     )
 
-    html = _get(client, "/app").text
+    html = _get(client, "/app", group="none").text
 
     row = html[html.index('class="task-link"') :]
     row = row[: row.index("</a>")]
@@ -142,8 +144,9 @@ async def test_the_title_gets_the_free_width_and_project_and_model_ride_under_it
     cols = re.search(r"--task-cols:\s*([^;]+);", css).group(1).split()
     assert cols[0] == "minmax(0," and cols[1] == "1fr)"
     assert not any("fr" in c for c in cols[2:]), cols
-    # Head and rows share the one track list, so the labels stay over their columns.
-    assert css.count("grid-template-columns: var(--task-cols);") == 2
+    # Head, rows and group headers share the one track list, so the labels and
+    # the group totals stay over their columns.
+    assert css.count("grid-template-columns: var(--task-cols);") == 3
 
 
 async def test_sortable_headers_link_to_the_sorted_list(
@@ -329,17 +332,21 @@ async def test_pager_links_keep_the_sort_and_filters(
         ),
     )
 
-    html = _get(client, "/app", sort="cost", dir="asc", model="glm", page="2").text
+    html = _get(
+        client, "/app", group="none", sort="cost", dir="asc", model="glm", page="2"
+    ).text
     hrefs = _hrefs(html)
     for n in (1, 3, 4):
-        assert f"/app?scope=roots&page={n}&model=glm&sort=cost&dir=asc" in hrefs, n
+        assert (
+            f"/app?scope=roots&group=none&page={n}&model=glm&sort=cost&dir=asc" in hrefs
+        ), n
     # Page 2 of the cheapest-first list: tasks 2 and 3.
     assert _order(html) == ["t2", "t3"]
     # The compact pager a phone shows.
     assert re.search(r'class="pager-status"[^>]*>\s*2 / 5\s*<', html)
     # The jump form keeps them too (only rendered past the numbered window).
     monkeypatch.setattr(task_list, "PAGE_SIZE", 1)
-    jump = _get(client, "/app", sort="cost", dir="asc", model="glm").text
+    jump = _get(client, "/app", group="none", sort="cost", dir="asc", model="glm").text
     form = jump[jump.index('class="pager-jump"') :]
     form = form[: form.index("</form>")]
     assert 'name="sort" value="cost"' in form and 'name="model" value="glm"' in form
@@ -542,36 +549,56 @@ async def test_the_results_are_one_swappable_region(
     assert re.search(r'id="list-count"[^>]*data-swap', html)
 
 
+@pytest.mark.parametrize(
+    "params, hidden, location",
+    [
+        (
+            {"project": "beta", "sort": "cost", "dir": "asc", "q": "run"},
+            {
+                "scope": "roots",
+                "q": "run",
+                "project": "beta",
+                "sort": "cost",
+                "dir": "asc",
+            },
+            "/app?scope=roots&q=run&project=beta&sort=cost&dir=asc",
+        ),
+        # A narrowed group is part of the view too.
+        (
+            {"group": "model", "only": "glm-5.3", "sort": "cost", "dir": "asc"},
+            {
+                "scope": "roots",
+                "group": "model",
+                "only": "glm-5.3",
+                "sort": "cost",
+                "dir": "asc",
+            },
+            "/app?scope=roots&group=model&only=glm-5.3&sort=cost&dir=asc",
+        ),
+    ],
+)
 async def test_bulk_delete_returns_to_the_same_view(
-    client, db_session, session_factory
+    params, hidden, location, client, db_session, session_factory
 ):
     await _seed_user(db_session)
     await _seed_filterable(session_factory)
 
     _override_web_user(client.app)
     try:
-        page = client.get(
-            "/app", params={"project": "beta", "sort": "cost", "dir": "asc", "q": "run"}
-        ).text
+        page = client.get("/app", params=params).text
         form = page[page.index('id="bulk-form"') :]
-        hidden = dict(
+        found = dict(
             re.findall(
                 r'<input type="hidden" name="(\w+)" value="([^"]*)"',
                 form[: form.index("<ul")],
             )
         )
-        assert hidden == {
-            "scope": "roots",
-            "q": "run",
-            "project": "beta",
-            "sort": "cost",
-            "dir": "asc",
-        }
+        assert found == hidden
         resp = client.post(
             "/app/tasks/bulk-delete",
             data={
                 "task_ids": ["friction"],
-                **{k: unescape(v) for k, v in hidden.items()},
+                **{k: unescape(v) for k, v in found.items()},
             },
             follow_redirects=False,
         )
@@ -579,10 +606,7 @@ async def test_bulk_delete_returns_to_the_same_view(
         client.app.dependency_overrides.pop(get_web_user_optional, None)
 
     assert resp.status_code == 303
-    assert (
-        resp.headers["location"]
-        == "/app?scope=roots&q=run&project=beta&sort=cost&dir=asc"
-    )
+    assert resp.headers["location"] == location
 
 
 async def test_select_mode_and_density_controls_are_on_the_page(
@@ -600,3 +624,260 @@ async def test_select_mode_and_density_controls_are_on_the_page(
         r'<button type="button" id="density-toggle"[^>]*aria-pressed="false"[^>]*hidden',
         html,
     )
+
+
+# --- groups -------------------------------------------------------------------
+
+
+def _groups(html: str) -> list[dict]:
+    """The group headers in page order: label, header text (tags dropped), the
+    task ids under it (nested subtasks included) and its "Show all" link."""
+    out = []
+    for part in html.split('<details class="task-group"')[1:]:
+        part = part[: part.index("</details>")]
+        head = part[: part.index("</summary>")]
+        more = re.search(r'class="group-more" href="([^"]*)"', part)
+        out.append(
+            {
+                "label": re.search(r'class="group-label"[^>]*>([^<]*)<', head).group(1),
+                "text": " ".join(re.sub(r"<[^>]+>", " ", head).split()),
+                "ids": _order(part),
+                "more": unescape(more.group(1)) if more else None,
+                "html": part,
+            }
+        )
+    return out
+
+
+async def _seed_spend(session_factory):
+    """Three projects; alpha holds a run with a subtask, so its run total
+    differs from the sum of its rows' own figures."""
+    await _seed(
+        session_factory,
+        {
+            "id": "a1",
+            "title": "A1",
+            "workspace_path": "/w/alpha",
+            "cost": 0.1,
+            "tokens_in": 100,
+            "message_count": 2,
+            "age": 30,
+        },
+        {
+            "id": "a1-sub",
+            "title": "A1 sub",
+            "workspace_path": "/w/alpha",
+            "parent_task_id": "a1",
+            "cost": 1.0,
+            "tokens_in": 1000,
+            "message_count": 3,
+            "age": 31,
+        },
+        {
+            "id": "a2",
+            "title": "A2",
+            "workspace_path": "/w/alpha",
+            "cost": 0.2,
+            "tokens_in": 200,
+            "message_count": 4,
+            "age": 20,
+        },
+        {"id": "b1", "title": "B1", "workspace_path": "/w/beta", "cost": 5.0, "age": 0},
+        {"id": "n1", "title": "N1", "age": 10},
+    )
+
+
+@pytest.mark.parametrize(
+    "scope, alpha_count, messages, pill",
+    [
+        # A run's row shows its whole run's spend, so the group sums run
+        # totals; messages, like the rows, are each task's own.
+        ("roots", "2 runs", "6 msg", "4 runs · 3 projects"),
+        # Every task is a row of its own: own figures, the subtask counted once.
+        ("all", "3 tasks", "9 msg", "5 tasks · 3 projects"),
+    ],
+)
+async def test_the_list_is_grouped_by_project_by_default(
+    scope, alpha_count, messages, pill, client, db_session, session_factory
+):
+    await _seed_user(db_session)
+    await _seed_spend(session_factory)
+
+    html = _get(client, "/app", scope=scope).text
+    groups = _groups(html)
+
+    assert f'<span class="count-pill">{pill}</span>' in html
+    # Newest activity first; tasks without a workspace get a group of their own.
+    assert [g["label"] for g in groups] == ["beta", "No project", "alpha"]
+    alpha = groups[2]
+    assert alpha["ids"] == ["a2", "a1", "a1-sub"]
+    for figure in (alpha_count, "/w/alpha", messages, "Σ 1.3k tok", "Σ $1.3000"):
+        assert figure in alpha["text"], figure
+    assert "Σ $5.0000" in groups[0]["text"]
+    # No spend, no figure.
+    assert "$" not in groups[1]["text"]
+
+    by_cost = _get(client, "/app", scope=scope, sort="cost", dir="desc").text
+    assert [g["label"] for g in _groups(by_cost)] == ["beta", "alpha", "No project"]
+
+
+@pytest.mark.parametrize(
+    "group, expected",
+    [
+        (
+            "project",
+            [
+                ("gamma", ["unfinished", "kid"]),
+                ("beta", ["repeats", "friction"]),
+                ("alpha", ["clean"]),
+            ],
+        ),
+        # The primary (first) model only: "friction" ran glm-5.3 then opus.
+        (
+            "model",
+            [
+                ("No model", ["unfinished", "kid"]),
+                ("glm-5.3", ["repeats", "friction"]),
+                ("claude-opus-5", ["clean"]),
+            ],
+        ),
+        (
+            "user",
+            [("t@example.com", ["unfinished", "kid", "repeats", "friction", "clean"])],
+        ),
+    ],
+)
+async def test_each_grouping_keys_a_run_by_its_own_value(
+    group, expected, client, db_session, session_factory
+):
+    """A subtask folds into its run's group, whatever its own columns say."""
+    await _seed_user(db_session)
+    await _seed_filterable(session_factory)
+
+    groups = _groups(_get(client, "/app", group=group).text)
+    assert [(g["label"], g["ids"]) for g in groups] == expected
+
+
+async def test_a_group_header_replaces_the_badge_it_would_repeat(
+    client, db_session, session_factory
+):
+    await _seed_user(db_session)
+    await _seed_filterable(session_factory)
+
+    def badges(html, task_id, kind):
+        row = html[html.index(f'name="task_ids" value="{task_id}"') :]
+        row = row[: row.index("</a>")]
+        return f"badge-{kind}" in row
+
+    flat = _get(client, "/app", group="none").text
+    by_project = _get(client, "/app").text
+    by_model = _get(client, "/app", group="model").text
+
+    assert badges(flat, "repeats", "workspace") and badges(flat, "repeats", "model")
+    assert not badges(by_project, "repeats", "workspace")
+    assert badges(by_project, "repeats", "model")
+    # Under its model's header a one-model run loses the badge; a run that
+    # switched models keeps it, since the header names only the first.
+    assert not badges(by_model, "repeats", "model")
+    assert badges(by_model, "friction", "model")
+    assert badges(by_model, "repeats", "workspace")
+
+
+@pytest.mark.parametrize(
+    "group, members, decoys, more, chip, chip_href",
+    [
+        (
+            "project",
+            [{"workspace_path": "/x/Lab"}] * 6,
+            # A nested path is another project; five rows need no "Show all".
+            [{"workspace_path": "/x/Lab/cloud"}] * 5 + [{}],
+            "/app?scope=roots&only=%2Fx%2FLab",
+            "Project: Lab",
+            "/app?scope=roots",
+        ),
+        (
+            "project",
+            [{}] * 6,
+            [{"workspace_path": "/x/Lab"}],
+            "/app?scope=roots&only=%28none%29",
+            "Project: No project",
+            "/app?scope=roots",
+        ),
+        (
+            "model",
+            [{"models": "glm_5"}] * 3 + [{"models": "glm_5, opus"}] * 3,
+            # Secondary model, a longer name, and "_" read as a LIKE wildcard.
+            [
+                {"models": "opus, glm_5"},
+                {"models": "glm_5x"},
+                {"models": "glmX5, opus"},
+            ],
+            "/app?scope=roots&group=model&only=glm_5",
+            "Model: glm_5",
+            "/app?scope=roots&amp;group=model",
+        ),
+    ],
+)
+async def test_show_all_narrows_the_list_to_exactly_one_group(
+    group, members, decoys, more, chip, chip_href, client, db_session, session_factory
+):
+    await _seed_user(db_session)
+    await _seed(
+        session_factory,
+        *(
+            {"id": f"m{n}", "title": f"M{n}", "age": n, **row}
+            for n, row in enumerate(members)
+        ),
+        *(
+            {"id": f"d{n}", "title": f"D{n}", "age": 10 + n, **row}
+            for n, row in enumerate(decoys)
+        ),
+    )
+    member_ids = [f"m{n}" for n in range(6)]
+
+    html = _get(client, "/app", group=group).text
+    [full] = [g for g in _groups(html) if g["more"]]
+    assert "6 runs" in full["text"]
+    assert full["ids"] == member_ids[:5]
+    assert full["more"] == more
+    assert "Show all 6 runs in" in full["html"]
+
+    narrowed = _get(client, full["more"]).text
+    assert _order(narrowed) == member_ids
+    assert 'class="task-group"' not in narrowed
+    assert (
+        f'<a class="filter-chip" href="{chip_href}" aria-label="Remove filter {chip}"'
+        in narrowed
+    )
+
+
+async def test_group_none_is_the_flat_list_and_switching_drops_the_narrowing(
+    client, db_session, session_factory
+):
+    await _seed_user(db_session)
+    await _seed_filterable(session_factory)
+
+    flat = _get(client, "/app", group="none").text
+    assert 'class="task-group"' not in flat
+    assert _order(flat) == ["unfinished", "kid", "repeats", "friction", "clean"]
+    # A flat list has no group to narrow to; an unknown grouping is the default.
+    assert _order(_get(client, "/app", group="none", only="glm-5.3").text) == _order(
+        flat
+    )
+    assert [g["label"] for g in _groups(_get(client, "/app", group="bogus").text)] == [
+        "gamma",
+        "beta",
+        "alpha",
+    ]
+
+    narrowed = _get(
+        client, "/app", group="model", only="glm-5.3", sort="cost", dir="asc"
+    ).text
+    nav = narrowed[narrowed.index('id="group-control"') :]
+    nav = nav[: nav.index("</nav>")]
+    assert _hrefs(nav) == [
+        "/app?scope=roots&sort=cost&dir=asc",
+        "/app?scope=roots&group=model&sort=cost&dir=asc",
+        "/app?scope=roots&group=user&sort=cost&dir=asc",
+        "/app?scope=roots&group=none&sort=cost&dir=asc",
+    ]

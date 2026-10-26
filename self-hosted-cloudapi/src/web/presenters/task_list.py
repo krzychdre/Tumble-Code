@@ -10,11 +10,15 @@ them can silently drop a filter the reader is looking at.
 Nothing a request says reaches the query unchecked: the sort key and the
 direction are looked up in an allow-list, dates must parse, the grade must be
 one of the three, the client one of the two, and free text is matched with LIKE wildcards escaped.
+
+By default the list is grouped by project (``group``): one collapsible header per
+group with its totals, the first few tasks under it, and a link that narrows the
+list to that group alone (``only``).
 """
 
 from dataclasses import dataclass, replace
 from datetime import date, timedelta
-from typing import Optional
+from typing import Callable, Optional
 from urllib.parse import quote, urlencode
 from zoneinfo import ZoneInfo
 
@@ -33,6 +37,7 @@ from src.services.session_quality import (
 )
 from src.services.task_tree import subtrees
 from src.utils.clientzone import UTC, day_start_utc
+from src.utils.format import fmt_cost, fmt_int, fmt_tokens
 from src.utils.pagination import page_window
 from src.web.presenters.task_rows import _list_row, _workspace_label
 
@@ -65,6 +70,69 @@ _MAX_TEXT = 200
 # deliberate choice, just the absence of paging.
 PAGE_SIZE = 25
 
+# How many tasks an expanded group shows; the rest are one "Show all" away.
+GROUP_ROWS = 5
+
+
+@dataclass(frozen=True)
+class Grouping:
+    """One way to group the list: what a task's key is, and how to match it."""
+
+    label: str
+    unit: str
+    # What the group of tasks without a key is called.
+    empty: str
+    # The key of a row of the grouped query, None when the task has none.
+    key: Callable[[object], Optional[str]]
+    # The column a missing key is NULL in.
+    column: object
+    # SQL that keeps exactly the tasks whose key is the given one.
+    match: Callable[[str], object]
+    # What a group header calls a key.
+    name: Callable[[str], str] = str
+
+
+def _primary_model(row) -> Optional[str]:
+    # The stored label lists the models most-used first.
+    names = split_models_label(row.models) if row.models else []
+    return names[0] if names else None
+
+
+GROUPINGS = {
+    "project": Grouping(
+        "Project",
+        "project",
+        "No project",
+        lambda row: row.workspace_path,
+        Task.workspace_path,
+        lambda key: Task.workspace_path == key,
+        lambda key: _workspace_label(key) or key,
+    ),
+    "model": Grouping(
+        "Model",
+        "model",
+        "No model",
+        _primary_model,
+        Task.models,
+        lambda key: or_(
+            Task.models == key, Task.models.startswith(key + ", ", autoescape=True)
+        ),
+    ),
+    # The list holds the reader's own tasks only, so this is one group today.
+    "user": Grouping(
+        "User",
+        "user",
+        "No user",
+        lambda row: row.user_id,
+        Task.user_id,
+        lambda key: Task.user_id == key,
+    ),
+}
+DEFAULT_GROUP = "project"
+NO_GROUP = "none"
+# ``only`` for the group of tasks without a key.
+NO_KEY = "(none)"
+
 
 def _text(value: Optional[str]) -> str:
     return (value or "").strip()[:_MAX_TEXT]
@@ -82,6 +150,10 @@ class ListView:
     """One normalized state of the task list."""
 
     scope: str = "roots"
+    # A key of GROUPINGS, or NO_GROUP for the plain list.
+    group: str = DEFAULT_GROUP
+    # The key of the one group the list is narrowed to ("Show all"), or NO_KEY.
+    only: str = ""
     q: str = ""
     project: str = ""
     model: str = ""
@@ -99,6 +171,8 @@ class ListView:
         cls,
         *,
         scope: Optional[str] = None,
+        group: Optional[str] = None,
+        only: Optional[str] = None,
         q: Optional[str] = None,
         project: Optional[str] = None,
         model: Optional[str] = None,
@@ -115,8 +189,11 @@ class ListView:
         A stale bookmark or a hand-edited URL should land on a sensible list,
         not on a 422 in place of the page.
         """
+        group = group if group in (*GROUPINGS, NO_GROUP) else DEFAULT_GROUP
         return cls(
             scope=scope if scope in ("roots", "all") else "roots",
+            group=group,
+            only=(only or "") if group != NO_GROUP else "",
             q=_text(q),
             project=_text(project),
             model=_text(model),
@@ -134,6 +211,10 @@ class ListView:
     def params(self, page: Optional[int] = None) -> list[tuple[str, str]]:
         """The non-default parameters, in a fixed order. Scope always leads."""
         out: list[tuple[str, str]] = [("scope", self.scope)]
+        if self.group != DEFAULT_GROUP:
+            out.append(("group", self.group))
+        if self.only:
+            out.append(("only", self.only))
         if page is not None:
             out.append(("page", str(page)))
         for name in _FILTER_FIELDS:
@@ -183,6 +264,15 @@ class ListView:
         """The same view (search, filters, sort) over the other scope."""
         return replace(self, scope=scope).url()
 
+    def group_url(self, group: str) -> str:
+        """The same view grouped another way; a narrowed group does not carry over."""
+        return replace(self, group=group, only="").url()
+
+    @property
+    def grouped(self) -> bool:
+        """Whether the page lists group headers rather than tasks."""
+        return self.group != NO_GROUP and not self.only
+
     def sorted_as(self, key: str) -> Optional[str]:
         """How the column ``key`` is sorted: "ascending", "descending" or None."""
         if key != self.sort:
@@ -191,7 +281,7 @@ class ListView:
 
     @property
     def has_filters(self) -> bool:
-        return any(self._field(name) for name in _FILTER_FIELDS)
+        return bool(self.only) or any(self._field(name) for name in _FILTER_FIELDS)
 
     @property
     def has_panel_filters(self) -> bool:
@@ -199,9 +289,10 @@ class ListView:
         return any(self._field(name) for name in _FILTER_FIELDS if name != "q")
 
     def cleared_url(self) -> str:
-        """Same scope and sort, no filters."""
+        """Same scope, grouping and sort, no filters."""
         return replace(
             self,
+            only="",
             q="",
             project="",
             model="",
@@ -212,9 +303,9 @@ class ListView:
             subtasks=False,
         ).url()
 
-    def chips(self) -> list[dict]:
+    def chips(self, only_label: str = "") -> list[dict]:
         """One removable chip per active filter, each linking to this view
-        without that one filter."""
+        without that one filter. ``only_label`` names the narrowed group."""
         labels = {
             "q": ("Search", self.q),
             "project": ("Project", self.project),
@@ -236,6 +327,14 @@ class ListView:
             "subtasks": False,
         }
         chips = []
+        if self.only:
+            chips.append(
+                {
+                    "label": GROUPINGS[self.group].label,
+                    "value": only_label,
+                    "href": replace(self, only="").url(),
+                }
+            )
         for name in _FILTER_FIELDS:
             if not self._field(name):
                 continue
@@ -265,6 +364,13 @@ class ListView:
             )
         if self.scope == "roots":
             out.append(Task.parent_task_id.is_(None))
+        if self.only:
+            grouping = GROUPINGS[self.group]
+            out.append(
+                grouping.column.is_(None)
+                if self.only == NO_KEY
+                else grouping.match(self.only)
+            )
         if self.project:
             out.append(Task.workspace_path.icontains(self.project, autoescape=True))
         if self.model:
@@ -290,21 +396,23 @@ class ListView:
             )
         return out
 
-    def order_by(self, user_id: str):
+    def order_by(self, user_id: str, rollup=None):
         """(ORDER BY clauses, an outer join to apply first or None).
+
+        ``rollup`` is a ``_run_totals`` the caller joins anyway, reused here.
 
         Cost and tokens sort by what the row shows: a row that delegated shows
         its whole run (itself plus every subtask beneath it, services/
         task_tree.subtree_spend), so that sum is what the column is ordered by.
         """
         descending = self.dir == "desc"
-        rollup = None
         if self.sort == "updated":
             key = Task.updated_at
         elif self.sort == "messages":
             key = Task.message_count
         else:
-            rollup = _run_totals(user_id)
+            if rollup is None:
+                rollup = _run_totals(user_id)
             column = rollup.c.cost if self.sort == "cost" else rollup.c.tokens
             key = func.coalesce(column, 0)
         primary = key.desc() if descending else key.asc()
@@ -337,7 +445,7 @@ def _run_totals(user_id: str):
     duplicates are discarded, so a cycle in the client-supplied parent links
     ends the recursion instead of looping, and every member is counted once
     per run. Runs on SQLite and Postgres alike. Only built when the list is
-    sorted by cost or tokens.
+    grouped or sorted by cost or tokens.
     """
     members = (
         select(Task.id.label("run_id"), Task.id.label("member_id"))
@@ -368,7 +476,12 @@ def _run_totals(user_id: str):
 
 
 async def list_page(
-    db: AsyncSession, view: ListView, user_id: str, zone: ZoneInfo, page: int
+    db: AsyncSession,
+    view: ListView,
+    user_id: str,
+    email: str,
+    zone: ZoneInfo,
+    page: int,
 ) -> dict:
     """The template context of one page of the list: its rows, the pager and
     the filter suggestions.
@@ -377,6 +490,20 @@ async def list_page(
     on the nearest one.
     """
     filters = view.conditions(user_id, zone)
+    # The list holds the reader's own tasks only, so the reader is the one user
+    # a group can be named after; any other id in ``only`` stays a bare id.
+    names = {user_id: email} if view.group == "user" else {}
+    shared = dict(
+        # Shown on the scope toggle so the cost of switching is visible up front.
+        all_total=await db.scalar(
+            select(func.count(Task.id)).where(Task.user_id == user_id)
+        ),
+        only_label=_only_label(view, names),
+        **await _filter_suggestions(db, user_id),
+    )
+    if view.grouped:
+        return {**shared, **await _group_page(db, view, user_id, names, filters, page)}
+
     total = await db.scalar(select(func.count(Task.id)).where(*filters))
     page_count = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
     page = min(max(page, 1), page_count)
@@ -395,7 +522,9 @@ async def list_page(
     nest = view.scope == "roots"
 
     return dict(
+        shared,
         tasks=[_list_row(task, tree, nest) for task in page_tasks],
+        groups=[],
         tree_view=nest,
         page=page,
         page_count=page_count,
@@ -403,12 +532,133 @@ async def list_page(
         # clicks of "Older"; None entries render as an ellipsis.
         pages=page_window(page, page_count),
         total=total,
-        # Shown on the scope toggle so the cost of switching is visible up front.
-        all_total=await db.scalar(
-            select(func.count(Task.id)).where(Task.user_id == user_id)
-        ),
-        **await _filter_suggestions(db, user_id),
     )
+
+
+async def _group_page(
+    db: AsyncSession,
+    view: ListView,
+    user_id: str,
+    names: dict,
+    filters: list,
+    page: int,
+) -> dict:
+    """One page of groups: their totals, and the first GROUP_ROWS tasks of each.
+
+    The keys and figures of every task the view matches are read in one narrow
+    query and summed here, because a model key is the first name of a joined
+    label, which SQL would have to split per dialect. Groups are ordered by the
+    sorted column summed over the group (newest activity for "updated"), and a
+    group lists its tasks in the view's order.
+
+    The group sums what its rows show. Under "Runs" a run's tokens and cost
+    include its subtasks; under "All" every task is a row of its own and the
+    group sums own figures, so no subtask is counted twice.
+    """
+    grouping = GROUPINGS[view.group]
+    rollup = _run_totals(user_id)
+    order, _ = view.order_by(user_id, rollup)
+    runs = view.scope == "roots"
+    result = await db.execute(
+        select(
+            Task.id,
+            Task.workspace_path,
+            Task.models,
+            Task.user_id,
+            Task.updated_at,
+            # A row shows its own messages and its run's tokens and cost.
+            Task.message_count.label("messages"),
+            (
+                func.coalesce(rollup.c.tokens, 0)
+                if runs
+                else Task.tokens_in + Task.tokens_out
+            ).label("tokens"),
+            (func.coalesce(rollup.c.cost, 0) if runs else Task.cost).label("cost"),
+        )
+        .where(*filters)
+        .outerjoin(rollup, rollup.c.run_id == Task.id)
+        .order_by(*order)
+    )
+    groups: dict[Optional[str], dict] = {}
+    total = 0
+    for row in result.all():
+        total += 1
+        key = grouping.key(row)
+        group = groups.setdefault(
+            key,
+            {
+                "key": key,
+                "ids": [],
+                "messages": 0,
+                "tokens": 0,
+                "cost": 0.0,
+                "updated": row.updated_at,
+            },
+        )
+        group["ids"].append(row.id)
+        group["messages"] += row.messages
+        group["tokens"] += row.tokens
+        group["cost"] += row.cost
+        group["updated"] = max(group["updated"], row.updated_at)
+
+    ordered = sorted(
+        groups.values(), key=lambda g: _group_label(grouping, g["key"], names).lower()
+    )
+    ordered.sort(key=lambda g: g[view.sort], reverse=view.dir == "desc")
+
+    page_count = max(1, (len(ordered) + PAGE_SIZE - 1) // PAGE_SIZE)
+    page = min(max(page, 1), page_count)
+    shown = ordered[(page - 1) * PAGE_SIZE : page * PAGE_SIZE]
+
+    ids = [task_id for g in shown for task_id in g["ids"][:GROUP_ROWS]]
+    loaded = await db.scalars(select(Task).where(Task.id.in_(ids)))
+    tasks = {task.id: task for task in loaded.all()}
+    tree = await subtrees(db, ids, user_id)
+
+    return dict(
+        tasks=[],
+        groups=[
+            {
+                "label": _group_label(grouping, g["key"], names),
+                # The full path, so sibling worktrees with one name differ.
+                "sub": g["key"] if view.group == "project" else None,
+                "count": len(g["ids"]),
+                "messages": fmt_int(g["messages"]),
+                "tokens": fmt_tokens(g["tokens"]) if g["tokens"] else None,
+                "cost": fmt_cost(g["cost"]) if g["cost"] > 0 else None,
+                "updated": g["updated"],
+                "rows": [
+                    _list_row(tasks[task_id], tree, runs)
+                    for task_id in g["ids"][:GROUP_ROWS]
+                ],
+                "more_url": replace(view, only=g["key"] or NO_KEY).url()
+                if len(g["ids"]) > GROUP_ROWS
+                else None,
+            }
+            for g in shown
+        ],
+        group_count=len(ordered),
+        group_unit=grouping.unit,
+        tree_view=runs,
+        page=page,
+        page_count=page_count,
+        pages=page_window(page, page_count),
+        total=total,
+    )
+
+
+def _group_label(grouping: Grouping, key: Optional[str], names: dict) -> str:
+    if key is None:
+        return grouping.empty
+    return names.get(key) or grouping.name(key)
+
+
+def _only_label(view: ListView, names: dict) -> str:
+    """What the chip of the narrowed group says."""
+    if not view.only:
+        return ""
+    key = None if view.only == NO_KEY else view.only
+    return _group_label(GROUPINGS[view.group], key, names)
 
 
 async def _filter_suggestions(db: AsyncSession, user_id: str) -> dict:
