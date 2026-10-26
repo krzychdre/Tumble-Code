@@ -108,11 +108,16 @@ The rule for a reader U working in project C and a session card in project P (sa
 - P != C: allowed only when `scope(C) = organization` and `scope(P) = organization`.
 
 The rule is symmetric, so a project kept at `members` or `owner` is never reached from another project, and `none`
-is a complete ban. In a personal space there is one member, so `members` equals `owner`, and `organization` means
-"all of my personal projects whose scope is `organization`".
+is a complete ban.
 
-The client sends only the current task id (or folder, for the context call); the cloud derives U, the tenant and C
-itself. The predicate is one function, the logic the tests cover in depth.
+A personal space has one member, so it offers three choices, stored with the same values: `none`, `owner` shown as
+"Only this project" and `organization` shown as "All my projects" (the personal projects whose scope is also "All
+my projects"). `members` is not offered there.
+
+The client names its folder (`workspacePath`, and `repositoryUrl` when there is one); the cloud derives U and the
+tenant from the token and resolves C from the folder within that user and tenant only, exactly as on register. A
+client claiming another folder can only reach a project it could open anyway. The predicate is one function, the
+logic the tests cover in depth.
 
 ### 4. The session card (what is indexed)
 
@@ -146,7 +151,7 @@ Storage at scale: about 4 KB of text plus vector per card, so about 8 GB for two
 
 ### 5. Search and its cost
 
-Endpoint `GET /api/recall/search?task_id=&q=&scope=this_project|all&limit=`:
+Endpoint `GET /api/recall/search` (contract in section 7):
 
 1. One query resolves U, the tenant, C and `scope(C)`; `none` answers 404 (the tools should not exist).
 2. The query text is normalized as above; all remaining words must match (AND), the last word as a prefix when it
@@ -183,23 +188,88 @@ Two native tools, calling the cloud with the session token the extension already
   slice (8 000 characters) of the user and completion messages, never raw tool output.
 
 Gating: the tools are absent from the tool list (and from the prompt) unless the user is signed in and the
-current project's scope is not `none`. The extension learns the scope from `GET /api/recall/context` (folder in,
-`{project_id, name, scope}` out) when a task starts, cached per folder for five minutes; the gate in
-`filterNativeToolsForMode` works like the one for `codebase_search`. `scope = organization` additionally offers
-`scope: "all"`; otherwise the parameter is absent from the tool schema, so a weak model cannot ask for what it
-may not have. The tools carry the task id on every call and hold no state, so a mode switch changes nothing.
+current project's scope is not `none`. The extension learns the scope from `GET /api/recall/context` when a task
+starts, cached per folder for five minutes; the gate in `filterNativeToolsForMode` works like the one for
+`codebase_search`. `scope = organization` additionally offers `scope: "all"`; otherwise the parameter is absent
+from the tool schema, so a weak model cannot ask for what it may not have. The tools carry the folder on every call
+and hold no state, so a mode switch changes nothing.
 
-## Phases (one branch each, stacked)
+### 7. API contract (extension to cloud)
 
-1. **Organizations.** Org claim kept by the bridge, `tasks.organization_id` written, the organizations page
-   (create, members, roles, leave).
-2. **Projects.** `projects`, `project_bindings`, `tasks.project_id`, resolution on register, `repositoryUrl` from
-   the extension, the worktree fix, the projects page with scope and rebinding, `GET /api/recall/context`.
-3. **Cards and search.** `session_cards`, `recall_dirty`, the builder loop, normalization, the policy predicate,
+All three are `GET`, authenticated like every extension call (`Authorization: Bearer <session JWT>`; the JWT's org
+claim is the tenant). Field names are camelCase like the rest of the extension API. Folder parameters:
+`workspacePath` (required, absolute path of the workspace folder) and `repositoryUrl` (optional, the sanitized https
+remote that `getGitRepositoryInfo` returns).
+
+`GET /api/recall/context?workspacePath=&repositoryUrl=` resolves (creating if needed) the folder's project:
+
+```json
+{ "projectId": "prj_...", "projectName": "Roo-Code", "scope": "none" }
+```
+
+`scope` is one of `none`, `owner`, `members`, `organization`.
+
+`GET /api/recall/search?workspacePath=&repositoryUrl=&q=&scope=this_project|all&limit=&excludeTaskId=`
+(`scope` defaults to `all`, `limit` to 5, at most 10; `excludeTaskId` is the asking task, left out of the hits):
+
+```json
+{
+	"results": [
+		{
+			"sessionId": "<task id>",
+			"projectName": "Roo-Code",
+			"author": "Krzysztof Drezewski",
+			"lastActivity": "2026-10-26T18:22:00Z",
+			"title": "Fix the bridge org claim",
+			"completed": true,
+			"snippets": ["... about 300 characters around a match ..."]
+		}
+	],
+	"tooBroad": false
+}
+```
+
+`tooBroad: true` (with empty `results`) means the statement timeout fired; the tool tells the model to add a more
+specific word.
+
+`GET /api/recall/sessions/{sessionId}?workspacePath=&repositoryUrl=&part=summary|conversation&offset=0`:
+
+```json
+{
+	"sessionId": "<task id>",
+	"projectName": "Roo-Code",
+	"author": "Krzysztof Drezewski",
+	"lastActivity": "2026-10-26T18:22:00Z",
+	"title": "Fix the bridge org claim",
+	"part": "conversation",
+	"text": "<at most 8000 characters>",
+	"nextOffset": 8000
+}
+```
+
+`nextOffset` is null on the last page. `summary` is the card text; `conversation` is the user messages and
+completion results in order, never tool output.
+
+Errors: 401 not signed in or token expired; 404 for a folder whose project has scope `none`, and for a session the
+reader may not see (the same answer as for an unknown one); 400 for an empty or over-long query (200 characters);
+429 rate limited (30 searches per minute per user).
+
+## Phases (one branch each, stacked; only the last is pushed)
+
+1. `feat/recall-organizations`: org claim kept by the bridge, `tasks.organization_id` written, the organizations
+   page (create, members, roles, leave).
+2. `fix/cloud-web-task-list-state` (not part of recall, same stack): the task list keeps its group and filter
+   state, groups start closed, the project and model pickers keep offering every value.
+3. `feat/recall-projects`: `projects`, `project_bindings`, `tasks.project_id`, resolution on register and on
+   `GET /api/recall/context`, the projects page with scope and rebinding.
+4. `fix/dataset-exclude-by-project`: the dataset page's "Leave out projects" lists projects, not every worktree
+   folder.
+5. `feat/recall-search`: `session_cards`, `recall_dirty`, the builder loop, normalization, the policy predicate,
    `/api/recall/search` and `/api/recall/sessions/{id}`, the exclusion toggle, the search log, the Postgres CI
    lane, the benchmark.
-4. **Tools.** The two native tools, the gate, the client calls in `packages/cloud`, descriptions written for weak
-   models, a changeset (`New:`).
+6. `feat/recall-extension`: `repositoryUrl` from the extension (register, context, search), the worktree fix in
+   `getGitRepositoryInfo`, the two native tools, the gate, the client calls in `packages/cloud`, descriptions
+   written for weak models, a changeset (`New:`).
 
 ## Tests (where each lives)
 
