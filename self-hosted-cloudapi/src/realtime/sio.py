@@ -79,8 +79,12 @@ def _room(task_id: str) -> str:
     return f"task:{task_id}"
 
 
-def _user_id_from_token(token: Optional[str]) -> Optional[str]:
-    """Resolve a handshake bearer/JWT/static token to a user_id, or None."""
+def _identity_from_token(token: Optional[str]) -> Optional[tuple[str, Optional[str]]]:
+    """Resolve a handshake bearer/JWT/static token to ``(user_id, org_id)``, or None.
+
+    ``org_id`` is the token's org claim: the organization active in the
+    extension (None for the personal space). New task rows belong to it.
+    """
     if not token:
         return None
     # One decode: decode_token requires our issuer and version, for session
@@ -88,7 +92,10 @@ def _user_id_from_token(token: Optional[str]) -> Optional[str]:
     payload = decode_token(token)
     if payload is None:
         return None
-    return payload.get("r", {}).get("u") or payload.get("sub")
+    user_id = payload.get("r", {}).get("u") or payload.get("sub")
+    if not user_id:
+        return None
+    return user_id, payload.get("r", {}).get("o")
 
 
 def _cookie_from_environ(environ: dict) -> Optional[str]:
@@ -133,11 +140,12 @@ async def connect(sid, environ, auth):
     token = auth.get("token")
 
     if token:
-        user_id = _user_id_from_token(token)
-        if not user_id:
+        identity = _identity_from_token(token)
+        if identity is None:
             logger.info("[bridge] extension handshake rejected: invalid token")
             return False
-        registry.attach(sid, "extension", user_id)
+        user_id, org_id = identity
+        registry.attach(sid, "extension", user_id, org_id)
         return True
 
     # No token → browser; authenticate via the session cookie. The client is
@@ -235,7 +243,10 @@ async def on_task_event(sid, data):
     if owned:
         registry.note_task_event(sid, task_id, data)
         await sio.emit(TASK_RELAYED_EVENT, data, room=_room(task_id))
-        if is_message and await _persist(sid, task_id, user_id, data) is False:
+        if (
+            is_message
+            and await _persist(sid, task_id, user_id, meta["org_id"], data) is False
+        ):
             # Only if the row was deleted and recreated by another user while
             # this socket was open (task ids are client-chosen UUIDs, so in
             # practice never); stop relaying from here on.
@@ -245,7 +256,7 @@ async def on_task_event(sid, data):
     if is_message:
         # Written at once even when partial: this write creates the task row
         # for a new task and is what answers whose task it is.
-        owned = await _save_messages(task_id, user_id, [data])
+        owned = await _save_messages(task_id, user_id, meta["org_id"], [data])
     else:
         try:
             owned = await _task_access(user_id, task_id)
@@ -260,7 +271,9 @@ async def on_task_event(sid, data):
         await sio.emit(TASK_RELAYED_EVENT, data, room=_room(task_id))
 
 
-async def _persist(sid: str, task_id: str, user_id: str, data: dict) -> Optional[bool]:
+async def _persist(
+    sid: str, task_id: str, user_id: str, org_id: Optional[str], data: dict
+) -> Optional[bool]:
     """Persist a message event of a task the socket is known to own.
 
     A partial revision with a ``ts`` is held and coalesced with the next ones
@@ -275,15 +288,15 @@ async def _persist(sid: str, task_id: str, user_id: str, data: dict) -> Optional
         partial_messages.hold(sid, task_id, user_id, data)
         return True
     earlier = await partial_messages.settle(task_id, ts)
-    return await _save_messages(task_id, user_id, [*earlier, data])
+    return await _save_messages(task_id, user_id, org_id, [*earlier, data])
 
 
 async def _save_messages(
-    task_id: str, user_id: str, events: list[dict]
+    task_id: str, user_id: str, org_id: Optional[str], events: list[dict]
 ) -> Optional[bool]:
     """Persist message events of one task in one transaction; return whether
     the task is the user's, or None when the save failed (ownership then stays
-    unknown)."""
+    unknown). A task row created here belongs to ``org_id``."""
     try:
         async with async_session_factory() as db:
             owned = None
@@ -296,7 +309,12 @@ async def _save_messages(
                     registry.instance(user_id, task_id) or {}
                 ).get("workspacePath")
                 owned = await upsert_task_message(
-                    db, task_id, user_id, data["message"], workspace_path=workspace_path
+                    db,
+                    task_id,
+                    user_id,
+                    org_id,
+                    data["message"],
+                    workspace_path=workspace_path,
                 )
                 if owned is False:
                     # Nothing was written for a foreign task, and nothing else
@@ -310,8 +328,12 @@ async def _save_messages(
 
 
 async def _write_held(sid: str, task_id: str, user_id: str, events: list[dict]) -> None:
-    """Write partial rows the buffer held back (window over, disconnect, shutdown)."""
-    if await _save_messages(task_id, user_id, events) is False:
+    """Write partial rows the buffer held back (window over, disconnect, shutdown).
+
+    Partials are held only for a task whose row exists (its ownership is
+    known), so no row is created here and the organization plays no part.
+    """
+    if await _save_messages(task_id, user_id, None, events) is False:
         registry.remember_task_access(sid, task_id, False)
 
 

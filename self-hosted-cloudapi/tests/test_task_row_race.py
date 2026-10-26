@@ -110,7 +110,7 @@ async def test_a_chunk_that_loses_the_task_row_race_still_persists(race, link_ca
     rival["owner"] = OWNER
 
     async with factory() as s:
-        owned = await upsert_task_message(s, TASK, OWNER, _final(1, "hello"))
+        owned = await upsert_task_message(s, TASK, OWNER, None, _final(1, "hello"))
         await s.commit()
 
     assert rival["fired"], "the hook never saw the task insert"
@@ -133,7 +133,7 @@ async def test_a_race_lost_to_another_users_task_writes_nothing(race):
     rival["owner"] = OTHER
 
     async with factory() as s:
-        owned = await upsert_task_message(s, TASK, OWNER, _final(1, "hello"))
+        owned = await upsert_task_message(s, TASK, OWNER, None, _final(1, "hello"))
         await s.commit()
 
     assert rival["fired"]
@@ -148,8 +148,8 @@ async def test_a_chunk_that_creates_the_row_links_it_once(race, link_calls):
     factory, _rival = race  # no rival: this call inserts the row itself
 
     async with factory() as s:
-        assert await upsert_task_message(s, TASK, OWNER, _final(1, "a")) is True
-        assert await upsert_task_message(s, TASK, OWNER, _final(2, "b")) is True
+        assert await upsert_task_message(s, TASK, OWNER, None, _final(1, "a")) is True
+        assert await upsert_task_message(s, TASK, OWNER, None, _final(2, "b")) is True
         await s.commit()
 
     assert link_calls == [TASK]
@@ -162,7 +162,7 @@ async def test_a_backfill_that_loses_the_task_row_race_still_uploads(race):
     messages = [_final(1, "first"), _final(2, "second")]
 
     async with factory() as s:
-        await backfill_messages(s, TASK, OWNER, messages)
+        await backfill_messages(s, TASK, OWNER, None, messages)
         await s.commit()
 
     assert rival["fired"]
@@ -175,6 +175,6 @@ async def test_a_backfill_that_loses_the_race_to_another_user_is_refused(race):
 
     async with factory() as s:
         with pytest.raises(TaskNotOwnedError):
-            await backfill_messages(s, TASK, OWNER, [_final(1, "first")])
+            await backfill_messages(s, TASK, OWNER, None, [_final(1, "first")])
 
     assert await _stored(factory) == []

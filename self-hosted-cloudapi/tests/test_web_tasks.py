@@ -970,8 +970,8 @@ async def test_live_upsert_replaces_metrics_instead_of_adding(
     }
 
     async with session_factory() as s:
-        await upsert_task_message(s, "task-live-sum", "user_test", partial)
-        await upsert_task_message(s, "task-live-sum", "user_test", final)
+        await upsert_task_message(s, "task-live-sum", "user_test", None, partial)
+        await upsert_task_message(s, "task-live-sum", "user_test", None, final)
         await s.commit()
 
     async with session_factory() as s:

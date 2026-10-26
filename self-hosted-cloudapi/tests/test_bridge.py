@@ -26,7 +26,7 @@ from src.models.task import Task, TaskMessage
 from src.realtime import sio as sio_module
 from src.realtime.hub import EVT_INSTANCE_STATE, ConnectionRegistry, registry
 from src.realtime.sio import (
-    _user_id_from_token,
+    _identity_from_token,
     _cookie_from_environ,
     EVT_MESSAGE,
     TASK_RELAYED_EVENT,
@@ -173,15 +173,17 @@ def test_registry_detaching_a_window_forgets_its_tasks_but_keeps_the_user_online
 # --- handshake auth helpers ------------------------------------------------
 
 
-def test_user_id_from_token_round_trips_jwt():
-    token = issue_session_token("user_abc", expires_in=300)
-    assert _user_id_from_token(token) == "user_abc"
+def test_identity_from_token_carries_user_and_org():
+    personal = issue_session_token("user_abc", expires_in=300)
+    assert _identity_from_token(personal) == ("user_abc", None)
+    in_org = issue_session_token("user_abc", "org_acme", expires_in=300)
+    assert _identity_from_token(in_org) == ("user_abc", "org_acme")
 
 
-def test_user_id_from_token_rejects_garbage():
-    assert _user_id_from_token(None) is None
-    assert _user_id_from_token("") is None
-    assert _user_id_from_token("not-a-real-token") is None
+def test_identity_from_token_rejects_garbage():
+    assert _identity_from_token(None) is None
+    assert _identity_from_token("") is None
+    assert _identity_from_token("not-a-real-token") is None
 
 
 def _signed_token(claims: dict, expires_in: int = 60) -> str:
@@ -207,7 +209,7 @@ def _signed_token(claims: dict, expires_in: int = 60) -> str:
     )
 
 
-def test_user_id_from_token_accepts_a_static_token():
+def test_identity_from_token_accepts_a_static_token():
     # The shape the retired issue_static_token gave long-lived
     # TUMBLE_CODE_CLOUD_TOKEN values, some of which users still hold.
     token = _signed_token(
@@ -219,7 +221,7 @@ def test_user_id_from_token_accepts_a_static_token():
         },
         expires_in=86400 * 365,
     )
-    assert _user_id_from_token(token) == "user_static"
+    assert _identity_from_token(token) == ("user_static", None)
 
 
 FOREIGN_CLAIMS = [
@@ -231,8 +233,8 @@ FOREIGN_CLAIMS = [
 
 
 @pytest.mark.parametrize("claims", FOREIGN_CLAIMS)
-def test_user_id_from_token_refuses_a_token_without_our_issuer_and_version(claims):
-    assert _user_id_from_token(_signed_token(claims)) is None
+def test_identity_from_token_refuses_a_token_without_our_issuer_and_version(claims):
+    assert _identity_from_token(_signed_token(claims)) is None
 
 
 @pytest.mark.parametrize("claims", FOREIGN_CLAIMS)
@@ -262,7 +264,11 @@ async def test_connect_extension_with_valid_jwt_attaches_and_registers(
     token = issue_session_token("user_ext", expires_in=300)
     ok = await sio_module.connect("extsid", {}, {"token": token})
     assert ok is True
-    assert registry.meta("extsid") == {"role": "extension", "user_id": "user_ext"}
+    assert registry.meta("extsid") == {
+        "role": "extension",
+        "user_id": "user_ext",
+        "org_id": None,
+    }
 
     res = await sio_module.on_extension_register("extsid", {"instanceId": "win-1"})
     assert res == {"success": True}
@@ -286,7 +292,11 @@ async def test_connect_browser_with_valid_cookie(patch_session_factory, db_sessi
 
     ok = await sio_module.connect("brsid", environ, None)
     assert ok is True
-    assert registry.meta("brsid") == {"role": "browser", "user_id": "user_web"}
+    assert registry.meta("brsid") == {
+        "role": "browser",
+        "user_id": "user_web",
+        "org_id": None,
+    }
 
 
 async def test_connect_browser_without_cookie_is_rejected(patch_session_factory):
@@ -319,7 +329,11 @@ async def test_connect_browser_outside_the_allowlist_is_rejected_despite_a_valid
     assert await sio_module.connect("outsider", environ("192.168.51.7"), None) is False
     assert registry.meta("outsider") is None
     assert await sio_module.connect("insider", environ("192.168.50.20"), None) is True
-    assert registry.meta("insider") == {"role": "browser", "user_id": "user_web"}
+    assert registry.meta("insider") == {
+        "role": "browser",
+        "user_id": "user_web",
+        "org_id": None,
+    }
     # The extension authenticates with its token and is not the panel.
     token = issue_session_token("user_web", expires_in=300)
     assert (

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}{{ organization.name }} · Tumble Code{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">{{ organization.name }}</h1>
+</div>
+
+{% if error %}<div class="notice" role="alert">{{ error }}</div>{% endif %}
+
+<section class="panel settings-panel" aria-labelledby="org-members">
+  <h2 class="chart-title" id="org-members">Members</h2>
+  <div class="diag-table-wrap">
+    <table class="breakdown diag-table" id="table-members">
+      <caption class="sr-only">Members of {{ organization.name }}</caption>
+      <thead><tr><th scope="col">Name</th><th scope="col">E-mail</th><th scope="col">Role</th>{% if is_admin %}<th scope="col" aria-label="Actions"></th>{% endif %}</tr></thead>
+      <tbody>
+        {% for m in members %}
+        <tr>
+          <td class="diag-cell">{{ (m.user.first_name ~ ' ' ~ m.user.last_name).strip() or '-' }}</td>
+          <td class="diag-cell">{{ m.user.email }}</td>
+          <td class="diag-cell">
+            {% if is_admin %}
+            <form method="post" action="/app/organizations/{{ organization.id }}/members/{{ m.user_id }}/role">
+              <select name="role" aria-label="Role of {{ m.user.email }}">
+                {% for r in roles %}<option value="{{ r }}"{{ ' selected' if r == m.role }}>{{ role_labels[r] }}</option>{% endfor %}
+              </select>
+              <button class="btn" type="submit">Change</button>
+            </form>
+            {% else %}{{ role_labels[m.role] }}{% endif %}
+          </td>
+          {% if is_admin %}
+          <td class="diag-cell">
+            {% if m.user_id != mine.user_id %}
+            <form method="post" action="/app/organizations/{{ organization.id }}/members/{{ m.user_id }}/remove"
+                  data-confirm="Remove {{ m.user.email }} from {{ organization.name }}?">
+              <button class="btn btn-danger" type="submit">Remove</button>
+            </form>
+            {% endif %}
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% if is_admin %}
+<section class="panel settings-panel" aria-labelledby="org-add">
+  <h2 class="chart-title" id="org-add">Add a member</h2>
+  <form method="post" action="/app/organizations/{{ organization.id }}/members" class="settings-form">
+    <div class="field-grid">
+      <label class="field">
+        <span class="field-label">E-mail</span>
+        <span class="field-input"><input type="email" name="email" required></span>
+      </label>
+      <label class="field">
+        <span class="field-label">Role</span>
+        <span class="field-input">
+          <select name="role">
+            {% for r in roles %}<option value="{{ r }}"{{ ' selected' if r != 'org:admin' }}>{{ role_labels[r] }}</option>{% endfor %}
+          </select>
+        </span>
+      </label>
+    </div>
+    <p class="field-hint">The person must have signed in to this server once.</p>
+    <div class="settings-actions"><button class="btn" type="submit">Add</button></div>
+  </form>
+</section>
+{% endif %}
+
+<section class="panel settings-panel" aria-labelledby="org-leave">
+  <h2 class="chart-title" id="org-leave">Leave</h2>
+  <form method="post" action="/app/organizations/{{ organization.id }}/members/{{ mine.user_id }}/remove"
+        class="settings-actions" data-confirm="Leave {{ organization.name }}?">
+    <button class="btn btn-danger" type="submit">Leave this organization</button>
+    <span class="settings-meta">Tasks you ran in it stay with the organization.</span>
+  </form>
+</section>
+{% endblock %}
