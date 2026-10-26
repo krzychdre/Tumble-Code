@@ -155,6 +155,7 @@ describe("search_past_sessions", () => {
 		[new CloudAPIError("Resource not found", 404), "Recall of past sessions is turned off for this project", false],
 		[new CloudAPIError("HTTP 429", 429), "Wait about a minute", false],
 		[new CloudAPIError("HTTP 400", 400), "The query was rejected", true],
+		[new CloudAPIError("HTTP 422", 422), "The query was rejected", true],
 		[new CloudAPIError("HTTP 502", 502), "could not be reached (it answered HTTP 502)", false],
 		[new CloudAPIError("Network error"), "could not be reached (offline", false],
 	])("maps %s to a result the model can act on", async (error, message, modelMistake) => {
@@ -216,6 +217,15 @@ describe("read_past_session", () => {
 
 		expect(cloud.api.recallSession.mock.calls[0]![2]).toEqual({ part: undefined, offset: undefined })
 		expect(result().endsWith(`\n\n${footer}`)).toBe(true)
+	})
+
+	it("explains rejected arguments (FastAPI's 422) as the model's mistake", async () => {
+		cloud.api.recallSession.mockRejectedValue(new CloudAPIError("HTTP 422", 422))
+
+		await read({ session_id: "task-1", offset: -5 })
+
+		expect(JSON.parse(result()).error).toContain("The arguments were rejected")
+		expect(task.consecutiveMistakeCount).toBe(3)
 	})
 
 	it("explains a session it may not see as a wrong id", async () => {

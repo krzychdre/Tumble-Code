@@ -103,10 +103,12 @@ export function describeRecallFailure(statusCode: number | undefined, tool: Reca
 		case 429:
 			return {
 				message:
-					"Too many searches in a short time (the limit is 30 per minute). Wait about a minute before the next call, or continue with what you already have.",
+					"Too many requests to Tumble Code Cloud in a short time. Wait about a minute before the next call, or continue with what you already have.",
 				modelMistake: false,
 			}
+		// FastAPI answers 422 when a query parameter fails its validation.
 		case 400:
+		case 422:
 			return {
 				message:
 					tool === "search_past_sessions"
