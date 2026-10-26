@@ -223,6 +223,39 @@ describe("getGitRepositoryInfo", () => {
 		expect(await getGitRepositoryInfo(workspace)).toEqual(expected)
 	})
 
+	it("reads a linked worktree's remote from its main checkout, and the worktree's own branch", async () => {
+		const main = path.join(workspace, "main")
+		const linked = path.join(workspace, "linked")
+		await fs.mkdir(main)
+		const inMain = (...args: string[]) => execFileSync("git", args, { cwd: main, encoding: "utf8" })
+		inMain("init", "-q", "-b", "main")
+		inMain("remote", "add", "origin", "git@github.com:acme/tool.git")
+		inMain("commit", "-q", "--allow-empty", "-m", "first")
+		inMain("worktree", "add", "-q", "-b", "topic", linked)
+
+		expect(await getGitRepositoryInfo(linked)).toEqual({
+			repositoryUrl: "https://github.com/acme/tool.git",
+			repositoryName: "acme/tool",
+			defaultBranch: "topic",
+		})
+	})
+
+	it("reads a submodule's git directory named by a relative gitdir", async () => {
+		const store = path.join(workspace, "store", "sub")
+		const checkout = path.join(workspace, "checkout")
+		await fs.mkdir(store, { recursive: true })
+		await fs.mkdir(checkout)
+		await fs.writeFile(path.join(checkout, ".git"), "gitdir: ../store/sub\n")
+		await fs.writeFile(path.join(store, "config"), '[remote "origin"]\n\turl = https://github.com/acme/sub.git\n')
+		await fs.writeFile(path.join(store, "HEAD"), "ref: refs/heads/main\n")
+
+		expect(await getGitRepositoryInfo(checkout)).toEqual({
+			repositoryUrl: "https://github.com/acme/sub.git",
+			repositoryName: "acme/sub",
+			defaultBranch: "main",
+		})
+	})
+
 	it("reads the first workspace folder, or nothing without one", async () => {
 		await gitDir({ HEAD: "ref: refs/heads/main\n" })
 		const folders = vi.spyOn(vscode.workspace, "workspaceFolders", "get")
