@@ -1,0 +1,63 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>
+<!--
+  The groups the reader left open (static/tasklist.js): every group is served
+  closed, the script reopens the ones remembered in localStorage and keeps the
+  list up to date as groups are opened and closed. Keys of groups on other
+  pages or under another grouping must survive.
+-->
+<form id="bulk-form" method="post" action="/app/tasks/bulk-delete">
+  <div class="select-head">
+    <label class="select-all"><input type="checkbox" id="select-all"><span>Select page</span></label>
+  </div>
+  <details class="task-group" data-group="project:/w/a">
+    <summary class="group-head">a</summary>
+    <ul class="task-list"><li class="task-node"><div class="task-item">
+      <label class="task-check"><input type="checkbox" name="task_ids" value="a1" data-child-count="0"></label>
+    </div></li></ul>
+  </details>
+  <details class="task-group" data-group="project:/w/b">
+    <summary class="group-head">b</summary>
+    <ul class="task-list"><li class="task-node"><div class="task-item">
+      <label class="task-check"><input type="checkbox" name="task_ids" value="b1" data-child-count="0"></label>
+    </div></li></ul>
+  </details>
+  <details class="task-group" data-group="project:(none)">
+    <summary class="group-head">No project</summary>
+    <ul class="task-list"><li class="task-node"><div class="task-item">
+      <label class="task-check"><input type="checkbox" name="task_ids" value="n1" data-child-count="0"></label>
+    </div></li></ul>
+  </details>
+  <div id="bulk-bar" class="bulk-bar" hidden><b id="bulk-n">0</b></div>
+</form>
+
+<script>
+  // Left open on an earlier visit: one group of this page, one of another grouping.
+  localStorage.setItem("tumble.openGroups", JSON.stringify(["project:/w/b", "model:glm-5.3"]))
+</script>
+<script src="../../src/web/static/tasklist.js"></script>
+<script>
+window.addEventListener("load", function () {
+  var out = [], fail = 0
+  function check(name, cond) { out.push((cond ? "PASS " : "FAIL ") + name); if (!cond) fail++ }
+  function later(ms, fn) { setTimeout(fn, ms) }
+  function group(key) { return document.querySelector('.task-group[data-group="' + key + '"]') }
+  function stored() { return JSON.parse(localStorage.getItem("tumble.openGroups")).sort().join(",") }
+
+  check("a remembered group is reopened", group("project:/w/b").open === true)
+  check("the others stay closed", !group("project:/w/a").open && !group("project:(none)").open)
+
+  later(50, function () {
+    check("reopening keeps the list as it was", stored() === "model:glm-5.3,project:/w/b")
+    group("project:/w/a").open = true
+    group("project:/w/b").open = false
+    later(50, function () {
+      check("opening and closing groups is remembered", stored() === "model:glm-5.3,project:/w/a")
+      var pre = document.createElement("pre")
+      pre.id = "results"
+      pre.textContent = out.join("\n") + "\nTOTAL_FAILURES=" + fail
+      document.body.appendChild(pre)
+    })
+  })
+})
+</script>
+</body></html>

@@ -47,8 +47,11 @@ _MIN_CHECKS = {
     "images_checks.html": 14,
     "resume_span_checks.html": 6,
     "tasklist_checks.html": 18,
-    # Density toggle, select mode, and the 300 ms fetch-and-swap of the filter form.
-    "tasklist_filter_checks.html": 19,
+    # Groups served closed, the remembered ones reopened, opening and closing kept.
+    "taskgroup_checks.html": 4,
+    # Density toggle, select mode, and the 300 ms fetch-and-swap of the filter
+    # form, with the remembered groups reopened in the swapped list.
+    "tasklist_filter_checks.html": 20,
     # data-confirm forms (formerly inline onsubmit), the empty state's copy button,
     # the auto-submitting filter form and the problem report's "Copy for agent".
     "app_checks.html": 15,

@@ -127,10 +127,18 @@
   <details class="filter-more"{% if view.has_panel_filters %} open{% endif %}>
     <summary>Filters</summary>
     <div class="filter-fields">
-      <label class="filter-field"><span class="field-label">Project</span>
-        <input type="text" name="project" value="{{ view.project }}" list="project-options" autocomplete="off"></label>
-      <label class="filter-field"><span class="field-label">Model</span>
-        <input type="text" name="model" value="{{ view.model }}" list="model-options" autocomplete="off"></label>
+      {# Pickers, not text fields with a <datalist>: a browser narrows a
+         datalist to the options matching the field's text, so once a project
+         was picked it offered that project alone. #}
+      {% for name, label, options in (('project', 'Project', project_options), ('model', 'Model', model_options)) %}
+      <label class="filter-field"><span class="field-label">{{ label }}</span>
+        <select class="filter-pick" name="{{ name }}">
+          <option value="">Any</option>
+          {% for o in options %}
+          <option value="{{ o }}"{% if view[name] == o %} selected{% endif %}>{{ o }}</option>
+          {% endfor %}
+        </select></label>
+      {% endfor %}
       <label class="filter-field"><span class="field-label">Client</span>
         <select name="client">
           <option value="">Any</option>
@@ -154,8 +162,6 @@
     </div>
   </details>
   <button type="submit" class="btn ghost filter-apply">Apply</button>
-  <datalist id="project-options">{% for p in project_options %}<option value="{{ p }}">{% endfor %}</datalist>
-  <datalist id="model-options">{% for m in model_options %}<option value="{{ m }}">{% endfor %}</datalist>
 </form>
 
 {# Outside the swapped region, so it stays the same live region: tasklist.js
@@ -222,9 +228,10 @@
   {% if groups %}
   {%- set row_unit = 'run' if scope == 'roots' else 'task' %}
   {# A header per group on the same tracks as the rows: the group's totals sit
-     under the column labels. The first group in the current sort starts open. #}
+     under the column labels. Every group starts closed; tasklist.js reopens
+     the ones the reader left open (data-group). #}
   {% for g in groups %}
-  <details class="task-group"{% if loop.first %} open{% endif %}>
+  <details class="task-group" data-group="{{ g.key }}">
     <summary class="group-head">
       <span class="head-check group-chev" aria-hidden="true"></span>
       {% if tree_view %}<span class="tree-gutter" aria-hidden="true"></span>{% endif %}

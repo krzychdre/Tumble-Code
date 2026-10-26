@@ -1,7 +1,7 @@
 /*
  * The task list: selection (checkboxes, shift-click ranges, the bulk action
- * bar), folding the run tree, the density preference, select mode, and the
- * filter form's live results.
+ * bar), folding the run tree, the groups the reader left open, the density
+ * preference, select mode, and the filter form's live results.
  *
  * Progressive enhancement. The form and every button work without this file:
  * the bar starts hidden and is only revealed here, so with scripting off the
@@ -56,10 +56,45 @@
 		})
 	}
 
+	// --- open groups: every group starts closed, these are reopened -----------
+
+	// The data-group keys ("project:/home/a/beta") of the groups left open, on
+	// any page and under any grouping.
+	var OPEN_GROUPS_KEY = "tumble.openGroups"
+
+	function readOpenGroups() {
+		try {
+			return JSON.parse(window.localStorage.getItem(OPEN_GROUPS_KEY)) || []
+		} catch (e) {
+			return []
+		}
+	}
+
+	function rememberGroup(group) {
+		var key = group.getAttribute("data-group")
+		var keys = readOpenGroups().filter(function (k) {
+			return k !== key
+		})
+		if (group.open) keys.push(key)
+		try {
+			window.localStorage.setItem(OPEN_GROUPS_KEY, JSON.stringify(keys))
+		} catch (e) {
+			// Private mode: the groups fold shut again on the next page.
+		}
+	}
+
+	function reopenGroups() {
+		var keys = readOpenGroups()
+		Array.prototype.slice.call(document.querySelectorAll(".task-group")).forEach(function (group) {
+			if (keys.indexOf(group.getAttribute("data-group")) !== -1) group.open = true
+		})
+	}
+
 	// --- the list: bound on load and again after every swap --------------------
 
 	function bindList() {
 		bindDensity()
+		reopenGroups()
 		bindSelection()
 	}
 
@@ -259,7 +294,8 @@
 		// "toggle" does not bubble, so it is caught on the way down.
 		form.addEventListener(
 			"toggle",
-			function () {
+			function (e) {
+				if (e.target.classList.contains("task-group")) rememberGroup(e.target)
 				refreshExpandAll()
 				refresh()
 			},
