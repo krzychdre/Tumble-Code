@@ -1,6 +1,8 @@
 export * from "./config.js"
 
 export { CloudService } from "./CloudService.js"
+export { CloudAPIError } from "./errors.js"
+export type { RecallFolder, RecallScope, RecallSearchResponse, RecallSession } from "./CloudAPI.js"
 
 export { RetryQueue } from "./retry-queue/index.js"
 export type {
