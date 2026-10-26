@@ -41,6 +41,8 @@ const KIND_DISPLAY_NAMES: Record<ToolPayloadKind, string> = {
 	skill: "Load Skill",
 	readArtifact: "Read Artifact",
 	searchTaskHistory: "Search Task History",
+	searchPastSessions: "Search Past Sessions",
+	readPastSession: "Read Past Session",
 	runParallelTasks: "Run Parallel Tasks",
 	waitForSubagents: "Wait for Subagents",
 }

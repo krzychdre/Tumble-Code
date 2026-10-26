@@ -24,6 +24,8 @@ const handles = vi.hoisted(() => {
 		readFileTool: stub(),
 		readArtifactTool: stub(),
 		searchTaskHistoryTool: stub(),
+		searchPastSessionsTool: stub(),
+		readPastSessionTool: stub(),
 		writeToFileTool: stub(),
 		editTool: stub(),
 		searchReplaceTool: stub(),
@@ -62,6 +64,8 @@ vi.mock("../../tools/ReadFileTool", async (importOriginal) => {
 })
 vi.mock("../../tools/ReadArtifactTool", () => ({ readArtifactTool: handles.readArtifactTool }))
 vi.mock("../../tools/SearchTaskHistoryTool", () => ({ searchTaskHistoryTool: handles.searchTaskHistoryTool }))
+vi.mock("../../tools/SearchPastSessionsTool", () => ({ searchPastSessionsTool: handles.searchPastSessionsTool }))
+vi.mock("../../tools/ReadPastSessionTool", () => ({ readPastSessionTool: handles.readPastSessionTool }))
 vi.mock("../../tools/WriteToFileTool", () => ({ writeToFileTool: handles.writeToFileTool }))
 vi.mock("../../tools/EditTool", () => ({ editTool: handles.editTool }))
 vi.mock("../../tools/SearchReplaceTool", () => ({ searchReplaceTool: handles.searchReplaceTool }))
@@ -190,6 +194,18 @@ const DISPATCH: Record<Exclude<ToolName, "custom_tool">, DispatchCase> = {
 		checkpoint: false,
 		params: { query: "auth bug" },
 		description: "[search_task_history for 'auth bug']",
+	},
+	search_past_sessions: {
+		handler: "searchPastSessionsTool",
+		checkpoint: false,
+		params: { query: "auth bug" },
+		description: "[search_past_sessions for 'auth bug']",
+	},
+	read_past_session: {
+		handler: "readPastSessionTool",
+		checkpoint: false,
+		params: { session_id: "task-1" },
+		description: "[read_past_session for 'task-1']",
 	},
 	list_files: {
 		handler: "listFilesTool",

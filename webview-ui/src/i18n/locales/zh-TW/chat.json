@@ -563,6 +563,12 @@
 	"searchTaskHistory": {
 		"title": "Tumble 搜尋了此任務的歷史"
 	},
+	"searchPastSessions": {
+		"title": "Tumble 搜尋了先前的工作階段"
+	},
+	"readPastSession": {
+		"title": "Tumble 讀取了一個先前的工作階段"
+	},
 	"waitForSubagents": {
 		"title": "Tumble 正在等待其子代理"
 	},

@@ -64,6 +64,8 @@ export type NativeToolArgs = {
 	skill: { skill: string; args?: string }
 	search_files: { path: string; regex: string; file_pattern?: string | null }
 	search_task_history: { query: string; max_results?: number }
+	search_past_sessions: { query: string; scope?: string; max_results?: number }
+	read_past_session: { session_id: string; part?: string; offset?: number }
 	switch_mode: { mode_slug: string; reason: string }
 	update_todo_list: { todos: string }
 	use_mcp_tool: { server_name: string; tool_name: string; arguments?: Record<string, unknown> }

@@ -581,6 +581,12 @@
 	"searchTaskHistory": {
 		"title": "Tumble ha cercat a l'historial d'aquesta tasca"
 	},
+	"searchPastSessions": {
+		"title": "Tumble ha cercat sessions anteriors"
+	},
+	"readPastSession": {
+		"title": "Tumble ha llegit una sessió anterior"
+	},
 	"waitForSubagents": {
 		"title": "Tumble està esperant els seus subagents"
 	},

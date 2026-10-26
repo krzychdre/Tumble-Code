@@ -110,6 +110,8 @@ describe("per-tool policy lists (CORE-R4)", () => {
 				"web_search",
 				"web_fetch",
 				"search_task_history",
+				"search_past_sessions",
+				"read_past_session",
 			]),
 		)
 	})
@@ -136,6 +138,8 @@ describe("per-tool policy lists (CORE-R4)", () => {
 				"web_search",
 				"web_fetch",
 				"search_task_history",
+				"search_past_sessions",
+				"read_past_session",
 			]),
 		)
 	})
@@ -153,6 +157,7 @@ describe("per-tool policy lists (CORE-R4)", () => {
 				"read_command_output",
 				"access_mcp_resource",
 				"search_task_history",
+				"read_past_session",
 			]),
 		)
 	})

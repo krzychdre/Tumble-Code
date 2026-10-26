@@ -364,3 +364,30 @@ export const parseSearchTaskHistoryArgs: ToolArgParser = (raw) =>
 	raw.query !== undefined
 		? built({ query: raw.query, max_results: coerceOptionalNumber(raw.max_results) })
 		: undefined
+
+/** "This project", "this-project" and "THIS_PROJECT" all mean `this_project` to a weak model. */
+function coerceOptionalWord(value: unknown): string | undefined {
+	return typeof value === "string"
+		? value
+				.trim()
+				.toLowerCase()
+				.replace(/[\s-]+/g, "_")
+		: undefined
+}
+
+export const parseSearchPastSessionsArgs: ToolArgParser = (raw) =>
+	raw.query !== undefined
+		? built({
+				query: raw.query,
+				scope: coerceOptionalWord(raw.scope),
+				max_results: coerceOptionalNumber(raw.max_results),
+			})
+		: undefined
+
+/** `sessionId` is the cloud's spelling of the id, and a model copies either. */
+export const parseReadPastSessionArgs: ToolArgParser = (raw) => {
+	const sessionId = raw.session_id ?? raw.sessionId
+	return sessionId !== undefined
+		? built({ session_id: sessionId, part: coerceOptionalWord(raw.part), offset: coerceOptionalNumber(raw.offset) })
+		: undefined
+}

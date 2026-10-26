@@ -581,6 +581,12 @@
 	"searchTaskHistory": {
 		"title": "Tumble buscó en el historial de esta tarea"
 	},
+	"searchPastSessions": {
+		"title": "Tumble buscó en sesiones anteriores"
+	},
+	"readPastSession": {
+		"title": "Tumble leyó una sesión anterior"
+	},
 	"waitForSubagents": {
 		"title": "Tumble está esperando a sus subagentes"
 	},

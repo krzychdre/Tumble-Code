@@ -214,6 +214,16 @@ const rows: ParityRow[] = [
 		renderer: GenericTool,
 		shows: ["Search Task History(the port)"],
 	},
+	{
+		payload: { tool: "searchPastSessions", query: "retry wrapper", matchCount: 2 },
+		renderer: GenericTool,
+		shows: ["Search Past Sessions(retry wrapper)"],
+	},
+	{
+		payload: { tool: "readPastSession", description: "Fix the retry wrapper" },
+		renderer: GenericTool,
+		shows: ["Read Past Session(Fix the retry wrapper)"],
+	},
 	// No webview row renders this ask; the CLI at least names it.
 	{
 		payload: { tool: "runParallelTasks", count: 2, maxConcurrency: 2, subtasks: [] },

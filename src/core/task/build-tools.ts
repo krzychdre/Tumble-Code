@@ -13,6 +13,7 @@ import { customToolRegistry, formatNative } from "@tumble-code/core"
 
 import type { ClineProvider } from "../webview/ClineProvider"
 import { getRooDirectoriesForCwd } from "../../services/roo-config/index.js"
+import { getRecallScope } from "../../services/recall/recallScope"
 import { getModeAllowedMcpServers, defaultModeSlug } from "../../shared/modes"
 
 import { getNativeTools, getMcpServerTools } from "../prompts/tools/native-tools"
@@ -153,6 +154,9 @@ export async function buildNativeToolsArrayWithRestrictions(options: BuildToolsO
 		// The compact flag comes from the caller (the task's own profile), see
 		// `BuildToolsOptions.compactProfile`.
 		compactProfile,
+		// Read per request (from a five-minute cache), so a sign-out or a scope
+		// change mid-task reaches the next request.
+		recallScope: await getRecallScope(cwd),
 	}
 
 	// Check if the model supports images for read_file tool description.

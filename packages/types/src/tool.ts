@@ -53,6 +53,8 @@ export const toolNames = [
 	"wait_for_subagents",
 	"web_search",
 	"web_fetch",
+	"search_past_sessions",
+	"read_past_session",
 ] as const
 
 export const toolNamesSchema = z.enum(toolNames)
@@ -143,6 +145,10 @@ export const toolParamNames = [
 	// search_task_history parameter (`query` is already listed above, shared
 	// with codebase_search)
 	"max_results",
+	// search_past_sessions and read_past_session parameters
+	"scope",
+	"session_id",
+	"part",
 ] as const
 
 export type ToolParamName = (typeof toolParamNames)[number]
@@ -184,6 +190,8 @@ export const TOOL_DISPLAY_NAMES: Record<ToolName, string> = {
 	tools_load: "load deferred tool schemas",
 	web_search: "search the web",
 	web_fetch: "fetch web pages",
+	search_past_sessions: "search past sessions",
+	read_past_session: "read a past session",
 } as const
 
 // Define available tool groups.
@@ -194,7 +202,18 @@ export const TOOL_GROUPS: Record<ToolGroup, ToolGroupConfig> = {
 		// already saw. It lives in `read` (rather than `command`, next to
 		// read_artifact) so every read-capable mode, including the md-only
 		// ones, can recover a detail that condense or the pruner took away.
-		tools: ["read_file", "search_files", "list_files", "codebase_search", "search_task_history"],
+		// The past-session tools read the cloud's session cards, for the same
+		// modes; they are offered only while recall is on for the project
+		// (filterNativeToolsForMode).
+		tools: [
+			"read_file",
+			"search_files",
+			"list_files",
+			"codebase_search",
+			"search_task_history",
+			"search_past_sessions",
+			"read_past_session",
+		],
 	},
 	edit: {
 		tools: ["apply_diff", "write_to_file"],

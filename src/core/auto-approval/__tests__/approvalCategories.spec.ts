@@ -28,6 +28,8 @@ describe("tool approval categories (CORE-R4 d)", () => {
 			read_artifact: "none",
 			read_command_output: "none",
 			search_task_history: "none",
+			search_past_sessions: "none",
+			read_past_session: "none",
 			write_to_file: "write editedExistingFile newFileCreated",
 			apply_diff: "write appliedDiff",
 			edit: "write appliedDiff",

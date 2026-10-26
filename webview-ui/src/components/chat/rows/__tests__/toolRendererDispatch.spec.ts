@@ -18,6 +18,7 @@ import {
 } from "../renderers/tool/TaskToolRows"
 import { RunSlashCommandToolRow, SkillToolRow } from "../renderers/tool/ExpandableToolRows"
 import {
+	PastSessionSayRow,
 	ReadArtifactSayRow,
 	SAY_TOOL_RENDERERS,
 	SearchTaskHistorySayRow,
@@ -72,6 +73,8 @@ describe("say tool rows by payload tool name", () => {
 		expect(SAY_TOOL_RENDERERS).toEqual({
 			runSlashCommand: RunSlashCommandToolRow,
 			searchTaskHistory: SearchTaskHistorySayRow,
+			searchPastSessions: PastSessionSayRow,
+			readPastSession: PastSessionSayRow,
 			readArtifact: ReadArtifactSayRow,
 			readCommandOutput: ReadArtifactSayRow,
 			waitForSubagents: WaitForSubagentsSayRow,
