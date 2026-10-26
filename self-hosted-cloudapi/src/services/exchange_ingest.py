@@ -30,6 +30,7 @@ from src.services.exchange_quality import (
     split_issues,
     static_issues,
 )
+from src.services.projects import bind_recorded_folder
 
 COLUMN_MAX = 200
 
@@ -235,7 +236,19 @@ async def record_exchange(
         "issues": join_issues(static_issues(exchange.status, response, tools)),
         "payload": json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
     }
-    return await _insert_ignoring_duplicates(db, LlmExchange, values, ["id"])
+    inserted = await _insert_ignoring_duplicates(db, LlmExchange, values, ["id"])
+    # A delta's folder was bound with its chain's snapshot (a lost base makes
+    # the extension send a snapshot next).
+    if inserted and values["workspace_path"] and exchange.base_id is None:
+        await bind_recorded_folder(
+            db,
+            user_id,
+            org_id,
+            values["workspace_path"],
+            task_id,
+            exchange.parent_task_id,
+        )
+    return inserted
 
 
 async def base_exists(db: AsyncSession, user_id: str, base_id: str) -> bool:

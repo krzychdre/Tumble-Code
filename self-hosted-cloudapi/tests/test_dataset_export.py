@@ -11,10 +11,12 @@ import json
 from pathlib import Path
 
 import pytest
+from sqlalchemy import select
 
 from src.auth.web_session import get_web_user_optional
 from src.dependencies import get_current_user
 from src.models.llm_exchange import DatasetSettings
+from src.models.project import ProjectBinding
 from src.models.user import User
 
 from tests.web_helpers import _override_current_user, _override_web_user
@@ -127,11 +129,39 @@ def test_strict_leaves_out_the_failing_tool_and_reasoning_can_be_left_out(record
     assert "metadata" not in _export(recorded, anonymize="0")[0]
 
 
-def test_filters_by_model_workspace_and_limit(recorded):
+def test_filters_by_model_and_limit(recorded):
     assert _export(recorded, model="another-model") == []
-    assert _export(recorded, exclude_workspace="/home/alice/work/acme-portal") == []
     assert len(_export(recorded, limit="1")) == 1
     assert len(_export(recorded, model="glm-5.3")) == 3
+
+
+async def test_a_worktree_is_its_parents_project_on_the_page_and_in_the_export(
+    recorded, session_factory
+):
+    """An agent's worktree (no window, no remote) records with its parent task:
+    the page offers the one project, and leaving it out drops both tasks."""
+    worktree = {
+        **FIXTURE["exchanges"][0]["body"],
+        "id": "00000000-0000-4000-8000-0000000000aa",
+        "taskId": "task-worktree",
+        "parentTaskId": "task-contract",
+        "workspacePath": "/home/alice/.roo/worktrees/acme-portal-1",
+    }
+    _override_current_user(recorded.app)
+    assert _post(recorded, "/api/llm-exchanges", worktree).json()["stored"] is True
+    recorded.app.dependency_overrides.pop(get_current_user, None)
+    async with session_factory() as s:
+        [project_id] = (
+            await s.scalars(select(ProjectBinding.project_id).distinct())
+        ).all()
+
+    body = recorded.get("/app/dataset").text
+    assert body.count('name="exclude_project"') == 1
+    assert f'value="{project_id}"' in body
+    assert 'acme-portal <span class="switch-hint">2 tasks, 5 exchanges' in body
+    tasks = {s["metadata"]["task"] for s in _export(recorded, metadata="1")}
+    assert tasks == {"task-contract", "task-worktree"}
+    assert _export(recorded, exclude_project=project_id) == []
 
 
 def test_trajectories_train_on_the_clean_answers_of_one_run(recorded):
@@ -204,7 +234,6 @@ def test_the_page_counts_and_offers_the_export(recorded):
     body = resp.text
     assert 'aria-current="page">Dataset</a>' in body
     assert "glm-5.3" in body
-    assert "/home/alice/work/acme-portal" in body
     assert "/app/dataset/tasks/task-contract.jsonl" in body
     assert "The request failed" in body  # the api_error issue row
 

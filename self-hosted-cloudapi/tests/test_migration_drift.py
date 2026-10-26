@@ -55,6 +55,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from src.database import Base
 from src.db_bootstrap import classify_and_seed
 from src.models import RETIRED_TABLES, include_name
+from src.services.projects import folder_key
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 BASELINE_SQL = PROJECT_DIR / "tests" / "fixtures" / "baseline_schema_sqlite.sql"
@@ -509,6 +510,96 @@ def test_client_kind_backfill_marks_the_clis_records_and_tasks(migrate_env):
         "task_code": "vscode",
         "task_foreign": "vscode",
     }
+
+
+def test_seen_folders_are_bound_by_the_rules_of_a_recorded_folder(migrate_env):
+    """c1d2e3f4a5b6 binds every folder of tasks and recordings: the remote its
+    tasks' telemetry named last (two folders of one repository are one
+    project), else a parent task's project in the same tenant, else a folder
+    project; a folder bound already keeps its project, and the tasks follow."""
+    db_file, run = migrate_env
+    _load_baseline(db_file)
+    _alembic(run, "stamp", SQLITE_START_REVISION)
+    _alembic(run, "upgrade", "b0c1d2e3f4a5")
+
+    repo = "https://github.com/QUB-IT/Roo-Code.git"
+    events = [
+        ("t_main", "2026-10-01", {"repositoryUrl": "https://github.com/x/old"}),
+        ("t_main_old", "2026-10-02", {"repositoryUrl": "https://github.com/x/old"}),
+        ("t_main", "2026-10-03", {"repositoryUrl": repo}),
+        ("t_clone", "2026-10-01", {"repositoryUrl": repo}),
+    ]
+    with sqlite3.connect(db_file) as conn:
+        conn.execute(
+            "INSERT INTO users (id, authentik_id, email) VALUES ('u1', 'ak_1', 'a@b.c')"
+        )
+        conn.execute("INSERT INTO organizations (id, name) VALUES ('org1', 'Acme')")
+        conn.executemany(
+            "INSERT INTO tasks (id, user_id, organization_id, workspace_path) VALUES (?, 'u1', ?, ?)",
+            [
+                ("t_main", None, "/w/Roo-Code"),
+                ("t_main_old", None, "/w/Roo-Code"),
+                ("t_wt", None, "/w/.roo/worktrees/Roo-Code-1"),
+                ("t_wt_org", "org1", "/w/.roo/worktrees/Roo-Code-2"),
+                ("t_notes", None, "/w/notes"),
+                ("t_bound", None, "/w/bound"),
+            ],
+        )
+        # The clone only recorded exchanges, it has no task row.
+        conn.execute(
+            "INSERT INTO llm_exchanges (id, user_id, task_id, workspace_path, sequence, occurred_at, created_at, status, issues, payload) "
+            "VALUES ('ex1', 'u1', 't_clone', '/w/clone', 0, '2026-10-01', '2026-10-01', 'completed', '', '{}')"
+        )
+        conn.executemany(
+            "INSERT INTO telemetry_events (id, user_id, event_type, task_id, properties, created_at) "
+            "VALUES (?, 'u1', 'Task Message', ?, ?, ?)",
+            [
+                (f"evt{n}", task_id, json.dumps({"taskId": task_id, **props}), at)
+                for n, (task_id, at, props) in enumerate(events)
+            ],
+        )
+        conn.executemany(
+            "INSERT INTO task_relations (child_task_id, parent_task_id) VALUES (?, 't_main')",
+            [("t_wt",), ("t_wt_org",)],
+        )
+        conn.execute(
+            "INSERT INTO projects (id, tenant_id, user_id, key, name) "
+            "VALUES ('prj_kept', 'u1', 'u1', 'folder:kept', 'kept')"
+        )
+        conn.execute(
+            "INSERT INTO project_bindings (id, user_id, tenant_id, workspace_path, project_id) "
+            "VALUES ('pb_kept', 'u1', 'u1', '/w/bound', 'prj_kept')"
+        )
+
+    _alembic(run, "upgrade", "head")
+
+    with sqlite3.connect(db_file) as conn:
+        projects = dict(conn.execute("SELECT id, key FROM projects").fetchall())
+        folders = {
+            (tenant, path): projects[project_id]
+            for tenant, path, project_id in conn.execute(
+                "SELECT tenant_id, workspace_path, project_id FROM project_bindings"
+            )
+        }
+        tasks = dict(conn.execute("SELECT id, project_id FROM tasks").fetchall())
+    assert folders == {
+        ("u1", "/w/Roo-Code"): "github.com/qub-it/roo-code",
+        ("u1", "/w/clone"): "github.com/qub-it/roo-code",
+        ("u1", "/w/.roo/worktrees/Roo-Code-1"): "github.com/qub-it/roo-code",
+        ("org1", "/w/.roo/worktrees/Roo-Code-2"): folder_key(
+            "u1", "/w/.roo/worktrees/Roo-Code-2"
+        ),
+        ("u1", "/w/notes"): folder_key("u1", "/w/notes"),
+        ("u1", "/w/bound"): "folder:kept",
+    }
+    assert len(projects) == 4
+    assert {projects[project_id] for project_id in tasks.values()} == {
+        "github.com/qub-it/roo-code",
+        folder_key("u1", "/w/.roo/worktrees/Roo-Code-2"),
+        folder_key("u1", "/w/notes"),
+        "folder:kept",
+    }
+    assert tasks["t_wt"] == tasks["t_main"]
 
 
 def test_a_fresh_database_downgrades_through_the_chain(migrate_env):
