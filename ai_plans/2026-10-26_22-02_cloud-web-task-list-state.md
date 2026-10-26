@@ -5,14 +5,15 @@
 (the filter form and its live fetch), the metrics period cookie (`routers/web_metrics.py`, `PERIOD_COOKIE`).
 **Touched:** `self-hosted-cloudapi/src/routers/web_tasks.py`, `src/web/presenters/task_list.py`,
 `src/web/templates/tasks_list.html`, `src/web/static/tasklist.js`, `src/web/static/app.css`, `README.md`, tests
-(`test_web_task_list.py`, `test_route_table.py`, `test_browser_js.py`, `browser/taskgroup_checks.html`,
+(`test_web_task_list.py`, `test_route_table.py`, `test_browser_js.py`, `browser/taskfold_checks.html`,
 `browser/tasklist_filter_checks.html`), `.changeset/cloud-web-task-list-state.md`.
 
 ## Symptom
 
 The owner reported three defects in `/app` after #1149:
 
-1. A reload or a later visit to `/app` lost which groups were open and what was typed or picked in the filters.
+1. A reload or a later visit to `/app` lost which groups and run trees were open and what was typed or picked in
+   the filters.
 2. The first group started open. Every group, also the one a filter or a search narrows the list to, and the subtask
    rows under a task, should start closed.
 3. After picking a project in the project filter, its suggestions offered only that project; the model filter did
@@ -22,8 +23,8 @@ The owner reported three defects in `/app` after #1149:
 
 1. Nothing remembered the view. `task_list` (`routers/web_tasks.py:58`, at `ab4566517`) built the view from the URL
    alone, and the nav link and the redirect after a single delete are a bare `/app`, so both opened the default
-   list. Open groups were plain `<details>` state, lost on every page load and on every live filter swap
-   (`tasklist.js` replaces `#task-results`).
+   list. Open groups were plain `<details>` state and open run trees a `hidden` flag set by `tasklist.js`, both
+   lost on every page load and on every live filter swap (`tasklist.js` replaces `#task-results`).
 2. `tasks_list.html:227`: `<details class="task-group"{% if loop.first %} open{% endif %}>`. With a project filter
    or a search the one remaining group is the first, so it was always open. Subtask trees already start folded
    (`hidden` on `.task-children`).
@@ -47,11 +48,14 @@ The owner reported three defects in `/app` after #1149:
    declared one by one in the route (only `page` is). The live filter fetch is an `/app?...` request too, so typing
    in the filters is remembered without extra code. Same attributes as the metrics period cookie (a year,
    `httponly`, `lax`), path `/app`.
-2. **Open groups in localStorage.** Every group is served closed with `data-group="<grouping>:<key>"` (key `(none)`
-   for the group without one). `tasklist.js` keeps the open keys in `tumble.openGroups`, reopens them on load and
-   after every swap, and on a group's `toggle` adds or removes only that key, so groups of other pages and other
-   groupings keep their state. It is client-side because the open state changes without a request, like the
-   density preference next to it.
+2. **Open groups and run trees in localStorage.** Every group is served closed with
+   `data-group="<grouping>:<key>"` (key `(none)` for the group without one); every run tree is served folded, as
+   before, and is known by its subtree's id (`subtree-<task id>`, the toggle's `aria-controls`). `tasklist.js`
+   keeps both kinds of key in one list, `tumble.openFolds`, reopens them on load and after every swap
+   (`reopenFolds`), and adds or removes only the one key that changed: on a group's `toggle` event, and inside
+   `setOpen`, which every tree toggle and "Expand all" already go through. Groups and trees of other pages and
+   other groupings keep their state. It is client-side because the open state changes without a request, like
+   the density preference next to it.
 3. **Pickers instead of datalists.** Project and model are `<select class="filter-pick">` with "Any" and every
    option, like Client and Grade. A filter value no task has any more (an old bookmark, a remembered view) is added
    to its options, so the picker shows what the list is filtered by and a later change of another field does not
@@ -65,19 +69,21 @@ The owner reported three defects in `/app` after #1149:
 - `test_the_list_is_grouped_by_project_by_default`: every group closed, also with `project=alpha` and `q=beta`.
 - `test_the_pickers_offer_every_project_and_model_whatever_is_picked`: all options with the picked one selected,
   and a gone model offered and selected. It replaces the datalist asserts of the plain-form test.
-- `browser/taskgroup_checks.html` (new): a remembered group reopens, the others stay closed, opening and closing is
-  stored, another grouping's key survives. `tasklist_filter_checks.html`: a remembered group reopens in the swapped
+- `browser/taskfold_checks.html` (new): a remembered group and run tree reopen, the others stay closed, opening and
+  closing both is stored, keys of another grouping and another page survive. `tasklist_filter_checks.html`: a remembered group reopens in the swapped
   list.
 - `test_route_table.py`: `/app` declares only `page` now.
 
 Mutations, each seen red and restored from a `cp` backup: first group open again; suggestions built from
 `view.conditions` (the filtered rows); the gone value not added; the cookie never read; the cookie written only on
 bare visits; the cookie holding `view.url()` instead of the query (red once the case with `scope=all` was added);
-`reopenGroups` only on first load (the swap check); the toggle not stored; the stored list rebuilt from this page
-only.
+`reopenFolds` only on first load (the swap check); the group toggle not stored; the stored list rebuilt from this
+page only; `setOpen` not storing a tree; `reopenFolds` not reopening trees.
 
 ## Notes
 
 - The pickers drop free-text matching in the project and model fields (typing `glm` to match every GLM model).
   The search box still matches any part of a workspace path; a model substring now needs the URL.
 - A long query or path makes a cookie of a few hundred bytes; the search is clipped at 200 characters.
+- Keys of deleted tasks stay in `tumble.openFolds`; a task id is about 40 bytes, so years of opened trees stay far
+  below the localStorage limit.

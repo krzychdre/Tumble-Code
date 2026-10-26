@@ -49,7 +49,7 @@
   // Stubbed before tasklist.js loads; the answer is the page a filtered
   // request would return: fewer rows, a new count.
   try { localStorage.removeItem("tumble.listDensity") } catch (e) {}
-  try { localStorage.setItem("tumble.openGroups", JSON.stringify(["project:/w/new"])) } catch (e) {}
+  try { localStorage.setItem("tumble.openFolds", JSON.stringify(["project:/w/new"])) } catch (e) {}
   window.__fetches = []
   window.__answer = '<!DOCTYPE html><html><body>' +
     '<h1>Your tasks<span id="list-count" data-swap> <span class="count-pill">1 run</span></span></h1>' +

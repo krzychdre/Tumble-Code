@@ -1,7 +1,8 @@
 /*
  * The task list: selection (checkboxes, shift-click ranges, the bulk action
- * bar), folding the run tree, the groups the reader left open, the density
- * preference, select mode, and the filter form's live results.
+ * bar), folding the run tree and the groups (and remembering what was left
+ * open), the density preference, select mode, and the filter form's live
+ * results.
  *
  * Progressive enhancement. The form and every button work without this file:
  * the bar starts hidden and is only revealed here, so with scripting off the
@@ -56,37 +57,49 @@
 		})
 	}
 
-	// --- open groups: every group starts closed, these are reopened -----------
+	// --- what is unfolded: groups and run trees start closed, these reopen ----
 
-	// The data-group keys ("project:/home/a/beta") of the groups left open, on
-	// any page and under any grouping.
-	var OPEN_GROUPS_KEY = "tumble.openGroups"
+	// What the reader left open, on any page and under any grouping: groups by
+	// their data-group ("project:/home/a/beta"), run trees by the id of their
+	// subtree ("subtree-<task id>").
+	var OPEN_KEY = "tumble.openFolds"
 
-	function readOpenGroups() {
+	function readOpen() {
 		try {
-			return JSON.parse(window.localStorage.getItem(OPEN_GROUPS_KEY)) || []
+			return JSON.parse(window.localStorage.getItem(OPEN_KEY)) || []
 		} catch (e) {
 			return []
 		}
 	}
 
-	function rememberGroup(group) {
-		var key = group.getAttribute("data-group")
-		var keys = readOpenGroups().filter(function (k) {
+	function remember(key, open) {
+		var keys = readOpen().filter(function (k) {
 			return k !== key
 		})
-		if (group.open) keys.push(key)
+		if (open) keys.push(key)
 		try {
-			window.localStorage.setItem(OPEN_GROUPS_KEY, JSON.stringify(keys))
+			window.localStorage.setItem(OPEN_KEY, JSON.stringify(keys))
 		} catch (e) {
-			// Private mode: the groups fold shut again on the next page.
+			// Private mode: everything folds shut again on the next page.
 		}
 	}
 
-	function reopenGroups() {
-		var keys = readOpenGroups()
+	// Folds or unfolds the run tree under a toggle.
+	function setOpen(toggle, open) {
+		var subtree = document.getElementById(toggle.getAttribute("aria-controls"))
+		if (!subtree) return
+		subtree.hidden = !open
+		toggle.setAttribute("aria-expanded", open ? "true" : "false")
+		remember(subtree.id, open)
+	}
+
+	function reopenFolds() {
+		var keys = readOpen()
 		Array.prototype.slice.call(document.querySelectorAll(".task-group")).forEach(function (group) {
 			if (keys.indexOf(group.getAttribute("data-group")) !== -1) group.open = true
+		})
+		Array.prototype.slice.call(document.querySelectorAll(".tree-toggle")).forEach(function (toggle) {
+			if (keys.indexOf(toggle.getAttribute("aria-controls")) !== -1) setOpen(toggle, true)
 		})
 	}
 
@@ -94,7 +107,7 @@
 
 	function bindList() {
 		bindDensity()
-		reopenGroups()
+		reopenFolds()
 		bindSelection()
 	}
 
@@ -239,13 +252,6 @@
 			return toggle.getAttribute("aria-expanded") === "true"
 		}
 
-		function setOpen(toggle, open) {
-			var subtree = document.getElementById(toggle.getAttribute("aria-controls"))
-			if (!subtree) return
-			subtree.hidden = !open
-			toggle.setAttribute("aria-expanded", open ? "true" : "false")
-		}
-
 		function groups() {
 			return toArray(form.querySelectorAll(".task-group"))
 		}
@@ -295,7 +301,8 @@
 		form.addEventListener(
 			"toggle",
 			function (e) {
-				if (e.target.classList.contains("task-group")) rememberGroup(e.target)
+				if (e.target.classList.contains("task-group"))
+					remember(e.target.getAttribute("data-group"), e.target.open)
 				refreshExpandAll()
 				refresh()
 			},

@@ -47,8 +47,9 @@ _MIN_CHECKS = {
     "images_checks.html": 14,
     "resume_span_checks.html": 6,
     "tasklist_checks.html": 18,
-    # Groups served closed, the remembered ones reopened, opening and closing kept.
-    "taskgroup_checks.html": 4,
+    # Groups and run trees served closed, the remembered ones reopened, opening
+    # and closing kept.
+    "taskfold_checks.html": 6,
     # Density toggle, select mode, and the 300 ms fetch-and-swap of the filter
     # form, with the remembered groups reopened in the swapped list.
     "tasklist_filter_checks.html": 20,
