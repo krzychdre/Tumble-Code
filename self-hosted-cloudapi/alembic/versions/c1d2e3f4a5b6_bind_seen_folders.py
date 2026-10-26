@@ -50,14 +50,16 @@ def upgrade() -> None:
         folder_of[(user_id, task_id)] = folder
 
     # (user, task) -> (position, remote) of its latest event naming one.
-    # Streamed: a task message event can carry a whole message.
+    # Streamed: a task message event can carry a whole message. The option
+    # goes on the statement: on the connection it would stream every later
+    # statement too, and asyncpg cannot run an executemany on a server cursor.
     urls: dict[tuple[str, str], tuple[int, str]] = {}
-    events = conn.execution_options(yield_per=1000).execute(
+    events = conn.execute(
         sa.text(
             "SELECT user_id, task_id, properties FROM telemetry_events "
             "WHERE task_id IS NOT NULL AND properties LIKE '%\"repositoryUrl\"%' "
             "ORDER BY created_at"
-        )
+        ).execution_options(yield_per=1000)
     )
     for position, (user_id, task_id, properties) in enumerate(events):
         urls[(user_id, task_id)] = (position, json.loads(properties)["repositoryUrl"])
