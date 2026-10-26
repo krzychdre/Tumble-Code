@@ -14,6 +14,7 @@ import { TaskStatus, type RemoteControlStatus } from "@tumble-code/types"
 import { ClineProvider } from "../core/webview/ClineProvider"
 import { panelRegistry } from "../core/webview/panelRegistry"
 import { getBridgeRetryDelayMs } from "../activate/cloud-urls"
+import { getGitRepositoryInfo } from "../utils/git"
 import type { API } from "./api"
 import { setRemoteControlStatus } from "./remoteControlStatus"
 
@@ -138,11 +139,15 @@ export function setupRemoteControlBridge(opts: {
 			return
 		}
 		const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? ""
+		const { repositoryUrl } = workspacePath ? await getGitRepositoryInfo(workspacePath) : {}
+		// A second start() may have begun while git was read.
+		if (orchestrator || disposed) return
 		orchestrator = new BridgeOrchestrator({
 			getBridgeConfig: () => cloudAPI.bridgeConfig(),
 			provider: bridgeProvider,
 			events: api as unknown as BridgeEventSource,
 			workspacePath,
+			repositoryUrl,
 			snapshot,
 			// Re-arm the connector after socket.io gives up reconnecting (R11).
 			// Read at every start so the setting applies without a reload.

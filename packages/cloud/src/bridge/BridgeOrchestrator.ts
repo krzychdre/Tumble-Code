@@ -45,6 +45,8 @@ export interface BridgeOrchestratorOptions {
 	provider: BridgeProvider
 	events: BridgeEventSource
 	workspacePath: string
+	/** The workspace's sanitized https remote (`getGitRepositoryInfo`); absent without git or a remote. */
+	repositoryUrl?: string
 	/** Build the live header/control snapshot for the active task. */
 	snapshot: (taskId: string) => Promise<InstanceStatePayload | null>
 	log?: Logger
@@ -287,6 +289,7 @@ export class BridgeOrchestrator {
 		this.socket.emit(ExtensionSocketEvents.REGISTER, {
 			userId: this.userId,
 			workspacePath: this.options.workspacePath,
+			repositoryUrl: this.options.repositoryUrl,
 			lastHeartbeat: Date.now(),
 		})
 	}
