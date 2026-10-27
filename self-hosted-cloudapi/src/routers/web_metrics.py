@@ -13,14 +13,15 @@ from src.services.metrics_service import (
     PERIODS,
     compute_user_metrics,
 )
+from src.services.organizations import administered_organizations
 from src.services.quality_overview import quality_overview
 from src.web.presenters.charts import metrics_charts
 from src.web.presenters.metrics_view import (
     DEFAULT_GROUP,
-    GROUP_OPTIONS,
     GROUP_ROWS,
     NO_GROUP,
     MetricsView,
+    group_options,
 )
 
 router = APIRouter(tags=["web"])
@@ -57,11 +58,16 @@ def _remember(response, request: Request, cookie: str, value: str) -> None:
 async def metrics_page(
     request: Request,
     period: str | None = None,
+    # The id of an organization the reader administers: its usage, from every
+    # member, instead of the reader's own. Anything else (absent, unknown, an
+    # organization the reader only belongs to) is the reader's own usage. Not
+    # remembered like the period: a plain visit shows the reader's own usage.
+    space: str | None = None,
     # "vscode" or "cli": only what that client sent. Absent (or unknown) means
     # both. Not remembered like the period: a plain visit shows everything.
     client: str | None = None,
-    # "project", "model" or "none" (web/presenters/metrics_view): the table of
-    # groups. ``only`` narrows the whole page to one group.
+    # "project", "model", "user" (in an organization) or "none"
+    # (web/presenters/metrics_view): the table of groups. ``only`` narrows the whole page to one group.
     group: str | None = None,
     only: str | None = None,
     # The daily table's page. Absent on a plain visit; present only when the
@@ -71,7 +77,8 @@ async def metrics_page(
     groups: str | None = None,
     web: WebPage = Depends(require_web_page),
 ):
-    """Usage-metrics dashboard for the logged-in user.
+    """Usage-metrics dashboard for the logged-in user, or for an organization
+    they administer.
 
     Aggregates LLM Completion telemetry (tokens / cost / duration / models /
     modes) over the selected period. See services/metrics_service.py.
@@ -81,13 +88,21 @@ async def metrics_page(
     period, period_picked = _remembered(
         request, PERIOD_COOKIE, period, PERIODS, DEFAULT_PERIOD
     )
+    organizations = await administered_organizations(db, user_id)
+    space = space if space in {o.id for o in organizations} else ""
+    options = group_options(bool(space))
     group, group_picked = _remembered(
-        request, GROUP_COOKIE, group, [key for key, _ in GROUP_OPTIONS], DEFAULT_GROUP
+        request, GROUP_COOKIE, group, [key for key, _ in options], DEFAULT_GROUP
     )
     view = MetricsView(
-        period, parse_client(client), group, (only or "") if group != NO_GROUP else ""
+        space,
+        period,
+        parse_client(client),
+        group,
+        (only or "") if group != NO_GROUP else "",
     )
     grouping = view.grouping
+    organization_id = view.space or None
     metrics = await compute_user_metrics(
         db,
         user_id,
@@ -96,6 +111,7 @@ async def metrics_page(
         zone=web["zone"],
         group_key=grouping.event_key if grouping else None,
         only=view.only,
+        organization_id=organization_id,
     )
     periods = [
         {"key": key, "label": label, "active": key == view.period}
@@ -112,6 +128,7 @@ async def metrics_page(
         view.client,
         zone=web["zone"],
         narrow=view.tasks_condition(),
+        organization_id=organization_id,
     )
     response = render_page(
         request,
@@ -123,7 +140,9 @@ async def metrics_page(
         periods=periods,
         clients=clients,
         view=view,
-        group_options=GROUP_OPTIONS,
+        # The "Space" selector, shown to an admin of an organization.
+        spaces=[("", "Mine")] + [(o.id, o.name) for o in organizations],
+        group_options=options,
         group_limit=GROUP_ROWS,
         all_groups=groups == "all",
         only_label=view.only_label(metrics["groups"]) if view.only else "",

@@ -1,17 +1,19 @@
-"""The metrics page's view state: period, client, grouping, and the URLs that carry them.
+"""The metrics page's view state: space, period, client, grouping, and the URLs that carry them.
 
-Like the task list (web/presenters/task_list.py), the page can be summed per
-project (the default) or per model (``group``), and narrowed to one group
+The page shows the reader's own usage, or (``space``) the usage of an
+organization they administer, from every member. Like the task list
+(web/presenters/task_list.py), it can be summed per project (the default), per
+model or, in an organization, per user (``group``), and narrowed to one group
 (``only``): then every figure on the page is that group's. Every link of the
 page is built by ``MetricsView.url``, so none of them drops a choice the reader
 made.
-
-There is no grouping by user: the page shows the reader's own usage only.
 """
 
 from dataclasses import dataclass, replace
 from typing import Callable, Optional
 from urllib.parse import quote, urlencode
+
+from sqlalchemy import Row
 
 from src.models.task import Task
 from src.web.presenters.task_list import GROUPINGS as TASK_GROUPINGS
@@ -28,26 +30,30 @@ class Grouping:
     label: str
     # What the group of events without a key is called.
     empty: str
-    # (key, name) of an event from its payload and its task's project id and
-    # name; key None when it has none.
-    of_event: Callable[
-        [dict, Optional[str], Optional[str]], tuple[Optional[str], Optional[str]]
-    ]
+    # (key, name) of an event from its payload and its row of the completions
+    # query (services/metrics_service); key None when it has none.
+    of_event: Callable[[dict, Row], tuple[Optional[str], Optional[str]]]
     # The tasks column a missing key is NULL in, and SQL that keeps the tasks
     # of one key: what narrows the session-quality panel.
     column: object
     match: Callable[[str], object]
+    # Offered in an organization space only: the reader's own page has one user.
+    organization_only: bool = False
 
-    def event_key(
-        self, props: dict, project_id: Optional[str], project_name: Optional[str]
-    ) -> tuple[str, str]:
-        key, name = self.of_event(props, project_id, project_name)
+    def event_key(self, props: dict, row: Row) -> tuple[str, str]:
+        key, name = self.of_event(props, row)
         return (NO_KEY, self.empty) if key is None else (key, name)
 
 
-def _event_model(props, project_id, project_name):
+def _event_model(props, row):
     model = str(props.get("modelId") or "") or None
     return model, model
+
+
+def _event_user(props, row):
+    """Who ran the event, by name, else by e-mail."""
+    name = f"{row.first_name or ''} {row.last_name or ''}".strip()
+    return row.user_id, name or row.email
 
 
 GROUPINGS = {
@@ -56,10 +62,7 @@ GROUPINGS = {
     "project": Grouping(
         "Project",
         "No project",
-        lambda props, project_id, project_name: (
-            project_id,
-            project_name or project_id,
-        ),
+        lambda props, row: (row.project_id, row.project_name or row.project_id),
         Task.project_id,
         lambda key: Task.project_id == key,
     ),
@@ -71,14 +74,34 @@ GROUPINGS = {
         TASK_GROUPINGS["model"].column,
         TASK_GROUPINGS["model"].match,
     ),
+    # Who ran the event: the task's owner. Every event has one.
+    "user": Grouping(
+        "User",
+        "No user",
+        _event_user,
+        Task.user_id,
+        lambda key: Task.user_id == key,
+        organization_only=True,
+    ),
 }
 DEFAULT_GROUP = "project"
-# The "Group" selector.
-GROUP_OPTIONS = [(key, g.label) for key, g in GROUPINGS.items()] + [(NO_GROUP, "None")]
+
+
+def group_options(in_organization: bool) -> list[tuple[str, str]]:
+    """The "Group" selector's (key, label) pairs in the reader's space or an
+    organization's."""
+    return [
+        (key, g.label)
+        for key, g in GROUPINGS.items()
+        if in_organization or not g.organization_only
+    ] + [(NO_GROUP, "None")]
 
 
 @dataclass(frozen=True)
 class MetricsView:
+    # The id of the organization whose usage the page shows, "" for the
+    # reader's own.
+    space: str
     period: str
     # "vscode" or "cli" (services/client_kind), None for both.
     client: Optional[str]
@@ -103,6 +126,8 @@ class MetricsView:
         ones."""
         view = replace(self, **changes)
         params = [("period", view.period)]
+        if view.space:
+            params.append(("space", view.space))
         if view.client:
             params.append(("client", view.client))
         params.append(("group", view.group))
@@ -113,6 +138,10 @@ class MetricsView:
     def group_url(self, group: str) -> str:
         """The same view grouped another way; a narrowed group does not carry over."""
         return self.url(group=group, only="")
+
+    def space_url(self, space: str) -> str:
+        """The same view of another space; a narrowed group does not carry over."""
+        return self.url(space=space, only="")
 
     def tasks_condition(self):
         """What keeps the runs of the narrowed group, or None."""

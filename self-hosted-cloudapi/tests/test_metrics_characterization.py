@@ -392,7 +392,7 @@ async def test_metrics_read_only_the_columns_they_use(seeded, captured_sql):
         "created_at",
         "client_kind",
         "tasks.project_id",
-        "projects.name",
+        "projects.name AS project_name",
     }
     assert _selected_columns(embeddings, "telemetry_events") == {"properties"}
 

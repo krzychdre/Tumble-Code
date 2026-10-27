@@ -29,8 +29,12 @@ class Task(Base, TimestampMixin):
     user_id = Column(
         String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    # Indexed for the metrics page's organization space (routers/web_metrics).
     organization_id = Column(
-        String, ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True
+        String,
+        ForeignKey("organizations.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
     # Absolute path of the VS Code workspace folder (worktree root) the task was
     # attached to, captured from the bridge's extension:register `workspacePath`

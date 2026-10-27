@@ -1,7 +1,9 @@
-"""The metrics page summed per project or per model, and narrowed to one group.
+"""The metrics page summed per project, model or user, narrowed to one group,
+and an organization's space.
 
-Plan: ai_plans/2026-10-27_10-00_cloud-web-metrics-groups.md. The grouping
-table and the view's URLs are web/presenters/metrics_view.py; the sums are
+Plans: ai_plans/2026-10-27_10-00_cloud-web-metrics-groups.md and
+ai_plans/2026-10-27_10-30_cloud-web-org-metrics.md. The grouping table and the
+view's URLs are web/presenters/metrics_view.py; the sums are
 services/metrics_service.aggregate_user_metrics.
 """
 
@@ -15,15 +17,19 @@ import pytest
 
 from src.auth.web_session import get_web_user_optional
 from src.models.event import TelemetryEvent
-from src.models.organization import Organization
+from src.models.organization import Membership, Organization
 from src.models.project import Project
 from src.models.task import Task
+from src.models.user import User
 from src.services.metrics_service import compute_user_metrics
 from src.web.presenters.metrics_view import GROUPINGS
 from tests.web_helpers import _llm_event, _override_web_user, _seed_user
 
 USER = "user_test"
 OTHER = "user_other"
+# Admin of another organization only.
+RIVAL = "user_rival"
+ORG = "org_acme"
 WHEN = datetime(2026, 6, 1, 12, 0, tzinfo=timezone.utc)
 
 # (task id, project id or None, model, input tokens, cost). "t-ghost" has no
@@ -77,15 +83,100 @@ async def seeded(db_session):
     return db_session
 
 
-async def _metrics(db, group, only=""):
+# The reader is an admin of ORG, OTHER a plain member with no name (a group of
+# theirs is named by e-mail). ORG's runs: one of the reader's, two of OTHER's.
+# Not ORG's: RIVAL's run in their own organization, and RIVAL's event naming
+# OTHER's task.
+@pytest.fixture
+async def org_seeded(seeded):
+    await _seed_user(seeded, RIVAL, email="r@example.com")
+    other = await seeded.get(User, OTHER)
+    other.first_name = other.last_name = ""
+    seeded.add_all(
+        [
+            Organization(id=ORG, name="Acme"),
+            Organization(id="org_rival", name="Rival"),
+            Membership(user_id=USER, organization_id=ORG, role="org:admin"),
+            Membership(user_id=OTHER, organization_id=ORG, role="org:member"),
+            Membership(user_id=RIVAL, organization_id="org_rival", role="org:admin"),
+        ]
+    )
+    await seeded.flush()
+    seeded.add(
+        Project(
+            id="prj_org",
+            tenant_id=ORG,
+            organization_id=ORG,
+            user_id=USER,
+            key="o",
+            name="shared",
+        )
+    )
+    await seeded.flush()
+    org_tasks = [
+        ("o-mine", USER, ORG, "prj_org", "gpt-a"),
+        ("o-other", OTHER, ORG, "prj_org", "llama-b"),
+        ("o-other2", OTHER, ORG, None, "gpt-a"),
+        ("o-rival", RIVAL, "org_rival", None, "gpt-a"),
+    ]
+    seeded.add_all(
+        [
+            Task(
+                id=task,
+                user_id=user,
+                organization_id=org,
+                project_id=project,
+                models=model,
+            )
+            for task, user, org, project, model in org_tasks
+        ]
+    )
+    seeded.add_all(
+        [
+            _llm_event(
+                USER, task_id="o-mine", model="gpt-a", tin=400, tout=0, cost=0.2
+            ),
+            _llm_event(
+                OTHER, task_id="o-other", model="llama-b", tin=300, tout=0, cost=0.4
+            ),
+            _llm_event(
+                OTHER, task_id="o-other2", model="gpt-a", tin=100, tout=0, cost=0.1
+            ),
+            _llm_event(
+                RIVAL, task_id="o-rival", model="gpt-a", tin=5000, tout=0, cost=2.0
+            ),
+            _llm_event(
+                RIVAL, task_id="o-other", model="gpt-a", tin=999, tout=0, cost=9.0
+            ),
+        ]
+    )
+    await seeded.commit()
+    return seeded
+
+
+async def _metrics(db, group, only="", space=None):
     return await compute_user_metrics(
-        db, USER, "all", group_key=GROUPINGS[group].event_key, only=only
+        db,
+        USER,
+        "all",
+        group_key=GROUPINGS[group].event_key,
+        only=only,
+        organization_id=space,
     )
 
 
-@pytest.mark.parametrize("group", list(GROUPINGS))
-async def test_the_groups_add_up_to_the_page_totals(seeded, group):
-    m = await _metrics(seeded, group)
+# Every grouping each space offers.
+SPACE_GROUPS = [
+    (space, group)
+    for space in (None, ORG)
+    for group, grouping in GROUPINGS.items()
+    if space or not grouping.organization_only
+]
+
+
+@pytest.mark.parametrize("space, group", SPACE_GROUPS)
+async def test_the_groups_add_up_to_the_page_totals(org_seeded, space, group):
+    m = await _metrics(org_seeded, group, space=space)
     groups = m["groups"]
     assert sum(g["tokens"] for g in groups) == m["totals"]["total_tokens"]
     assert sum(g["cost"] for g in groups) == pytest.approx(m["totals"]["cost"])
@@ -134,12 +225,13 @@ async def test_a_project_the_reader_may_not_see_is_named_by_its_id(seeded):
     assert ("prj_left", "prj_left") in [(g["key"], g["name"]) for g in m["groups"]]
 
 
-@pytest.mark.parametrize("group", list(GROUPINGS))
-async def test_only_narrows_every_figure_to_the_group(seeded, group):
-    full = await _metrics(seeded, group)
-    assert full["embeddings"]["has_data"]
+@pytest.mark.parametrize("space, group", SPACE_GROUPS)
+async def test_only_narrows_every_figure_to_the_group(org_seeded, space, group):
+    full = await _metrics(org_seeded, group, space=space)
+    # Indexing belongs to no task, so it is in no organization.
+    assert full["embeddings"]["has_data"] == (space is None)
     for row in full["groups"]:
-        m = await _metrics(seeded, group, only=row["key"])
+        m = await _metrics(org_seeded, group, only=row["key"], space=space)
         assert m["totals"]["total_tokens"] == row["tokens"]
         assert m["totals"]["cost"] == pytest.approx(row["cost"])
         assert m["totals"]["completions"] == row["count"]
@@ -157,8 +249,8 @@ async def test_a_group_without_usage_has_no_data(seeded):
     assert not m["has_data"]
 
 
-def _page(http, **params):
-    _override_web_user(http.app)
+def _page(http, user=USER, **params):
+    _override_web_user(http.app, user)
     try:
         return http.get("/app/metrics", params=params)
     finally:
@@ -173,24 +265,28 @@ def _metrics_links(html: str) -> list[dict]:
 
 
 @pytest.mark.parametrize(
-    "group, only, label, runs",
+    "space, group, only, label, runs",
     [
-        ("project", "prj_a", "alpha", 2),
-        ("project", "(none)", "No project", 1),
+        ("", "project", "prj_a", "alpha", 2),
+        ("", "project", "(none)", "No project", 1),
         # A run counts under its main model.
-        ("model", "llama-b", "llama-b", 2),
+        ("", "model", "llama-b", "llama-b", 2),
+        (ORG, "project", "prj_org", "shared", 2),
+        # Named by e-mail: OTHER has no name.
+        (ORG, "user", OTHER, "o@example.com", 2),
     ],
 )
 async def test_only_narrows_the_page_and_shows_a_removable_chip(
-    client, seeded, group, only, label, runs
+    client, org_seeded, space, group, only, label, runs
 ):
-    html = _page(client, period="all", group=group, only=only).text
+    html = _page(client, period="all", space=space, group=group, only=only).text
 
     assert f'Session quality <span class="count-pill">{runs} run' in html
     chip = re.search(
         r'<a class="filter-chip" href="([^"]*)"[^>]*>([^<]*)<b>([^<]*)', html
     )
-    assert unescape(chip.group(1)) == f"/app/metrics?period=all&group={group}"
+    in_space = f"&space={space}" if space else ""
+    assert unescape(chip.group(1)) == f"/app/metrics?period=all{in_space}&group={group}"
     assert (chip.group(2), chip.group(3)) == (f"{GROUPINGS[group].label}: ", label)
     # The table of groups is the way in, not shown inside one group.
     assert 'id="table-groups"' not in html
@@ -252,3 +348,92 @@ async def test_a_long_table_shows_the_top_rows_and_links_to_all(client, db_sessi
     every = _page(client, period="all", group="model", groups="all").text
     assert len(re.findall(r'<td class="bd-name"><a ', every)) == 9
     assert "Show the top 8" in every
+
+
+# --- an organization's space -------------------------------------------------
+
+
+def _options(html: str, nav: str) -> list[str]:
+    """The labels of a selector, the active one marked with a star."""
+    block = html.split(f'aria-label="{nav}"')[1].split("</nav>")[0]
+    return [
+        label + ("*" if active else "")
+        for active, label in re.findall(
+            r'period-opt( active)?" href="[^"]*">([^<]*)<', block
+        )
+    ]
+
+
+async def test_an_organization_counts_every_member_on_its_tasks_only(org_seeded):
+    m = await _metrics(org_seeded, "user", space=ORG)
+    # Not RIVAL's run in their organization, nor RIVAL's event naming
+    # OTHER's task.
+    assert m["totals"]["completions"] == 3
+    assert m["totals"]["cost"] == pytest.approx(0.7)
+    assert [(g["key"], g["name"], g["count"], g["tasks"]) for g in m["groups"]] == [
+        (OTHER, "o@example.com", 2, 2),
+        (USER, "Test User", 1, 1),
+    ]
+
+
+async def test_an_admin_sees_the_organizations_space(client, org_seeded):
+    mine = _page(client, period="all").text
+    assert _options(mine, "Space") == ["Mine*", "Acme"]
+    assert "User" not in _options(mine, "Group")
+    # The reader's own usage, their run in the organization included.
+    assert "7 API completions" in mine
+
+    html = _page(client, period="all", space=ORG, group="user").text
+    assert _options(html, "Space") == ["Mine", "Acme*"]
+    assert _options(html, "Group") == ["Project", "Model", "User*", "None"]
+    assert "3 API completions" in html
+    assert 'Session quality <span class="count-pill">3 runs' in html
+    assert 'data-metric="indexing"' not in html
+    # Only the "Mine" option leaves the space.
+    links = _metrics_links(html)
+    assert [link for link in links if link.get("space") != ORG] == [
+        {"period": "all", "group": "user"}
+    ]
+    rows = re.findall(r'<td class="bd-name"><a href="([^"]*)"[^>]*>([^<]*)<', html)
+    assert [(unescape(href), name) for href, name in rows] == [
+        (
+            f"/app/metrics?period=all&space={ORG}&group=user&only={OTHER}",
+            "o@example.com",
+        ),
+        (f"/app/metrics?period=all&space={ORG}&group=user&only={USER}", "Test User"),
+    ]
+
+
+@pytest.mark.parametrize(
+    "user, spaces",
+    [
+        # A plain member: no selector at all.
+        (OTHER, None),
+        # An admin of another organization: their own, not this one.
+        (RIVAL, ["Mine*", "Rival"]),
+    ],
+)
+async def test_only_an_admin_gets_the_organizations_space(
+    client, org_seeded, user, spaces
+):
+    html = _page(client, user=user, period="all", space=ORG, group="user").text
+
+    if spaces is None:
+        assert 'aria-label="Space"' not in html
+    else:
+        assert _options(html, "Space") == spaces
+    assert all(link.get("space") != ORG for link in _metrics_links(html))
+    # The reader's own usage, grouped the default way.
+    assert _options(html, "Group")[0] == "Project*"
+    assert "User" not in _options(html, "Group")
+    own = await compute_user_metrics(org_seeded, user, "all")
+    assert f"{own['totals']['completions']} API completions" in html
+
+
+async def test_the_user_grouping_is_not_remembered_into_the_readers_own_page(
+    client, org_seeded
+):
+    picked = _page(client, period="all", space=ORG, group="user")
+    assert "tumble_metrics_group=user" in picked.headers["set-cookie"]
+    assert _options(_page(client, period="all").text, "Group")[0] == "Project*"
+    assert _options(_page(client, period="all", space=ORG).text, "Group")[2] == "User*"

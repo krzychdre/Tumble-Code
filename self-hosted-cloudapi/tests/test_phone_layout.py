@@ -35,6 +35,7 @@ from src.models.error_report import ErrorReport
 from src.models.task import Task, TaskShare
 from src.models.organization import Membership, Organization
 from src.models.project import Project
+from src.models.user import User
 from src.services.projects import repository_key, resolve_project
 from src.services.problem_catalogue import problem_signature
 from tests.test_browser_js import _find_browser
@@ -600,6 +601,19 @@ async def _seed_hostile_text(session_factory):
         await resolve_project(s, "user_long", "org_long", f"{_LONG_PATH}-wt", _LONG_URL)
         for n in range(2):
             await resolve_project(s, "user_long", "org_long", f"{_LONG_PATH}-{n}", "")
+        # A member without a name runs a task in the organization: the
+        # metrics page's "By user" table names them by the long e-mail.
+        member = await s.get(User, "user_long")
+        member.first_name = member.last_name = ""
+        s.add(
+            Task(
+                id="member-run",
+                user_id="user_long",
+                organization_id="org_long",
+                project_id="prj_long",
+            )
+        )
+        s.add(_llm_event("user_long", task_id="member-run", model=_LONG_MODEL))
         await s.commit()
 
 
@@ -617,6 +631,10 @@ async def _seed_hostile_text(session_factory):
         "/app/metrics?period=all",
         "/app/metrics?period=all&group=model",
         f"/app/metrics?period=all&group=model&only={_LONG_MODEL}",
+        # The organization's space: its long name in the selector, the
+        # member's long e-mail in the table and in the chip.
+        "/app/metrics?period=all&space=org_long&group=user",
+        "/app/metrics?period=all&space=org_long&group=user&only=user_long",
         "/app/diagnostics?period=all",
         # Filtered to one problem: the chips carry a long model id and search.
         f"/app/diagnostics?period=all&tool=read_file&model={_REPORT_MODEL}&q=ENOENT",
