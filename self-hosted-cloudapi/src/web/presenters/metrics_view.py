@@ -52,11 +52,14 @@ def _event_model(props, project_id, project_name):
 
 GROUPINGS = {
     # The project of the event's task (models/project), by id: two projects
-    # may share a name.
+    # may share a name. One the reader may not see is named by its bare id.
     "project": Grouping(
         "Project",
         "No project",
-        lambda props, project_id, project_name: (project_id, project_name),
+        lambda props, project_id, project_name: (
+            project_id,
+            project_name or project_id,
+        ),
         Task.project_id,
         lambda key: Task.project_id == key,
     ),

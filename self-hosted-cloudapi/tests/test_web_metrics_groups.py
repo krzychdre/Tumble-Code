@@ -15,6 +15,7 @@ import pytest
 
 from src.auth.web_session import get_web_user_optional
 from src.models.event import TelemetryEvent
+from src.models.organization import Organization
 from src.models.project import Project
 from src.models.task import Task
 from src.services.metrics_service import compute_user_metrics
@@ -104,6 +105,33 @@ async def test_a_project_is_the_tasks_and_none_collects_the_rest(seeded):
         ("(none)", "No project", 3, 3),
     ]
     assert [g["share"] for g in m["groups"]] == [51, 41, 8]
+
+
+async def test_a_project_the_reader_may_not_see_is_named_by_its_id(seeded):
+    """The reader ran a task in an organization's project, then left it."""
+    seeded.add(Organization(id="org_left", name="Left"))
+    await seeded.flush()
+    seeded.add(
+        Project(
+            id="prj_left",
+            tenant_id="org_left",
+            organization_id="org_left",
+            user_id=USER,
+            key="l",
+            name="former",
+        )
+    )
+    await seeded.flush()
+    seeded.add(
+        Task(
+            id="t-left", user_id=USER, organization_id="org_left", project_id="prj_left"
+        )
+    )
+    seeded.add(_llm_event(task_id="t-left", tin=1, tout=0, cost=0.0))
+    await seeded.commit()
+
+    m = await _metrics(seeded, "project")
+    assert ("prj_left", "prj_left") in [(g["key"], g["name"]) for g in m["groups"]]
 
 
 @pytest.mark.parametrize("group", list(GROUPINGS))

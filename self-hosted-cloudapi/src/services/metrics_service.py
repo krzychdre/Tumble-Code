@@ -30,6 +30,7 @@ from src.models.event import TelemetryEvent
 from src.models.project import Project
 from src.models.task import Task
 from src.services.client_kind import CLIENT_LABELS
+from src.services.projects import visible_to
 from src.services.telemetry_vocab import (
     EMBEDDING_EVENT,
     KIND_LABELS,
@@ -188,19 +189,21 @@ async def compute_user_metrics(
     # event_type, created_at) index serves the filter, the range and the ORDER
     # BY; the client condition only drops rows that index found. The project is
     # the event's task's, joined on the primary keys; the owner is part of the
-    # join, so an event naming another user's task id has no project.
+    # join, so an event naming another user's task id has no project. The
+    # project's name only when the user may see it (an organization they
+    # left), as on the task list.
     stmt = (
         select(
             TelemetryEvent.properties,
             TelemetryEvent.created_at,
             TelemetryEvent.client_kind,
-            Project.id,
+            Task.project_id,
             Project.name,
         )
         .outerjoin(
             Task, and_(Task.id == TelemetryEvent.task_id, Task.user_id == user_id)
         )
-        .outerjoin(Project, Project.id == Task.project_id)
+        .outerjoin(Project, and_(Project.id == Task.project_id, visible_to(user_id)))
         .where(
             TelemetryEvent.user_id == user_id,
             TelemetryEvent.event_type == LLM_COMPLETION_EVENT,
