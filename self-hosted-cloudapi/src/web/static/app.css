@@ -3374,6 +3374,39 @@ table.breakdown tr:last-child td {
 	color: var(--text-dim);
 	white-space: nowrap;
 }
+/* The table of projects or models; each name narrows the page to its group. */
+.group-card {
+	margin-bottom: var(--s4);
+}
+.group-card .group-more {
+	padding: var(--s2) var(--s2) 0;
+}
+table.group-table th:nth-child(4),
+table.group-table td:nth-child(4) {
+	width: 7rem;
+}
+table.group-table th:nth-child(5),
+table.group-table td:nth-child(5),
+table.group-table th:nth-child(6),
+table.group-table td:nth-child(6) {
+	width: 4rem;
+}
+/* A row's share of the page's cost, as a short bar after the figure. */
+.share-bar {
+	display: inline-block;
+	width: 2.5rem;
+	height: 4px;
+	margin-left: var(--s2);
+	vertical-align: middle;
+	background: var(--surface-2);
+	border-radius: var(--r-pill);
+	overflow: hidden;
+}
+.share-bar i {
+	display: block;
+	height: 100%;
+	background: var(--d-in);
+}
 
 /* ==========================================================================
    Problem report (/app/diagnostics and its report pages)
@@ -4322,6 +4355,17 @@ table.diag-table th.diag-num {
 	.period-opt {
 		padding: var(--s1) var(--s2);
 		white-space: nowrap;
+	}
+	/* The group's name, tokens, cost and share; its calls and tasks are on its
+	   own page, a tap on the name away. */
+	table.group-table th:nth-child(n + 5),
+	table.group-table td:nth-child(n + 5),
+	.share-bar {
+		display: none;
+	}
+	table.group-table th:nth-child(4),
+	table.group-table td:nth-child(4) {
+		width: 3.5rem;
 	}
 }
 

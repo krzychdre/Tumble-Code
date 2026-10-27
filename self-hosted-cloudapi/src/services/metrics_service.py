@@ -19,14 +19,16 @@ dialect-portable. Event names, kinds, labels and the payload decoding come from
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Iterable, Optional, Sequence
+from typing import Callable, Iterable, Optional, Sequence
 from zoneinfo import ZoneInfo
 
 import anyio
-from sqlalchemy import select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.event import TelemetryEvent
+from src.models.project import Project
+from src.models.task import Task
 from src.services.client_kind import CLIENT_LABELS
 from src.services.telemetry_vocab import (
     EMBEDDING_EVENT,
@@ -40,6 +42,10 @@ from src.utils.clientzone import UTC, as_utc, day_start_utc, local_day, today
 from src.utils.format import fmt_duration, fmt_tokens, num as _num
 
 logger = logging.getLogger(__name__)
+
+# (key, name) of the group an event belongs to, from its payload and its task's
+# project id and name (web/presenters/metrics_view.GROUPINGS).
+GroupKey = Callable[[dict, Optional[str], Optional[str]], tuple[str, str]]
 
 # Period presets -> how many of the reader's calendar days to include, today
 # counted (None = all time). The key is what the route accepts as ?period=...
@@ -149,12 +155,16 @@ async def compute_user_metrics(
     now: Optional[datetime] = None,
     client: Optional[str] = None,
     zone: ZoneInfo = UTC,
+    group_key: Optional[GroupKey] = None,
+    only: str = "",
 ) -> dict:
     """Aggregate the user's LLM-usage metrics for the given period.
 
     ``client`` ("vscode" or "cli", services/client_kind) keeps only the events
     that client sent; None counts both. ``zone`` is the reader's: the period
     starts at their local midnight and ``by_day`` holds their calendar days.
+    ``group_key`` sums the events per group into ``groups``; ``only`` keeps the
+    events of that one group, so every figure is the group's.
 
     Returns a JSON-serializable dict:
       - period, period_label
@@ -165,22 +175,36 @@ async def compute_user_metrics(
         cost, count}, sorted desc by tokens
       - by_client: the same, with a ``label`` ("VS Code", "CLI")
       - by_day: chronological list of {day, tokens, cost}
+      - groups: list of {key, name, tokens, tokens_fmt, cost, share, count,
+        tasks}, sorted desc by cost; empty without ``group_key``
       - has_data
     """
     if period not in PERIODS:
         period = DEFAULT_PERIOD
     start = period_start(period, now, zone)
 
-    # Only the three columns the aggregation reads, as plain tuples: no ORM
-    # entity per event (identity map, attribute instrumentation) and none of
-    # the id/user/organization/type/task columns. The (user_id, event_type,
-    # created_at) index serves the filter, the range and the ORDER BY; the
-    # client condition only drops rows that index found.
-    stmt = select(
-        TelemetryEvent.properties, TelemetryEvent.created_at, TelemetryEvent.client_kind
-    ).where(
-        TelemetryEvent.user_id == user_id,
-        TelemetryEvent.event_type == LLM_COMPLETION_EVENT,
+    # Only the columns the aggregation reads, as plain tuples: no ORM entity
+    # per event (identity map, attribute instrumentation). The (user_id,
+    # event_type, created_at) index serves the filter, the range and the ORDER
+    # BY; the client condition only drops rows that index found. The project is
+    # the event's task's, joined on the primary keys; the owner is part of the
+    # join, so an event naming another user's task id has no project.
+    stmt = (
+        select(
+            TelemetryEvent.properties,
+            TelemetryEvent.created_at,
+            TelemetryEvent.client_kind,
+            Project.id,
+            Project.name,
+        )
+        .outerjoin(
+            Task, and_(Task.id == TelemetryEvent.task_id, Task.user_id == user_id)
+        )
+        .outerjoin(Project, Project.id == Task.project_id)
+        .where(
+            TelemetryEvent.user_id == user_id,
+            TelemetryEvent.event_type == LLM_COMPLETION_EVENT,
+        )
     )
     if start is not None:
         stmt = stmt.where(TelemetryEvent.created_at >= start)
@@ -189,13 +213,23 @@ async def compute_user_metrics(
     stmt = stmt.order_by(TelemetryEvent.created_at)
 
     rows = (await db.execute(stmt)).all()
-    embedding_payloads = await _embedding_payloads(db, user_id, start, client)
+    # Indexing belongs to no task, so it is in no group.
+    embedding_payloads = (
+        [] if only else await _embedding_payloads(db, user_id, start, client)
+    )
 
     # The loop below is pure Python over every completion in the period (about
     # 58 ms for all time on the live deployment); in a worker thread it no
     # longer holds up every other request while it runs.
     return await anyio.to_thread.run_sync(
-        aggregate_user_metrics, rows, embedding_payloads, period, now, zone
+        aggregate_user_metrics,
+        rows,
+        embedding_payloads,
+        period,
+        now,
+        zone,
+        group_key,
+        only,
     )
 
 
@@ -205,12 +239,15 @@ def aggregate_user_metrics(
     period: str,
     now: Optional[datetime] = None,
     zone: ZoneInfo = UTC,
+    group_key: Optional[GroupKey] = None,
+    only: str = "",
 ) -> dict:
     """The metrics page's figures from the fetched rows; see compute_user_metrics.
 
-    ``rows`` are ``(properties, created_at, client_kind)`` triples of the
-    period's ``LLM Completion`` events, oldest first; ``embedding_payloads`` the
-    ``properties`` of its embedding events. Pure: no database, no I/O.
+    ``rows`` are ``(properties, created_at, client_kind, project_id,
+    project_name)`` of the period's ``LLM Completion`` events, oldest first;
+    ``embedding_payloads`` the ``properties`` of its embedding events. Pure: no
+    database, no I/O.
     """
     totals = {
         "input": 0,
@@ -232,6 +269,9 @@ def aggregate_user_metrics(
     unreported = 0
     # taskId -> [min_ts_ms, max_ts_ms] for per-session duration spans.
     task_spans: dict[str, list[float]] = {}
+    groups: dict[str, dict] = {}
+    # Rows of the shown group (all of them when the page is not narrowed).
+    kept = 0
 
     def _bucket(store: dict, name: str, tokens: float, cost: float) -> None:
         slot = store.setdefault(
@@ -241,8 +281,13 @@ def aggregate_user_metrics(
         slot["cost"] += cost
         slot["count"] += 1
 
-    for payload, created_at, client_kind in rows:
+    for payload, created_at, client_kind, project_id, project_name in rows:
         props = parse_event_props(payload)
+        if group_key is not None:
+            key, name = group_key(props or {}, project_id, project_name)
+            if only and key != only:
+                continue
+        kept += 1
         if props is None:
             continue
 
@@ -283,6 +328,24 @@ def aggregate_user_metrics(
             span[0] = min(span[0], ts_ms)
             span[1] = max(span[1], ts_ms)
 
+        if group_key is not None:
+            gslot = groups.setdefault(
+                key,
+                {
+                    "key": key,
+                    "name": name,
+                    "tokens": 0,
+                    "cost": 0.0,
+                    "count": 0,
+                    "task_ids": set(),
+                },
+            )
+            gslot["tokens"] += tokens
+            gslot["cost"] += cost
+            gslot["count"] += 1
+            if task_id:
+                gslot["task_ids"].add(task_id)
+
     duration_ms = sum(hi - lo for lo, hi in task_spans.values())
 
     def _sorted(store: dict) -> list[dict]:
@@ -305,6 +368,15 @@ def aggregate_user_metrics(
 
     total_tokens = totals["input"] + totals["output"]
 
+    by_group = sorted(groups.values(), key=lambda g: (-g["cost"], -g["tokens"]))
+    for row in by_group:
+        row["tasks"] = len(row.pop("task_ids"))
+        row["tokens_fmt"] = fmt_tokens(row["tokens"])
+        # Percent of the page's cost; None when nothing cost anything.
+        row["share"] = (
+            round(100 * row["cost"] / totals["cost"]) if totals["cost"] else None
+        )
+
     return {
         "period": period,
         "period_label": PERIOD_LABELS.get(period, period),
@@ -324,5 +396,6 @@ def aggregate_user_metrics(
         "unreported": unreported,
         "embeddings": embeddings,
         "by_day": days,
-        "has_data": len(rows) > 0,
+        "groups": by_group,
+        "has_data": kept > 0,
     }

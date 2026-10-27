@@ -2,26 +2,69 @@
 {% import "_pager.html" as pager %}
 {% block title %}Usage metrics · Tumble Code{% endblock %}
 {% block content %}
-{# The client filter rides along on every link of the page; the period does
-   too, except on its own selector. #}
-{% set client_q = '&amp;client=' ~ client if client else '' %}
-{# A page of the daily table: same period, table opened and scrolled to. #}
-{% macro day_url(n) %}/app/metrics?period={{ metrics.period }}{{ client_q|safe }}&amp;day_page={{ n }}#daily-table{% endmacro %}
+{# Every link of the page is view.url (web/presenters/metrics_view), so the
+   period, client, grouping and narrowed group ride along on all of them. #}
+{# A page of the daily table: same view, table opened and scrolled to. #}
+{% macro day_url(n) %}{{ view.url() }}&amp;day_page={{ n }}#daily-table{% endmacro %}
 <div class="metrics-head">
   <h1 class="page-title">Usage metrics</h1>
   <div class="metrics-controls">
+  <nav class="period-control" aria-label="Group">
+    {% for key, label in group_options %}
+    <a class="period-opt{{ ' active' if view.group == key else '' }}" href="{{ view.group_url(key) }}">{{ label }}</a>
+    {% endfor %}
+  </nav>
   <nav class="period-control" aria-label="Client">
     {% for c in clients %}
-    <a class="period-opt{{ ' active' if c.active else '' }}" href="/app/metrics?period={{ metrics.period }}{% if c.key %}&amp;client={{ c.key }}{% endif %}">{{ c.label }}</a>
+    <a class="period-opt{{ ' active' if c.active else '' }}" href="{{ view.url(client=c.key) }}">{{ c.label }}</a>
     {% endfor %}
   </nav>
   <nav class="period-control" aria-label="Time period">
     {% for p in periods %}
-    <a class="period-opt{{ ' active' if p.active else '' }}" href="/app/metrics?period={{ p.key }}{{ client_q|safe }}">{{ p.label }}</a>
+    <a class="period-opt{{ ' active' if p.active else '' }}" href="{{ view.url(period=p.key) }}">{{ p.label }}</a>
     {% endfor %}
   </nav>
   </div>
 </div>
+
+{% if view.only %}
+<ul class="filter-chips" aria-label="Active filters">
+  <li><a class="filter-chip" href="{{ view.url(only='') }}" aria-label="Show every {{ view.grouping.label|lower }}">{{ view.grouping.label }}: <b>{{ only_label }}</b> <span class="filter-chip-x" aria-hidden="true">✕</span></a></li>
+</ul>
+{% endif %}
+
+{% if view.grouped and metrics.groups %}
+{# One row per group, the costliest first; a name narrows the whole page to
+   that group. #}
+{% set unit = view.grouping.label|lower %}
+{% set group_rows = metrics.groups if all_groups else metrics.groups[:group_limit] %}
+<section class="breakdown-card group-card">
+  <h2 class="chart-title">By {{ unit }} <span class="count-pill">{{ metrics.groups|length }}</span></h2>
+  <table class="breakdown group-table" id="table-groups">
+    <caption class="sr-only">Tokens, cost, share of the cost, calls and tasks by {{ unit }}</caption>
+    <thead><tr><th scope="col">{{ view.grouping.label }}</th><th scope="col">Tokens</th><th scope="col">Cost</th><th scope="col">Share</th><th scope="col">Calls</th><th scope="col">Tasks</th></tr></thead>
+    <tbody>
+      {% for g in group_rows %}
+      <tr>
+        <td class="bd-name"><a href="{{ view.url(only=g.key) }}" title="Only {{ g.name }}">{{ g.name }}</a></td>
+        <td class="bd-num">{{ g.tokens_fmt }}</td>
+        <td class="bd-num">{{ g.cost|fmt_cost }}</td>
+        <td class="bd-num">{% if g.share is not none %}{{ g.share }}%<span class="share-bar" aria-hidden="true"><i style="width: {{ g.share }}%"></i></span>{% else %}-{% endif %}</td>
+        <td class="bd-num">{{ g.count|fmt_int }}</td>
+        <td class="bd-num">{{ g.tasks|fmt_int }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if metrics.groups|length > group_limit %}
+  {% if all_groups %}
+  <a class="group-more" href="{{ view.url() }}">Show the top {{ group_limit }}</a>
+  {% else %}
+  <a class="group-more" href="{{ view.url() }}&amp;groups=all">Show all {{ metrics.groups|length }} {{ unit }}s →</a>
+  {% endif %}
+  {% endif %}
+</section>
+{% endif %}
 
 {% if quality.has_data %}
 <section class="quality-overview panel">

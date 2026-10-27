@@ -274,7 +274,10 @@ def test_web_routes_keep_their_openapi_operations():
             (
                 ("period", "query", False),
                 ("client", "query", False),
+                ("group", "query", False),
+                ("only", "query", False),
                 ("day_page", "query", False),
+                ("groups", "query", False),
             ),
         ),
         ("/app/diagnostics", "get"): (

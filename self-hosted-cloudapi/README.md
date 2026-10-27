@@ -12,7 +12,8 @@ The extension and the CLI work fully without it. Run it and sign in, and you als
 - **Remote control.** Open a task while it runs, from any machine or your phone, and follow it live: send it a
   message, approve or deny what it asks, switch auto-approval, stop it and resume it.
 - **Sharing.** "Share task" in the extension gives a read-only link, `/shared/<task id>`.
-- **Metrics.** Tokens, cost and time per model, mode and client (VS Code or CLI) over a period you choose.
+- **Metrics.** Tokens, cost and time per model, mode and client (VS Code or CLI) over a period you choose, summed
+  per project or per model, and narrowed to one project or model with one click.
 - **Problem report.** Errors the extension ran into (`/app/diagnostics`), with the model, the context size and the end
   of the request and the response, plus a Markdown brief you can hand to an agent to fix them.
 - **LLM exchange dataset**, off until you switch it on at `/app/dataset/recording`: records what the agent sent to the model
@@ -380,7 +381,8 @@ In short:
   `POST /api/llm-exchanges` and `POST /api/llm-exchanges/outcome` (LLM exchange recording for the training
   dataset: only when the user switched it on at `/app/dataset/recording`; incremental, gzip, 32 MB limit).
 - Web panel: `/app` (task list, grouped by project, model or user with `group=` and narrowed to one group with
-  `only=`; a bare `/app` reopens the view last looked at; task pages, metrics, the problem report at `/app/diagnostics` with filters in the
+  `only=`; a bare `/app` reopens the view last looked at; task pages, metrics at `/app/metrics` (summed per project
+  or model with `group=`, the whole page narrowed to one group with `only=`), the problem report at `/app/diagnostics` with filters in the
   query string, one report at `/app/diagnostics/reports/{id}`, and the agent brief as Markdown for the filtered
   list at `/app/diagnostics/report.md` and for one problem at `/app/diagnostics/problems/{key}/brief.md`,
   the dataset tabs at `/app/dataset` (overview), `/app/dataset/export` (the anonymized JSONL export and its audit),

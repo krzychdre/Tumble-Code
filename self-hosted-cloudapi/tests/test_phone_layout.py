@@ -579,6 +579,8 @@ async def _seed_hostile_text(session_factory):
         )
         await s.flush()
         await resolve_project(s, "user_test", "org_long", _LONG_PATH, _LONG_URL)
+        # The run is that project's, so the metrics page's table names it.
+        (await s.get(Task, "run")).project_id = "prj_long"
         await resolve_project(s, "user_long", "org_long", f"{_LONG_PATH}-wt", _LONG_URL)
         for n in range(2):
             await resolve_project(s, "user_long", "org_long", f"{_LONG_PATH}-{n}", "")
@@ -594,7 +596,11 @@ async def _seed_hostile_text(session_factory):
         f"/app?q={_NOSPACE}&project={_NOSPACE}&model={_LONG_MODEL}",
         "/app/tasks/run",
         "/app/tasks/sub2",
+        # Grouped by project (the default), then by model, then narrowed to a
+        # long model id: the table of groups and the chip.
         "/app/metrics?period=all",
+        "/app/metrics?period=all&group=model",
+        f"/app/metrics?period=all&group=model&only={_LONG_MODEL}",
         "/app/diagnostics?period=all",
         # Filtered to one problem: the chips carry a long model id and search.
         f"/app/diagnostics?period=all&tool=read_file&model={_REPORT_MODEL}&q=ENOENT",

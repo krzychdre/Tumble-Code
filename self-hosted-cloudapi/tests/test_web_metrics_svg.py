@@ -296,7 +296,8 @@ async def test_the_daily_table_pager_keeps_the_period_and_opens_the_table(
     # A plain visit: page 1, closed, the pager links to page 2 of the same period.
     assert '<details class="chart-table" id="daily-table">' in plain
     assert (
-        'href="/app/metrics?period=all&amp;day_page=2#daily-table" rel="next"' in plain
+        'href="/app/metrics?period=all&amp;group=project&amp;day_page=2#daily-table" rel="next"'
+        in plain
     )
     rows = re.findall(r'<td class="bd-name">([\d-]+)</td>', plain)
     assert rows[0] == "2026-01-20" and len(rows) == 14
