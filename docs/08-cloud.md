@@ -150,7 +150,7 @@ erDiagram
   retention policy, deleted with their task, and cascade with their user.
 - LLM exchanges: `POST /api/llm-exchanges` stores one request the agent sent to the model and its answer, and
   `POST /api/llm-exchanges/outcome` how its tool calls went (`LLM_EXCHANGE`, schema in `schemas/llm_exchange.py`).
-  The extension records only while signed in AND the user switched recording on at `/app/dataset`
+  The extension records only while signed in AND the user switched recording on at `/app/dataset/recording`
   (`GET /api/llm-exchanges/config`, `DATASET_SETTINGS`). Storage is incremental: an exchange is a delta of an
   earlier one of its task (`baseId`, keep the first N messages, append the rest), and the system prompt, the tool
   definitions and large fields of the exact HTTP body are blobs (`LLM_BLOB`, per user, task and SHA-256).
@@ -225,8 +225,10 @@ SHA-256), both reading the same filters as the page; "Copy for agent" puts eithe
 
 ### The dataset
 
-`/app/dataset` (the "Dataset" tab) holds the recording switch and the user's own anonymization terms, counts the
-recorded exchanges per model and per issue, and exports them (ai_plans/2026-10-02_llm-exchange-dataset.md).
+The "Dataset" section of the web panel has four tabs (ai_plans/2026-10-02_llm-exchange-dataset.md,
+ai_plans/2026-10-27_10-40_cloud-web-dataset-tabs.md): `/app/dataset` counts the recorded exchanges per model and per
+issue, `/app/dataset/export` holds the export form, `/app/dataset/tasks` pages the recorded tasks, and
+`/app/dataset/recording` holds the recording switch, the user's own anonymization terms and deleting recordings.
 
 - `services/exchange_reconstruction.py` rebuilds every request of a task from its deltas and blobs; the exact HTTP
   body is re-serialized like `JSON.stringify` and checked against the SHA-256 the extension recorded. A missing
