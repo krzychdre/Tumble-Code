@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ organization.name }} · Tumble Code{% endblock %}
 {% import "_breadcrumbs.html" as crumbs %}
+{% import "_pager.html" as pager %}
 {% block content %}
 <div class="detail-header">
   {{ crumbs.breadcrumbs([
@@ -10,23 +11,25 @@
   <h1 class="page-title">{{ organization.name }}</h1>
 </div>
 
-<section class="panel settings-panel" aria-labelledby="org-members">
-  <h2 class="chart-title" id="org-members">Members</h2>
-  <div class="diag-table-wrap">
-    <table class="breakdown diag-table" id="table-members">
-      <caption class="sr-only">Members of {{ organization.name }}</caption>
-      <thead><tr><th scope="col">Name</th><th scope="col">E-mail</th><th scope="col">Role</th></tr></thead>
-      <tbody>
-        {% for m in members %}
-        <tr>
-          <td class="diag-cell">{{ (m.user.first_name ~ ' ' ~ m.user.last_name).strip() or '-' }}</td>
-          <td class="diag-cell">{{ m.user.email }}</td>
-          <td class="diag-cell">{{ role_labels[m.role] }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  <p class="field-hint">Members and admins are managed in <a href="{{ authentik_groups_url }}">Authentik's groups</a>.</p>
-</section>
+<p class="settings-lead">
+  You are {{ 'an admin' if is_admin else 'a member' }} of this organization.
+  Members and admins are managed in <a href="{{ authentik_groups_url }}">Authentik's groups</a>.
+</p>
+
+<div class="diag-table-wrap">
+  <table class="breakdown diag-table" id="table-members">
+    <caption class="sr-only">Members of {{ organization.name }}{% if page_count > 1 %}, page {{ page }} of {{ page_count }}{% endif %}</caption>
+    <thead><tr><th scope="col">Name</th><th scope="col">E-mail</th><th scope="col">Role</th></tr></thead>
+    <tbody>
+      {% for m in members %}
+      <tr>
+        <td class="diag-cell">{{ (m.user.first_name ~ ' ' ~ m.user.last_name).strip() or '-' }}</td>
+        <td class="diag-cell">{{ m.user.email }}</td>
+        <td class="diag-cell">{{ role_labels[m.role] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if page_count > 1 %}{{ pager.pager(page, page_count, pages, page_url, "Members", prev_label="← Previous", next_label="Next →") }}{% endif %}
 {% endblock %}

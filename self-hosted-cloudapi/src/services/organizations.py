@@ -24,6 +24,7 @@ with.
 import asyncio
 import logging
 from collections import defaultdict
+from dataclasses import dataclass
 from typing import Any
 
 import httpx
@@ -35,6 +36,7 @@ from src.auth.authentik import fetch_groups
 from src.database import async_session_factory
 from src.models.organization import Membership, Organization
 from src.models.user import User
+from src.utils.pagination import paginate
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +47,7 @@ ORGANIZATION_ATTRIBUTE = "tumble_organization"
 ADMINS_ATTRIBUTE = "tumble_organization_admins"
 
 SYNC_SECONDS = 300
+PAGE_SIZE = 25
 
 # The background loop and a sign-in both sync; one at a time, so two of them
 # never insert the same organization or membership.
@@ -62,24 +65,62 @@ async def membership_of(
     )
 
 
-async def members_of(db: AsyncSession, org_id: str) -> list[Membership]:
-    """Every membership of the organization with its user, admins first."""
-    result = await db.execute(
+@dataclass(frozen=True)
+class OrganizationRow:
+    organization: Organization
+    role: str
+    member_count: int
+
+
+async def organization_list_page(
+    db: AsyncSession, user_id: str, query: str, page: int
+) -> tuple[list[OrganizationRow], dict]:
+    """One page of the user's organizations whose name contains ``query``, by
+    name, and the pager's fields (utils/pagination.paginate)."""
+    conditions = [Membership.user_id == user_id]
+    if query:
+        conditions.append(Organization.name.icontains(query, autoescape=True))
+    mine = select(Organization, Membership.role).join(Membership).where(*conditions)
+    total = await db.scalar(select(func.count()).select_from(mine.subquery()))
+    pager = paginate(total, page, PAGE_SIZE)
+    rows = (
+        await db.execute(
+            mine.order_by(func.lower(Organization.name), Organization.id)
+            .limit(PAGE_SIZE)
+            .offset(pager["offset"])
+        )
+    ).all()
+    counts = dict(
+        (
+            await db.execute(
+                select(Membership.organization_id, func.count())
+                .where(Membership.organization_id.in_([o.id for o, _ in rows]))
+                .group_by(Membership.organization_id)
+            )
+        ).all()
+    )
+    return [OrganizationRow(o, role, counts[o.id]) for o, role in rows], pager
+
+
+async def member_page(
+    db: AsyncSession, org_id: str, page: int
+) -> tuple[list[Membership], dict]:
+    """One page of the organization's memberships with their users, admins
+    first, then by e-mail, and the pager's fields."""
+    total = await db.scalar(
+        select(func.count()).where(Membership.organization_id == org_id)
+    )
+    pager = paginate(total, page, PAGE_SIZE)
+    result = await db.scalars(
         select(Membership)
+        .join(User)
         .where(Membership.organization_id == org_id)
         .options(selectinload(Membership.user))
-        .order_by(Membership.role != ROLE_ADMIN, Membership.created_at)
+        .order_by(Membership.role != ROLE_ADMIN, func.lower(User.email), Membership.id)
+        .limit(PAGE_SIZE)
+        .offset(pager["offset"])
     )
-    return list(result.scalars().all())
-
-
-async def member_counts(db: AsyncSession, org_ids: list[str]) -> dict[str, int]:
-    result = await db.execute(
-        select(Membership.organization_id, func.count())
-        .where(Membership.organization_id.in_(org_ids))
-        .group_by(Membership.organization_id)
-    )
-    return dict(result.all())
+    return list(result.all()), pager
 
 
 async def sync_organizations(db: AsyncSession) -> None:

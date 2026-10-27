@@ -399,13 +399,13 @@ def test_web_routes_keep_their_openapi_operations():
             "organizations_page_app_organizations_get",
             ("web",),
             html,
-            (),
+            (("q", "query", False), ("page", "query", False)),
         ),
         ("/app/organizations/{org_id}", "get"): (
             "organization_page_app_organizations__org_id__get",
             ("web",),
             html,
-            (("org_id", "path", True),),
+            (("org_id", "path", True), ("page", "query", False)),
         ),
         ("/app/projects", "get"): (
             "projects_page_app_projects_get",

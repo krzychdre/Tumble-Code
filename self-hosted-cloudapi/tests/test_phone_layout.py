@@ -609,6 +609,8 @@ async def _seed_hostile_text(session_factory):
         "/app/diagnostics/reports/phone-report",
         "/app/organizations",
         "/app/organizations/org_long",
+        # Nothing matches: the empty state, the unbroken search in its field.
+        f"/app/organizations?q={_NOSPACE}",
         "/app/projects",
         "/app/projects/prj_long",
         "/shared/run",

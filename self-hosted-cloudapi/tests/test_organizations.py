@@ -278,3 +278,54 @@ async def test_an_outsider_gets_not_found(client, acme):
     assert client.get(f"/app/organizations/{acme}").status_code == 404
     assert client.get("/app/organizations/org_unknown").status_code == 404
     assert "Acme" not in client.get("/app/organizations").text
+
+
+async def test_the_list_pages_by_name_and_filters_by_name(
+    client, db_session, session_factory, authentik_groups
+):
+    await _seed_users(db_session, ALICE)
+    names = [f"team {i:02d}" for i in range(26)] + ["ACME Lab", "Old acme"]
+    authentik_groups += [
+        _group(name, [ALICE], tumble_organization=f"slug-{n}")
+        for n, name in enumerate(names)
+    ]
+    await _sync(session_factory)
+    _override_web_user(client.app, ALICE, email=f"{ALICE}@example.com")
+
+    first = client.get("/app/organizations")
+    second = client.get("/app/organizations?page=2")
+    found = client.get("/app/organizations?q=%20Acme%20")
+
+    assert first.text.count("<tr>") == 1 + 25
+    assert first.text.index("ACME Lab") < first.text.index("Old acme")
+    assert 'href="/app/organizations?page=2"' in first.text
+    assert "Next →" in first.text and "Older →" not in first.text
+    assert second.text.count("<tr>") == 1 + 3 and "team 25" in second.text
+    assert found.text.count("<tr>") == 1 + 2 and 'value="Acme"' in found.text
+    assert (
+        "No organization matches this filter"
+        in client.get("/app/organizations?q=zzz").text
+    )
+
+
+async def test_the_members_page_lists_admins_first_and_pages(
+    client, db_session, session_factory, authentik_groups
+):
+    people = [f"user_{i:02d}" for i in range(27)]
+    await _seed_users(db_session, *people)
+    authentik_groups += _acme(members=people, admins=("user_26",))
+    await _sync(session_factory)
+    async with session_factory() as s:
+        org_id = await s.scalar(select(Organization.id))
+    _override_web_user(client.app, "user_00", email="user_00@example.com")
+
+    first = client.get(f"/app/organizations/{org_id}")
+    second = client.get(f"/app/organizations/{org_id}?page=2")
+
+    assert "You are a member" in first.text
+    # The admin sorts last by e-mail but comes first.
+    assert first.text.count("<tr>") == 1 + 25
+    assert "user_26@example.com" in first.text
+    assert f'href="/app/organizations/{org_id}?page=2"' in first.text
+    assert second.text.count("<tr>") == 1 + 2
+    assert "user_24@example.com" in second.text and "user_25@example.com" in second.text

@@ -394,3 +394,11 @@ reader may not see (the same answer as for an unknown one); 400 for an empty or 
     with the projects as a subquery (a common word in one project: 150 ms, then 11 ms), the custom plan mode (the
     generic plan read the word index every time), and the GIN index on project and words without prefix matching
     (two words in one project: 100 to 150 ms, then 24 ms).
+
+### Phase 7 of the stack: organizations from Authentik (`feat/cloud-orgs-from-authentik`)
+
+- Details, the verified Authentik facts and the rollout step in `2026-10-27_10-16_cloud-orgs-from-authentik.md`.
+- `services/organizations.reconcile_organizations` and the sync triggers (startup, every 300 s, each sign-in);
+  `auth/authentik.fetch_groups` pages `/api/v3/core/groups/` with `AUTHENTIK_API_TOKEN`; blueprint entry 5 provisions
+  the service account, its view-groups role and the token.
+- The organization pages are read-only, paged and filtered by name, and link to Authentik's groups.
