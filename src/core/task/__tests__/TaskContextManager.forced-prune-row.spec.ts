@@ -119,6 +119,7 @@ describe("forced truncation announces what it did", () => {
 			messages: rewrittenHistory,
 			summary: "a summary",
 			cost: 0.02,
+			durationMs: 41_000,
 			prevContextTokens: 120_000,
 			newContextTokens: 30_000,
 			condenseId: "forced-condense-1",
@@ -139,6 +140,7 @@ describe("forced truncation announces what it did", () => {
 		expect(condenseRow![7]).toEqual({
 			summary: "a summary",
 			cost: 0.02,
+			durationMs: 41_000,
 			newContextTokens: 30_000,
 			prevContextTokens: 120_000,
 			condenseId: "forced-condense-1",

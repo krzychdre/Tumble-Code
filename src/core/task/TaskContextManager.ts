@@ -321,6 +321,7 @@ export class TaskContextManager {
 			messages,
 			summary,
 			cost,
+			durationMs,
 			newContextTokens = 0,
 			error,
 			condenseId,
@@ -356,6 +357,7 @@ export class TaskContextManager {
 		const contextCondense: ContextCondense = {
 			summary,
 			cost,
+			durationMs,
 			newContextTokens,
 			prevContextTokens,
 			condenseId: condenseId!,
@@ -780,10 +782,11 @@ export class TaskContextManager {
 	 */
 	private async sayContextChange(truncateResult: ContextManagementResult): Promise<void> {
 		if (truncateResult.summary) {
-			const { summary, cost, prevContextTokens, newContextTokens = 0, condenseId } = truncateResult
+			const { summary, cost, durationMs, prevContextTokens, newContextTokens = 0, condenseId } = truncateResult
 			const contextCondense: ContextCondense = {
 				summary,
 				cost,
+				durationMs,
 				newContextTokens,
 				prevContextTokens,
 				condenseId,

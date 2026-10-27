@@ -148,3 +148,24 @@ describe("TaskApiLoop request signal (API-5)", () => {
 		expect(handleError).toHaveBeenCalledTimes(1)
 	})
 })
+
+// The request's duration (the cloud's task duration) starts when the request goes to the
+// provider, so a wait before it, such as the auto-approval limit ask, is not counted.
+describe("TaskApiLoop request clock", () => {
+	afterEach(() => {
+		vi.restoreAllMocks()
+	})
+
+	it("starts after the approval ask, when the request goes to the provider", async () => {
+		const { loop, access } = makeTask()
+		const now = vi.spyOn(performance, "now").mockReturnValue(1_000)
+		access.autoApprovalHandler.checkAutoApprovalLimits.mockImplementation(async () => {
+			now.mockReturnValue(9_000)
+			return { shouldProceed: true }
+		})
+
+		await loop.attemptApiRequest().next()
+
+		expect((loop as any).requestSentAt).toBe(9_000)
+	})
+})

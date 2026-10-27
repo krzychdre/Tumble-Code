@@ -279,6 +279,8 @@ export class TaskApiLoop {
 	// they were built for is kept too: after a mode switch the names are stale.
 	private lastRequestToolNames: string[] = []
 	private lastRequestToolsMode: string | undefined
+	// performance.now() when the last request went to the provider (each retry restarts it).
+	private requestSentAt = 0
 	// A background task got the "change course" hint for its current run of
 	// mistakes (see handleBackgroundMistakeLimit). Cleared once the run ends.
 	private backgroundMistakeHintSent = false
@@ -919,6 +921,7 @@ export class TaskApiLoop {
 			iterator,
 			item,
 			updateApiReqMsg,
+			this.requestSentAt,
 		)
 
 		drainStreamInBackgroundToFindAllUsage(lastApiReqIndex).catch((error) => {
@@ -1578,7 +1581,9 @@ export class TaskApiLoop {
 			params: requestParams(),
 		}))
 
-		// Create API stream
+		// Create API stream. The request's clock starts here, after context management,
+		// approval asks and retry waits, so none of them count as the model's time.
+		this.requestSentAt = performance.now()
 		const stream = this.access.api.createMessage(
 			systemPrompt,
 			cleanConversationHistory as unknown as Anthropic.Messages.MessageParam[],

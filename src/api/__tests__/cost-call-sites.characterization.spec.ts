@@ -87,7 +87,7 @@ async function taskTelemetryCost(apiProvider: string, apiModelId: string, info: 
 	const capture = vi.mocked(TelemetryService.instance.capture)
 	capture.mockClear()
 	const done = { next: async () => ({ done: true, value: undefined }) } as any
-	await processor.createBackgroundUsageDrain(0, { ...t, total: undefined }, info, done, undefined, vi.fn())(0)
+	await processor.createBackgroundUsageDrain(0, { ...t, total: undefined }, info, done, undefined, vi.fn(), 0)(0)
 	return (capture.mock.calls[0]![1] as { cost: number }).cost
 }
 

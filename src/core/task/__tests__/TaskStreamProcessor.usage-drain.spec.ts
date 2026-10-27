@@ -10,7 +10,7 @@
 //
 // See ai_plans/archive/2026-06/2026-06-04_fix-diff-view-already-open-dirty-save.md.
 
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 
 import { TelemetryService } from "@tumble-code/telemetry"
 import { TelemetryEventName } from "@tumble-code/types"
@@ -95,6 +95,7 @@ describe("TaskStreamProcessor background usage drain", () => {
 			{ done: false, value: { type: "usage", inputTokens: 100, outputTokens: 50, totalCost: 0.01 } },
 			// The drain must receive the message-updater, NOT abortStream.
 			updateApiReqMsg,
+			0,
 		)
 
 		await drain(0)
@@ -168,6 +169,7 @@ describe("TaskStreamProcessor usage drain — abort/abandon persist guard", () =
 			doneIterator(),
 			{ done: false, value: { type: "usage", inputTokens: 100, outputTokens: 50, totalCost: 0.01 } },
 			updateApiReqMsg,
+			0,
 		)
 		await drain(0)
 		return { updateApiReqMsg }
@@ -220,6 +222,7 @@ describe("TaskStreamProcessor usage drain - LLM Completion labels", () => {
 			doneIterator(),
 			{ done: false, value: { type: "usage", inputTokens: 100, outputTokens: 50, totalCost: 0.01 } },
 			vi.fn(),
+			0,
 		)
 		await drain(0)
 		const capture = vi.mocked(TelemetryService.instance.capture)
@@ -251,5 +254,37 @@ describe("TaskStreamProcessor usage drain - LLM Completion labels", () => {
 
 		expect(properties).not.toHaveProperty("mode")
 		expect(properties).toMatchObject({ modelId: "claude-sonnet-4-5", apiProvider: "anthropic" })
+	})
+})
+
+// The cloud shows a task's duration as the sum of its requests: from sending each one
+// to the end of its response stream, with every wait between requests left out.
+describe("TaskStreamProcessor usage drain - request duration", () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+	})
+
+	afterEach(() => {
+		vi.restoreAllMocks()
+	})
+
+	it("measures from sending the request to the end of the stream, on the request row and the event", async () => {
+		const access = makeAccess()
+		const processor = new TaskStreamProcessor(access, {} as any)
+		const info = makeModelInfo()
+		vi.spyOn(performance, "now").mockReturnValue(4_500)
+
+		await processor.createBackgroundUsageDrain(
+			0,
+			{ input: 0, output: 0, cacheWrite: 0, cacheRead: 0, total: undefined },
+			info,
+			doneIterator(),
+			{ done: false, value: { type: "usage", inputTokens: 100, outputTokens: 50, totalCost: 0.01 } },
+			processor.createUpdateApiReqMsgFn(0, info),
+			1_000,
+		)(0)
+
+		expect(JSON.parse(access.clineMessages[0].text!)).toMatchObject({ durationMs: 3_500 })
+		expect(vi.mocked(TelemetryService.instance.capture).mock.calls[0][1]).toMatchObject({ durationMs: 3_500 })
 	})
 })
