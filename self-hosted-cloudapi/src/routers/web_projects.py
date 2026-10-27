@@ -26,6 +26,7 @@ from src.services.projects import (
     project_access,
     project_facts,
     project_list_page,
+    renamed_count,
     scopes_for,
     spaces_for,
     update_project,
@@ -37,7 +38,7 @@ ERROR_MESSAGES = {
     "bad_name": f"A project needs a name of at most {NAME_MAX} characters.",
     "bad_scope": "That recall choice is not available for this project.",
     "bad_merge": "A project can only be merged into another project of the same space.",
-    "ambiguous_merge": "Several projects of this space have that name. Rename one of them first.",
+    "name_taken": "Another project of this space already has that name. Choose another one.",
 }
 
 
@@ -47,13 +48,16 @@ async def projects_page(
     q: str = Query(""),
     space: str = Query(""),
     recall: str = Query(""),
+    renamed: str = Query(""),
     page: int = Query(1),
     web: WebPage = Depends(require_web_page),
 ):
     q = q.strip()
     spaces = await spaces_for(web["db"], web["user"]["user_id"])
-    rows, pager = await project_list_page(web["db"], spaces, q, space, recall, page)
-    filters = {"q": q, "space": space, "recall": recall}
+    rows, pager = await project_list_page(
+        web["db"], spaces, q, space, recall, renamed, page
+    )
+    filters = {"q": q, "space": space, "recall": recall, "renamed": renamed}
     return render_page(
         request,
         web,
@@ -63,6 +67,7 @@ async def projects_page(
         spaces=spaces,
         filters=filters,
         filtered=any(filters.values()),
+        renamed_count=await renamed_count(web["db"], spaces),
         page_url=partial(_list_url, filters),
         scopes_for=scopes_for,
         **pager,

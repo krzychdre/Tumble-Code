@@ -5,7 +5,7 @@ from datetime import datetime
 from unittest.mock import AsyncMock
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import event, select
 
 from src.auth.jwt_issuer import issue_session_token
 from src.models.event import TelemetryEvent
@@ -20,7 +20,10 @@ from src.routers.web_projects import ERROR_MESSAGES
 from src.services.dataset_overview import dataset_overview
 from src.services.organizations import ROLE_ADMIN, ROLE_MEMBER
 from src.services.projects import (
+    NAME_MAX,
     bind_recorded_folder,
+    folder_key,
+    name_candidates,
     repository_key,
     resolve_project,
 )
@@ -110,6 +113,81 @@ async def test_a_folder_without_git_is_its_users_own_project(org, session_factor
 
     assert mine == again != theirs
     assert (await _project(session_factory, mine)).name == "notes"
+
+
+async def _names(session_factory):
+    async with session_factory() as s:
+        rows = await s.execute(
+            select(Project.tenant_id, Project.name, Project.wanted_name).order_by(
+                Project.tenant_id, Project.name
+            )
+        )
+        return [tuple(row) for row in rows]
+
+
+async def test_a_taken_default_name_is_qualified_then_numbered(
+    org, session_factory, caplog
+):
+    """By the folder's user, or the repository's owner; case-insensitively;
+    only within the tenant."""
+    await _resolve(session_factory, ADMIN, ORG, "/a/notes")
+    await _resolve(session_factory, MEMBER, ORG, "/m/notes")
+    await _resolve(session_factory, MEMBER, ORG, "/m/old/notes")
+    await _resolve(session_factory, ADMIN, ORG, "/a/roo", REPO)
+    await _resolve(
+        session_factory, ADMIN, ORG, "/a/fork", "https://gitlab.com/me/roo-code.git"
+    )
+    await _resolve(session_factory, MEMBER, None, "/m/notes")
+
+    assert await _names(session_factory) == [
+        (ORG, "Roo-Code", None),
+        (ORG, "notes", None),
+        (ORG, "notes (user_member)", "notes"),
+        (ORG, "notes (user_member, 2)", "notes"),
+        (ORG, "roo-code (me)", "roo-code"),
+        (MEMBER, "notes", None),
+    ]
+    assert (
+        "[projects] tenant org_acme already has a project named 'notes': the new "
+        f"project {folder_key(MEMBER, '/m/old/notes')} is named 'notes (user_member, 2)'"
+    ) in caplog.text
+
+
+def test_a_qualified_name_is_cut_to_fit():
+    candidates = name_candidates("x" * NAME_MAX, "alice")
+    assert [next(candidates)[-12:] for _ in range(3)] == [
+        "x" * 12,
+        "xxxx (alice)",
+        "x (alice, 2)",
+    ]
+    assert len(next(candidates)) == NAME_MAX
+
+
+async def test_a_name_taken_meanwhile_retries_with_the_next(
+    org, test_engine, session_factory
+):
+    """Another sign-in names a project "notes" after the look-up found the
+    name free: the insert does nothing and the next free name is taken."""
+    await _resolve(session_factory, ADMIN, ORG, "/a/x")
+    raced = []
+
+    def other_sign_in(conn, cursor, statement, parameters, context, executemany):
+        if statement.startswith("INSERT INTO projects") and not raced:
+            raced.append(statement)
+            cursor.execute(
+                "INSERT INTO projects (id, tenant_id, organization_id, user_id, key, name) "
+                f"VALUES ('prj_other', '{ORG}', '{ORG}', '{ADMIN}', 'folder:other', 'notes')"
+            )
+
+    event.listen(test_engine.sync_engine, "before_cursor_execute", other_sign_in)
+    try:
+        project = await _resolve(session_factory, MEMBER, ORG, "/m/notes")
+    finally:
+        event.remove(test_engine.sync_engine, "before_cursor_execute", other_sign_in)
+
+    assert raced
+    saved = await _project(session_factory, project)
+    assert (saved.name, saved.wanted_name) == ("notes (user_member)", "notes")
 
 
 async def test_the_binding_decides_once_a_folder_is_known(org, session_factory):
@@ -466,24 +544,52 @@ async def test_merging_by_name_moves_folders_and_sessions(
 
 
 @pytest.mark.parametrize(
-    "into, third, code",
-    [
-        ("private", False, "bad_merge"),
-        ("nothing", False, "bad_merge"),
-        ("notes", True, "ambiguous_merge"),
-    ],
-    ids=["other-space", "unknown", "two-named-so"],
+    "into",
+    ["private", "nothing", "Notes (user_member)"],
+    ids=["other-space", "unknown", "itself"],
 )
-async def test_a_merge_target_is_one_project_of_the_same_space(
-    notes, client, session_factory, into, third, code
+async def test_a_merge_target_is_another_project_of_the_same_space(
+    notes, client, session_factory, into
 ):
     mine, theirs = notes
-    if third:
-        await _resolve(session_factory, MEMBER, ORG, "/m/old/notes")
     _override_web_user(client.app, ADMIN)
     resp = _post(client, f"/app/projects/{theirs}/merge", into=into)
-    assert resp.headers["location"] == f"/app/projects/{theirs}?error={code}"
+    assert resp.headers["location"] == f"/app/projects/{theirs}?error=bad_merge"
     assert await _project(session_factory, theirs) is not None
+
+
+async def test_a_renamed_project_says_so_until_a_name_is_saved(
+    notes, client, session_factory
+):
+    mine, theirs = notes
+    note = "Renamed automatically because another project of this space was already called notes."
+    _override_web_user(client.app, MEMBER)
+    page = client.get(f"/app/projects/{theirs}").text
+    assert note in page and "Rename it if you like" not in page
+    assert "1 project was renamed automatically" in client.get("/app/projects").text
+
+    _override_web_user(client.app, ADMIN)
+    assert "Rename it if you like" in client.get(f"/app/projects/{theirs}").text
+    renamed = client.get("/app/projects?renamed=1&q=notes")
+    assert _listed(renamed) == ["notes (user_member)"]
+    assert '<input type="hidden" name="renamed" value="1">' in renamed.text
+
+    for name, location in [
+        (" NOTES ", f"/app/projects/{theirs}?error=name_taken"),
+        ("PRIVATE", f"/app/projects/{theirs}"),
+    ]:
+        resp = _post(client, f"/app/projects/{theirs}", name=name, scope="none")
+        assert resp.headers["location"] == location
+    assert (
+        ERROR_MESSAGES["name_taken"]
+        in client.get(f"/app/projects/{theirs}?error=name_taken").text
+    )
+    assert note not in client.get(f"/app/projects/{theirs}").text
+    assert "renamed automatically" not in client.get("/app/projects").text
+    # Its own name in other letters is no conflict.
+    resp = _post(client, f"/app/projects/{mine}", name="Notes", scope="none")
+    assert resp.headers["location"] == f"/app/projects/{mine}"
+    assert (await _project(session_factory, mine)).name == "Notes"
 
 
 @pytest.mark.parametrize(

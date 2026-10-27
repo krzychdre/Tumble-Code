@@ -4017,6 +4017,7 @@ table.diag-table th.diag-num {
 	color: var(--d-cache);
 	font-family: var(--mono);
 	font-size: var(--t-micro);
+	overflow-wrap: anywhere;
 }
 
 /* ==========================================================================
