@@ -18,7 +18,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from sqlalchemy import and_, func, select, text
+from sqlalchemy import and_, case, func, select, text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -43,6 +43,9 @@ SNIPPETS = 2
 HALF_LIFE_MS = 90 * 24 * 3600 * 1000
 STATEMENT_TIMEOUT_MS = 300
 CANDIDATES = 100
+# A subtask's title and prompt are the long brief a delegating agent wrote, so
+# its words match often; the user's own sessions should come first.
+SUBTASK_WEIGHT = 0.5
 
 
 class BadQuery(Exception):
@@ -101,8 +104,10 @@ async def search(
     started = time.monotonic()
     ts_query = func.to_tsquery(SIMPLE, expression)
     now_ms = int(time.time() * 1000)
-    score = func.ts_rank(SessionCard.search_vector, ts_query) * func.power(
-        0.5, (now_ms - SessionCard.last_ts) / HALF_LIFE_MS
+    score = (
+        func.ts_rank(SessionCard.search_vector, ts_query)
+        * func.power(0.5, (now_ms - SessionCard.last_ts) / HALF_LIFE_MS)
+        * case((SessionCard.is_subtask, SUBTASK_WEIGHT), else_=1.0)
     )
     # Two steps: the most recent matching cards, then the best of those. A
     # common word matches most of a tenant; ranking every match would read

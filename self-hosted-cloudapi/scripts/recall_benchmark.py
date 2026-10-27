@@ -136,7 +136,7 @@ async def fill() -> None:
     await conn.execute(
         "INSERT INTO session_cards SELECT task_id, $1, project_id, author_id, title, body, "
         "setweight(to_tsvector('simple', title), 'A') || setweight(to_tsvector('simple', body), 'B'), "
-        "last_ts, true, now() FROM staging",
+        "last_ts, true, false, now() FROM staging",
         TENANT,
     )
     await conn.execute("DROP TABLE staging")

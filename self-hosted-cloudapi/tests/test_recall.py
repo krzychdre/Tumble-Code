@@ -258,6 +258,7 @@ async def test_visible_is_symmetric_and_never_crosses_tenants(
                 search_vector=task_id,
                 last_ts=0,
                 completed=True,
+                is_subtask=False,
                 built_at=datetime.now(timezone.utc),
             )
         )

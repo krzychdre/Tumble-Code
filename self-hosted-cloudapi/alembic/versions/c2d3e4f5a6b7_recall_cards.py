@@ -51,6 +51,7 @@ def upgrade() -> None:
         ),
         sa.Column("last_ts", sa.BigInteger(), nullable=False),
         sa.Column("completed", sa.Boolean(), nullable=False),
+        sa.Column("is_subtask", sa.Boolean(), nullable=False),
         sa.Column("built_at", sa.DateTime(timezone=True), nullable=False),
     )
     op.create_index(

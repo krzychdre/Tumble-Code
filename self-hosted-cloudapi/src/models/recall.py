@@ -55,6 +55,9 @@ class SessionCard(Base):
     # ClineMessage.ts of the task's last message: the recency of a hit.
     last_ts = Column(BigInteger, nullable=False)
     completed = Column(Boolean, nullable=False)
+    # A subtask: what a delegating agent asked another one, ranked lower
+    # (services/recall_search.SUBTASK_WEIGHT).
+    is_subtask = Column(Boolean, nullable=False)
     built_at = Column(DateTime(timezone=True), nullable=False)
 
     # The words with the project (the btree_gin extension indexes the plain

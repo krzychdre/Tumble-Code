@@ -21,6 +21,7 @@ from sqlalchemy.pool import NullPool
 from src.database import Base, get_db
 from src.models.organization import Membership, Organization
 from src.models.recall import RecallLog
+from src.models.task import Task
 from src.models.user import User
 from src.services import recall_search
 from src.services.organizations import ROLE_ADMIN
@@ -91,7 +92,14 @@ NOW_MS = int(time.time() * 1000)
 
 
 async def _session(
-    factory, task_id, prompt, result, path="/w/roo", touched=None, at=NOW_MS
+    factory,
+    task_id,
+    prompt,
+    result,
+    path="/w/roo",
+    touched=None,
+    at=NOW_MS,
+    parent=None,
 ):
     tool = {"tool": "readFile", "path": touched} if touched else None
     async with factory() as s:
@@ -101,6 +109,8 @@ async def _session(
             _say(at + 2, "completion_result", result),
         ):
             await upsert_task_message(s, task_id, ME, ORG, message, workspace_path=path)
+        (await s.get(Task, task_id)).parent_task_id = parent
+        await s.flush()
         await rebuild_card(s, task_id)
         await s.commit()
 
@@ -146,12 +156,18 @@ async def test_search_matches_every_word_ranks_the_title_first_and_logs(
         at=three_years_ago,
     )
     await _session(pg_factory, "t-other", "Bridge reconnects", "Done.")
+    # A subtask with the title match and more: its weight puts it after the
+    # results match.
+    await _session(
+        pg_factory, "t-sub", "Bridge claim", "bridge claim", parent="t-title"
+    )
 
-    # Ranked by weight (title, then results, then files) and by age.
+    # Ranked by weight (title, then results, then files), subtasks lower, and by age.
     body = _search(pg_client, "bridge claim", limit=10)
     assert [r["sessionId"] for r in body["results"]] == [
         "t-title",
         "t-body",
+        "t-sub",
         "t-files",
         "t-old",
     ]
@@ -176,7 +192,7 @@ async def test_search_matches_every_word_ranks_the_title_first_and_logs(
 
     async with pg_factory() as s:
         logged = (await s.execute(select(RecallLog.kind, RecallLog.hits))).all()
-    assert ("search", 4) in logged
+    assert ("search", 5) in logged
 
 
 async def test_other_projects_answer_only_between_organization_scopes(
@@ -234,7 +250,7 @@ async def test_a_search_over_the_timeout_answers_too_broad(
         await s.execute(
             text(
                 "INSERT INTO session_cards SELECT 'bulk' || n, c.tenant_id, c.project_id, "
-                "c.author_id, c.title, c.body, c.search_vector, c.last_ts, c.completed, now() "
+                "c.author_id, c.title, c.body, c.search_vector, c.last_ts, c.completed, c.is_subtask, now() "
                 "FROM session_cards c, generate_series(1, 60000) n"
             )
         )

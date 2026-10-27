@@ -167,8 +167,9 @@ Endpoint `GET /api/recall/search` (contract in section 7):
 4. For the cross-project case the allowed projects are the tenant's `organization`-scoped projects, named by a
    subquery. Joined instead, the planner drove even a one-project search from the projects table into the word
    index.
-5. Ranking: the candidates by `ts_rank` times a recency factor that halves every 90 days; the 10 best are
-   returned. Ranking every match instead read most of a tenant for a common word. Snippets are cut in Python from
+5. Ranking: the candidates by `ts_rank` times a recency factor that halves every 90 days, times 0.5 for a
+   subtask (`session_cards.is_subtask`); the 10 best are returned. A subtask's title and prompt are the long brief a
+   delegating agent wrote, and on the live data such briefs filled most hits. Ranking every match instead read most of a tenant for a common word. Snippets are cut in Python from
    the returned cards only (no `ts_headline`).
 6. Guard rails: a per-statement timeout (300 ms) that answers "too broad, add a more specific word" instead of
    failing; the server's global rate limit; query length and response size caps. The search also sets

@@ -163,6 +163,7 @@ async def rebuild_card(db: AsyncSession, task_id: str) -> None:
         "search_vector": _search_vector(db, sections),
         "last_ts": task.last_ts or 0,
         "completed": task.q_completed,
+        "is_subtask": task.parent_task_id is not None,
         "built_at": datetime.now(timezone.utc),
     }
     await db.execute(core_insert(SessionCard).values(**values))
