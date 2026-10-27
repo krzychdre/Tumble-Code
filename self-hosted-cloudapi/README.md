@@ -115,7 +115,10 @@ appear in the panel with a "CLI" badge.
 - **Where the data is:** in `./.vol/` next to this file (`postgres` for the API, `auth` for Authentik). Deleting that
   folder deletes every task and account.
 - **Update:** `git pull`, then `docker compose up -d --build`. The API migrates its database on start. Authentik is
-  pinned to a version; to move it, follow [Upgrading the bundled Authentik](#upgrading-the-bundled-authentik).
+  pinned to a version; to move it, follow [Upgrading the bundled Authentik](#upgrading-the-bundled-authentik). An
+  install whose `.env` has no `AUTHENTIK_API_TOKEN` must first follow
+  [Updating an install without AUTHENTIK_API_TOKEN](#updating-an-install-without-authentik_api_token): Compose
+  refuses to start without it.
 - **Back up the API's database:**
   `docker compose exec -T postgres pg_dump -U roo -Fc roo_cloud > tumble-cloud-$(date +%F).dump`
 - **More users:** in Authentik (http://localhost:9000, as `akadmin`) create the user under Directory > Users and add
@@ -123,6 +126,27 @@ appear in the panel with a "CLI" badge.
 - **Organizations:** see [Organizations](#organizations).
 - **Address clash:** the stack's network is pinned to `10.99.0.0/24`. If your network already uses that range, change
   the subnet at the end of `docker-compose.yml`.
+
+### Updating an install without AUTHENTIK_API_TOKEN
+
+Organizations come from Authentik groups (see [Organizations](#organizations)), and the API reads those groups with
+the token `AUTHENTIK_API_TOKEN`. An install set up before that has no such line in `.env`, and `docker compose up`
+stops with "set AUTHENTIK_API_TOKEN in .env". Do this once, in this folder, before the update:
+
+```sh
+cp .env .env.backup-$(date +%F)
+echo "AUTHENTIK_API_TOKEN=$(openssl rand -hex 32)" >> .env
+git pull
+docker compose up -d --build
+docker compose exec auth_worker ak apply_blueprint custom/tumble-code.yaml
+```
+
+`up -d` recreates the API and both Authentik containers, so all of them see the new variable. Applying the blueprint
+creates the service account `tumble-code-cloudapi` and gives it a token with that key; without this step the API
+logs "could not read Authentik's groups" every five minutes. Organizations created on the web panel before this
+change are not carried over: if your database has any (`docker compose exec -T postgres psql -U roo roo_cloud -c
+'select slug, name from organizations'`), recreate them as Authentik groups with the same slug in
+`tumble_organization`; a row without a slug keeps its tasks and loses its members at the first sync.
 
 ## Organizations
 
@@ -151,13 +175,6 @@ the service account `tumble-code-cloudapi`, the role **Tumble Code cloud API** t
 with the key from `.env` that does not expire. If Authentik cannot be read (a wrong token, Authentik down), the API
 logs a warning, keeps the memberships it has, and sign-in still works.
 
-An existing install that predates the token: add `AUTHENTIK_API_TOKEN` to `.env` (`openssl rand -hex 32`), then
-recreate the containers so Authentik sees it, and apply the blueprint:
-
-```sh
-docker compose up -d
-docker compose exec auth_worker ak apply_blueprint custom/tumble-code.yaml
-```
 
 ## Configuration reference
 
