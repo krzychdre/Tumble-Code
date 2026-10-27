@@ -294,6 +294,17 @@ async def _bound_project_id(
     )
 
 
+def visible_to(user_id: str):
+    """SQL that keeps the projects ``user_id`` may see: their personal ones
+    and their organizations' (the rule of ``project_access``)."""
+    return or_(
+        Project.tenant_id == user_id,
+        Project.organization_id.in_(
+            select(Membership.organization_id).where(Membership.user_id == user_id)
+        ),
+    )
+
+
 def _task_in_tenant(org_id: Optional[str]):
     if org_id is None:
         return Task.organization_id.is_(None)

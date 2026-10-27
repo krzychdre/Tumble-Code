@@ -60,7 +60,7 @@
 	// --- what is unfolded: groups and run trees start closed, these reopen ----
 
 	// What the reader left open, on any page and under any grouping: groups by
-	// their data-group ("project:/home/a/beta"), run trees by the id of their
+	// their data-group ("project:<project id>"), run trees by the id of their
 	// subtree ("subtree-<task id>").
 	var OPEN_KEY = "tumble.openFolds"
 

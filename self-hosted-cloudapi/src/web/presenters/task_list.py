@@ -13,7 +13,9 @@ one of the three, the client one of the two, and free text is matched with LIKE 
 
 By default the list is grouped by project (``group``): one collapsible header per
 group with its totals, the first few tasks under it, and a link that narrows the
-list to that group alone (``only``).
+list to that group alone (``only``). A project is the task's project entity
+(models/project, ``tasks.project_id``), as on the metrics and projects pages:
+every clone and worktree of one repository is one project.
 """
 
 from dataclasses import dataclass, replace
@@ -26,9 +28,11 @@ from sqlalchemy import and_, exists, func, literal, not_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
+from src.models.project import Project
 from src.models.task import Task
 from src.services.client_kind import CLIENT_LABELS, parse_client
 from src.services.model_attribution import split_models_label
+from src.services.projects import visible_to
 from src.services.session_quality import (
     GRADE_CLEAN,
     GRADE_FRICTION,
@@ -39,7 +43,7 @@ from src.services.task_tree import subtrees
 from src.utils.clientzone import UTC, day_start_utc
 from src.utils.format import fmt_cost, fmt_int, fmt_tokens
 from src.utils.pagination import paginate
-from src.web.presenters.task_rows import _list_row, _workspace_label
+from src.web.presenters.task_rows import _list_row
 
 # Column key -> what the column header says. Only these can be sorted by;
 # anything else in ``?sort=`` falls back to the default.
@@ -88,7 +92,7 @@ class Grouping:
     column: object
     # SQL that keeps exactly the tasks whose key is the given one.
     match: Callable[[str], object]
-    # What a group header calls a key.
+    # What a group header calls a key the page has no name for.
     name: Callable[[str], str] = str
 
 
@@ -99,14 +103,15 @@ def _primary_model(row) -> Optional[str]:
 
 
 GROUPINGS = {
+    # By id: two projects may share a name. A project the reader cannot see
+    # (an organization they left) is named by its bare id.
     "project": Grouping(
         "Project",
         "project",
         "No project",
-        lambda row: row.workspace_path,
-        Task.workspace_path,
-        lambda key: Task.workspace_path == key,
-        lambda key: _workspace_label(key) or key,
+        lambda row: row.project_id,
+        Task.project_id,
+        lambda key: Task.project_id == key,
     ),
     "model": Grouping(
         "Model",
@@ -155,6 +160,7 @@ class ListView:
     # The key of the one group the list is narrowed to ("Show all"), or NO_KEY.
     only: str = ""
     q: str = ""
+    # A project id.
     project: str = ""
     model: str = ""
     # "vscode" or "cli" (services/client_kind), "" for both.
@@ -306,12 +312,13 @@ class ListView:
             subtasks=False,
         ).url()
 
-    def chips(self, only_label: str = "") -> list[dict]:
+    def chips(self, only_label: str = "", project_label: str = "") -> list[dict]:
         """One removable chip per active filter, each linking to this view
-        without that one filter. ``only_label`` names the narrowed group."""
+        without that one filter. ``only_label`` names the narrowed group,
+        ``project_label`` the filtered project."""
         labels = {
             "q": ("Search", self.q),
-            "project": ("Project", self.project),
+            "project": ("Project", project_label),
             "model": ("Model", self.model),
             "client": ("Client", CLIENT_LABELS.get(self.client, "")),
             "grade": ("Grade", GRADE_LABELS.get(self.grade, "")),
@@ -363,6 +370,12 @@ class ListView:
                 or_(
                     Task.title.icontains(self.q, autoescape=True),
                     Task.workspace_path.icontains(self.q, autoescape=True),
+                    Task.project_id.in_(
+                        select(Project.id).where(
+                            visible_to(user_id),
+                            Project.name.icontains(self.q, autoescape=True),
+                        )
+                    ),
                 )
             )
         if self.scope == "roots":
@@ -375,7 +388,7 @@ class ListView:
                 else grouping.match(self.only)
             )
         if self.project:
-            out.append(Task.workspace_path.icontains(self.project, autoescape=True))
+            out.append(GROUPINGS["project"].match(self.project))
         if self.model:
             out.append(Task.models.icontains(self.model, autoescape=True))
         if self.client:
@@ -493,19 +506,30 @@ async def list_page(
     on the nearest one.
     """
     filters = view.conditions(user_id, zone)
+    projects = await _reader_projects(db, user_id)
+    project_names = {p.id: p.name for p in projects}
     # The list holds the reader's own tasks only, so the reader is the one user
     # a group can be named after; any other id in ``only`` stays a bare id.
-    names = {user_id: email} if view.group == "user" else {}
+    names = {
+        "project": project_names,
+        "user": {user_id: email},
+    }.get(view.group, {})
+    # Under a project header: the project's key (repository or "folder without git").
+    subs = {p.id: p.key_label for p in projects} if view.group == "project" else {}
     shared = dict(
         # Shown on the scope toggle so the cost of switching is visible up front.
         all_total=await db.scalar(
             select(func.count(Task.id)).where(Task.user_id == user_id)
         ),
         only_label=_only_label(view, names),
-        **await _filter_suggestions(db, view, user_id),
+        project_label=project_names.get(view.project, view.project),
+        **await _filter_suggestions(db, view, user_id, projects),
     )
     if view.grouped:
-        return {**shared, **await _group_page(db, view, user_id, names, filters, page)}
+        return {
+            **shared,
+            **await _group_page(db, view, user_id, names, subs, filters, page),
+        }
 
     total = await db.scalar(select(func.count(Task.id)).where(*filters))
     pager = paginate(total, page, PAGE_SIZE)
@@ -538,6 +562,7 @@ async def _group_page(
     view: ListView,
     user_id: str,
     names: dict,
+    subs: dict,
     filters: list,
     page: int,
 ) -> dict:
@@ -560,7 +585,7 @@ async def _group_page(
     result = await db.execute(
         select(
             Task.id,
-            Task.workspace_path,
+            Task.project_id,
             Task.models,
             Task.user_id,
             Task.updated_at,
@@ -619,8 +644,7 @@ async def _group_page(
                 # What tasklist.js remembers an open group by.
                 "key": f"{view.group}:{g['key'] or NO_KEY}",
                 "label": _group_label(grouping, g["key"], names),
-                # The full path, so sibling worktrees with one name differ.
-                "sub": g["key"] if view.group == "project" else None,
+                "sub": subs.get(g["key"]),
                 "count": len(g["ids"]),
                 "messages": fmt_int(g["messages"]),
                 "tokens": fmt_tokens(g["tokens"]) if g["tokens"] else None,
@@ -658,31 +682,45 @@ def _only_label(view: ListView, names: dict) -> str:
     return _group_label(GROUPINGS[view.group], key, names)
 
 
-async def _filter_suggestions(db: AsyncSession, view: ListView, user_id: str) -> dict:
-    """The user's own projects and models, the options of the filter's pickers.
+async def _reader_projects(db: AsyncSession, user_id: str) -> list[Project]:
+    """The projects of the reader's tasks that the reader may see, by name.
 
-    Two DISTINCT reads over the user's rows; the project is offered by its
-    badge label (the last path segment), which is what the filter matches.
-    A filter value no task has any more (an old bookmark, a remembered view)
-    is offered too, so its picker still shows what the list is filtered by.
+    One query for the whole page: it names the groups, the chips and the
+    picker's options. A project of a space the reader is no longer in is not
+    among them, so its name never shows.
     """
-    paths = await db.scalars(
-        select(Task.workspace_path)
-        .where(Task.user_id == user_id, Task.workspace_path.is_not(None))
-        .distinct()
+    result = await db.scalars(
+        select(Project)
+        .where(
+            visible_to(user_id),
+            Project.id.in_(select(Task.project_id).where(Task.user_id == user_id)),
+        )
+        .order_by(func.lower(Project.name), Project.id)
     )
-    labels = {label for label in (_workspace_label(p) for p in paths.all()) if label}
+    return list(result.all())
+
+
+async def _filter_suggestions(
+    db: AsyncSession, view: ListView, user_id: str, projects: list[Project]
+) -> dict:
+    """The options of the filter's pickers, (value, label) pairs: the reader's
+    projects by name, and the models of their own tasks.
+
+    A filter value no option has (an old bookmark, a remembered view) is
+    offered too, so its picker still shows what the list is filtered by.
+    """
+    project_options = [(p.id, p.name) for p in projects]
+    if view.project and view.project not in {p.id for p in projects}:
+        project_options.append((view.project, view.project))
     joined = await db.scalars(
         select(Task.models)
         .where(Task.user_id == user_id, Task.models.is_not(None))
         .distinct()
     )
     models = {m for value in joined.all() for m in split_models_label(value)}
-    if view.project:
-        labels.add(view.project)
     if view.model:
         models.add(view.model)
     return {
-        "project_options": sorted(labels, key=str.lower),
-        "model_options": sorted(models, key=str.lower),
+        "project_options": project_options,
+        "model_options": [(m, m) for m in sorted(models, key=str.lower)],
     }
