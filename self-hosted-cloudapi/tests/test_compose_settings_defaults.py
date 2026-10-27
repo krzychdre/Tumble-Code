@@ -23,6 +23,12 @@ ROOT = Path(__file__).resolve().parent.parent
 COMPOSE_OWNED = {"DATABASE_URL", "AUTHENTIK_INTERNAL_URL"}
 
 STRONG_SECRET = "x" * 20 + "0123456789abcdef"
+# What .env must hold before compose starts the api.
+REQUIRED_DOTENV = {
+    "SECRET_KEY": STRONG_SECRET,
+    "JWT_SECRET": STRONG_SECRET,
+    "AUTHENTIK_API_TOKEN": STRONG_SECRET,
+}
 
 _INTERPOLATION = re.compile(r"^\$\{(?P<name>\w+)(?:(?P<op>:-|:\?)(?P<arg>.*))?\}$")
 
@@ -94,9 +100,7 @@ def test_compose_gives_no_default_where_settings_py_has_one():
 
 
 def test_bundled_stack_gets_the_settings_py_defaults(monkeypatch):
-    env = _resolve(
-        _api_environment(), {"SECRET_KEY": STRONG_SECRET, "JWT_SECRET": STRONG_SECRET}
-    )
+    env = _resolve(_api_environment(), REQUIRED_DOTENV)
     loaded = _settings_from(env, monkeypatch)
 
     assert loaded.bridge_enabled is True
@@ -115,9 +119,8 @@ def test_bundled_stack_gets_the_settings_py_defaults(monkeypatch):
 def test_dotenv_values_still_reach_the_api(monkeypatch):
     env = _resolve(
         _api_environment(),
-        {
-            "SECRET_KEY": STRONG_SECRET,
-            "JWT_SECRET": STRONG_SECRET,
+        REQUIRED_DOTENV
+        | {
             "BRIDGE_ENABLED": "false",
             "PORT": "9090",
             "WEB_PUBLIC_URL": "http://192.168.50.141:8085",
@@ -130,9 +133,9 @@ def test_dotenv_values_still_reach_the_api(monkeypatch):
     assert loaded.web_public_url == "http://192.168.50.141:8085"
 
 
-@pytest.mark.parametrize("missing", ["SECRET_KEY", "JWT_SECRET"])
+@pytest.mark.parametrize("missing", sorted(REQUIRED_DOTENV))
 def test_compose_refuses_to_start_without_a_secret(missing):
-    dotenv = {"SECRET_KEY": STRONG_SECRET, "JWT_SECRET": STRONG_SECRET}
+    dotenv = dict(REQUIRED_DOTENV)
     del dotenv[missing]
     with pytest.raises(RuntimeError, match=missing):
         _resolve(_api_environment(), dotenv)
@@ -141,9 +144,7 @@ def test_compose_refuses_to_start_without_a_secret(missing):
 def test_an_empty_string_does_not_mean_unset(monkeypatch):
     """Why the compose file passes names instead of ``${VAR:-}``: an empty
     string is a value to pydantic-settings, and not a valid boolean."""
-    env = _resolve(
-        _api_environment(), {"SECRET_KEY": STRONG_SECRET, "JWT_SECRET": STRONG_SECRET}
-    )
+    env = _resolve(_api_environment(), REQUIRED_DOTENV)
     env["BRIDGE_ENABLED"] = ""
     with pytest.raises(ValidationError):
         _settings_from(env, monkeypatch)

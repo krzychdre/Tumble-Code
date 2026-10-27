@@ -74,6 +74,7 @@ _REQUIRED_ENV = {
     "AUTHENTIK_BASE_URL": "http://authentik-test.local",
     "AUTHENTIK_CLIENT_ID": "test-client-id",
     "AUTHENTIK_REDIRECT_URI": "http://testserver/auth/clerk/callback",
+    "AUTHENTIK_API_TOKEN": "test-authentik-api-token-0123456789",
     "JWT_SECRET": "test-jwt-secret-please-ignore-0123456789",
 }
 

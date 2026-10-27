@@ -4,8 +4,6 @@
 {% block content %}
 {{ head.settings_head("organizations") }}
 
-{% if error %}<div class="notice" role="alert">{{ error }}</div>{% endif %}
-
 <section class="panel settings-panel" aria-labelledby="orgs-mine">
   <h2 class="chart-title" id="orgs-mine">Your organizations</h2>
   {% if memberships %}
@@ -28,19 +26,6 @@
   <p class="settings-lead">You are not a member of any organization. Your tasks belong to your personal space.</p>
   {% endif %}
   <p class="field-hint">The organization switcher in Tumble Code decides which space a new task belongs to.</p>
-</section>
-
-<section class="panel settings-panel" aria-labelledby="orgs-new">
-  <h2 class="chart-title" id="orgs-new">New organization</h2>
-  <form method="post" action="/app/organizations" class="settings-form">
-    <label class="field">
-      <span class="field-label">Name</span>
-      <span class="field-input"><input type="text" name="name" required maxlength="{{ name_max }}"></span>
-    </label>
-    <div class="settings-actions">
-      <button class="btn" type="submit">Create</button>
-      <span class="settings-meta">You become its admin.</span>
-    </div>
-  </form>
+  <p class="field-hint">Organizations and their members are managed in <a href="{{ authentik_groups_url }}">Authentik's groups</a>.</p>
 </section>
 {% endblock %}

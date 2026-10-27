@@ -49,12 +49,25 @@ user. The tenant of a task is the organization active in the extension when the 
 empty for the personal space). Nothing is ever visible across tenants, which is also what makes the search cheap:
 every query is confined to one tenant before anything else is looked at.
 
-Organization management on the web (`/app/organizations`):
+Organizations and memberships come from Authentik, the identity provider the cloud signs users in with; the cloud
+keeps a copy so tasks, projects and the session token can refer to an organization by id:
 
-- any signed-in user can create an organization and becomes its `org:admin`;
-- an admin adds members by the e-mail of an existing user (the person must have signed in once, which is how
-  Authentik admits users anyway), changes roles, removes members; a member can leave;
-- the last admin cannot leave or be demoted.
+- an Authentik group with the attribute `tumble_organization: "<slug>"` is an organization: `organizations.slug` is
+  the slug (the stable key), `organizations.name` the group's name, its direct active members are `org:member`;
+- a group with `tumble_organization_admins: "<slug>"` lists the organization's admins (`org:admin`), who are members
+  even when not in the first group;
+- people are matched by Authentik's user `uid`, which is the OIDC `sub` under the provider's `hashed_user_id` mode
+  and so equals `users.authentik_id`; a person who never signed in to the cloud has no user row and is skipped until
+  the first sign-in;
+- one reconcile (`services/organizations.py`) creates and renames organizations by slug and adds, removes and
+  re-roles memberships. An organization whose groups are gone keeps its row (tasks and projects point at it) and
+  loses its members. It runs at startup, every five minutes and after every sign-in (web and extension share the
+  callback), so a removal takes effect without the person signing in again. If Authentik's API cannot be read, the
+  memberships stay as they are and the sign-in goes on;
+- the API reads `GET /api/v3/core/groups/` with `AUTHENTIK_API_TOKEN`; the bundled blueprint provisions a service
+  account whose role may only view groups, and a non-expiring token with that key;
+- the web panel only shows organizations (`/app/organizations`: the list, an organization's members and roles) and
+  links to Authentik's groups page.
 
 The bridge keeps the org claim of the socket's token, and new task rows get `organization_id` from it.
 
@@ -266,7 +279,7 @@ reader may not see (the same answer as for an unknown one); 400 for an empty or 
 ## Phases (one branch each, stacked; only the last is pushed)
 
 1. `feat/recall-organizations`: org claim kept by the bridge, `tasks.organization_id` written, the organizations
-   page (create, members, roles, leave).
+   pages.
 2. `fix/cloud-web-task-list-state` (not part of recall, same stack): the task list keeps its group and filter
    state, groups start closed, the project and model pickers keep offering every value.
 3. `feat/recall-projects`: `projects`, `project_bindings`, `tasks.project_id`, resolution on register and on
@@ -279,10 +292,13 @@ reader may not see (the same answer as for an unknown one); 400 for an empty or 
 6. `feat/recall-extension`: `repositoryUrl` from the extension (register, context, search), the worktree fix in
    `getGitRepositoryInfo`, the two native tools, the gate, the client calls in `packages/cloud`, descriptions
    written for weak models, a changeset (`New:`).
+7. `feat/cloud-orgs-from-authentik`: organizations and memberships synchronized from Authentik groups, the
+   organization pages read-only.
 
 ## Tests (where each lives)
 
-- Cloud, unit (SQLite as today): organization membership rules (last admin, roles), project key normalization,
+- Cloud, unit (SQLite as today): the organization reconcile from Authentik groups (new, renamed, members and admins
+  added and removed, a user who never signed in, vanished groups) and the groups request, project key normalization,
   resolution and bindings, the visibility predicate as a table (each scope pair times owner, other member, same
   project, other project, other tenant), normalization, card building from a recorded conversation.
 - Cloud, Postgres lane: the search query and ranking, the GIN index use, the statement timeout. GitHub Actions

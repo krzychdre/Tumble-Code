@@ -129,21 +129,7 @@ EXPECTED = {
     ("/app/settings", ("POST",), "save_settings", "APIRoute"),
     ("/app/settings/run", ("POST",), "run_retention_now", "APIRoute"),
     ("/app/organizations", ("GET",), "organizations_page", "APIRoute"),
-    ("/app/organizations", ("POST",), "create_organization_action", "APIRoute"),
     ("/app/organizations/{org_id}", ("GET",), "organization_page", "APIRoute"),
-    ("/app/organizations/{org_id}/members", ("POST",), "add_member_action", "APIRoute"),
-    (
-        "/app/organizations/{org_id}/members/{user_id}/role",
-        ("POST",),
-        "set_role_action",
-        "APIRoute",
-    ),
-    (
-        "/app/organizations/{org_id}/members/{user_id}/remove",
-        ("POST",),
-        "remove_member_action",
-        "APIRoute",
-    ),
     ("/app/projects", ("GET",), "projects_page", "APIRoute"),
     ("/app/projects/{project_id}", ("GET",), "project_page", "APIRoute"),
     ("/app/projects/{project_id}", ("POST",), "update_project_action", "APIRoute"),
@@ -196,7 +182,6 @@ def test_overlapping_routes_keep_their_order():
         ("task_detail", "bulk_delete_tasks"),
         ("dataset_recording_page", "save_dataset_settings_endpoint"),
         ("settings_page", "save_settings"),
-        ("organizations_page", "create_organization_action"),
         ("project_page", "update_project_action"),
     ]
 
@@ -414,37 +399,13 @@ def test_web_routes_keep_their_openapi_operations():
             "organizations_page_app_organizations_get",
             ("web",),
             html,
-            (("error", "query", False),),
-        ),
-        ("/app/organizations", "post"): (
-            "create_organization_action_app_organizations_post",
-            ("web",),
-            json_,
             (),
         ),
         ("/app/organizations/{org_id}", "get"): (
             "organization_page_app_organizations__org_id__get",
             ("web",),
             html,
-            (("org_id", "path", True), ("error", "query", False)),
-        ),
-        ("/app/organizations/{org_id}/members", "post"): (
-            "add_member_action_app_organizations__org_id__members_post",
-            ("web",),
-            json_,
             (("org_id", "path", True),),
-        ),
-        ("/app/organizations/{org_id}/members/{user_id}/role", "post"): (
-            "set_role_action_app_organizations__org_id__members__user_id__role_post",
-            ("web",),
-            json_,
-            (("org_id", "path", True), ("user_id", "path", True)),
-        ),
-        ("/app/organizations/{org_id}/members/{user_id}/remove", "post"): (
-            "remove_member_action_app_organizations__org_id__members__user_id__remove_post",
-            ("web",),
-            json_,
-            (("org_id", "path", True), ("user_id", "path", True)),
         ),
         ("/app/projects", "get"): (
             "projects_page_app_projects_get",

@@ -306,6 +306,7 @@ def callback_mocks():
         patch(
             "src.routers.browser.create_session", new_callable=AsyncMock
         ) as create_session,
+        patch("src.routers.browser.sync_organizations", new_callable=AsyncMock),
     ):
         get_state.return_value = MagicMock(
             auth_redirect="web:/app", code_verifier="verifier"

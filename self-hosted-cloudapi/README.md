@@ -18,6 +18,9 @@ The extension and the CLI work fully without it. Run it and sign in, and you als
   of the request and the response, plus a Markdown brief you can hand to an agent to fix them.
 - **LLM exchange dataset**, off until you switch it on at `/app/dataset/recording`: records what the agent sent to the model
   and got back, and exports it anonymized as JSONL.
+- **Organizations.** Groups in Authentik make organizations; the extension's organization switcher then decides
+  whether a task belongs to an organization or to your personal space. `/app/organizations` lists them read-only.
+  See [Organizations](#organizations).
 - **Retention.** At `/app/settings` you choose after how many days old tasks and telemetry are deleted (by default
   nothing is).
 
@@ -40,11 +43,11 @@ git clone https://github.com/krzychdre/tumble-code.git
 cd tumble-code/self-hosted-cloudapi
 ```
 
-**3. Create `.env` and its secrets.** Copy the template, then fill the five secrets with random values:
+**3. Create `.env` and its secrets.** Copy the template, then fill the six secrets with random values:
 
 ```sh
 cp .env.example .env
-for name in SECRET_KEY JWT_SECRET AUTHENTIK_CLIENT_SECRET AUTH_PG_PASS AUTHENTIK_SECRET_KEY; do
+for name in SECRET_KEY JWT_SECRET AUTHENTIK_CLIENT_SECRET AUTHENTIK_API_TOKEN AUTH_PG_PASS AUTHENTIK_SECRET_KEY; do
   sed -i.bak "s|^$name=.*|$name=$(openssl rand -hex 32)|" .env
 done
 rm .env.bak
@@ -117,8 +120,44 @@ appear in the panel with a "CLI" badge.
   `docker compose exec -T postgres pg_dump -U roo -Fc roo_cloud > tumble-cloud-$(date +%F).dump`
 - **More users:** in Authentik (http://localhost:9000, as `akadmin`) create the user under Directory > Users and add
   them to the group **Tumble Code Users**; only members of that group may sign in. Each user sees their own tasks.
+- **Organizations:** see [Organizations](#organizations).
 - **Address clash:** the stack's network is pinned to `10.99.0.0/24`. If your network already uses that range, change
   the subnet at the end of `docker-compose.yml`.
+
+## Organizations
+
+An organization is a shared space: tasks run while it is selected in the extension's organization switcher belong to
+it, and its projects and recall settings are shared by its members. Organizations and their members are managed in
+Authentik, not in the web panel, which only lists them (`/app/organizations`, under Settings, with a link to
+Authentik's groups).
+
+In Authentik (http://localhost:9000, as `akadmin`), under Directory > Groups:
+
+1. Create a group for the organization. Its name is the organization's name. In **Attributes** set
+   `tumble_organization: acme`, where `acme` is a short key that never changes (renaming the group renames the
+   organization; changing the key makes a new one). Add the members to the group.
+2. Optionally create a second group with `tumble_organization_admins: acme` for the organization's admins. An admin
+   counts as a member even when not in the first group. Admins manage the recall settings of the organization's
+   projects.
+
+The API copies the groups at start, every five minutes and whenever someone signs in, so removing a person from a
+group takes effect within five minutes even if they never sign in again. Only direct members of a group count (not
+members of its child groups), and a user deactivated in Authentik counts as no member. A person who has never signed
+in to the cloud is added at their first sign-in. An organization whose groups were deleted keeps its tasks and loses
+its members.
+
+The API reads the groups with the API token `AUTHENTIK_API_TOKEN`. The bundled blueprint creates everything it needs:
+the service account `tumble-code-cloudapi`, the role **Tumble Code cloud API** that may only view groups, and a token
+with the key from `.env` that does not expire. If Authentik cannot be read (a wrong token, Authentik down), the API
+logs a warning, keeps the memberships it has, and sign-in still works.
+
+An existing install that predates the token: add `AUTHENTIK_API_TOKEN` to `.env` (`openssl rand -hex 32`), then
+recreate the containers so Authentik sees it, and apply the blueprint:
+
+```sh
+docker compose up -d
+docker compose exec auth_worker ak apply_blueprint custom/tumble-code.yaml
+```
 
 ## Configuration reference
 
@@ -338,6 +377,9 @@ callback re-checks the stored value before it mints a ticket:
       every grant type a provider does not list)
 3. Create an Application using this provider
 4. Set `AUTHENTIK_CLIENT_ID` and `AUTHENTIK_CLIENT_SECRET` in your `.env`
+5. For [organizations](#organizations): create a role with the single permission "Can view Group"
+   (`authentik_core.view_group`), a user of type Service account with that role, and an API token for that user
+   that does not expire. Put the token's key in `AUTHENTIK_API_TOKEN`.
 
 ### Upgrading the bundled Authentik
 
@@ -388,7 +430,8 @@ In short:
   the dataset tabs at `/app/dataset` (overview), `/app/dataset/export` (the anonymized JSONL export and its audit),
   `/app/dataset/tasks` (the full reconstruction of one task at `/app/dataset/tasks/{task_id}.jsonl`) and
   `/app/dataset/recording`, settings, the projects list at `/app/projects` with its filters in the query string
-  (`q`, `space`, `recall`) and one project's page at `/app/projects/{id}`) and
+  (`q`, `space`, `recall`) and one project's page at `/app/projects/{id}`, and the read-only organizations at
+  `/app/organizations`) and
   `/shared/{task_id}` for shared tasks.
 - Live bridge: socket.io at `/bridge/socket.io` (`BRIDGE_PATH`).
 - Health: `GET /health` (process alive), `GET /health/ready` (database reachable).

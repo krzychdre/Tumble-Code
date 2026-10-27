@@ -111,6 +111,7 @@ def test_container_does_not_run_as_root():
         {"secret_key": "short-but-real"},
         {"jwt_secret": "short-but-real"},
         {"jwt_secret": None},
+        {"authentik_api_token": "short-but-real"},
     ],
 )
 def test_startup_refuses_placeholder_or_weak_secrets(overrides):

@@ -138,6 +138,12 @@ class Settings(BaseSettings):
     authentik_client_id: str = Field(..., description="OAuth2 client ID")
     authentik_client_secret: Optional[str] = None
     authentik_redirect_uri: str = Field(..., description="OAuth2 redirect URI")
+    # Key of the Authentik API token the organization sync reads groups with
+    # (src/services/organizations.py). The bundled blueprint provisions a
+    # service account with this key and view permission on groups.
+    authentik_api_token: str = Field(
+        ..., description="Authentik API token with view permission on groups"
+    )
 
     # Extra trusted web origins. The service always trusts its own addresses,
     # API_BASE_URL and WEB_PUBLIC_URL; list here any other page that must call
@@ -218,8 +224,10 @@ class Settings(BaseSettings):
     def _check_secrets(self) -> "Settings":
         # A placeholder secret is public (it is in the repository), so anyone
         # could sign web session cookies (SECRET_KEY) or session JWTs
-        # (JWT_SECRET). Fail at startup instead.
+        # (JWT_SECRET), or read Authentik's groups (AUTHENTIK_API_TOKEN, which
+        # the blueprint provisions). Fail at startup instead.
         _check_secret("SECRET_KEY", self.secret_key)
+        _check_secret("AUTHENTIK_API_TOKEN", self.authentik_api_token)
         if self.jwt_algorithm.upper().startswith("HS"):
             _check_secret("JWT_SECRET", self.jwt_secret)
         return self

@@ -22,6 +22,7 @@ def mock_auth_flow():
         patch("src.routers.browser.get_or_create_user") as mock_create_user,
         patch("src.routers.browser.create_session") as mock_session,
         patch("src.routers.browser.create_ticket") as mock_ticket,
+        patch("src.routers.browser.sync_organizations", new_callable=AsyncMock),
     ):
         mock_get_state.return_value = MagicMock(
             auth_redirect="vscode://RooVeterinaryInc.roo-cline",

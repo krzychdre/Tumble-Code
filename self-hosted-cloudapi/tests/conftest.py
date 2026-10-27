@@ -19,6 +19,7 @@ os.environ.setdefault("API_BASE_URL", "http://testserver")
 os.environ.setdefault("AUTHENTIK_BASE_URL", "http://authentik-test.local")
 os.environ.setdefault("AUTHENTIK_CLIENT_ID", "test-client-id")
 os.environ.setdefault("AUTHENTIK_REDIRECT_URI", "http://testserver/auth/clerk/callback")
+os.environ.setdefault("AUTHENTIK_API_TOKEN", "test-authentik-api-token-0123456789")
 os.environ.setdefault("JWT_ALGORITHM", "HS256")
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret-please-ignore-0123456789")
 os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
@@ -135,3 +136,16 @@ def _drop_held_bridge_partials():
     from src.realtime.sio import partial_messages
 
     partial_messages.discard()
+
+
+@pytest.fixture(autouse=True)
+def authentik_groups(monkeypatch):
+    """The groups Authentik answers the organization sync with (none unless a
+    test adds some), so no test reaches out to an Authentik."""
+    groups: list = []
+
+    async def fetch_groups():
+        return groups
+
+    monkeypatch.setattr("src.services.organizations.fetch_groups", fetch_groups)
+    return groups

@@ -168,3 +168,8 @@ def get_authentik_token_url() -> str:
 def get_authentik_userinfo_url() -> str:
     """Get the Authentik userinfo endpoint URL (back-channel / server)."""
     return f"{_back_channel_base()}/application/o/userinfo/"
+
+
+def get_authentik_groups_url() -> str:
+    """Get the Authentik groups API URL (back-channel / server)."""
+    return f"{_back_channel_base()}/api/v3/core/groups/"

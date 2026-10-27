@@ -113,3 +113,39 @@ entries:
       group: !KeyOf tumble-code-group
       order: 0
       enabled: true
+
+  # 5. The api's own account for reading groups: organizations and their
+  #    members come from groups with a `tumble_organization` or
+  #    `tumble_organization_admins` attribute (README.md, "Organizations").
+  #    A service account cannot sign in interactively; its role grants only
+  #    viewing groups, which also lists each group's members. The token's key
+  #    is AUTHENTIK_API_TOKEN, the same value the api sends as its Bearer
+  #    token, and it does not expire.
+  - model: authentik_rbac.role
+    state: present
+    id: tumble-code-cloudapi-role
+    identifiers:
+      name: Tumble Code cloud API
+    attrs:
+      permissions:
+        - authentik_core.view_group
+  - model: authentik_core.user
+    state: present
+    id: tumble-code-cloudapi-user
+    identifiers:
+      username: tumble-code-cloudapi
+    attrs:
+      name: Tumble Code cloud API
+      type: service_account
+      roles:
+        - !KeyOf tumble-code-cloudapi-role
+  - model: authentik_core.token
+    state: present
+    identifiers:
+      identifier: tumble-code-cloudapi-token
+    attrs:
+      intent: api
+      expiring: false
+      user: !KeyOf tumble-code-cloudapi-user
+      key: !Env AUTHENTIK_API_TOKEN
+      description: Organization sync of the Tumble Code cloud API

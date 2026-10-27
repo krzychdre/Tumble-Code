@@ -12,6 +12,7 @@ from config.settings import settings
 from config.auth import (
     FrontChannel,
     front_channel,
+    get_authentik_groups_url,
     get_authentik_token_url,
     get_authentik_userinfo_url,
     get_back_channel_host_header,
@@ -122,3 +123,31 @@ async def get_userinfo(access_token: str) -> Dict[str, Any]:
         )
         response.raise_for_status()
         return response.json()
+
+
+# Authentik's largest page (the tenant's pagination_max_page_size default).
+GROUPS_PAGE_SIZE = 100
+
+
+async def fetch_groups() -> list[Dict[str, Any]]:
+    """Every Authentik group with its direct members (``users_obj``).
+
+    Reads ``/api/v3/core/groups/`` page by page; Authentik answers
+    ``pagination.next == 0`` on the last page.
+    """
+    groups: list[Dict[str, Any]] = []
+    page = 1
+    async with httpx.AsyncClient(timeout=AUTHENTIK_TIMEOUT) as client:
+        while page:
+            response = await client.get(
+                get_authentik_groups_url(),
+                params={"page": page, "page_size": GROUPS_PAGE_SIZE},
+                headers=_back_channel_headers(
+                    {"Authorization": f"Bearer {settings.authentik_api_token}"}
+                ),
+            )
+            response.raise_for_status()
+            body = response.json()
+            groups.extend(body["results"])
+            page = body["pagination"]["next"]
+    return groups
