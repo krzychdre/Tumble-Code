@@ -36,6 +36,7 @@ _ZEROS = {
     "cache_reads": 0,
     "cache_writes": 0,
     "cost": 0.0,
+    "duration_ms": 0,
 }
 
 
@@ -59,8 +60,7 @@ def _ado_run() -> tuple[Task, dict[str, list[Task]]]:
         cost=0.1656,
         cache_reads=100_000,
         cache_writes=2_000,
-        first_ts=1_000,
-        last_ts=61_000,
+        duration_ms=60_000,
         message_count=12,
         workspace_path="/home/me/Roo-Code/",
         models="glm-5.3, qwen3, llama",
@@ -75,20 +75,21 @@ def _ado_run() -> tuple[Task, dict[str, list[Task]]]:
         tokens_in=1000,
         tokens_out=500,
         cost=1.194,
+        duration_ms=30_000,
         q_completed=True,
         q_errors=1,
     )
     b = _task("b", "root", tokens_in=10, tokens_out=5, cost=0.0493)
-    c = _task("c", "a", tokens_in=1, tokens_out=1, cost=0.0001)
+    c = _task("c", "a", tokens_in=1, tokens_out=1, cost=0.0001, duration_ms=5_000)
     return root, {"root": [a, b], "a": [c]}
 
 
 _ROOT_HOVER = (
     "Fix the bug\n\n- step one\n\n"
     "This task\n↑ In: 297,800\n↓ Out: 5,900\n⚡ Cache: 2,000 write / 100,000 read\n"
-    "⏱ Session: 1m 0s\n$ Cost: $0.1656\n\n"
+    "⏱ Duration: 1m 0s\n$ Cost: $0.1656\n\n"
     "Σ With its 3 subtasks\n↑ In: 298,811\n↓ Out: 6,406\n"
-    "⚡ Cache: 2,000 write / 100,000 read\n$ Cost: $1.4090"
+    "⚡ Cache: 2,000 write / 100,000 read\n⏱ Duration: 1m 35s\n$ Cost: $1.4090"
 )
 
 
@@ -102,6 +103,7 @@ def _leaf_row(task_id: str, tokens: str, cost: str, hover: str) -> dict:
         "tokens": tokens,
         "cost": cost,
         "rollup": False,
+        "duration_title": None,
         "tokens_title": None,
         "cost_title": None,
         "hover_title": hover,
@@ -126,16 +128,23 @@ def test_list_row_nests_the_whole_tree_and_sums_the_run():
     root, tree = _ado_run()
     row = _list_row(root, tree, True)
 
-    c_row = _leaf_row("c", "2", "$0.0001", "↑ In: 1\n↓ Out: 1\n$ Cost: $0.0001")
+    c_row = {
+        **_leaf_row(
+            "c", "2", "$0.0001", "↑ In: 1\n↓ Out: 1\n⏱ Duration: 5s\n$ Cost: $0.0001"
+        ),
+        "duration": "5s",
+    }
     b_row = _leaf_row("b", "15", "$0.0493", "↑ In: 10\n↓ Out: 5\n$ Cost: $0.0493")
     a_row = {
         **_leaf_row("a", "1.5k", "$1.1941", None),
+        "duration": "35s",
         "rollup": True,
+        "duration_title": "35s for the run: 30s this task + 5s in 1 subtask",
         "tokens_title": "1,502 tokens for the run: 1,500 this task + 2 in 1 subtask",
         "cost_title": "$1.1941 for the run: $1.1940 this task + $0.0001 in 1 subtask",
         "hover_title": (
-            "This task\n↑ In: 1,000\n↓ Out: 500\n$ Cost: $1.1940\n\n"
-            "Σ With its 1 subtask\n↑ In: 1,001\n↓ Out: 501\n$ Cost: $1.1941"
+            "This task\n↑ In: 1,000\n↓ Out: 500\n⏱ Duration: 30s\n$ Cost: $1.1940\n\n"
+            "Σ With its 1 subtask\n↑ In: 1,001\n↓ Out: 501\n⏱ Duration: 35s\n$ Cost: $1.1941"
         ),
         "child_count": 1,
         "descendant_count": 1,
@@ -149,10 +158,11 @@ def test_list_row_nests_the_whole_tree_and_sums_the_run():
         "title": "root",
         "message_count": 12,
         "updated_at": UPDATED,
-        "duration": "1m 0s",
+        "duration": "1m 35s",
         "tokens": "305.2k",
         "cost": "$1.4090",
         "rollup": True,
+        "duration_title": "1m 35s for the run: 1m 0s this task + 35s in 3 subtasks",
         "tokens_title": "305,217 tokens for the run: 303,700 this task + 1,517 in 3 subtasks",
         "cost_title": "$1.4090 for the run: $0.1656 this task + $1.2434 in 3 subtasks",
         "hover_title": _ROOT_HOVER,
@@ -199,6 +209,7 @@ def test_list_row_for_a_task_with_nothing_recorded():
         "tokens": None,
         "cost": None,
         "rollup": False,
+        "duration_title": None,
         "tokens_title": None,
         "cost_title": None,
         "hover_title": None,
@@ -308,7 +319,7 @@ def test_row_tooltip_with_a_run_heads_the_own_figures_and_adds_the_run():
     assert _row_tooltip(root, total, 3) == (
         "Fix the bug\n\n- step one\n\n"
         "This task\n↑ In: 297,800\n↓ Out: 5,900\n⚡ Cache: 2,000 write / 100,000 read\n"
-        "⏱ Session: 1m 0s\n$ Cost: $0.1656\n\n"
+        "⏱ Duration: 1m 0s\n$ Cost: $0.1656\n\n"
         "Σ With its 3 subtasks\n↑ In: 299,000\n↓ Out: 6,400\n"
         "⚡ Cache: 2,000 write / 100,000 read\n$ Cost: $1.4090"
     )

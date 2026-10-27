@@ -596,7 +596,6 @@ async def test_format_helpers_are_single_source_of_truth():
     assert task_rows.fmt_int is fmt.fmt_int
     assert task_rows.plural is fmt.plural
     assert task_detail.fmt_tokens is fmt.fmt_tokens
-    assert task_detail.fmt_duration is fmt.fmt_duration
     assert task_detail.fmt_cost is fmt.fmt_cost
     assert task_detail.fmt_int is fmt.fmt_int
     assert task_detail.plural is fmt.plural

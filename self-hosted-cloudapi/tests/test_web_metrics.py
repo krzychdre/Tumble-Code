@@ -33,7 +33,7 @@ async def test_metrics_redirects_to_login_without_session(client):
 
 
 async def test_compute_user_metrics_aggregates_dimensions(db_session):
-    """Totals, breakdowns and per-task duration aggregate from LLM Completion events."""
+    """Totals, breakdowns and the request duration aggregate from LLM Completion events."""
     from datetime import datetime, timezone, timedelta
 
     await _seed_user(db_session)
@@ -50,6 +50,7 @@ async def test_compute_user_metrics_aggregates_dimensions(db_session):
                 cread=10,
                 cost=0.02,
                 created_at=base,
+                duration_ms=4_000,
             ),
             _llm_event(
                 model="gpt-a",
@@ -59,6 +60,7 @@ async def test_compute_user_metrics_aggregates_dimensions(db_session):
                 tout=100,
                 cost=0.01,
                 created_at=base + timedelta(minutes=5),
+                duration_ms=2_500,
             ),
             _llm_event(
                 model="llama-b",
@@ -84,9 +86,10 @@ async def test_compute_user_metrics_aggregates_dimensions(db_session):
     assert abs(m["totals"]["cost"] - 0.03) < 1e-9
     assert m["totals"]["completions"] == 3
 
-    # Two tasks; t1 spans 5 minutes, t2 is a single event (0 span).
+    # Two tasks. The duration is t1's two requests, not the 5 minutes between
+    # them; t2's completion was sent before requests were measured.
     assert m["task_count"] == 2
-    assert m["duration_ms"] == 5 * 60 * 1000
+    assert m["duration_ms"] == 6_500
 
     # Models sorted desc by tokens: gpt-a (1800) before llama-b (350).
     names = [r["name"] for r in m["by_model"]]

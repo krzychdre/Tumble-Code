@@ -132,6 +132,7 @@ def _llm_event(
     kind=None,
     usage_reported=None,
     client_kind=None,
+    duration_ms=None,
 ):
     """Build an ``LLM Completion`` telemetry row mirroring the extension payload."""
     from datetime import datetime, timezone
@@ -151,6 +152,7 @@ def _llm_event(
         **({"completionKind": kind} if kind is not None else {}),
         **({"usageReported": usage_reported} if usage_reported is not None else {}),
         **({"clientKind": client_kind} if client_kind is not None else {}),
+        **({"durationMs": duration_ms} if duration_ms is not None else {}),
     }
     return TelemetryEvent(
         user_id=user_id,

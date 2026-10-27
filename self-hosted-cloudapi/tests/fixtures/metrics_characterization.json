@@ -13,8 +13,8 @@
 				"total_tokens": 3300,
 				"total_tokens_fmt": "3.3k"
 			},
-			"duration_ms": 31898400000,
-			"duration": "8860h 40m",
+			"duration_ms": 6500,
+			"duration": "6s",
 			"task_count": 1,
 			"by_model": [
 				{
@@ -101,8 +101,8 @@
 				"total_tokens": 4290,
 				"total_tokens_fmt": "4.3k"
 			},
-			"duration_ms": 63343999500,
-			"duration": "17595h 33m",
+			"duration_ms": 8000,
+			"duration": "8s",
 			"task_count": 4,
 			"by_model": [
 				{
@@ -298,8 +298,8 @@
 				"total_tokens": 12100,
 				"total_tokens_fmt": "12.1k"
 			},
-			"duration_ms": 63343999500,
-			"duration": "17595h 33m",
+			"duration_ms": 8000,
+			"duration": "8s",
 			"task_count": 5,
 			"by_model": [
 				{
@@ -534,8 +534,8 @@
 				"total_tokens": 12100,
 				"total_tokens_fmt": "12.1k"
 			},
-			"duration_ms": 63343999500,
-			"duration": "17595h 33m",
+			"duration_ms": 8000,
+			"duration": "8s",
 			"task_count": 5,
 			"by_model": [
 				{
@@ -770,8 +770,8 @@
 				"total_tokens": 143448,
 				"total_tokens_fmt": "143.4k"
 			},
-			"duration_ms": 63430399500,
-			"duration": "17619h 33m",
+			"duration_ms": 8000,
+			"duration": "8s",
 			"task_count": 6,
 			"by_model": [
 				{

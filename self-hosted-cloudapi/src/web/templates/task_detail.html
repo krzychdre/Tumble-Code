@@ -142,7 +142,6 @@
       <a class="subtask-link" style="--depth: {{ loop.depth0 }}" href="/app/tasks/{{ s.id }}"{% if s.hover_title %} title="{{ s.hover_title }}"{% endif %}>
         <span class="cell-title">{{ s.title }}</span>
         <span class="cell-num">{{ s.message_count }}<span class="unit">msg</span></span>
-        <span class="cell-num">{{ s.duration or '' }}</span>
         {{ spend.cells(s) }}
         <span class="cell-grade"><span class="grade grade-{{ s.grade }}" title="{{ s.grade_title }}">{{ s.grade_label }}</span></span>
       </a>
