@@ -40,9 +40,9 @@ breadcrumbs.
   manage. Unknown and foreign projects get the same `not_found_page`.
 - **Merge by name.** A select of every other project does not scale, so the target is a text field with a
   `datalist` of the space's other project names. `merge_target` looks the name up case-insensitively among the
-  source's space's other projects: none is `bad_merge` (which also covers a project of another space), two is a
-  new `ambiguous_merge` ("rename one first"), because names are not unique: three people's folders without git
-  named `notes` is exactly the case merging exists for. `merge_project` lost its own tenant check, which only
+  source's space's projects: none, or the source itself, is `bad_merge` (which also covers a project of another
+  space). Names are unique in a space (`2026-10-27_10-45_cloud-unique-project-names.md`), so a name finds at most
+  one project. `merge_project` lost its own tenant check, which only
   `merge_target` can reach now.
 - **Redirects.** Save returns to the project's page, Merge to the target's page; a refusal returns to the
   project's page with the error code in the query.
@@ -69,8 +69,8 @@ breadcrumbs.
   message.
 - `test_merging_by_name_moves_folders_and_sessions`: the datalist offers the space's names only; `" NOTES "`
   merges into `notes` and lands on the target's page.
-- `test_a_merge_target_is_one_project_of_the_same_space` (3): another space's name and an unknown name are
-  `bad_merge`, two projects of that name are `ambiguous_merge`.
+- `test_a_merge_target_is_another_project_of_the_same_space` (3): another space's name, an unknown name and the
+  source's own name are `bad_merge`.
 - `test_a_foreign_project_is_not_listed_and_answers_404` (2): someone else's personal project, an organization's
   project for an outsider: absent from the list, 404 on the page, on Save and on Merge.
 
