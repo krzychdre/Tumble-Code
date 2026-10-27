@@ -41,6 +41,11 @@ class Project(Base, TimestampMixin):
 
     __table_args__ = (Index("uq_projects_tenant_key", "tenant_id", "key", unique=True),)
 
+    @property
+    def key_label(self) -> str:
+        """The key as the pages show it: a folder key is a hash."""
+        return "folder without git" if self.key.startswith("folder:") else self.key
+
 
 class ProjectBinding(Base, TimestampMixin):
     """One user's folder, in one tenant, is that project."""
