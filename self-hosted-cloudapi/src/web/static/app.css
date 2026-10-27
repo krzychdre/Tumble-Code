@@ -348,7 +348,8 @@ table.breakdown th {
 	align-self: stretch;
 	gap: var(--s1);
 }
-.mainnav a {
+.mainnav a,
+.tabs a {
 	position: relative;
 	display: inline-flex;
 	align-items: center;
@@ -357,11 +358,13 @@ table.breakdown th {
 	font-size: var(--t-sm);
 	font-weight: 550;
 }
-.mainnav a:hover {
+.mainnav a:hover,
+.tabs a:hover {
 	color: var(--text);
 	text-decoration: none;
 }
-.mainnav a::after {
+.mainnav a::after,
+.tabs a::after {
 	content: "";
 	position: absolute;
 	left: var(--s2);
@@ -371,13 +374,16 @@ table.breakdown th {
 	border-radius: 2px 2px 0 0;
 	background: transparent;
 }
-.mainnav a:hover::after {
+.mainnav a:hover::after,
+.tabs a:hover::after {
 	background: var(--line-strong);
 }
-.mainnav a.active {
+.mainnav a.active,
+.tabs a.active {
 	color: var(--text);
 }
-.mainnav a.active::after {
+.mainnav a.active::after,
+.tabs a.active::after {
 	background: var(--signal);
 }
 
@@ -484,6 +490,22 @@ table.breakdown th {
 	flex-wrap: wrap;
 	gap: var(--s3);
 	margin-bottom: var(--s4);
+}
+
+/* Section tabs under a page title (_tabs.html): the top bar's underline (the
+   .mainnav rules above style .tabs a too), on a rule that spans the page. A
+   phone scrolls the row sideways instead of wrapping it. */
+.tabs {
+	display: flex;
+	gap: var(--s1);
+	margin-bottom: var(--s5);
+	border-bottom: 1px solid var(--line);
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+.tabs a {
+	flex-shrink: 0;
+	padding: var(--s2) var(--s3);
 }
 
 /* ==========================================================================
@@ -1951,12 +1973,15 @@ a.signal-value:hover {
 	color: var(--text-faint);
 	margin-bottom: var(--s2);
 }
-.trail a {
-	color: var(--text-dim);
-	max-width: 22rem;
+.trail a,
+.trail-here {
+	max-width: min(22rem, 100%);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+.trail a {
+	color: var(--text-dim);
 }
 .trail a:hover {
 	color: var(--signal);

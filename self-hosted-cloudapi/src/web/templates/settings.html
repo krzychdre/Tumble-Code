@@ -1,29 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Settings · Tumble Code{% endblock %}
+{% import "_settings_head.html" as head %}
 {% block content %}
-<div class="page-head">
-  <h1 class="page-title">Settings</h1>
-</div>
+{{ head.settings_head("retention") }}
 
 {% if ran %}
 <div class="notice">Retention ran. {{ ran }} task{{ '' if ran == '1' else 's' }} removed.</div>
 {% endif %}
-
-<section class="panel settings-panel" aria-labelledby="settings-orgs">
-  <h2 class="chart-title" id="settings-orgs">Organizations</h2>
-  <p class="settings-lead">
-    Create an organization, add colleagues and choose who is an admin.
-    <a href="/app/organizations">Manage organizations</a>
-  </p>
-</section>
-
-<section class="panel settings-panel" aria-labelledby="settings-projects">
-  <h2 class="chart-title" id="settings-projects">Projects</h2>
-  <p class="settings-lead">
-    Name your projects, merge folders that are one project, and choose whether Tumble Code may recall earlier sessions.
-    <a href="/app/projects">Manage projects</a>
-  </p>
-</section>
 
 <section class="panel settings-panel">
   <h2 class="chart-title">Data retention</h2>

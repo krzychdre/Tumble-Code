@@ -1,7 +1,12 @@
 {% extends "base.html" %}
 {% block title %}{{ organization.name }} · Tumble Code{% endblock %}
+{% import "_breadcrumbs.html" as crumbs %}
 {% block content %}
-<div class="page-head">
+<div class="detail-header">
+  {{ crumbs.breadcrumbs([
+    {"href": "/app/settings", "label": "Settings"},
+    {"href": "/app/organizations", "label": "Organizations"},
+  ], organization.name) }}
   <h1 class="page-title">{{ organization.name }}</h1>
 </div>
 

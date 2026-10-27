@@ -1,0 +1,9 @@
+{# Section tabs inside a page: each tab is a link to its own URL, so a tab can be
+   bookmarked and the back button works. `items` holds (key, href, label). #}
+{% macro tabs(items, active, label) %}
+<nav class="tabs" aria-label="{{ label }}">
+  {% for key, href, text in items %}
+  <a href="{{ href }}"{% if key == active %} class="active" aria-current="page"{% endif %}>{{ text }}</a>
+  {% endfor %}
+</nav>
+{% endmacro %}
