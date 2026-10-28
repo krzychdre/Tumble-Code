@@ -543,6 +543,16 @@ describe("ChatTextArea highlight layer", () => {
 		)
 	})
 
+	it("never turns typed or pasted text into markup, also inside a mention", () => {
+		const text = `<img src=x onerror="alert(1)"> @/a<svg/onload=alert(2)>.ts "quoted" &amp;`
+		render(<Harness initial={text} />)
+		const layer = screen.getByTestId("highlight-layer")
+
+		expect(layer.querySelector("img, svg")).toBeNull()
+		expect([...layer.querySelectorAll("*")].map((element) => element.tagName)).toEqual(["MARK"])
+		expect(layer.textContent).toBe(text)
+	})
+
 	it("marks only known slash commands and keeps a leading space outside the mark", () => {
 		render(<Harness initial={"/setup now\nthen /deploy and /unknown"} />)
 		expect(screen.getByTestId("highlight-layer").innerHTML).toBe(
