@@ -10,6 +10,7 @@ tests pin the two properties that make that join safe to show a reader:
 """
 
 import json
+from datetime import datetime
 
 import pytest
 from sqlalchemy import select
@@ -309,6 +310,33 @@ async def test_a_model_id_of_spaces_is_no_model(db_session):
         select(Task.models, Task.primary_model).where(Task.id == "task-blank")
     )
     assert stored.one() == (None, None)
+
+
+async def test_a_completion_naming_another_users_task_leaves_its_row(db_session):
+    """Task ids are the client's, so an event can name a stranger's task. It
+    must not rewrite that row: its updated_at orders the owner's list and
+    decides which of their tasks a retention policy deletes."""
+    from src.services.telemetry_service import record_event
+
+    await _seed_user(db_session)
+    await _seed_user(db_session, user_id="user_b", email="b@example.com")
+    then = datetime(2026, 1, 1, 12, 0)
+    db_session.add(Task(id="task-b", user_id="user_b", models="m-b", updated_at=then))
+    db_session.add(_llm_event("user_b", model="m-b", task_id="task-b"))
+    await db_session.commit()
+
+    await record_event(
+        db_session,
+        user_id="user_test",
+        org_id=None,
+        event_type="LLM Completion",
+        properties={"taskId": "task-b", "modelId": "evil-1", "inputTokens": 1},
+    )
+
+    stored = await db_session.execute(
+        select(Task.models, Task.updated_at).where(Task.id == "task-b")
+    )
+    assert stored.one() == ("m-b", then)
 
 
 async def test_telemetry_for_an_unknown_task_is_stored_but_stores_nothing_else(

@@ -9,6 +9,7 @@ import json
 
 import anyio
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.routing import APIRoute
 from starlette.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,8 +24,6 @@ from src.services.telemetry_service import (
 )
 from src.realtime.hub import registry
 from config.settings import settings
-
-router = APIRouter(prefix="/api", tags=["events"])
 
 
 def _too_large(limit: int) -> HTTPException:
@@ -57,6 +56,24 @@ def capped_request(request: Request, limit: int) -> Request:
         return message
 
     return Request(request.scope, receive)
+
+
+class _CappedRoute(APIRoute):
+    """A route whose request body is refused with 413 above
+    ``BACKFILL_MAX_BYTES``, before it is read whole and parsed: a single
+    event is one message of a conversation at most, and an upload the whole
+    conversation."""
+
+    def get_route_handler(self):
+        handler = super().get_route_handler()
+
+        async def capped_handler(request: Request):
+            return await handler(capped_request(request, settings.backfill_max_bytes))
+
+        return capped_handler
+
+
+router = APIRouter(prefix="/api", tags=["events"], route_class=_CappedRoute)
 
 
 def _backfill_client_kind(properties) -> str | None:
@@ -97,7 +114,8 @@ async def record_event_endpoint(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Record a telemetry event."""
+    """Record a telemetry event. Refused with 413 above ``BACKFILL_MAX_BYTES``
+    (``_CappedRoute``)."""
     if not settings.telemetry_enabled:
         return {"status": "ignored"}
 
@@ -124,12 +142,12 @@ async def backfill_events_endpoint(
     - properties: JSON string
     - file: task.json file
 
-    Refused with 413 above ``BACKFILL_MAX_BYTES``.
+    Refused with 413 above ``BACKFILL_MAX_BYTES`` (``_CappedRoute``).
     """
     if not settings.telemetry_enabled:
         return {"status": "ignored"}
 
-    form = await capped_request(request, settings.backfill_max_bytes).form()
+    form = await request.form()
     task_id = form.get("taskId", "")
     file = form.get("file")
 

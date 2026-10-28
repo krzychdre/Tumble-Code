@@ -16,7 +16,10 @@ command is relayed only to that same user's extension socket, and an
 extension's task event is relayed and saved only for a task its user owns.
 """
 
+import asyncio
 import logging
+from collections import Counter
+from contextlib import asynccontextmanager
 from typing import Optional
 
 import socketio
@@ -76,6 +79,40 @@ def _create_server() -> socketio.AsyncServer:
 sio = _create_server()
 
 
+# The most database sessions one account's bridge events hold at once, each a
+# pooled connection while it runs or waits for one. A client emits events far
+# faster than they are written: unbounded, one account could hold the whole
+# pool and every other request waited. An event past the bound waits for a
+# session of its account, so a burst of parallel subtasks loses nothing; past
+# USER_WAITING_MAX waiting events a flood is dropped instead of queued.
+USER_SESSIONS_MAX = 8
+USER_WAITING_MAX = 64
+_user_slots: dict[str, asyncio.Semaphore] = {}
+_waiting: Counter[str] = Counter()
+
+
+class BridgeBusy(Exception):
+    """The account already has ``USER_WAITING_MAX`` events waiting."""
+
+
+@asynccontextmanager
+async def _user_session(user_id: str):
+    """A database session for one of ``user_id``'s bridge events."""
+    slots = _user_slots.setdefault(user_id, asyncio.Semaphore(USER_SESSIONS_MAX))
+    if slots.locked() and _waiting[user_id] >= USER_WAITING_MAX:
+        raise BridgeBusy(user_id)
+    _waiting[user_id] += 1
+    try:
+        await slots.acquire()
+    finally:
+        _waiting[user_id] -= 1
+    try:
+        async with async_session_factory() as db:
+            yield db
+    finally:
+        slots.release()
+
+
 def _room(task_id: str) -> str:
     return f"task:{task_id}"
 
@@ -114,14 +151,17 @@ def _cookie_from_environ(environ: dict) -> Optional[str]:
 async def _user_owns_task(user_id: str, task_id: str) -> bool:
     if not task_id:
         return False
-    async with async_session_factory() as db:
-        return await task_owner(db, task_id) == user_id
+    try:
+        async with _user_session(user_id) as db:
+            return await task_owner(db, task_id) == user_id
+    except BridgeBusy:
+        return False
 
 
 async def _task_access(user_id: str, task_id: str) -> Optional[bool]:
     """True if ``user_id`` owns the task, False if another user does, None if
     there is no such task (yet)."""
-    async with async_session_factory() as db:
+    async with _user_session(user_id) as db:
         owner = await task_owner(db, task_id)
     if owner is None:
         return None
@@ -194,7 +234,7 @@ async def _bind_folder(meta, instance: dict) -> None:
     """Resolve the window's folder to its project, binding it on first sight
     (services/projects), so the tasks it streams get their project."""
     try:
-        async with async_session_factory() as db:
+        async with _user_session(meta["user_id"]) as db:
             await resolve_project(
                 db,
                 meta["user_id"],
@@ -317,7 +357,7 @@ async def _save_messages(
     the task is the user's, or None when the save failed (ownership then stays
     unknown). A task row created here belongs to ``org_id``."""
     try:
-        async with async_session_factory() as db:
+        async with _user_session(user_id) as db:
             owned = None
             for data in events:
                 # Worktree root: prefer the value the originating window

@@ -1,4 +1,5 @@
-"""POST /api/events/backfill refuses an upload above BACKFILL_MAX_BYTES (CAPI-M12).
+"""POST /api/events/backfill refuses an upload above BACKFILL_MAX_BYTES (CAPI-M12),
+and POST /api/events an event above it.
 
 The route used to read the whole upload into memory, however large, and parse
 it on the event loop. It now answers 413 above the cap: straight from the
@@ -14,8 +15,10 @@ import json
 
 import httpx
 import pytest
+from sqlalchemy import select
 
 from config.settings import Settings, settings
+from src.models.event import TelemetryEvent
 from tests.web_helpers import _backfill_files, _override_current_user, _seed_user
 
 LIMIT = 4096
@@ -64,6 +67,19 @@ async def test_upload_under_the_cap_is_stored(client, db_session, small_cap):
     resp = client.post("/api/events/backfill", files=files, data=data)
     assert resp.status_code == 200
     assert resp.json() == {"status": "ok"}
+
+
+async def test_an_event_over_the_cap_is_413(client, db_session, small_cap):
+    """POST /api/events reads a single event, which had no cap: one request
+    with a 100 MB model id took a gigabyte of the API's memory."""
+    await _seed_user(db_session)
+    _override_current_user(client.app)
+    event = {"type": "LLM Completion", "properties": {"modelId": "m" * LIMIT}}
+
+    resp = client.post("/api/events", json=event)
+
+    assert resp.status_code == 413
+    assert (await db_session.execute(select(TelemetryEvent))).first() is None
 
 
 async def test_declared_length_over_the_cap_is_413(

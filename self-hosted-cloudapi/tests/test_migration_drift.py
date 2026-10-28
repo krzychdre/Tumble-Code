@@ -930,3 +930,70 @@ def test_list_indexes_rebuild_labels_too_long_for_the_models_index(migrate_env):
     assert len(label.encode()) <= LABEL_MAX_BYTES < len(labels["many"].encode())
     assert label == ", ".join(many[: label.count(",") + 1])
     assert primary == many[0]
+
+
+def test_hostile_client_data_is_cleared(migrate_env):
+    """f1b2c3d4e5a6 clears what ingest refuses from now on: a message time
+    past 2100 (its task's span is taken again, its card keeps the task's last
+    time) and a parent link between two accounts' tasks."""
+    db_file, run = migrate_env
+    _load_baseline(db_file)
+    _alembic(run, "stamp", SQLITE_START_REVISION)
+    _alembic(run, "upgrade", "f1a2b3c4d5e6")
+
+    future = 9 * 10**18
+    with sqlite3.connect(db_file) as conn:
+        conn.executemany(
+            "INSERT INTO users (id, authentik_id, email) VALUES (?, ?, ?)",
+            [("u1", "ak_1", "a@b.c"), ("u2", "ak_2", "d@e.f")],
+        )
+        conn.execute(
+            "INSERT INTO projects (id, user_id, tenant_id, key, name) "
+            "VALUES ('p1', 'u1', 'u1', 'k', 'Project')"
+        )
+        conn.executemany(
+            "INSERT INTO tasks (id, user_id, parent_task_id, first_ts, last_ts) "
+            "VALUES (?, ?, ?, ?, ?)",
+            [
+                ("victim", "u2", None, 5, 5),
+                ("evil", "u1", None, 10, future),
+                ("planted", "u2", "evil", None, None),
+                ("own_child", "u1", "evil", None, None),
+            ],
+        )
+        conn.executemany(
+            "INSERT INTO task_messages (id, task_id, message_data, message_ts, q_kind) "
+            "VALUES (?, 'evil', '{}', ?, ?)",
+            [
+                ("m1", 10, None),
+                ("m2", 20, None),
+                ("m3", future, None),
+                ("m4", 30, "resume"),
+            ],
+        )
+        conn.execute(
+            "INSERT INTO session_cards (task_id, tenant_id, project_id, author_id, "
+            "title, body, search_vector, last_ts, completed, is_subtask, built_at) "
+            "VALUES ('evil', 'u1', 'p1', 'u1', 't', 'b', 'v', ?, 0, 0, '2026-01-01')",
+            (future,),
+        )
+
+    _alembic(run, "upgrade", "head")
+
+    with sqlite3.connect(db_file) as conn:
+        messages = dict(conn.execute("SELECT id, message_ts FROM task_messages"))
+        tasks = {
+            row[0]: row[1:]
+            for row in conn.execute(
+                "SELECT id, parent_task_id, first_ts, last_ts FROM tasks"
+            )
+        }
+        card = conn.execute("SELECT last_ts FROM session_cards").fetchone()
+    assert messages == {"m1": 10, "m2": 20, "m3": None, "m4": 30}
+    assert tasks == {
+        "victim": (None, 5, 5),
+        "evil": (None, 10, 20),
+        "planted": (None, None, None),
+        "own_child": ("evil", None, None),
+    }
+    assert card == (20,)

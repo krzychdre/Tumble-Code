@@ -113,10 +113,12 @@ def first_user_query(messages: Iterable[dict]) -> str:
     extension appended. Empty when the conversation holds no such message.
 
     Messages whose text opens with ``{`` are skipped: those are the JSON
-    payloads (``api_req_started`` and friends), never prose.
+    payloads (``api_req_started`` and friends), never prose. So is a text that
+    is no string, which only a hand-made message has.
     """
     for msg in messages:
-        text = (msg.get("text") or "").strip()
+        text = msg.get("text")
+        text = text.strip() if isinstance(text, str) else ""
         if not text or text.startswith("{"):
             continue
         query = strip_task_wrappers(text)
