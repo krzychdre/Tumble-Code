@@ -10,6 +10,7 @@ import * as vscode from "vscode"
 
 import { fileExistsAtPath } from "../../utils/fs"
 import { arePathsEqual } from "../../utils/path"
+import { isSafeTaskId } from "../../utils/storage"
 import { executeRipgrep } from "../../services/search/file-search"
 import { t } from "../../i18n"
 
@@ -128,6 +129,9 @@ export class ShadowCheckpointService extends EventEmitter {
 		checkpointsRoot,
 		log = (message: string) => logger.info(message),
 	}: CheckpointServiceOptions) {
+		if (!isSafeTaskId(taskId)) {
+			throw new Error(`Invalid task id for checkpoints: ${JSON.stringify(String(taskId).slice(0, 80))}`)
+		}
 		return new ShadowCheckpointService(taskId, path.join(checkpointsRoot, taskId), workspaceDir, log)
 	}
 	public readonly taskId: string

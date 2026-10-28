@@ -85,9 +85,23 @@ export async function getStorageBasePath(defaultPath: string): Promise<string> {
 }
 
 /**
+ * Whether `taskId` can name a task's directory: letters, digits, `.`, `_`
+ * and `-`, not starting with a dot, at most 128 characters. Task ids are
+ * uuids (older ones timestamps); one from the webview's `newTask` message is
+ * not trusted, and `../../.ssh` would otherwise put the task's files, and its
+ * checkpoint git repository, wherever it points.
+ */
+export function isSafeTaskId(taskId: unknown): taskId is string {
+	return typeof taskId === "string" && /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(taskId)
+}
+
+/**
  * Gets the storage directory path for a task
  */
 export async function getTaskDirectoryPath(globalStoragePath: string, taskId: string): Promise<string> {
+	if (!isSafeTaskId(taskId)) {
+		throw new Error(`Invalid task id: ${JSON.stringify(String(taskId).slice(0, 80))}`)
+	}
 	const basePath = await getStorageBasePath(globalStoragePath)
 	const taskDir = path.join(basePath, "tasks", taskId)
 	await fs.mkdir(taskDir, { recursive: true })

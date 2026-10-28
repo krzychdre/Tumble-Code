@@ -8,6 +8,7 @@ import { setPendingTodoList } from "../../tools/UpdateTodoListTool"
 import { resolveIncomingImages, serializeError } from "./context"
 import type { DomainHandlerMap } from "./types"
 import { logger } from "../../../utils/logging"
+import { isSafeTaskId } from "../../../utils/storage"
 
 export const taskLifecycleHandlers: DomainHandlerMap<"taskLifecycle"> = {
 	webviewDidLaunch: async (ctx, message) => {
@@ -96,6 +97,9 @@ export const taskLifecycleHandlers: DomainHandlerMap<"taskLifecycle"> = {
 		// agentically running promises in old instance don't affect our new
 		// task. This essentially creates a fresh slate for the new task.
 		try {
+			if (message.taskId !== undefined && !isSafeTaskId(message.taskId)) {
+				throw new Error(`Invalid task id: ${JSON.stringify(String(message.taskId).slice(0, 80))}`)
+			}
 			const resolved = await resolveIncomingImages(ctx, { text: message.text, images: message.images })
 			await provider.createTask(
 				resolved.text,
