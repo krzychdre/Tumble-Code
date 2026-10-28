@@ -39,7 +39,7 @@ export function hashWorkspacePath(workspacePath: string): string {
 export function ensureDirectoryExists(dirPath: string): void {
 	try {
 		if (!fs.existsSync(dirPath)) {
-			fs.mkdirSync(dirPath, { recursive: true })
+			fs.mkdirSync(dirPath, { recursive: true, mode: 0o700 })
 		}
 	} catch (error) {
 		console.warn(`Failed to create directory ${dirPath}:`, error)
@@ -54,7 +54,7 @@ export function initializeWorkspace(workspacePath: string): void {
 
 	for (const dir of dirs) {
 		if (!fs.existsSync(dir)) {
-			fs.mkdirSync(dir, { recursive: true })
+			fs.mkdirSync(dir, { recursive: true, mode: 0o700 })
 		}
 	}
 }

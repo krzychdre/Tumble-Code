@@ -228,12 +228,12 @@ describe("RetryQueue", () => {
 			expect(options.signal).toBeInstanceOf(AbortSignal)
 			expect(options.headers).toEqual({
 				Authorization: "Bearer fresh",
-				"Content-Type": "application/json",
+				"content-type": "application/json",
 				"X-Retry-Queue": "true",
 			})
 		})
 
-		it("keeps the stored headers when the auth provider has none", async () => {
+		it("sends no credentials when the auth provider has none: the stored ones were never kept", async () => {
 			const queue = makeQueue({}, () => undefined)
 			await queue.enqueue(
 				"https://api.example.com/a",
@@ -244,7 +244,6 @@ describe("RetryQueue", () => {
 			await queue.retryAll()
 
 			expect(fetchMock.mock.calls[0]![1].headers).toEqual({
-				Authorization: "Bearer stored",
 				"X-Retry-Queue": "true",
 			})
 		})

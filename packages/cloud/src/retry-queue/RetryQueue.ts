@@ -5,6 +5,34 @@ import type { QueuedRequest, QueueStats, RetryQueueConfig, RetryQueueEvents, Ret
 
 type AuthHeaderProvider = () => Record<string, string> | undefined
 
+/** Headers that carry a credential; never stored with a queued request. */
+const CREDENTIAL_HEADERS = new Set(["authorization", "proxy-authorization", "cookie"])
+
+/**
+ * The request options as they may be kept: the headers without credentials,
+ * as a plain object. The queue is persisted (in the CLI to a JSON file), and
+ * a session token kept there outlives the session and is readable by anyone
+ * who can read the file. A retry gets fresh credentials from the
+ * AuthHeaderProvider instead.
+ */
+export function withoutCredentials(options: RequestInit): RequestInit {
+	const headers: Record<string, string> = {}
+	new Headers(options.headers).forEach((value, name) => {
+		if (!CREDENTIAL_HEADERS.has(name.toLowerCase())) {
+			headers[name] = value
+		}
+	})
+	return { ...options, headers }
+}
+
+function hasCredentials(options: RequestInit | undefined): boolean {
+	let found = false
+	new Headers(options?.headers).forEach((_value, name) => {
+		found ||= CREDENTIAL_HEADERS.has(name.toLowerCase())
+	})
+	return found
+}
+
 export class RetryQueue extends EventEmitter<RetryQueueEvents> {
 	private queue: Map<string, QueuedRequest> = new Map()
 	private storage: RetryQueueStorage
@@ -52,10 +80,16 @@ export class RetryQueue extends EventEmitter<RetryQueueEvents> {
 		try {
 			const stored = this.storage.get<QueuedRequest[]>(this.STORAGE_KEY)
 			if (stored && Array.isArray(stored)) {
+				// A queue written by an older version kept each request's
+				// Authorization header: drop it and write the queue back without it.
+				const hadCredentials = stored.some((request) => hasCredentials(request.options))
 				stored.forEach((request) => {
-					this.queue.set(request.id, request)
+					this.queue.set(request.id, { ...request, options: withoutCredentials(request.options ?? {}) })
 				})
 				this.log(`[RetryQueue] Loaded ${stored.length} persisted requests from workspace storage`)
+				if (hadCredentials) {
+					void this.persistQueue()
+				}
 			}
 		} catch (error) {
 			this.log("[RetryQueue] Failed to load persisted queue:", error)
@@ -89,7 +123,7 @@ export class RetryQueue extends EventEmitter<RetryQueueEvents> {
 		const request: QueuedRequest = {
 			id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
 			url,
-			options,
+			options: withoutCredentials(options),
 			timestamp: Date.now(),
 			retryCount: 0,
 			type,

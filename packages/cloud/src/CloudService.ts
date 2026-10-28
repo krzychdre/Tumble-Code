@@ -525,7 +525,10 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements Di
 			}
 
 			case "logged-out":
-				// User is logged out, clear the queue
+				// User is logged out, clear the queue. Unconditionally: when the
+				// user info never arrived, the queue does not know a user was
+				// signed in, and clearIfUserChanged(undefined) alone kept it.
+				this._retryQueue.clear()
 				this._retryQueue.clearIfUserChanged(undefined)
 				this._retryQueue.pause()
 				this.log("[CloudService] Pausing and clearing retry queue for logged-out state")
