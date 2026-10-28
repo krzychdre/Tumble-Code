@@ -7,6 +7,7 @@
 #   ROO_BIN_DIR       - Binary symlink directory (default: ~/.local/bin)
 #   ROO_VERSION       - Specific version to install (default: latest)
 #   ROO_LOCAL_TARBALL - Path to local tarball to install (skips download)
+#   ROO_SKIP_CHECKSUM - Set to 1 to install a release that publishes no .sha256
 #   ROO_NPM_TIMEOUT   - Seconds before a stalled npm install is killed (default: 180)
 #   ROO_CONNECT_TIMEOUT - Seconds to wait while connecting to GitHub or npm (default: 10)
 
@@ -259,6 +260,40 @@ the installer again. A previous installation, if any, is left untouched."
     fi
 }
 
+# The SHA-256 of a file, with whichever tool the system has.
+sha256_of() {
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$1" | cut -d ' ' -f 1
+    elif command -v shasum >/dev/null 2>&1; then
+        shasum -a 256 "$1" | cut -d ' ' -f 1
+    else
+        return 1
+    fi
+}
+
+# Checks the downloaded tarball against the .sha256 the release publishes
+# next to it, before anything from it is unpacked or run. A missing checksum
+# stops the install unless ROO_SKIP_CHECKSUM=1 is set (releases made before
+# checksums were published).
+verify_checksum() {
+    SUM_FILE="$2.sha256"
+    if ! curl -fsSL --connect-timeout "$CONNECT_TIMEOUT" "$1.sha256" -o "$SUM_FILE" 2>/dev/null; then
+        if [ "${ROO_SKIP_CHECKSUM:-}" = "1" ]; then
+            warn "No checksum published for this release; installing without verifying it (ROO_SKIP_CHECKSUM=1)."
+            return 0
+        fi
+        error "Could not download the checksum $1.sha256 to verify the download.
+
+Run the installer again, or set ROO_SKIP_CHECKSUM=1 to install an older release without one."
+    fi
+    EXPECTED=$(cut -d ' ' -f 1 "$SUM_FILE" | tr 'A-F' 'a-f')
+    ACTUAL=$(sha256_of "$2") || error "Neither sha256sum nor shasum is available to verify the download."
+    if [ -z "$EXPECTED" ] || [ "$EXPECTED" != "$ACTUAL" ]; then
+        error "The download does not match its published checksum (expected ${EXPECTED:-nothing}, got $ACTUAL). Nothing was installed."
+    fi
+    info "Checksum verified."
+}
+
 # Download and extract
 download_and_install() {
     TARBALL="tumble-cli-${PLATFORM}.tar.gz"
@@ -297,6 +332,8 @@ Check your internet connection and run the installer again."
         if [ ! -s "$TMP_DIR/$TARBALL" ]; then
             error "Downloaded file is empty. Please try again."
         fi
+
+        verify_checksum "$URL" "$TMP_DIR/$TARBALL"
     fi
 
     # Extract into a staging directory and replace the installation only after

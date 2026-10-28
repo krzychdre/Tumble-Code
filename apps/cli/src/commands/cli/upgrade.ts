@@ -5,8 +5,23 @@ import { VERSION } from "@/lib/utils/version.js"
 // The extension and the CLI ship in one release under one version; nightly
 // builds are pre-releases, which GitHub never reports as latest.
 const LATEST_RELEASE_URL = "https://api.github.com/repos/krzychdre/tumble-code/releases/latest"
-export const INSTALL_SCRIPT_COMMAND =
-	"curl -fsSL https://raw.githubusercontent.com/krzychdre/tumble-code/main/apps/cli/install.sh | sh"
+
+/** A release version as GitHub reports it, without the leading "v". */
+const RELEASE_VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/
+
+/**
+ * The installer of exactly `version`: the install.sh of that release's tag,
+ * not of the moving main branch, downloaded whole before it runs (a pipe into
+ * sh runs a download cut short), and it checks the tarball against the
+ * release's .sha256 before unpacking it.
+ */
+export function installScriptCommand(version: string): string {
+	if (!RELEASE_VERSION.test(version)) {
+		throw new Error(`Refusing to install an unexpected version: ${JSON.stringify(version)}`)
+	}
+	const url = `https://raw.githubusercontent.com/krzychdre/tumble-code/v${version}/apps/cli/install.sh`
+	return `script=$(mktemp) && trap 'rm -f "$script"' EXIT && curl -fsSL ${url} -o "$script" && sh "$script"`
+}
 
 export interface UpgradeOptions {
 	currentVersion?: string
@@ -79,10 +94,11 @@ export async function getLatestCliVersion(fetchImpl: typeof fetch = fetch): Prom
 	return release.tag_name.replace(/^v/, "")
 }
 
-export function runUpgradeInstaller(version?: string, spawnImpl: typeof spawn = spawn): Promise<void> {
+export function runUpgradeInstaller(version: string, spawnImpl: typeof spawn = spawn): Promise<void> {
 	return new Promise((resolve, reject) => {
-		const env = version ? { ...process.env, ROO_VERSION: version } : process.env
-		const child = spawnImpl("sh", ["-c", INSTALL_SCRIPT_COMMAND], { stdio: "inherit", env })
+		const command = installScriptCommand(version)
+		const env = { ...process.env, ROO_VERSION: version }
+		const child = spawnImpl("sh", ["-c", command], { stdio: "inherit", env })
 
 		child.once("error", (error) => {
 			reject(error)

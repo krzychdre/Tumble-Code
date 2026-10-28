@@ -1,4 +1,4 @@
-import { compareVersions, getLatestCliVersion, upgrade } from "../upgrade.js"
+import { compareVersions, getLatestCliVersion, installScriptCommand, upgrade } from "../upgrade.js"
 
 function createFetchResponse(body: unknown, init: { ok?: boolean; status?: number } = {}): Response {
 	const { ok = true, status = 200 } = init
@@ -83,5 +83,19 @@ describe("upgrade", () => {
 
 		expect(runInstaller).toHaveBeenCalledTimes(1)
 		expect(logSpy).toHaveBeenCalledWith("✓ Upgrade completed.")
+	})
+})
+
+describe("installScriptCommand", () => {
+	it("runs the installer of the release's tag, downloaded whole, never main piped into sh", () => {
+		const command = installScriptCommand("1.4.2")
+
+		expect(command).toContain("https://raw.githubusercontent.com/krzychdre/tumble-code/v1.4.2/apps/cli/install.sh")
+		expect(command).not.toContain("/main/")
+		expect(command).not.toMatch(/\|\s*sh/)
+	})
+
+	it.each(["1.2.3; rm -rf ~", "$(id)", "1.2", "latest", "1.2.3 && x"])("refuses the version %j", (version) => {
+		expect(() => installScriptCommand(version)).toThrow(/unexpected version/)
 	})
 })
