@@ -5,6 +5,7 @@ The examples are the extension's own texts as they appear in the live corpus
 them is a rule that stopped matching real problems.
 """
 
+import time
 from pathlib import Path
 
 import pytest
@@ -248,6 +249,43 @@ def test_the_signature_is_category_tool_and_headline_and_bounded():
     )
     assert problem_signature("api_error", None, "x") == "api_error | - | x"
     assert len(problem_signature("api_error", None, "word " * 500)) == 300
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # A run of hex ending in a non-hex letter: cubic in the old _HEX.
+        "a1" * 4000 + "g",
+        "a" + "1" * 8000,
+        # A long run with no slash: quadratic in the old _PATH.
+        "a" * 8000,
+        "a." * 4000,
+        "C:" * 4000,
+        "x/" * 4000,
+    ],
+    ids=["hex-run-then-letter", "hex-run", "word", "dots", "drive-letters", "slashes"],
+)
+def test_a_long_headline_is_normalized_in_linear_time(text):
+    """A report's text is the client's; its signature is computed on the event
+    loop, so no headline may take more than a moment (the old patterns: 2 s
+    at 1 000 characters, minutes at 8 000)."""
+    started = time.perf_counter()
+    problem_signature("tool_error", None, text)
+    problem_signature("tool_error", None, text * 10)
+    assert time.perf_counter() - started < 1.0
+
+
+def test_hex_ids_and_paths_are_still_blanked_as_before():
+    assert normalize_message("blob 3f9a15e256a28cec4571 missing") == "blob <id> missing"
+    assert (
+        normalize_message("deadbeef and cafe stay words")
+        == "deadbeef and cafe stay words"
+    )
+    assert normalize_message("id a1b2g is not hex") == "id a#b#g is not hex"
+    assert normalize_message("open C:\\work\\a.ts and ./b/c failed") == (
+        "open <path> and <path> failed"
+    )
+    assert normalize_message("x-y/z and v[1]/w") == "<path> and <path>"
 
 
 # --- the brief's fields: task, code hints, acceptance --------------------------
