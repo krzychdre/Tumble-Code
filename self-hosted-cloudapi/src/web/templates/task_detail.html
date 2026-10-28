@@ -41,6 +41,18 @@
     {% endif %}
   </form>
   {% endif %}
+  {% if owner_share %}
+  {# The owner's page only: the shared page itself never shows the link's state. #}
+  <form class="detail-workspace detail-share" method="post" action="/app/tasks/{{ task.id }}/unshare"
+        data-confirm="Stop sharing this task? The link stops working for everybody.">
+    {% if owner_share.expired %}
+    The share link expired on {{ owner_share.expires_at }}.
+    {% else %}
+    Shared {{ 'publicly' if owner_share.public else 'with your organization' }}{% if owner_share.url %}: <a href="{{ owner_share.url }}">{{ owner_share.url }}</a>{% endif %}{% if owner_share.expires_at %}, until {{ owner_share.expires_at }}{% endif %}.
+    {% endif %}
+    <button class="btn ghost small" type="submit">{{ 'Remove the link' if owner_share.expired else 'Stop sharing' }}</button>
+  </form>
+  {% endif %}
   {% if models %}
   {# What answered. A run is not necessarily one model, so each is named with
      the modes it ran in and how many requests it took — the same figures the

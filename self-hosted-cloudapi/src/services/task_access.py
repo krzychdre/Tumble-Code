@@ -2,7 +2,8 @@
 
 One policy, decided in one place:
 
-* no share for the task: not found, for everybody;
+* no share for the task, or a share past its ``expires_at`` (the
+  organization's link lifetime, share_policy): not found, for everybody;
 * sharing switched off for the task (server or organization policy,
   src/services/share_policy.py): not found for everybody but the owner;
 * a public share while public sharing is switched off: treated as an
@@ -19,6 +20,7 @@ mirrors it with ``is_owner``, which is what makes the page live.
 """
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 
@@ -50,6 +52,17 @@ class ShareAccess:
     is_owner: bool = False
 
 
+def share_expired(share: TaskShare, now: Optional[datetime] = None) -> bool:
+    """Whether the link has passed its ``expires_at`` (never, without one)."""
+    expires_at = share.expires_at
+    if expires_at is None:
+        return False
+    # SQLite gives the stored UTC time back without its zone.
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    return expires_at <= (now or datetime.now(timezone.utc))
+
+
 async def shared_view_access(
     db: AsyncSession, task_id: str, user: Optional[WebUser]
 ) -> ShareAccess:
@@ -57,7 +70,7 @@ async def shared_view_access(
     result = await db.execute(select(TaskShare).where(TaskShare.task_id == task_id))
     share = result.scalar_one_or_none()
 
-    if share is None:
+    if share is None or share_expired(share):
         return ShareAccess(ShareVerdict.NOT_FOUND)
 
     # The share link is live (remote-controllable) only for the task's owner, so a

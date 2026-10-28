@@ -441,7 +441,9 @@ In short:
 - Browser sign-in: `GET /extension/sign-in` (redirects to Authentik), `GET /auth/clerk/callback`, `GET /auth/error`,
   and `GET /app/login`, `POST /app/logout` for the web panel.
 - Extension API on `cloudApiUrl`: `GET /api/extension-settings`, `PATCH /api/user-settings`,
-  `POST /api/extension/share`, `GET /api/extension/bridge/config`, `POST /api/events`, `POST /api/events/backfill`,
+  `POST /api/extension/share`, `DELETE /api/extension/share/{task_id}` (revoke the link; the owner can also do it
+  from the task page, and an organization's `task_share_expiration_days` ends a link on its own),
+  `GET /api/extension/bridge/config`, `POST /api/events`, `POST /api/events/backfill`,
   `POST /api/error-reports` (one problem with its model, context size, request and response; sent only while the
   extension is signed in, duplicates by id ignored, 1 MB limit), `GET /api/llm-exchanges/config`,
   `POST /api/llm-exchanges` and `POST /api/llm-exchanges/outcome` (LLM exchange recording for the training

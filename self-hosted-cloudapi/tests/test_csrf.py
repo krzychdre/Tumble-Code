@@ -34,6 +34,7 @@ PUBLIC_URL = "http://192.168.50.141:8085"
 
 STATE_CHANGING = [
     ("/app/tasks/task-csrf/delete", {}),
+    ("/app/tasks/task-csrf/unshare", {}),
     ("/app/tasks/bulk-delete", {"task_ids": "task-csrf"}),
     ("/app/settings", {"enabled": "1", "max_tasks": "1"}),
     ("/app/settings/run", {}),
