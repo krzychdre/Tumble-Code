@@ -10,31 +10,40 @@ export class ShellIntegrationManager {
 	/**
 	 * Initialize a temporary directory for ZDOTDIR
 	 * @param env The environment variables object to modify
-	 * @returns The path to the temporary directory
+	 * @returns The path to the temporary directory, or undefined when it could not be prepared
 	 */
-	public static zshInitTmpDir(env: Record<string, string>): string {
-		// Create a temporary directory with the sticky bit set for security
-		const tmpDir = path.join(os.tmpdir(), `roo-zdotdir-${Math.random().toString(36).substring(2, 15)}`)
-		logger.debug(`[TerminalRegistry] Creating temporary directory for ZDOTDIR: ${tmpDir}`)
-
+	public static zshInitTmpDir(env: Record<string, string>): string | undefined {
 		// Save original ZDOTDIR as ROO_ZDOTDIR
 		if (process.env.ZDOTDIR) {
 			env.ROO_ZDOTDIR = process.env.ZDOTDIR
 		}
 
-		// Create the temporary directory
-		vscode.workspace.fs
-			.createDirectory(vscode.Uri.file(tmpDir))
-			.then(() => {
-				logger.debug(`[TerminalRegistry] Created temporary directory for ZDOTDIR at ${tmpDir}`)
+		// Made with mkdtemp (unguessable, mode 0700) and filled before zsh can
+		// start: zsh sources whatever .zshrc it finds there, and a directory with
+		// a guessable name in the shared temp directory, created a moment after
+		// its name was handed out, could be another account's.
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		const fs = require("fs") as typeof import("fs")
+		let tmpDir: string | undefined
+		try {
+			tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "roo-zdotdir-"))
+			const zshrcPath = path.join(tmpDir, ".zshrc")
+			fs.writeFileSync(zshrcPath, this.zshrcContent(), { mode: 0o600, flag: "wx" })
+			logger.debug(`[TerminalRegistry] Created ${zshrcPath} for ZDOTDIR`)
+			return tmpDir
+		} catch (error) {
+			logger.error(`[TerminalRegistry] Could not prepare a ZDOTDIR: ${error}`)
+			if (tmpDir) {
+				fs.rmSync(tmpDir, { recursive: true, force: true })
+			}
+			return undefined
+		}
+	}
 
-				// Create .zshrc in the temporary directory
-				const zshrcPath = `${tmpDir}/.zshrc`
-
-				// Get the path to the shell integration script
-				const shellIntegrationPath = this.getShellIntegrationPath("zsh")
-
-				const zshrcContent = `
+	/** The .zshrc that loads the shell integration, then the user's own startup files. */
+	private static zshrcContent(): string {
+		const shellIntegrationPath = this.getShellIntegrationPath("zsh")
+		return `
 	source "${shellIntegrationPath}"
 	ZDOTDIR=\${ROO_ZDOTDIR:-$HOME}
 	unset ROO_ZDOTDIR
@@ -44,23 +53,6 @@ export class ShellIntegrationManager {
 	[ -f "$ZDOTDIR/.zlogin" ] && source "$ZDOTDIR/.zlogin"
 	[ "$ZDOTDIR" = "$HOME" ] && unset ZDOTDIR
 	`
-				logger.debug(`[TerminalRegistry] Creating .zshrc file at ${zshrcPath} with content:\n${zshrcContent}`)
-				vscode.workspace.fs.writeFile(vscode.Uri.file(zshrcPath), Buffer.from(zshrcContent)).then(
-					// Success handler
-					() => {
-						logger.debug(`[TerminalRegistry] Successfully created .zshrc file at ${zshrcPath}`)
-					},
-					// Error handler
-					(error: Error) => {
-						logger.error(`[TerminalRegistry] Error creating .zshrc file at ${zshrcPath}: ${error}`)
-					},
-				)
-			})
-			.then(undefined, (error: Error) => {
-				logger.error(`[TerminalRegistry] Error creating temporary directory at ${tmpDir}: ${error}`)
-			})
-
-		return tmpDir
 	}
 
 	/**

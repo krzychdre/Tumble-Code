@@ -1,7 +1,6 @@
 import { EventEmitter } from "events"
 import fs from "fs/promises"
 import * as path from "path"
-import * as os from "os"
 
 import * as vscode from "vscode"
 import pWaitFor from "p-wait-for"
@@ -44,7 +43,10 @@ export class API extends EventEmitter<TumbleCodeEvents> implements TumbleCodeAPI
 		if (enableLogging) {
 			this.log = (...args: unknown[]) => logger.info(...args)
 
-			this.logfile = path.join(os.tmpdir(), "roo-code-messages.log")
+			// In the extension's own storage: a fixed name in the shared temp
+			// directory follows any symlink another account placed there.
+			const storage = this.context?.globalStorageUri?.fsPath
+			this.logfile = storage ? path.join(storage, "roo-code-messages.log") : undefined
 		} else {
 			this.log = () => {}
 		}

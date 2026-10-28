@@ -1,7 +1,7 @@
 import * as path from "path"
-import * as os from "os"
 import * as vscode from "vscode"
 import { getWorkspacePath } from "../../utils/path"
+import { writePrivateTempFile } from "../../utils/privateTempFile"
 import { t } from "../../i18n"
 
 export async function openImage(dataUriOrPath: string, options?: { values?: { action?: string } }) {
@@ -52,9 +52,8 @@ export async function openImage(dataUriOrPath: string, options?: { values?: { ac
 	const imageBuffer = Buffer.from(base64Data, "base64")
 
 	// Default behavior: open the image
-	const tempFilePath = path.join(os.tmpdir(), `temp_image_${Date.now()}.${format}`)
 	try {
-		await vscode.workspace.fs.writeFile(vscode.Uri.file(tempFilePath), imageBuffer)
+		const tempFilePath = await writePrivateTempFile(`temp_image_${Date.now()}.${format}`, imageBuffer)
 		// Check if this is a copy action
 		if (options?.values?.action === "copy") {
 			try {
