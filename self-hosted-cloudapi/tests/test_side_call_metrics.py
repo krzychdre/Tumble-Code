@@ -7,30 +7,24 @@ reported too, the page has to show them *without* letting them quietly inflate
 the figures they sit beside.
 """
 
-import json
-
+from datetime import datetime, timezone
 
 from src.auth.web_session import get_web_user_optional
-from src.models.event import TelemetryEvent
 from src.services.metrics_service import compute_user_metrics
 
-from tests.web_helpers import _llm_event, _override_web_user, _seed_user
+from tests.web_helpers import _event_row, _llm_event, _override_web_user, _seed_user
 
 
 def _embedding_event(user_id="user_test", *, prompt_tokens=1000, source="index-scan"):
-    from datetime import datetime, timezone
-
-    return TelemetryEvent(
-        user_id=user_id,
-        event_type="Embedding Usage",
-        properties=json.dumps(
-            {
-                "promptTokens": prompt_tokens,
-                "totalTokens": prompt_tokens,
-                "source": source,
-                "apiProvider": "openai-compatible",
-            }
-        ),
+    return _event_row(
+        "Embedding Usage",
+        {
+            "promptTokens": prompt_tokens,
+            "totalTokens": prompt_tokens,
+            "source": source,
+            "apiProvider": "openai-compatible",
+        },
+        user_id,
         created_at=datetime.now(timezone.utc),
     )
 

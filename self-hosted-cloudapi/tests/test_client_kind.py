@@ -25,6 +25,7 @@ from src.services.quality_overview import quality_overview
 from src.services.telemetry_service import upsert_task_message
 
 from tests.web_helpers import (
+    _event_row,
     _llm_event,
     _override_current_user,
     _override_web_user,
@@ -166,11 +167,8 @@ async def test_another_users_cli_event_does_not_touch_the_task(
     async with session_factory() as s:
         await upsert_task_message(s, "t-mine", "user_test", None, _message())
         s.add(
-            TelemetryEvent(
-                user_id="user_other",
-                event_type="Task Created",
-                task_id="t-late2",
-                client_kind="cli",
+            _event_row(
+                "Task Created", {"taskId": "t-late2", "clientKind": "cli"}, "user_other"
             )
         )
         await s.commit()
@@ -345,11 +343,9 @@ async def _seed_two_clients(db_session):
                 cost=0.25,
                 client_kind="cli",
             ),
-            TelemetryEvent(
-                user_id="user_test",
-                event_type="Embedding Usage",
-                client_kind="cli",
-                properties=json.dumps({"promptTokens": 70, "source": "index-scan"}),
+            _event_row(
+                "Embedding Usage",
+                {"promptTokens": 70, "source": "index-scan", "clientKind": "cli"},
                 created_at=datetime.now(timezone.utc),
             ),
             Task(

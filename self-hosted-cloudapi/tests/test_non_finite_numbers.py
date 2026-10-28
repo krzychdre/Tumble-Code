@@ -67,17 +67,18 @@ def test_num_reads_a_non_finite_float_as_zero(value):
 
 def test_task_detail_attribution_does_not_raise_on_non_finite_figures():
     from src.services import model_attribution
+    from src.services.telemetry_vocab import LLM_COMPLETION_EVENT, event_columns
 
     assert model_attribution._request_tokens(
         _req('{"tokensIn":1e999,"tokensOut":1}')
     ) == (0, 1)
-    # Event properties are decoded with json.loads too, which accepts NaN.
+    # Event properties arrive decoded by json.loads too, which accepts NaN;
+    # ingest stores such a figure as 0.
     props = json.loads(
         '{"modelId":"m","inputTokens":NaN,"outputTokens":Infinity,"cost":NaN}'
     )
-    completion = model_attribution.completion_from_properties(props)
-    assert completion is not None
-    assert (completion.input_tokens, completion.output_tokens, completion.cost) == (
+    columns = event_columns(LLM_COMPLETION_EVENT, props)
+    assert (columns["input_tokens"], columns["output_tokens"], columns["cost"]) == (
         0,
         0,
         0.0,

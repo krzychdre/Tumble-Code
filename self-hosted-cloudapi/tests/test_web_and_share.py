@@ -581,7 +581,7 @@ async def test_format_helpers_are_single_source_of_truth():
     list stopped deriving its numbers at read time, so that module is now the one
     that must be pinned; the web presenters only format what they are handed.
     """
-    from src.services import metrics_service, task_summary
+    from src.services import metrics_service, task_summary, telemetry_vocab
     from src.utils import format as fmt
     from src.web import templating
     from src.web.presenters import settings as settings_presenter
@@ -604,7 +604,7 @@ async def test_format_helpers_are_single_source_of_truth():
     for name, fn in fmt.JINJA_FILTERS.items():
         assert templating.templates.env.filters[name] is fn
 
-    # metrics_service aliases ``num`` as ``_num`` for its internal call sites.
-    assert metrics_service._num is fmt.num
+    # Ingest reads an event's figures with ``figure`` (telemetry_vocab.event_columns).
+    assert telemetry_vocab.figure is fmt.figure
     assert metrics_service.fmt_tokens is fmt.fmt_tokens
     assert metrics_service.fmt_duration is fmt.fmt_duration

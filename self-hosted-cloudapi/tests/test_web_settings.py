@@ -3,8 +3,6 @@
 Split out of test_web_and_share.py (CAPI-M5); the sections are unchanged.
 """
 
-import json
-
 from sqlalchemy import select, func
 
 from src.auth.web_session import get_web_user_optional
@@ -17,6 +15,7 @@ from tests.web_helpers import (
     _override_web_user,
     _msgs,
     _add_message,
+    _event_row,
 )
 
 
@@ -135,22 +134,8 @@ async def test_usage_telemetry_is_never_purged(db_session, session_factory):
     await _seed_user(db_session)
     old = datetime.now(timezone.utc) - timedelta(days=90)
     async with session_factory() as s:
-        s.add(
-            TelemetryEvent(
-                user_id="user_test",
-                event_type="LLM Completion",
-                properties=json.dumps({"cost": 1.5}),
-                created_at=old,
-            )
-        )
-        s.add(
-            TelemetryEvent(
-                user_id="user_test",
-                event_type="Task Message",
-                properties=json.dumps({"message": {}}),
-                created_at=old,
-            )
-        )
+        s.add(_event_row("LLM Completion", {"cost": 1.5}, created_at=old))
+        s.add(_event_row("Task Message", {"message": {}}, created_at=old))
         policy = await _policy(
             s,
             purge_telemetry=True,
@@ -184,37 +169,26 @@ async def test_a_telemetry_purge_keeps_everything_the_metrics_page_shows(
     old = datetime.now(timezone.utc) - timedelta(days=90)
     async with session_factory() as s:
         s.add(
-            TelemetryEvent(
-                user_id="user_test",
-                event_type=LLM_COMPLETION_EVENT,
+            _event_row(
+                LLM_COMPLETION_EVENT,
+                {
+                    "taskId": "t-m",
+                    "modelId": "glm",
+                    "inputTokens": 100,
+                    "outputTokens": 20,
+                    "cost": 0.5,
+                },
                 created_at=old,
-                properties=json.dumps(
-                    {
-                        "taskId": "t-m",
-                        "modelId": "glm",
-                        "inputTokens": 100,
-                        "outputTokens": 20,
-                        "cost": 0.5,
-                    }
-                ),
             )
         )
         s.add(
-            TelemetryEvent(
-                user_id="user_test",
-                event_type=EMBEDDING_EVENT,
+            _event_row(
+                EMBEDDING_EVENT,
+                {"promptTokens": 250000, "source": "code-index"},
                 created_at=old,
-                properties=json.dumps({"promptTokens": 250000, "source": "code-index"}),
             )
         )
-        s.add(
-            TelemetryEvent(
-                user_id="user_test",
-                event_type="Task Message",
-                created_at=old,
-                properties=json.dumps({"message": {}}),
-            )
-        )
+        s.add(_event_row("Task Message", {"message": {}}, created_at=old))
         await s.commit()
 
     async with session_factory() as s:

@@ -1,6 +1,5 @@
 """Projects: which project a folder is, task stamping, the context API, the page."""
 
-import json
 from datetime import datetime
 from unittest.mock import AsyncMock
 
@@ -8,7 +7,6 @@ import pytest
 from sqlalchemy import event, select
 
 from src.auth.jwt_issuer import issue_session_token
-from src.models.event import TelemetryEvent
 from src.models.llm_exchange import LlmExchange
 from src.models.organization import Membership, Organization
 from src.models.project import Project, ProjectBinding
@@ -29,6 +27,7 @@ from src.services.projects import (
 )
 from tests.web_helpers import (
     _backfill_files,
+    _event_row,
     _override_current_user,
     _override_web_user,
     _seed_user,
@@ -312,12 +311,8 @@ def _exchange_row(task_id, path):
 
 
 def _event(user_id, task_id, created_at, **properties):
-    return TelemetryEvent(
-        user_id=user_id,
-        event_type="Task Message",
-        task_id=task_id,
-        properties=json.dumps({"taskId": task_id, **properties}),
-        created_at=created_at,
+    return _event_row(
+        "Task Message", {"taskId": task_id, **properties}, user_id, created_at
     )
 
 

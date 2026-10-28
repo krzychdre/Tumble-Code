@@ -46,8 +46,6 @@ from src.services.telemetry_vocab import (
     LLM_COMPLETION_EVENT,
     TASK_KIND,
     api_req_started_payload,
-    completion_kind,
-    iter_event_props,
 )
 from src.utils.format import fmt_tokens, num
 
@@ -73,22 +71,49 @@ class Completion:
     provider: Optional[str] = None
 
 
-def completion_from_properties(props: dict) -> Optional[Completion]:
-    """Reduce a raw event payload, or None if it names no model."""
-    model = props.get("modelId")
-    if not model or not isinstance(model, str):
-        return None
-    mode = props.get("mode")
-    provider = props.get("apiProvider")
-    return Completion(
-        model=model,
-        mode=mode if isinstance(mode, str) and mode else None,
-        input_tokens=int(num(props.get("inputTokens"))),
-        output_tokens=int(num(props.get("outputTokens"))),
-        kind=completion_kind(props),
-        cost=float(num(props.get("cost"))),
-        provider=provider if isinstance(provider, str) and provider else None,
+async def completions_by_task(
+    db: AsyncSession, user_id: str, task_ids: list[str]
+) -> dict[str, list[Completion]]:
+    """Each task's completions that name a model, oldest first, of the user's
+    events only.
+
+    One indexed query on ``telemetry_events.task_id``, reading the figures
+    ingest lifted out of each event (``telemetry_vocab.event_columns``): no
+    payload is decoded. A completion that names no model attributes nothing.
+    """
+    rows = await db.execute(
+        select(
+            TelemetryEvent.task_id,
+            TelemetryEvent.model_id,
+            TelemetryEvent.mode,
+            TelemetryEvent.input_tokens,
+            TelemetryEvent.output_tokens,
+            TelemetryEvent.completion_kind,
+            TelemetryEvent.cost,
+            TelemetryEvent.provider,
+        )
+        .where(
+            TelemetryEvent.task_id.in_(task_ids),
+            TelemetryEvent.user_id == user_id,
+            TelemetryEvent.event_type == LLM_COMPLETION_EVENT,
+            TelemetryEvent.model_id.is_not(None),
+        )
+        .order_by(TelemetryEvent.created_at)
     )
+    completions: dict[str, list[Completion]] = {}
+    for row in rows.all():
+        completions.setdefault(row.task_id, []).append(
+            Completion(
+                model=row.model_id,
+                mode=row.mode,
+                input_tokens=row.input_tokens,
+                output_tokens=row.output_tokens,
+                kind=row.completion_kind,
+                cost=row.cost,
+                provider=row.provider,
+            )
+        )
+    return completions
 
 
 async def completions_for_task(
@@ -102,29 +127,10 @@ async def completions_for_task(
     events would decide which model a stranger's conversation is attributed
     to, on its owner view and on its public share page. No owner (no task row)
     means nothing can be attributed.
-
-    One indexed query on ``telemetry_events.task_id`` — the column exists so
-    this is not a scan of the whole event corpus. The volume is per-task and
-    small (74 events for the largest run on the live deployment), so decoding
-    the payloads in Python is cheap and works on SQLite as well as Postgres.
     """
     if not (task_id and user_id):
         return []
-    result = await db.execute(
-        select(TelemetryEvent.properties)
-        .where(
-            TelemetryEvent.task_id == task_id,
-            TelemetryEvent.user_id == user_id,
-            TelemetryEvent.event_type == LLM_COMPLETION_EVENT,
-        )
-        .order_by(TelemetryEvent.created_at)
-    )
-    completions: list[Completion] = []
-    for props in iter_event_props(payload for (payload,) in result.all()):
-        completion = completion_from_properties(props)
-        if completion is not None:
-            completions.append(completion)
-    return completions
+    return (await completions_by_task(db, user_id, [task_id])).get(task_id, [])
 
 
 def _request_tokens(msg: dict) -> Optional[tuple[int, int]]:

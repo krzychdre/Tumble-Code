@@ -16,7 +16,6 @@ from html import unescape
 from src.auth.web_session import get_web_user_optional
 from src.dependencies import get_current_user
 from src.models.error_report import ErrorReport
-from src.models.event import TelemetryEvent
 from src.models.llm_exchange import DatasetSettings
 from src.models.task import Task
 from src.services.diagnostics_service import (
@@ -30,6 +29,7 @@ from src.services.diagnostics_service import (
 from src.services.problem_catalogue import problem_signature
 from tests.test_web_diagnostics import MISSING_PATH, _add_message, _request, _say_error
 from tests.web_helpers import (
+    _event_row,
     _llm_event,
     _override_current_user,
     _override_web_user,
@@ -132,21 +132,14 @@ async def test_every_source_carries_its_client(db_session):
         [
             Task(id="t-cli", user_id="user_test", client_kind="cli"),
             Task(id="t-code", user_id="user_test"),
-            TelemetryEvent(
-                user_id="user_test",
-                event_type="Exception",
-                client_kind="cli",
-                properties=json.dumps(
-                    {"errorName": "TypeError", "errorMessage": "boom"}
-                ),
+            _event_row(
+                "Exception",
+                {"errorName": "TypeError", "errorMessage": "boom", "clientKind": "cli"},
                 created_at=BASE,
             ),
-            TelemetryEvent(
-                user_id="user_test",
-                event_type="Exception",
-                properties=json.dumps(
-                    {"errorName": "TypeError", "errorMessage": "bang"}
-                ),
+            _event_row(
+                "Exception",
+                {"errorName": "TypeError", "errorMessage": "bang"},
                 created_at=BASE,
             ),
         ]

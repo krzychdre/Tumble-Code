@@ -6,11 +6,12 @@ created_at)``), not *what* it computes. These tests pin the whole result of
 ``compute_user_metrics()`` and of the quality overview for one seeded dataset,
 so any drift in the output shows up as a diff against a literal.
 
-The dataset carries every kind of row the aggregation has to cope with:
-malformed payloads (bad JSON, JSON that is not an object, NULL, an empty
-object), missing fields, non-numeric and boolean numbers, other event types,
-other users, rows outside the period, side-call kinds and a completion whose
-usage was not reported. The golden values live in
+The dataset carries every kind of row the aggregation has to cope with: an
+empty payload, missing fields, non-numeric and boolean numbers, other event
+types, other users, rows outside the period, side-call kinds and a completion
+whose usage was not reported. Each row is stored the way ingest stores it
+(tests/web_helpers._event_row), so the figures the page reads are the columns
+lifted out of those payloads. The golden values live in
 tests/fixtures/metrics_characterization.json.
 """
 
@@ -26,12 +27,11 @@ from src.models.task import Task
 from src.models.user import User
 from src.services.quality_overview import quality_overview as _quality_overview
 from src.services.metrics_service import compute_user_metrics
+from tests.web_helpers import _event_row
 
 NOW = datetime(2026, 9, 20, 12, 0, tzinfo=timezone.utc)
 USER = "user_m9"
 OTHER = "user_other"
-# Only malformed completions: nothing to count, yet the page has "data".
-BROKEN = "user_broken"
 GOLDEN_FILE = Path(__file__).parent / "fixtures" / "metrics_characterization.json"
 
 
@@ -40,13 +40,7 @@ def _ago(**kwargs) -> datetime:
 
 
 def _completion(props, created_at, user_id=USER, event_type="LLM Completion"):
-    payload = props if isinstance(props, str) or props is None else json.dumps(props)
-    return TelemetryEvent(
-        user_id=user_id,
-        event_type=event_type,
-        properties=payload,
-        created_at=created_at,
-    )
+    return _event_row(event_type, props, user_id, created_at=created_at)
 
 
 def _props(model, mode, provider, task_id, tin, tout, cost, **extra):
@@ -148,14 +142,8 @@ def _events() -> list[TelemetryEvent]:
             _ago(days=5, hours=2),
         ),
         # Empty object: a completion with no properties still counts.
-        _completion("{}", _ago(days=6)),
-        # NULL payload reads as {} as well.
-        _completion(None, _ago(days=6, hours=1)),
-        # --- malformed payloads: skipped, but they still make has_data true ---
-        _completion("{not json", _ago(hours=5)),
-        _completion("[1, 2, 3]", _ago(hours=6)),
-        _completion("42", _ago(hours=7)),
-        _completion('"a string"', _ago(hours=8)),
+        _completion({}, _ago(days=6)),
+        _completion({}, _ago(days=6, hours=1)),
         # --- only in 30d / all ---------------------------------------------
         _completion(
             _props(
@@ -210,7 +198,6 @@ def _events() -> list[TelemetryEvent]:
             event_type="Embedding Usage",
         ),
         _completion({"promptTokens": "12"}, _ago(days=4), event_type="Embedding Usage"),
-        _completion("{bad", _ago(days=4), event_type="Embedding Usage"),
         _completion(
             {"promptTokens": 40_000, "source": "index-scan"},
             _ago(days=40),
@@ -222,14 +209,6 @@ def _events() -> list[TelemetryEvent]:
             user_id=OTHER,
             event_type="Embedding Usage",
         ),
-    ]
-
-
-def _broken_events() -> list[TelemetryEvent]:
-    return [
-        _completion("{not json", _ago(hours=1), user_id=BROKEN),
-        _completion("[]", _ago(hours=2), user_id=BROKEN),
-        _completion("null", _ago(hours=3), user_id=BROKEN),
     ]
 
 
@@ -309,11 +288,10 @@ async def seeded(db_session):
         [
             User(id=USER, authentik_id="ak_m9", email="m9@example.com"),
             User(id=OTHER, authentik_id="ak_other", email="other@example.com"),
-            User(id=BROKEN, authentik_id="ak_broken", email="broken@example.com"),
         ]
     )
     await db_session.commit()
-    db_session.add_all(_events() + _broken_events())
+    db_session.add_all(_events())
     db_session.add_all(_tasks())
     await db_session.commit()
     return db_session
@@ -342,13 +320,6 @@ async def test_metrics_result_is_pinned_for_every_period(seeded):
 async def test_unknown_period_falls_back_to_the_default(seeded):
     got = await compute_user_metrics(seeded, USER, period="nonsense", now=NOW)
     assert got == GOLDEN["metrics"]["7d"]
-
-
-async def test_only_malformed_rows_count_nothing_but_still_have_data(seeded):
-    got = await compute_user_metrics(seeded, BROKEN, period="all", now=NOW)
-    assert got["totals"]["completions"] == 0
-    assert got["by_model"] == []
-    assert got["has_data"] is True
 
 
 async def test_a_user_without_rows_has_no_data(seeded):
@@ -388,22 +359,36 @@ def _selected_columns(statement: str, table: str) -> set[str]:
 
 
 async def test_metrics_read_only_the_columns_they_use(seeded, captured_sql):
-    """No full TelemetryEvent entity: the id, user, organization, type and
-    task columns are dead weight for the aggregation. client_kind feeds the
-    "By client" breakdown, the project's id and name the "By project" one."""
+    """No full TelemetryEvent entity and no JSON payload: the figures are the
+    columns ingest lifted out of it. client_kind feeds the "By client"
+    breakdown, the project's id and name the "By project" one."""
     await compute_user_metrics(seeded, USER, period="all", now=NOW)
 
     reads = [s for s in captured_sql if "FROM telemetry_events" in s]
     assert len(reads) == 2, reads
     completions, embeddings = reads
     assert _selected_columns(completions, "telemetry_events") == {
-        "properties",
+        "task_id",
+        "input_tokens",
+        "output_tokens",
+        "cache_read_tokens",
+        "cache_write_tokens",
+        "cost",
+        "duration_ms",
+        "model_id",
+        "provider",
+        "mode",
+        "completion_kind",
+        "usage_reported",
         "created_at",
         "client_kind",
         "tasks.project_id",
         "projects.name AS project_name",
     }
-    assert _selected_columns(embeddings, "telemetry_events") == {"properties"}
+    assert _selected_columns(embeddings, "telemetry_events") == {
+        "input_tokens",
+        "embedding_source",
+    }
 
 
 async def test_quality_overview_reads_only_the_columns_it_uses(seeded, captured_sql):

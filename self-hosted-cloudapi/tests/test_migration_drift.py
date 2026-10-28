@@ -60,6 +60,7 @@ from src.database import Base
 from src.db_bootstrap import classify_and_seed
 from src.models import RETIRED_TABLES, include_name
 from src.services.projects import folder_key
+from src.services.telemetry_vocab import event_columns, parse_event_props
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 BASELINE_SQL = PROJECT_DIR / "tests" / "fixtures" / "baseline_schema_sqlite.sql"
@@ -515,6 +516,125 @@ def test_client_kind_backfill_marks_the_clis_records_and_tasks(migrate_env):
         "task_code": "vscode",
         "task_foreign": "vscode",
     }
+
+
+def test_event_figure_backfill_stores_what_ingest_stores(migrate_env):
+    """e8f9a0b1c2d3 fills the figure columns of every stored completion and
+    embedding with what ingest stamps on a new event of that payload
+    (telemetry_vocab.event_columns); a payload that is not a JSON object reads
+    as an empty one, and any other event keeps NULLs. Hostile payloads stored
+    before the bounds do not stop it. More rows than one batch, so the walk
+    crosses a batch boundary."""
+    db_file, run = migrate_env
+    _load_baseline(db_file)
+    _alembic(run, "stamp", SQLITE_START_REVISION)
+    _alembic(run, "upgrade", "d4e5f6a7b8c1")
+
+    completion = "LLM Completion"
+    events = {
+        "evt_full": (
+            completion,
+            json.dumps(
+                {
+                    "taskId": "t1",
+                    "modelId": "glm",
+                    "apiProvider": "zai",
+                    "mode": "code",
+                    "inputTokens": 1000,
+                    "outputTokens": 20,
+                    "cacheReadTokens": 300,
+                    "cacheWriteTokens": 40,
+                    "cost": 0.25,
+                    "durationMs": 1500,
+                    "completionKind": "memory",
+                    "usageReported": False,
+                }
+            ),
+        ),
+        "evt_odd": (
+            completion,
+            json.dumps(
+                {
+                    "modelId": "",
+                    "inputTokens": "900",
+                    "outputTokens": True,
+                    "cost": "1.5",
+                    "durationMs": 1500.0,
+                    "completionKind": 5,
+                }
+            ),
+        ),
+        # What json.dumps writes for a non-finite float, and Postgres' jsonb
+        # would refuse.
+        "evt_nan": (
+            completion,
+            '{"modelId": "m", "inputTokens": NaN, "outputTokens": Infinity, '
+            '"cost": -Infinity, "durationMs": 1e999}',
+        ),
+        # What a hostile client could store before the bounds: figures
+        # past BIGINT or negative, names that are no strings or that hold a
+        # NUL or a lone surrogate (JSON escapes, decoded by the backfill).
+        "evt_hostile": (
+            completion,
+            '{"modelId": "evil\\u0000model", "apiProvider": "\\ud800zai", '
+            '"mode": {"a": 1}, "completionKind": 12345, '
+            '"inputTokens": 10000000000000000000, "outputTokens": -1e12, '
+            '"cacheReadTokens": 1e19, "cost": 1e300, "durationMs": -1}',
+        ),
+        "evt_hostile_embed": (
+            "Embedding Usage",
+            json.dumps({"promptTokens": 10**19, "source": ["x"]}),
+        ),
+        "evt_oversized": (
+            completion,
+            json.dumps({"modelId": "m" * 20000, "inputTokens": 7}),
+        ),
+        "evt_empty": (completion, "{}"),
+        "evt_null": (completion, None),
+        "evt_not_json": (completion, "{not json"),
+        "evt_list": (completion, "[1, 2]"),
+        "evt_embed": (
+            "Embedding Usage",
+            json.dumps({"promptTokens": 5000, "source": "index-scan"}),
+        ),
+        "evt_embed_odd": ("Embedding Usage", json.dumps({"promptTokens": "12"})),
+        "evt_other": ("Task Message", json.dumps({"modelId": "m", "inputTokens": 5})),
+    }
+    filler = 5000
+    with sqlite3.connect(db_file) as conn:
+        conn.execute(
+            "INSERT INTO users (id, authentik_id, email) VALUES ('user_1', 'ak_1', 'a@b.c')"
+        )
+        conn.executemany(
+            "INSERT INTO telemetry_events (id, user_id, event_type, properties) "
+            "VALUES (?, 'user_1', ?, ?)",
+            [(row_id, kind, payload) for row_id, (kind, payload) in events.items()]
+            + [
+                (f"evt_z{n:05}", completion, '{"inputTokens": 1}')
+                for n in range(filler)
+            ],
+        )
+
+    _alembic(run, "upgrade", "head")
+
+    lifted = sorted(
+        set(event_columns(completion, {})) | set(event_columns("Embedding Usage", {}))
+    )
+    with sqlite3.connect(db_file) as conn:
+        conn.row_factory = sqlite3.Row
+        stored = {
+            row["id"]: {name: row[name] for name in lifted}
+            for row in conn.execute(
+                f"SELECT id, {', '.join(lifted)} FROM telemetry_events"
+            )
+        }
+    for row_id, (kind, payload) in events.items():
+        # An oversized payload, which no real client sends, reads as empty.
+        props = {} if row_id == "evt_oversized" else parse_event_props(payload)
+        expected = dict.fromkeys(lifted) | event_columns(kind, props or {})
+        assert stored[row_id] == expected, row_id
+    assert stored["evt_hostile"]["model_id"] == "evilmodel"
+    assert sum(1 for row in stored.values() if row["input_tokens"] == 1) == filler
 
 
 def test_seen_folders_are_bound_by_the_rules_of_a_recorded_folder(migrate_env):

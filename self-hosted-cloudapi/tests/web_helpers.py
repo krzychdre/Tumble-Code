@@ -5,6 +5,7 @@ They lived in test_web_and_share.py until that file was split by page
 """
 
 import json
+from datetime import datetime, timezone
 
 from sqlalchemy import select
 
@@ -13,6 +14,7 @@ from src.auth.web_session import get_web_user_optional, WebUser
 from src.models.user import User
 from src.models.task import TaskMessage
 from src.models.event import TelemetryEvent
+from src.services.telemetry_service import event_row
 
 
 async def _seed_user(db_session, user_id="user_test", email="t@example.com"):
@@ -116,6 +118,24 @@ def _backfill_files(task_id, messages):
     }, {"taskId": task_id, "properties": "{}"}
 
 
+def _event_row(
+    event_type: str,
+    props: dict,
+    user_id="user_test",
+    created_at: datetime | None = None,
+) -> TelemetryEvent:
+    """A telemetry row exactly as ``record_event`` stores it: the payload and
+    the columns lifted out of it (task, client, a completion's figures).
+
+    Seed telemetry through this, never a bare ``TelemetryEvent(...)``: the
+    pages read the lifted columns, which a bare row leaves NULL.
+    """
+    event = event_row(user_id, None, event_type, props)
+    if created_at is not None:
+        event.created_at = created_at
+    return event
+
+
 def _llm_event(
     user_id="user_test",
     *,
@@ -135,8 +155,6 @@ def _llm_event(
     duration_ms=None,
 ):
     """Build an ``LLM Completion`` telemetry row mirroring the extension payload."""
-    from datetime import datetime, timezone
-
     props = {
         "mode": mode,
         "apiProvider": provider,
@@ -154,15 +172,10 @@ def _llm_event(
         **({"clientKind": client_kind} if client_kind is not None else {}),
         **({"durationMs": duration_ms} if duration_ms is not None else {}),
     }
-    return TelemetryEvent(
-        user_id=user_id,
-        organization_id=None,
-        event_type="LLM Completion",
-        # Stamped exactly as services/telemetry_service.record_event does: the
-        # column is the indexed join key, the blob stays authoritative.
-        task_id=task_id,
-        client_kind=client_kind or "vscode",
-        properties=json.dumps(props),
+    return _event_row(
+        "LLM Completion",
+        props,
+        user_id,
         created_at=created_at or datetime.now(timezone.utc),
     )
 

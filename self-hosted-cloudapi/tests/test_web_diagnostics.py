@@ -6,7 +6,6 @@ from datetime import datetime, timedelta, timezone
 
 from src.auth.web_session import get_web_user_optional
 from src.models.error_report import ErrorReport
-from src.models.event import TelemetryEvent
 from src.models.task import Task
 from src.services.diagnostics_service import (
     SOURCE_CONVERSATION,
@@ -22,13 +21,14 @@ from src.services.diagnostics_service import (
     telemetry_occurrence,
 )
 from src.services.model_attribution import Completion
+from src.services.problems.collect import _request_counts
 from src.services.problem_brief import problem_brief_markdown, render_brief
 from src.services.problem_catalogue import MODEL, problem_signature
 
 from src.models.task import TaskMessage
 from src.services.session_quality import classify_message
 from src.services.task_summary import message_metrics
-from tests.web_helpers import _llm_event, _override_web_user, _seed_user
+from tests.web_helpers import _event_row, _llm_event, _override_web_user, _seed_user
 
 BASE = datetime(2026, 10, 1, 12, 0, tzinfo=timezone.utc)
 BASE_MS = int(BASE.timestamp() * 1000)
@@ -320,6 +320,39 @@ def test_task_less_problems_count_one_per_day_of_reach():
     assert groups[1]["reach"] == 1 and groups[1]["count"] == 200
 
 
+async def test_request_counts_are_the_periods_completions_by_provider_and_model(
+    db_session,
+):
+    """A completion naming no provider counts under "", one naming no model
+    under UNKNOWN_MODEL: the keys the model fit gives a problem without them."""
+    await _seed_user(db_session)
+    await _seed_user(db_session, user_id="user_other", email="o@example.com")
+    db_session.add_all(
+        [
+            _llm_event(model="glm", provider="openai"),
+            _llm_event(model="glm", provider="openai"),
+            _llm_event(model="glm", provider="openai", client_kind="cli"),
+            _llm_event(model=None, provider="openai"),
+            _llm_event(model="glm", provider=None),
+            _llm_event(model="glm", provider="openai", created_at=BASE),
+            _llm_event("user_other", model="glm", provider="openai"),
+            _event_row("Exception", {"modelId": "glm", "apiProvider": "openai"}),
+        ]
+    )
+    await db_session.commit()
+    week = datetime.now(timezone.utc) - timedelta(days=7)
+
+    assert await _request_counts(db_session, "user_test", week) == Counter(
+        {("openai", "glm"): 3, ("openai", UNKNOWN_MODEL): 1, ("", "glm"): 1}
+    )
+    assert await _request_counts(db_session, "user_test", None, "cli") == Counter(
+        {("openai", "glm"): 1}
+    )
+    assert (await _request_counts(db_session, "user_test", None))[
+        ("openai", "glm")
+    ] == 4
+
+
 def test_model_fit_counts_requests_problems_and_the_rate():
     occurrences = [_occ(MISSING_PATH, task=f"t{i}") for i in range(3)] + [
         _occ(
@@ -393,19 +426,9 @@ async def test_the_page_reads_conversations_and_telemetry_of_this_user_only(db_s
     now = datetime.now(timezone.utc)
     db_session.add_all(
         [
-            TelemetryEvent(
-                user_id="user_test",
-                event_type="Code Index Error",
-                properties="{}",
-                created_at=now,
-            ),
+            _event_row("Code Index Error", {}, created_at=now),
             # Outside the 7-day default.
-            TelemetryEvent(
-                user_id="user_test",
-                event_type="Code Index Error",
-                properties="{}",
-                created_at=now - timedelta(days=30),
-            ),
+            _event_row("Code Index Error", {}, created_at=now - timedelta(days=30)),
         ]
     )
     await db_session.commit()
@@ -445,14 +468,7 @@ async def test_legacy_sources_stop_at_the_first_error_report(db_session):
             "Error reading file a.ts: ENOENT",
         ),
     )
-    db_session.add(
-        TelemetryEvent(
-            user_id="user_test",
-            event_type="Exception",
-            properties="{}",
-            created_at=now - timedelta(hours=2),
-        )
-    )
+    db_session.add(_event_row("Exception", {}, created_at=now - timedelta(hours=2)))
     db_session.add(_report_row("r1", created_at=now - timedelta(days=1)))
     await db_session.commit()
 

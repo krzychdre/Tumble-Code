@@ -37,6 +37,25 @@ def num(value) -> float:
     return value
 
 
+# The most one model request can report. Real requests sit far below (live
+# maxima: 790,622 input tokens, $0.36, 224 s); with these a column summed over
+# billions of requests still fits a BIGINT and a cost sum stays finite.
+MAX_REQUEST_TOKENS = 10**9
+MAX_REQUEST_COST = 10_000.0
+MAX_REQUEST_MS = 24 * 3600 * 1000
+
+
+def figure(value, limit: float) -> float:
+    """``num`` of a figure one request reports, 0 outside ``0..limit``.
+
+    The client chooses the figure (its own provider's usage, its own model
+    prices), so an impossible one is no figure, like a non-finite one: it
+    must not overflow a sum or cancel other users' usage on a shared page.
+    """
+    value = num(value)
+    return value if 0 <= value <= limit else 0
+
+
 def round_half_up(value: float) -> int:
     """Nearest integer, a tie going up: JavaScript's ``Math.round``.
 

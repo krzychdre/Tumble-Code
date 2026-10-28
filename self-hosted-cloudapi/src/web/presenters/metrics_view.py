@@ -30,9 +30,9 @@ class Grouping:
     label: str
     # What the group of events without a key is called.
     empty: str
-    # (key, name) of an event from its payload and its row of the completions
-    # query (services/metrics_service); key None when it has none.
-    of_event: Callable[[dict, Row], tuple[Optional[str], Optional[str]]]
+    # (key, name) of an event from its row of the completions query
+    # (services/metrics_service); key None when it has none.
+    of_event: Callable[[Row], tuple[Optional[str], Optional[str]]]
     # The tasks column a missing key is NULL in, and SQL that keeps the tasks
     # of one key: what narrows the session-quality panel.
     column: object
@@ -40,17 +40,12 @@ class Grouping:
     # Offered in an organization space only: the reader's own page has one user.
     organization_only: bool = False
 
-    def event_key(self, props: dict, row: Row) -> tuple[str, str]:
-        key, name = self.of_event(props, row)
+    def event_key(self, row: Row) -> tuple[str, str]:
+        key, name = self.of_event(row)
         return (NO_KEY, self.empty) if key is None else (key, name)
 
 
-def _event_model(props, row):
-    model = str(props.get("modelId") or "") or None
-    return model, model
-
-
-def _event_user(props, row):
+def _event_user(row):
     """Who ran the event, by name, else by e-mail."""
     name = f"{row.first_name or ''} {row.last_name or ''}".strip()
     return row.user_id, name or row.email
@@ -62,7 +57,7 @@ GROUPINGS = {
     "project": Grouping(
         "Project",
         "No project",
-        lambda props, row: (row.project_id, row.project_name or row.project_id),
+        lambda row: (row.project_id, row.project_name or row.project_id),
         Task.project_id,
         lambda key: Task.project_id == key,
     ),
@@ -70,7 +65,7 @@ GROUPINGS = {
     "model": Grouping(
         "Model",
         "No model",
-        _event_model,
+        lambda row: (row.model_id, row.model_id),
         TASK_GROUPINGS["model"].column,
         TASK_GROUPINGS["model"].match,
     ),
