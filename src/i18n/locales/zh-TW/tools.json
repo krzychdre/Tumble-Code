@@ -4,5 +4,11 @@
 		"imageWithSize": "圖片檔案 ({{size}} KB)"
 	},
 	"toolRepetitionLimitReached": "Tumble 似乎陷入循環，反覆嘗試同一操作 ({{toolName}})。這可能表明目前策略存在問題。請考慮重新描述工作、提供更具體的指示或引導其嘗試不同的方法。",
-	"unknownToolError": "Tumble 嘗試使用未知工具：「{{toolName}}」。正在重試..."
+	"unknownToolError": "Tumble 嘗試使用未知工具：「{{toolName}}」。正在重試...",
+	"customTools": {
+		"trust": {
+			"question": "專案資料夾 {{path}} 中有自訂工具：載入後會立即以你的權限在擴充功能內執行的程式碼。只有在你信任此儲存庫時才執行它們。",
+			"run": "執行專案工具"
+		}
+	}
 }

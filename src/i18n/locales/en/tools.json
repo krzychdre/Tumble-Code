@@ -4,5 +4,11 @@
 		"imageWithSize": "Image file ({{size}} KB)"
 	},
 	"toolRepetitionLimitReached": "Tumble appears to be stuck in a loop, attempting the same action ({{toolName}}) repeatedly. This might indicate a problem with its current strategy. Consider rephrasing the task, providing more specific instructions, or guiding it towards a different approach.",
-	"unknownToolError": "Tumble tried to use an unknown tool: \"{{toolName}}\". Retrying..."
+	"unknownToolError": "Tumble tried to use an unknown tool: \"{{toolName}}\". Retrying...",
+	"customTools": {
+		"trust": {
+			"question": "The project folder {{path}} has custom tools: code that runs inside the extension with your permissions as soon as it is loaded. Run them only if you trust this repository.",
+			"run": "Run project tools"
+		}
+	}
 }

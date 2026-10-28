@@ -4,5 +4,11 @@
 		"imageWithSize": "Fitxer d'imatge ({{size}} KB)"
 	},
 	"toolRepetitionLimitReached": "Tumble sembla estar atrapat en un bucle, intentant la mateixa acció ({{toolName}}) repetidament. Això podria indicar un problema amb la seva estratègia actual. Considera reformular la tasca, proporcionar instruccions més específiques o guiar-lo cap a un enfocament diferent.",
-	"unknownToolError": "Tumble ha intentat utilitzar una eina desconeguda: \"{{toolName}}\". Reintentant..."
+	"unknownToolError": "Tumble ha intentat utilitzar una eina desconeguda: \"{{toolName}}\". Reintentant...",
+	"customTools": {
+		"trust": {
+			"question": "La carpeta del projecte {{path}} té eines personalitzades: codi que s'executa dins l'extensió amb els vostres permisos tan bon punt es carrega. Executeu-les només si confieu en aquest repositori.",
+			"run": "Executa les eines del projecte"
+		}
+	}
 }

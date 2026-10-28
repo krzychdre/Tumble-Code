@@ -1,10 +1,9 @@
 // Slash menu entries (built-in commands and skills), skills and custom tools.
 
-import * as path from "path"
 import type { Command as SlashCommand } from "@tumble-code/types"
 import { customToolRegistry } from "@tumble-code/core"
 import { defaultModeSlug } from "../../../shared/modes"
-import { getRooDirectoriesForCwd } from "../../../services/roo-config/index.js"
+import { customToolDirectories } from "../../tools/projectToolTrust"
 import {
 	handleRequestSkills,
 	handleCreateSkill,
@@ -100,7 +99,13 @@ export const commandsAndSkillsHandlers: DomainHandlerMap<"commandsAndSkills"> = 
 	refreshCustomTools: async (ctx) => {
 		const { provider, getCurrentCwd } = ctx
 		try {
-			const toolDirs = getRooDirectoriesForCwd(getCurrentCwd()).map((dir) => path.join(dir, "tools"))
+			// Loading a tool runs its code: nothing loads while the experiment is off.
+			const { experiments } = await provider.getState()
+			if (!experiments?.customTools) {
+				await provider.postMessageToWebview({ type: "customToolsResult", tools: [] })
+				return
+			}
+			const toolDirs = await customToolDirectories(getCurrentCwd(), provider.context)
 			await customToolRegistry.loadFromDirectories(toolDirs)
 
 			await provider.postMessageToWebview({
