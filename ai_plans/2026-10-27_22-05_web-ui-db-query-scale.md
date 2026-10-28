@@ -3,7 +3,8 @@
 **Status:** fazy 1-4 i 6 wdrożone na stosie lokalnych gałęzi (niezmergowane, niewypchnięte):
 `perf/web-scale-bench` → `feat/web-metrics-event-columns` (F1) → `feat/web-metrics-sql-rollup` (F2) →
 `feat/web-list-subtree-rollup` (F3) → `feat/web-pg-indexes` (F4) → `fix/cloud-hostile-client-bounds` (H) →
-`perf/cloud-db-session-settings` (S) → `feat/web-metrics-rollup` (F6). Faza 5 nieruszona (tylko po pomiarach).
+`perf/cloud-db-session-settings` (S) → `feat/web-metrics-rollup` (F6) → `chore/web-scale-bench-cleanup`.
+Faza 5 nieruszona (tylko po pomiarach).
 **Skala założona:** setki tysięcy tasków w okresie retencji, tysiące użytkowników na organizację, produkcyjny Postgres (SQLite tylko w testach).
 **Docelowo:** /app/metrics, /app, /app/diagnostics i pozostałe listy mają stały czas odpowiedzi niezależnie od wielkości korpusu.
 **Plany faz:** `2026-10-28_01-50_web-metrics-event-columns.md` (F1), `2026-10-28_03-35_web-metrics-sql-rollup.md` (F2),
@@ -70,7 +71,7 @@ Przy każdej **finalnej** wiadomości live: `refresh_task_summary` robi pełny a
 
 ### Faza 0: pomiar (`perf/web-scale-bench`)
 
-Jednorazowe skrypty [web_scale_seed.py](../self-hosted-cloudapi/scripts/web_scale_seed.py) i [web_scale_measure.py](../self-hosted-cloudapi/scripts/web_scale_measure.py). Korpus skalibrowany na żywej bazie: 2 000 użytkowników, organizacja z 1 000 członków, power user z 20 tys. tasków, 200 tys. tasków (60% subtaski, drzewa do głębokości 4), 4,9 mln zdarzeń (4,4 mln `LLM Completion`), baza 5,4 GB. Pomiar: strony end to end przez aplikację ASGI, rozgrzewka + 5 przebiegów, mediana, EXPLAIN ANALYZE najwolniejszego zapytania każdej strony. Do usunięcia po zakończeniu pomiarów.
+Jednorazowe skrypty `scripts/web_scale_seed.py` i `scripts/web_scale_measure.py` (gałąź `perf/web-scale-bench`, usunięte po pomiarach przez `chore/web-scale-bench-cleanup`). Korpus skalibrowany na żywej bazie: 2 000 użytkowników, organizacja z 1 000 członków, power user z 20 tys. tasków, 200 tys. tasków (60% subtaski, drzewa do głębokości 4), 4,9 mln zdarzeń (4,4 mln `LLM Completion`), baza 5,4 GB. Pomiar: strony end to end przez aplikację ASGI, rozgrzewka + 5 przebiegów, mediana, EXPLAIN ANALYZE najwolniejszego zapytania każdej strony. Surowe wyniki, do których plany faz odwołują się jako `/tmp/web-scale-bench/...` i `/tmp/f*-scratch/...`, są zarchiwizowane poza repozytorium w `private_docs/web-ui-db-scale/` (ta sama struktura katalogów).
 
 ### Faza 1: kolumny liczbowe na `telemetry_events` (`feat/web-metrics-event-columns`)
 
@@ -155,7 +156,7 @@ Każde konto, które może się zalogować, traktujemy jako potencjalnie wrogie:
 - F1: granice liczb jednego requestu i reguła nazw przy ingeście i w zamrożonej kopii backfillu. Bez nich dwa zdarzenia jednego członka przepełniały sumy strony organizacji (500 na każdym grupowaniu), ujemny koszt kasował cudze zużycie, a jedna zapisana wartość ponad int64, NUL albo nazwa niebędąca stringiem przerywała całą migrację.
 - F3: przodkowie tylko tego samego właściciela (zapis nie blokuje cudzych wierszy), granica głębokości 128 (łańcuch ani cykl nie robi z zapisu ani z migracji pracy kwadratowej), granice liczb wiadomości, id taska w linku do 256 znaków, label do 2 000 B, blokady `delete_tasks` od najgłębszego.
 - F4: przebudowa za długich labeli przed `CREATE INDEX`.
-- H (kod starszy niż stos): link tylko między taskami nadawcy, completion nie przepisuje cudzego wiersza taska, karta recall nie zatrzymuje kart innych kont (tekst bez NUL i surogatów, SAVEPOINT na kartę), czas wiadomości tylko do 2100 r., limit ciała `POST /api/events`, najwyżej 8 sesji bazy na konto w bridge'u, tabele breakdown do 50 wierszy, granice zużycia w nagraniach wymian; migracja `f1b2c3d4e5a6` czyści to, co zapisano wcześniej.
+- H (kod starszy niż stos): link tylko między taskami nadawcy, completion nie przepisuje cudzego wiersza taska, karta recall nie zatrzymuje kart innych kont (tekst bez NUL i surogatów, SAVEPOINT na kartę), czas wiadomości tylko do 2100 r., limit ciała `POST /api/events`, najwyżej 8 sesji bazy na konto w bridge'u (kolejne zdarzenia konta czekają w kolejce, więc równoległe subtaski nie gubią wiadomości; ponad 64 czekające zdarzenia zalew jest odrzucany), tabele breakdown do 50 wierszy, granice zużycia w nagraniach wymian; migracja `f1b2c3d4e5a6` czyści to, co zapisano wcześniej.
 - `tests/test_hostile_clients.py` (SQLite i Postgres) wysyła to wszystko przez prawdziwe ścieżki ingestu jako członek organizacji i sprawdza strony admina, innego konta i samego napastnika. Wrogie dane zapisane kodem bazowym (01057282b) przechodzą migrację do głowy stosu na Postgresie 16.
 
 Zostawione, z powodami w planie H: usunięty członek nadal dopisuje zużycie do organizacji (decyzja właściciela), panel jakości organizacji czyta wszystkie runy okresu, tekst z NUL w tytule albo ścieżce psuje zapis tylko samemu nadawcy.
