@@ -1,6 +1,6 @@
 // npx vitest run services/web/__tests__/addressGuard.spec.ts
 
-import { assertPublicHttpUrl } from "../addressGuard"
+import { assertPublicHttpUrl, blockedAddressReason, isIpLiteral } from "../addressGuard"
 
 /** Returns the block reason for a URL string, or undefined when allowed. */
 const check = (url: string) => assertPublicHttpUrl(new URL(url))
@@ -97,5 +97,45 @@ describe("assertPublicHttpUrl", () => {
 	it("does not mistake a hostname that merely contains digits for an IP", () => {
 		expect(check("https://192-168-1-1.example.com/")).toBeUndefined()
 		expect(check("https://1.2.3.4.example.com/")).toBeUndefined()
+	})
+})
+
+describe("the fully qualified spelling with a trailing dot", () => {
+	it.each([
+		["http://localhost./", /this machine/],
+		["http://localhost.:9200/", /this machine/],
+		["http://foo.local./", /local or internal network names/],
+		["http://metadata.google.internal./", /local or internal network names/],
+		["http://127.0.0.1./", /loopback/],
+	])("%s is the same host as without the dot", (url, pattern) => {
+		expect(check(url)).toMatch(pattern)
+	})
+
+	it("keeps a public name with a trailing dot allowed", () => {
+		expect(check("https://example.com./")).toBeUndefined()
+	})
+})
+
+describe("blockedAddressReason (resolved addresses)", () => {
+	it.each([
+		["127.0.0.1", /loopback/],
+		["10.0.0.7", /private network range/],
+		["169.254.169.254", /link-local/],
+		["::1", /IPv6 loopback/],
+		["::ffff:127.0.0.1", /loopback/],
+		["fd00::1", /unique-local/],
+	])("blocks %s", (address, pattern) => {
+		expect(blockedAddressReason(address)).toMatch(pattern)
+	})
+
+	it.each(["93.184.215.14", "2606:2800:21f:cb07:6820:80da:af6b:8b2c"])("allows %s", (address) => {
+		expect(blockedAddressReason(address)).toBeUndefined()
+	})
+
+	it("tells literals from names", () => {
+		expect(isIpLiteral("127.0.0.1")).toBe(true)
+		expect(isIpLiteral("127.0.0.1.")).toBe(true)
+		expect(isIpLiteral("[::1]")).toBe(true)
+		expect(isIpLiteral("127.0.0.1.nip.io")).toBe(false)
 	})
 })

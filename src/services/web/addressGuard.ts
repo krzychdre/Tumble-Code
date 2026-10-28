@@ -7,12 +7,13 @@
  * service. This module answers one question: may we send an HTTP request to
  * this URL?
  *
- * Scope for v1: hostname and literal-IP checks only. We deliberately do NOT
- * resolve DNS and pin the resulting address, so a hostile domain whose A record
- * points at 127.0.0.1 still gets through. That is a known, accepted gap: the
- * realistic threat here is a model that was talked into typing an internal
- * address, not an attacker who also controls a domain. DNS pinning needs a
- * custom agent/dispatcher and belongs in a later pass.
+ * Two checks: `assertPublicHttpUrl` on the hostname or literal IP of the URL,
+ * and `blockedAddressReason` on every address the hostname resolves to (done by
+ * WebFetchService before each request), so a public-looking name whose A record
+ * is 127.0.0.1 (`127.0.0.1.nip.io`) is refused too. The address is not pinned
+ * for the request itself: a hostile DNS server that answers differently a
+ * moment later (rebinding) can still get through. Pinning needs a custom
+ * dispatcher and belongs in a later pass.
  */
 
 /** Host suffixes that always mean "not the public internet". */
@@ -215,7 +216,10 @@ function blockedIPv6Reason(address: string): string | undefined {
  */
 export function assertPublicHttpUrl(url: URL): string | undefined {
 	// `URL.hostname` keeps IPv6 literals in brackets and lowercases everything.
-	const hostname = url.hostname.toLowerCase()
+	// A trailing dot is the fully qualified spelling of the same name
+	// (`localhost.` is `localhost`) and is kept by the URL parser, so it is
+	// dropped before any comparison.
+	const hostname = url.hostname.toLowerCase().replace(/\.+$/, "")
 
 	if (!hostname) {
 		return "it has no hostname"
@@ -247,4 +251,22 @@ export function assertPublicHttpUrl(url: URL): string | undefined {
 	}
 
 	return undefined
+}
+
+/**
+ * Classifies an address a hostname resolved to (`dns.lookup` output: dotted
+ * IPv4 or IPv6 without brackets). Returns the reason it is blocked, or
+ * `undefined` for a public address.
+ */
+export function blockedAddressReason(address: string): string | undefined {
+	const octets = parseIPv4(address)
+	if (octets) {
+		return blockedIPv4Reason(octets)
+	}
+	return address.includes(":") ? blockedIPv6Reason(address.toLowerCase()) : `"${address}" is not an address`
+}
+
+/** Whether `hostname` (as `URL.hostname` gives it) is an IP literal, which needs no lookup. */
+export function isIpLiteral(hostname: string): boolean {
+	return hostname.startsWith("[") || parseIPv4(hostname.replace(/\.+$/, "")) !== undefined
 }
