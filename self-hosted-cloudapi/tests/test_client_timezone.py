@@ -348,6 +348,36 @@ def test_problem_times_are_the_readers():
     )
 
 
+@pytest.mark.parametrize(
+    "zone, params",
+    [
+        (None, {"until": "9999-12-31"}),
+        ("Asia/Tokyo", {"since": "0001-01-01"}),
+        ("America/Los_Angeles", {"until": "9999-12-31", "since": "0001-01-01"}),
+    ],
+)
+async def test_a_date_at_the_end_of_the_calendar_is_ignored_not_a_500(
+    client, db_session, zone, params
+):
+    """The day after 9999-12-31, or midnight of 0001-01-01 in a zone ahead of
+    UTC, is outside what a datetime holds: the list answered 500, and kept
+    answering it, as the view is remembered in a cookie. Such a date is now
+    ignored like any other unreadable one."""
+    await _seed_user(db_session)
+    if zone is not None:
+        client.cookies.set("tumble_tz", zone)
+    _override_web_user(client.app)
+    try:
+        picked = client.get("/app", params=params)
+        remembered = client.get("/app")
+    finally:
+        client.app.dependency_overrides.pop(get_web_user_optional, None)
+        client.cookies.clear()
+
+    assert picked.status_code == 200
+    assert remembered.status_code == 200
+
+
 async def test_task_list_prints_local_times(client, db_session, session_factory):
     await _seed_user(db_session)
     async with session_factory() as session:

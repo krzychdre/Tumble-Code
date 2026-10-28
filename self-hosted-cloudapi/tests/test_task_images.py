@@ -118,6 +118,12 @@ async def test_bad_fields_are_400(client, db_session):
     await _seed_task(db_session)
     _signed_in(client)
     assert _upload(client, ts="abc").status_code == 400
+    # Each of these used to pass the digit check and fail int() or the
+    # column: 500.
+    for ts in ("--5", "9" * 30, "1" * 5000, str(2**63), str(-(2**63) - 1)):
+        assert _upload(client, ts=ts).status_code == 400, ts[:40]
+    # Digits of another script are not a timestamp either.
+    assert _upload(client, ts="\u0661\u0662").status_code == 400
     assert _upload(client, path="").status_code == 400
     assert _upload(client, path="x" * 1025).status_code == 400
 
@@ -161,6 +167,24 @@ async def test_an_image_never_uploaded_is_404(client, db_session):
         ).status_code
         == 404
     )
+
+
+async def test_the_largest_timestamps_still_work_and_beyond_them_is_refused(
+    client, db_session
+):
+    await _seed_task(db_session)
+    _signed_in(client)
+    assert _upload(client, ts=f" {2**63 - 1} ").status_code == 204
+    assert _upload(client, ts=str(-(2**63))).status_code == 204
+
+    ok = client.get(
+        "/app/tasks/t-img/images", params={"ts": 2**63 - 1, "path": "monitoring/x.png"}
+    )
+    assert ok.status_code == 200
+    for path in ("/app/tasks/t-img/images", "/shared/t-img/images"):
+        # Not a column value: refused before the database is asked (it was 500).
+        resp = client.get(path, params={"ts": 2**63, "path": "monitoring/x.png"})
+        assert resp.status_code == 422, path
 
 
 async def test_another_users_image_is_404(client, db_session):
