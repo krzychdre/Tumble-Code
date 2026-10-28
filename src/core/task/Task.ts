@@ -110,7 +110,7 @@ import type { TaskToolStreamState } from "../tools/toolStreamState"
 import { restoreTodoListForTask } from "../tools/UpdateTodoListTool"
 import { FileContextTracker } from "../context-tracking/FileContextTracker"
 import { RooIgnoreController } from "../ignore/RooIgnoreController"
-import { RooProtectedController } from "../protect/RooProtectedController"
+import { type ProtectionScope, RooProtectedController } from "../protect/RooProtectedController"
 import { type AssistantMessageContent, presentAssistantMessage } from "../assistant-message"
 import { NativeToolCallParser } from "../assistant-message/NativeToolCallParser"
 import { ClineProvider } from "../webview/ClineProvider"
@@ -227,6 +227,20 @@ export type AutoApprovalOverride = (
 	text?: string,
 	isProtected?: boolean,
 ) => "approve" | "deny" | undefined | Promise<"approve" | "deny" | undefined>
+
+/**
+ * Where write protection applies besides the task's cwd: the workspace folders
+ * and the home directory (`~/.roo`, `~/.vscode`), and as a whole VS Code's
+ * `User` directory, which holds the user settings and every extension's
+ * storage (the global MCP settings among them).
+ */
+function protectionScope(provider: ClineProvider): ProtectionScope {
+	const roots = [...(vscode.workspace.workspaceFolders ?? []).map((folder) => folder.uri.fsPath), os.homedir()]
+	const storage = provider.context?.globalStorageUri?.fsPath
+	const protectedDirectories =
+		storage && path.basename(path.dirname(storage)) === "globalStorage" ? [path.dirname(path.dirname(storage))] : []
+	return { roots, protectedDirectories }
+}
 
 export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	readonly taskId: string
@@ -995,7 +1009,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.taskNumber = -1
 
 		this.rooIgnoreController = new RooIgnoreController(this.cwd)
-		this.rooProtectedController = new RooProtectedController(this.cwd)
+		this.rooProtectedController = new RooProtectedController(this.cwd, protectionScope(provider))
 		this.fileContextTracker = new FileContextTracker(provider, this.taskId)
 
 		this.rooIgnoreController.initialize().catch((error) => {

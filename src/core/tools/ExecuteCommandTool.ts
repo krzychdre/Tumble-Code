@@ -113,7 +113,8 @@ export class ExecuteCommandTool extends BaseTool<"execute_command"> {
 				return
 			}
 
-			const didApprove = await askApproval("command", command)
+			const writesProtectedFile = task.rooProtectedController?.isCommandWriteProtected(command) ?? false
+			const didApprove = await askApproval("command", command, undefined, writesProtectedFile)
 
 			if (!didApprove) {
 				return

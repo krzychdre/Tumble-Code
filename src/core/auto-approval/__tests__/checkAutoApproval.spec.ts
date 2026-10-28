@@ -163,6 +163,30 @@ describe("checkAutoApproval", () => {
 			"approve",
 		],
 		["bypass: the plan review pause", bypass, "tool", tool("reviewPlan"), false, "ask"],
+		[
+			"an allowed command",
+			{ alwaysAllowExecute: true, allowedCommands: ["cat"] },
+			"command",
+			"cat a.txt",
+			false,
+			"approve",
+		],
+		[
+			"an allowed command that may write a protected file",
+			{ alwaysAllowExecute: true, allowedCommands: ["cat"] },
+			"command",
+			"cat > .roo/mcp.json",
+			true,
+			"ask",
+		],
+		[
+			"an allowed command that may write a protected file, protected writes pre-approved",
+			{ alwaysAllowExecute: true, allowedCommands: ["cat"], alwaysAllowWriteProtected: true },
+			"command",
+			"cat > .roo/mcp.json",
+			true,
+			"approve",
+		],
 		["autonomous: the plan review pause", autonomous, "tool", tool("reviewPlan"), false, "approve"],
 	])("%s: %s", async (_, state, ask, text, isProtected, decision) => {
 		expect((await checkAutoApproval({ state: baseState(state), ask, text, isProtected })).decision).toBe(decision)
