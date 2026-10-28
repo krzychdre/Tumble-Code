@@ -185,6 +185,15 @@ async def _ingest(db, clock, events) -> None:
     await db.commit()
 
 
+def _epoch_seconds(column, dialect: str):
+    """Whole seconds since the epoch, rounded down. SQLite reads a stored
+    fraction rounded to the millisecond (xx:59.999999 as the next second),
+    so there the fraction is cut off first."""
+    if dialect == "sqlite":
+        return cast(func.strftime("%s", func.substr(column, 1, 19)), BigInteger)
+    return cast(func.floor(extract("epoch", column)), BigInteger)
+
+
 async def _one_row_per_event(db) -> None:
     """Replace usage_rollup by one row per event, with the quarter computed
     in SQL: what the pages read when they summed the events themselves."""
@@ -217,7 +226,7 @@ async def _one_row_per_event(db) -> None:
             select(
                 e.user_id,
                 e.event_type,
-                cast(func.floor(extract("epoch", e.created_at)), BigInteger) // 900,
+                _epoch_seconds(e.created_at, db.bind.dialect.name) // 900,
                 e.id,
                 e.task_id,
                 e.client_kind,

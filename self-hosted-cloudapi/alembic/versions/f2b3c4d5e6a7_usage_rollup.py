@@ -72,6 +72,18 @@ def _key(row) -> str:
     return hashlib.sha256(json.dumps(names).encode()).hexdigest()
 
 
+def _epoch_seconds(column, dialect: str):
+    """The whole seconds since the epoch of a stored time, rounded down, as
+    ingest's quarter_of counts them. SQLite reads a time's fraction rounded to
+    the millisecond, so 10:14:59.999999 would count as 10:15:00 and land in
+    the next quarter; the fraction is cut off before SQLite reads the time."""
+    if dialect == "sqlite":
+        return sa.cast(
+            sa.func.strftime("%s", sa.func.substr(column, 1, 19)), sa.BigInteger
+        )
+    return sa.cast(sa.func.floor(sa.extract("epoch", column)), sa.BigInteger)
+
+
 def upgrade() -> None:
     rollup = op.create_table(
         "usage_rollup",
@@ -103,10 +115,8 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("user_id", "event_type", "quarter", "names_key"),
     )
 
-    quarter = (
-        sa.cast(sa.func.floor(sa.extract("epoch", events.c.created_at)), sa.BigInteger)
-        // QUARTER_SECONDS
-    )
+    conn = op.get_bind()
+    quarter = _epoch_seconds(events.c.created_at, conn.dialect.name) // QUARTER_SECONDS
     groups = (
         sa.select(
             events.c.user_id,
@@ -138,7 +148,6 @@ def upgrade() -> None:
             *(events.c[name] for name in NAMES),
         )
     )
-    conn = op.get_bind()
     for rows in conn.execute(groups.execution_options(yield_per=BATCH)).partitions():
         conn.execute(
             rollup.insert(),
