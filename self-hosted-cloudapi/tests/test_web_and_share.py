@@ -657,3 +657,53 @@ async def test_share_follows_the_server_policy_for_a_task_without_organization(
             .all()
         )
         assert shares == ["organization"]
+
+
+async def test_a_message_with_a_time_that_is_no_number_does_not_break_the_pages(
+    client, db_session, session_factory
+):
+    """A message is stored as sent; one whose ts is null or text must not turn
+    the task page and its share link into a 500 for good."""
+    await _seed_user(db_session)
+    from src.main import app
+    from src.auth.web_session import get_web_user_optional
+    from tests.web_helpers import _override_web_user
+
+    messages = [
+        {
+            "ts": 1700000000000,
+            "type": "say",
+            "say": "text",
+            "text": "Build me a feature",
+        },
+        {"ts": None, "type": "say", "say": "text", "text": "time is null"},
+        {"ts": "soon", "type": "say", "say": "text", "text": "time is text"},
+        {"ts": 1700000001000, "type": "say", "say": "text", "text": "last"},
+    ]
+    _override_current_user(app)
+    try:
+        files, data = _backfill_files("task-odd-ts", messages)
+        assert (
+            client.post("/api/events/backfill", files=files, data=data).status_code
+            == 200
+        )
+        assert (
+            client.post(
+                "/api/extension/share",
+                json={"taskId": "task-odd-ts", "visibility": "public"},
+            ).status_code
+            == 200
+        )
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+    shared = client.get("/shared/task-odd-ts")
+    assert shared.status_code == 200
+    assert "time is null" in shared.text and "time is text" in shared.text
+
+    _override_web_user(app)
+    try:
+        page = client.get("/app/tasks/task-odd-ts")
+    finally:
+        app.dependency_overrides.pop(get_web_user_optional, None)
+    assert page.status_code == 200
