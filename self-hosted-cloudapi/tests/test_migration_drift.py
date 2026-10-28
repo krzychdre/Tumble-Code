@@ -39,6 +39,9 @@ What SQLite cannot check (Postgres only, untested here):
   d3e4f5a6b7c8 checks that index by hitting it.
   Checked by hand to be detected: a new column, table or index, a changed
   type, nullability or server default, and a new foreign key.
+* The WHERE of a partial index (ix_tasks_user_roots, ix_tasks_org_roots):
+  postgresql_where only, and compare_metadata ignores it on Postgres too.
+  Checked by hand on PostgreSQL 16.15 for f1a2b3c4d5e6 and create_all.
 """
 
 import json
@@ -59,6 +62,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from src.database import Base
 from src.db_bootstrap import classify_and_seed
 from src.models import RETIRED_TABLES, include_name
+from src.services.model_attribution import LABEL_MAX_BYTES
 from src.services.projects import folder_key
 from src.services.telemetry_vocab import event_columns, parse_event_props
 
@@ -885,3 +889,44 @@ def test_run_totals_backfill_sums_each_run_and_names_its_primary_model(migrate_e
         "x" * 257: (2.0, 0, 0, None),
         "below_long": (3.0, 0, 0, None),
     }
+
+
+def test_list_indexes_rebuild_labels_too_long_for_the_models_index(migrate_env):
+    """f1a2b3c4d5e6 indexes (user_id, models), and Postgres refuses an entry
+    over 2704 bytes. The base code stored a label of any length: a longer
+    one is rebuilt from its cleaned names, most-used first, while they fit
+    LABEL_MAX_BYTES, with its primary model; the rest stay as they are."""
+    db_file, run = migrate_env
+    _load_baseline(db_file)
+    _alembic(run, "stamp", SQLITE_START_REVISION)
+    _alembic(run, "upgrade", "f0a1b2c3d4e5")
+
+    many = [f"model-{n:03}-" + "x" * 14 for n in range(150)]
+    labels = {
+        "normal": "glm-5.3, opus",
+        "long_id": "\tA" + "b" * 3000 + ", opus",
+        "many": ", ".join(many),
+    }
+    with sqlite3.connect(db_file) as conn:
+        conn.execute(
+            "INSERT INTO users (id, authentik_id, email) VALUES ('u1', 'ak_1', 'a@b.c')"
+        )
+        conn.executemany(
+            "INSERT INTO tasks (id, user_id, models, primary_model) "
+            "VALUES (?, 'u1', ?, 'stale')",
+            list(labels.items()),
+        )
+
+    _alembic(run, "upgrade", "head")
+
+    with sqlite3.connect(db_file) as conn:
+        stored = dict(
+            (row[0], row[1:])
+            for row in conn.execute("SELECT id, models, primary_model FROM tasks")
+        )
+    assert stored["normal"] == ("glm-5.3, opus", "stale")
+    assert stored["long_id"] == ("A" + "b" * 255 + ", opus", "A" + "b" * 255)
+    label, primary = stored["many"]
+    assert len(label.encode()) <= LABEL_MAX_BYTES < len(labels["many"].encode())
+    assert label == ", ".join(many[: label.count(",") + 1])
+    assert primary == many[0]

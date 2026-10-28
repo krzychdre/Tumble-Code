@@ -26,9 +26,8 @@ class Task(Base, TimestampMixin):
     __tablename__ = "tasks"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(
-        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
-    )
+    # Indexed with updated_at below.
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     # Indexed for the metrics page's organization space (routers/web_metrics).
     organization_id = Column(
         String,
@@ -67,11 +66,11 @@ class Task(Base, TimestampMixin):
     # The project the task's folder is bound to (models/project), stamped when
     # the row is created or when the folder is first bound. NULL until then.
     # The key is named like migration b0c1d2e3f4a5 names it, for its downgrade.
+    # Indexed with user_id below.
     project_id = Column(
         String,
         ForeignKey("projects.id", ondelete="SET NULL", name="fk_tasks_project_id"),
         nullable=True,
-        index=True,
     )
     # The author keeps the task out of recall: no session card is built.
     recall_excluded = Column(Boolean, nullable=False, default=False, server_default="0")
@@ -152,9 +151,32 @@ class Task(Base, TimestampMixin):
         Index("ix_tasks_user_updated", "user_id", "updated_at"),
         # A task's children of one owner, the step of every walk down a tree
         # (services/task_tree). With parent_task_id alone Postgres' generic plan
-        # could AND ix_tasks_user_id into each step: 3.9 s instead of 92 ms for
-        # 4,818 subtasks on the bench.
+        # could AND an index on user_id into each step: 3.9 s instead of 92 ms
+        # for 4,818 subtasks on the bench.
         Index("ix_tasks_parent_user", "parent_task_id", "user_id"),
+        # Runs only (no parent), newest first: a user's pages of runs
+        # (web/presenters/task_list) and the runs of a period in the metrics
+        # page's quality panel, personal or an organization's
+        # (services/quality_overview). Partial on Postgres; SQLite builds them
+        # whole.
+        Index(
+            "ix_tasks_user_roots",
+            "user_id",
+            "updated_at",
+            postgresql_where=parent_task_id.is_(None),
+        ),
+        Index(
+            "ix_tasks_org_roots",
+            "organization_id",
+            "updated_at",
+            postgresql_where=parent_task_id.is_(None),
+        ),
+        # The projects of a user's tasks (the list's project names), one probe
+        # per visible project; it leads with project_id, so it also serves
+        # every lookup by project.
+        Index("ix_tasks_project_user", "project_id", "user_id"),
+        # The list's model picker reads a user's labels from the index alone.
+        Index("ix_tasks_user_models", "user_id", "models"),
     )
 
 
