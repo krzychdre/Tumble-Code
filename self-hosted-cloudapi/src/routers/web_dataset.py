@@ -45,6 +45,7 @@ from src.services.exchange_quality import DROP_DEFAULT, DROP_STRICT, ISSUE_LABEL
 from src.services.exchange_reconstruction import load_task
 from src.services.metrics_service import PERIOD_LABELS, PERIODS, period_start
 from src.utils.clientzone import as_utc, today
+from src.utils.content_disposition import attachment
 
 router = APIRouter(tags=["web"])
 
@@ -207,7 +208,7 @@ async def dataset_export(
     return StreamingResponse(
         export_lines(web["db"], web["user"]["user_id"], options),
         media_type="application/x-ndjson; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="{name}"'},
+        headers={"Content-Disposition": attachment(name)},
     )
 
 
@@ -327,7 +328,7 @@ async def dataset_task_report(
         iter([lines]),
         media_type="application/x-ndjson; charset=utf-8",
         headers={
-            "Content-Disposition": f'attachment; filename="tumble-exchanges-{task_id[:40]}.jsonl"'
+            "Content-Disposition": attachment(f"tumble-exchanges-{task_id[:40]}.jsonl")
         },
     )
 

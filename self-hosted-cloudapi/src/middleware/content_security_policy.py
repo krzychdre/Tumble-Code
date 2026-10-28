@@ -1,4 +1,4 @@
-"""A Content Security Policy for the web panel's pages (/app and /shared).
+"""A Content Security Policy and a Referrer-Policy for the web panel's pages (/app and /shared).
 
 The panel runs no inline script: every page loads its behaviour from
 ``/static/`` (``app.js`` for the shared bits, one file per page for the rest)
@@ -27,6 +27,14 @@ The sign-in pages of routers/browser.py (``/auth/...``) are left alone: they
 live outside the panel's prefixes, and the error page closes its tab through a
 ``javascript:`` link. JSON responses need no policy.
 
+The same pages also get ``Referrer-Policy: same-origin``. A shared page shows
+images from any https: host (a model's Markdown), and a page's links lead
+anywhere: without a policy, an older browser (or one set to send the full
+URL) told every such host the page's address, the share link included. With
+``same-origin`` no other origin is sent a Referer at all, while the panel's
+own form posts keep their ``Origin`` header (``no-referrer`` would turn it
+into ``null``, which middleware/csrf.py refuses).
+
 A pure ASGI middleware, so it only touches the response headers and never
 re-streams a body.
 """
@@ -36,6 +44,7 @@ import re
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 _PREFIXES = ("/app", "/shared")
+REFERRER_POLICY = b"same-origin"
 _HOST = re.compile(r"^[A-Za-z0-9.\-]+(:\d{1,5})?$|^\[[0-9A-Fa-f:.]+\](:\d{1,5})?$")
 
 _BASE = (
@@ -91,6 +100,7 @@ class ContentSecurityPolicyMiddleware:
                     headers.append(
                         (b"content-security-policy", policy_for(host).encode("latin-1"))
                     )
+                    headers.append((b"referrer-policy", REFERRER_POLICY))
                     message = {**message, "headers": headers}
             await send(message)
 

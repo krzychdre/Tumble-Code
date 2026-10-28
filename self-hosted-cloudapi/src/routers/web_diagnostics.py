@@ -24,12 +24,13 @@ from src.services.diagnostics_service import (
 )
 from src.services.problem_brief import problem_brief_markdown
 from src.utils.clientzone import today
+from src.utils.content_disposition import attachment
 from src.web.presenters.problem_view import ProblemView
 
 router = APIRouter(tags=["web"])
 
 # group_key: 12 hex digits of the signature's SHA-256.
-_GROUP_KEY = re.compile(r"^[0-9a-f]{12}$")
+_GROUP_KEY = re.compile(r"[0-9a-f]{12}")
 
 
 def problem_filter(
@@ -67,7 +68,7 @@ def _markdown(text: str, filename: str) -> PlainTextResponse:
     return PlainTextResponse(
         text,
         media_type="text/markdown; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": attachment(filename)},
     )
 
 
@@ -119,7 +120,7 @@ async def diagnostics_problem_brief(
         await problem_brief_markdown(
             web["db"], web["user"]["user_id"], filters, key=key, zone=web["zone"]
         )
-        if _GROUP_KEY.match(key)
+        if _GROUP_KEY.fullmatch(key)
         else None
     )
     if text is None:
