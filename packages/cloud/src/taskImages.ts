@@ -1,4 +1,4 @@
-import { stat } from "node:fs/promises"
+import { realpath, stat } from "node:fs/promises"
 import path from "node:path"
 
 /**
@@ -88,32 +88,46 @@ export interface LocatedTaskImage {
 	mtimeMs: number
 }
 
+/** True when `child` is `parent` or lies below it. */
+function isInside(parent: string, child: string): boolean {
+	const relative = path.relative(parent, child)
+	return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative))
+}
+
 /**
  * The file behind a reference target (as `findLocalImageReferences` returns
- * it, escapes decoded): relative targets are resolved against
- * the task's workspace (as the CLI does), absolute ones are taken as they are.
- * Undefined when the target is not an image file of an accepted type, does not
- * exist, is not a regular file, is over 10 MB, or is relative with no
- * workspace to resolve it against.
+ * it, escapes decoded): relative targets are resolved against the task's
+ * workspace (as the CLI does), absolute ones are taken as they are.
+ *
+ * Only a file inside the workspace is uploaded. The target is written by the
+ * model, so text it was steered into writing (`![](../../.ssh/x.png)`, an
+ * absolute path to a photo, a symbolic link in the repository pointing out of
+ * it) must not send the user's other files to the cloud. The check compares
+ * real paths, so a link is judged by where it leads.
+ *
+ * Undefined when the target is not an image file of an accepted type, does
+ * not exist, is not a regular file, is over 10 MB, lies outside the workspace,
+ * or there is no workspace.
  */
 export async function locateTaskImage(
 	target: string,
 	workspacePath: string | undefined,
 ): Promise<LocatedTaskImage | undefined> {
 	const mime = imageMimeType(target)
-	if (!mime) {
+	if (!mime || !workspacePath) {
 		return undefined
 	}
-	if (!path.isAbsolute(target) && !workspacePath) {
-		return undefined
-	}
-	const file = workspacePath ? path.resolve(workspacePath, target) : target
+	const file = path.resolve(workspacePath, target)
 	try {
-		const info = await stat(file)
+		const [realWorkspace, realFile] = await Promise.all([realpath(workspacePath), realpath(file)])
+		if (!isInside(realWorkspace, realFile)) {
+			return undefined
+		}
+		const info = await stat(realFile)
 		if (!info.isFile() || info.size > MAX_TASK_IMAGE_BYTES) {
 			return undefined
 		}
-		return { file, mime, size: info.size, mtimeMs: info.mtimeMs }
+		return { file: realFile, mime, size: info.size, mtimeMs: info.mtimeMs }
 	} catch {
 		return undefined
 	}

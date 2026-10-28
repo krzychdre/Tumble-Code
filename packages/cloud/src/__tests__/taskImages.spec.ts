@@ -1,6 +1,6 @@
 // npx vitest run src/__tests__/taskImages.spec.ts
 
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises"
+import { mkdtemp, mkdir, realpath, rm, symlink, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 
@@ -72,7 +72,8 @@ describe("locateTaskImage", () => {
 	let workspace: string
 
 	beforeEach(async () => {
-		workspace = await mkdtemp(path.join(os.tmpdir(), "task-images-"))
+		// The real path: the located file is reported by where it really is.
+		workspace = await realpath(await mkdtemp(path.join(os.tmpdir(), "task-images-")))
 		await mkdir(path.join(workspace, "monitoring"))
 		await writeFile(path.join(workspace, "monitoring", "chart.png"), Buffer.from([1, 2, 3]))
 	})
@@ -91,14 +92,44 @@ describe("locateTaskImage", () => {
 		expect(typeof image?.mtimeMs).toBe("number")
 	})
 
-	it("takes an absolute target as it is", async () => {
+	it("takes an absolute target inside the workspace", async () => {
 		const file = path.join(workspace, "monitoring", "chart.png")
-		expect((await locateTaskImage(file, "/somewhere/else"))?.file).toBe(file)
-		expect((await locateTaskImage(file, undefined))?.file).toBe(file)
+		expect((await locateTaskImage(file, workspace))?.file).toBe(file)
 	})
 
-	it("skips a relative target with no workspace", async () => {
-		expect(await locateTaskImage("monitoring/chart.png", undefined)).toBeUndefined()
+	describe("never uploads a file outside the workspace", () => {
+		let outside: string
+
+		beforeEach(async () => {
+			outside = await realpath(await mkdtemp(path.join(os.tmpdir(), "task-images-outside-")))
+			await writeFile(path.join(outside, "private.png"), Buffer.from([1, 2, 3]))
+		})
+
+		afterEach(async () => {
+			await rm(outside, { recursive: true, force: true })
+		})
+
+		it("refuses an absolute path elsewhere", async () => {
+			expect(await locateTaskImage(path.join(outside, "private.png"), workspace)).toBeUndefined()
+		})
+
+		it("refuses a relative path that climbs out", async () => {
+			const climbing = path.relative(workspace, path.join(outside, "private.png"))
+			expect(climbing.startsWith("..")).toBe(true)
+			expect(await locateTaskImage(climbing, workspace)).toBeUndefined()
+		})
+
+		it.skipIf(process.platform === "win32")("refuses a link in the workspace that leads out of it", async () => {
+			await symlink(path.join(outside, "private.png"), path.join(workspace, "innocent.png"))
+			await symlink(outside, path.join(workspace, "linked-dir"))
+
+			expect(await locateTaskImage("innocent.png", workspace)).toBeUndefined()
+			expect(await locateTaskImage("linked-dir/private.png", workspace)).toBeUndefined()
+		})
+
+		it("refuses any target when there is no workspace", async () => {
+			expect(await locateTaskImage(path.join(outside, "private.png"), undefined)).toBeUndefined()
+		})
 	})
 
 	it("skips missing files, directories and other types", async () => {
