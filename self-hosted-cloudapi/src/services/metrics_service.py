@@ -11,10 +11,10 @@ the metrics page needs:
     {"mode", "apiProvider", "modelId", "taskId",
      "inputTokens", "outputTokens", "cacheReadTokens", "cacheWriteTokens", "cost"}
 
-``telemetry_events.properties`` is stored as a JSON *string* (TEXT), and the test
-suite runs on SQLite (no jsonb operators), so we load the rows and aggregate in
-Python. The volume is modest (one self-hosted user), so this is cheap and
-dialect-portable. Event names, kinds, labels and the payload decoding come from
+Ingest lifts those figures out of the JSON ``properties`` into columns
+(``telemetry_vocab.event_columns``), so the page reads narrow rows and parses
+no JSON. The rows are summed in Python, which reads the same on SQLite (the
+test suite) and Postgres. Event names and kind labels come from
 ``services/telemetry_vocab``.
 """
 
@@ -37,18 +37,15 @@ from src.services.telemetry_vocab import (
     EMBEDDING_EVENT,
     KIND_LABELS,
     LLM_COMPLETION_EVENT,
-    completion_kind,
-    iter_event_props,
-    parse_event_props,
 )
 from src.utils.clientzone import UTC, day_start_utc, local_day, today
-from src.utils.format import fmt_duration, fmt_tokens, num as _num
+from src.utils.format import fmt_duration, fmt_tokens
 
 logger = logging.getLogger(__name__)
 
-# (key, name) of the group an event belongs to, from its payload and its row
-# of the completions query (web/presenters/metrics_view.GROUPINGS).
-GroupKey = Callable[[dict, Row], tuple[str, str]]
+# (key, name) of the group an event belongs to, from its row of the
+# completions query (web/presenters/metrics_view.GROUPINGS).
+GroupKey = Callable[[Row], tuple[str, str]]
 
 # Period presets -> how many of the reader's calendar days to include, today
 # counted (None = all time). The key is what the route accepts as ?period=...
@@ -86,14 +83,15 @@ def period_start(
     return day_start_utc(today(zone, now) - timedelta(days=days - 1), zone)
 
 
-async def _embedding_payloads(
+async def _embedding_rows(
     db: AsyncSession,
     user_id: str,
     start: Optional[datetime],
     client: Optional[str] = None,
-) -> list:
-    """The ``properties`` blobs of the user's embedding events in the period."""
-    stmt = select(TelemetryEvent.properties).where(
+) -> Sequence[Row]:
+    """``(input_tokens, embedding_source)`` of the user's embedding events in
+    the period."""
+    stmt = select(TelemetryEvent.input_tokens, TelemetryEvent.embedding_source).where(
         TelemetryEvent.user_id == user_id,
         TelemetryEvent.event_type == EMBEDDING_EVENT,
     )
@@ -101,10 +99,10 @@ async def _embedding_payloads(
         stmt = stmt.where(TelemetryEvent.created_at >= start)
     if client is not None:
         stmt = stmt.where(TelemetryEvent.client_kind == client)
-    return [payload for (payload,) in (await db.execute(stmt)).all()]
+    return (await db.execute(stmt)).all()
 
 
-def _embedding_totals(payloads: Iterable) -> dict:
+def _embedding_totals(rows: Iterable[Row]) -> dict:
     """Tokens spent on code-index embeddings in the period, by source.
 
     Reported apart from the completion totals rather than inside them. An index
@@ -115,11 +113,10 @@ def _embedding_totals(payloads: Iterable) -> dict:
     total = 0
     calls = 0
     by_source: dict[str, dict] = {}
-    for props in iter_event_props(payloads):
-        tokens = int(_num(props.get("promptTokens")))
+    for tokens, source in rows:
         total += tokens
         calls += 1
-        source = str(props.get("source") or "unknown")
+        source = source or "unknown"
         slot = by_source.setdefault(source, {"name": source, "tokens": 0, "count": 0})
         slot["tokens"] += tokens
         slot["count"] += 1
@@ -183,7 +180,18 @@ async def compute_user_metrics(
     # event's task's, joined on the primary keys; its name only when the user
     # may see it (an organization they left), as on the task list.
     columns = [
-        TelemetryEvent.properties,
+        TelemetryEvent.task_id,
+        TelemetryEvent.input_tokens,
+        TelemetryEvent.output_tokens,
+        TelemetryEvent.cache_read_tokens,
+        TelemetryEvent.cache_write_tokens,
+        TelemetryEvent.cost,
+        TelemetryEvent.duration_ms,
+        TelemetryEvent.model_id,
+        TelemetryEvent.provider,
+        TelemetryEvent.mode,
+        TelemetryEvent.completion_kind,
+        TelemetryEvent.usage_reported,
         TelemetryEvent.created_at,
         TelemetryEvent.client_kind,
         Task.project_id,
@@ -235,10 +243,10 @@ async def compute_user_metrics(
 
     rows = (await db.execute(stmt)).all()
     # Indexing belongs to no task, so it is in no group and no organization.
-    embedding_payloads = (
+    embeddings = (
         []
         if only or organization_id
-        else await _embedding_payloads(db, user_id, start, client)
+        else await _embedding_rows(db, user_id, start, client)
     )
 
     # The loop below is pure Python over every completion in the period (about
@@ -247,7 +255,7 @@ async def compute_user_metrics(
     return await anyio.to_thread.run_sync(
         aggregate_user_metrics,
         rows,
-        embedding_payloads,
+        embeddings,
         period,
         now,
         zone,
@@ -257,8 +265,8 @@ async def compute_user_metrics(
 
 
 def aggregate_user_metrics(
-    rows: Sequence[tuple],
-    embedding_payloads: Sequence,
+    rows: Sequence[Row],
+    embeddings: Sequence[Row],
     period: str,
     now: Optional[datetime] = None,
     zone: ZoneInfo = UTC,
@@ -267,11 +275,11 @@ def aggregate_user_metrics(
 ) -> dict:
     """The metrics page's figures from the fetched rows; see compute_user_metrics.
 
-    ``rows`` are the completions query's rows (``properties``, ``created_at``,
-    ``client_kind``, ``project_id``, ``project_name`` and, in an organization,
-    who ran the event) of the period's ``LLM Completion`` events, oldest first;
-    ``embedding_payloads`` the ``properties`` of its embedding events. Pure: no
-    database, no I/O.
+    ``rows`` are the completions query's rows (the event's task and figures,
+    ``created_at``, ``client_kind``, ``project_id``, ``project_name`` and, in
+    an organization, who ran the event) of the period's ``LLM Completion``
+    events, oldest first; ``embeddings`` the ``(input_tokens,
+    embedding_source)`` of its embedding events. Pure: no database, no I/O.
     """
     totals = {
         "input": 0,
@@ -295,8 +303,6 @@ def aggregate_user_metrics(
     duration_ms = 0
     task_ids: set[str] = set()
     groups: dict[str, dict] = {}
-    # Rows of the shown group (all of them when the page is not narrowed).
-    kept = 0
 
     def _bucket(store: dict, name: str, tokens: float, cost: float) -> None:
         slot = store.setdefault(
@@ -307,37 +313,28 @@ def aggregate_user_metrics(
         slot["count"] += 1
 
     for row in rows:
-        props = parse_event_props(row.properties)
         if group_key is not None:
-            key, name = group_key(props or {}, row)
+            key, name = group_key(row)
             if only and key != only:
                 continue
-        kept += 1
-        if props is None:
-            continue
 
-        tin = _num(props.get("inputTokens"))
-        tout = _num(props.get("outputTokens"))
-        cread = _num(props.get("cacheReadTokens"))
-        cwrite = _num(props.get("cacheWriteTokens"))
-        cost = _num(props.get("cost"))
-        tokens = tin + tout
+        cost = row.cost
+        tokens = row.input_tokens + row.output_tokens
 
-        totals["input"] += tin
-        totals["output"] += tout
-        totals["cache_read"] += cread
-        totals["cache_write"] += cwrite
+        totals["input"] += row.input_tokens
+        totals["output"] += row.output_tokens
+        totals["cache_read"] += row.cache_read_tokens
+        totals["cache_write"] += row.cache_write_tokens
         totals["cost"] += cost
         totals["completions"] += 1
 
-        kind = completion_kind(props)
-        if props.get("usageReported") is False:
+        if not row.usage_reported:
             unreported += 1
 
-        _bucket(by_model, str(props.get("modelId") or "unknown"), tokens, cost)
-        _bucket(by_mode, str(props.get("mode") or "unknown"), tokens, cost)
-        _bucket(by_provider, str(props.get("apiProvider") or "unknown"), tokens, cost)
-        _bucket(by_kind, kind, tokens, cost)
+        _bucket(by_model, row.model_id or "unknown", tokens, cost)
+        _bucket(by_mode, row.mode or "unknown", tokens, cost)
+        _bucket(by_provider, row.provider or "unknown", tokens, cost)
+        _bucket(by_kind, row.completion_kind, tokens, cost)
         _bucket(by_client, row.client_kind or "unknown", tokens, cost)
 
         created = row.created_at or (now or datetime.now(timezone.utc))
@@ -346,8 +343,8 @@ def aggregate_user_metrics(
         dslot["tokens"] += tokens
         dslot["cost"] += cost
 
-        duration_ms += _num(props.get("durationMs"))
-        task_id = props.get("taskId")
+        duration_ms += row.duration_ms
+        task_id = row.task_id
         if task_id:
             task_ids.add(task_id)
 
@@ -385,7 +382,7 @@ def aggregate_user_metrics(
     for row in clients:
         row["label"] = CLIENT_LABELS.get(row["name"], row["name"])
     days = sorted(by_day.values(), key=lambda d: d["day"])
-    embeddings = _embedding_totals(embedding_payloads)
+    embedding_totals = _embedding_totals(embeddings)
 
     total_tokens = totals["input"] + totals["output"]
 
@@ -415,8 +412,8 @@ def aggregate_user_metrics(
         "by_kind": kinds,
         "by_client": clients,
         "unreported": unreported,
-        "embeddings": embeddings,
+        "embeddings": embedding_totals,
         "by_day": days,
         "groups": by_group,
-        "has_data": kept > 0,
+        "has_data": totals["completions"] > 0,
     }

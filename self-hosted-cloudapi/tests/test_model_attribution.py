@@ -29,6 +29,7 @@ from src.services.model_attribution import (
 
 from tests.web_helpers import (
     _add_message,
+    _event_row,
     _llm_event,
     _override_web_user,
     _seed_user,
@@ -314,13 +315,10 @@ async def test_completions_for_task_reads_only_that_task_and_only_completions(
     await _seed_user(db_session)
     db_session.add(_llm_event(task_id="task-m4", model="wanted", tin=1, tout=1))
     db_session.add(_llm_event(task_id="other", model="unwanted", tin=2, tout=2))
+    # Names no model, so it attributes nothing.
+    db_session.add(_llm_event(task_id="task-m4", model=None, tin=3, tout=3))
     db_session.add(
-        TelemetryEvent(
-            user_id="user_test",
-            event_type="Task Message",
-            task_id="task-m4",
-            properties=json.dumps({"taskId": "task-m4", "modelId": "not-a-completion"}),
-        )
+        _event_row("Task Message", {"taskId": "task-m4", "modelId": "not-a-completion"})
     )
     await db_session.commit()
 

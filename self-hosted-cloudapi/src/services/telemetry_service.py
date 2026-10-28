@@ -34,7 +34,7 @@ from src.services.task_tree import (
     link_pending_children,
     record_relation,
 )
-from src.services.telemetry_vocab import LLM_COMPLETION_EVENT
+from src.services.telemetry_vocab import LLM_COMPLETION_EVENT, event_columns
 
 
 async def _live_quality_kind(db, task_id: str, message: dict, ts) -> str | None:
@@ -227,6 +227,26 @@ async def _stamp_project(db, task) -> None:
         )
 
 
+def event_row(
+    user_id: str, org_id: str | None, event_type: str, properties: dict
+) -> TelemetryEvent:
+    """The row ``record_event`` stores for an event: its payload, and the
+    columns lifted out of it so readers need not parse it."""
+    task_id = properties.get("taskId")
+    return TelemetryEvent(
+        user_id=user_id,
+        organization_id=org_id,
+        event_type=event_type,
+        # Lifted out of the blob at write time: every reader that asks "what
+        # happened in this task" then does an indexed lookup instead of parsing
+        # JSON across the whole event corpus.
+        task_id=task_id if isinstance(task_id, str) and task_id else None,
+        client_kind=client_kind_from(properties),
+        properties=json.dumps(properties),
+        **event_columns(event_type, properties),
+    )
+
+
 async def record_event(
     db: AsyncSession,
     user_id: str,
@@ -235,26 +255,14 @@ async def record_event(
     properties: dict,
 ) -> None:
     """Record a telemetry event."""
-    task_id = properties.get("taskId") if isinstance(properties, dict) else None
-    client_kind = client_kind_from(properties)
-    event = TelemetryEvent(
-        user_id=user_id,
-        organization_id=org_id,
-        event_type=event_type,
-        # Lifted out of the blob at write time: every reader that asks "what
-        # happened in this task" then does an indexed lookup instead of parsing
-        # JSON across the whole event corpus.
-        task_id=task_id if isinstance(task_id, str) and task_id else None,
-        client_kind=client_kind,
-        properties=json.dumps(properties),
-    )
+    event = event_row(user_id, org_id, event_type, properties)
     db.add(event)
     await db.flush()
 
     # Which client ran the task: the task's own messages never say, its
     # telemetry does (services/client_kind).
     if event.task_id and user_id:
-        await stamp_task_client(db, event.task_id, user_id, client_kind)
+        await stamp_task_client(db, event.task_id, user_id, event.client_kind)
 
     # Telemetry is the only place a subtask states which task spawned it, and
     # it says so long before the subtask exists as a row. Capture the link here
@@ -264,10 +272,8 @@ async def record_event(
     # …and the only place that says which model answered: a stored
     # `api_req_started` carries tokens and cost but no model. See
     # services/model_attribution.
-    if event_type == LLM_COMPLETION_EVENT and event.task_id:
-        model = properties.get("modelId")
-        if isinstance(model, str) and model:
-            await note_completion_model(db, event.task_id, model)
+    if event_type == LLM_COMPLETION_EVENT and event.task_id and event.model_id:
+        await note_completion_model(db, event.task_id, event.model_id)
 
 
 class TaskNotOwnedError(Exception):

@@ -42,7 +42,7 @@ from src.models.task import Task, TaskMessage
 from src.services.client_kind import CLIENT_VSCODE
 from src.services.model_attribution import (
     Completion,
-    completion_from_properties,
+    completions_by_task,
     match_requests,
 )
 from src.services.problems.base import (
@@ -191,20 +191,7 @@ async def _completions_by_task(
     """Each task's completion events (the owner's only), oldest first."""
     completions: dict[str, list[Completion]] = {}
     for chunk in chunks(task_ids):
-        rows = await db.execute(
-            select(TelemetryEvent.task_id, TelemetryEvent.properties)
-            .where(
-                TelemetryEvent.user_id == user_id,
-                TelemetryEvent.event_type == LLM_COMPLETION_EVENT,
-                TelemetryEvent.task_id.in_(chunk),
-            )
-            .order_by(TelemetryEvent.created_at)
-        )
-        for task_id, payload in rows.all():
-            props = parse_event_props(payload)
-            completion = completion_from_properties(props) if props else None
-            if completion is not None:
-                completions.setdefault(task_id, []).append(completion)
+        completions.update(await completions_by_task(db, user_id, chunk))
     return completions
 
 
@@ -401,11 +388,12 @@ async def _telemetry_occurrences(db, user_id, start, cutoff) -> list[Occurrence]
 
 async def _request_counts(
     db, user_id: str, start: Optional[datetime], client: str = ""
-):
+) -> Counter:
     """The period's LLM Completion events by ``(provider, model)``, of one
     client when ``client`` names one (the model fit then compares like with
-    like)."""
-    stmt = select(TelemetryEvent.properties).where(
+    like). A completion that names no provider counts under "", one that
+    names no model under ``UNKNOWN_MODEL``."""
+    stmt = select(TelemetryEvent.provider, TelemetryEvent.model_id, func.count()).where(
         TelemetryEvent.user_id == user_id,
         TelemetryEvent.event_type == LLM_COMPLETION_EVENT,
     )
@@ -413,28 +401,12 @@ async def _request_counts(
         stmt = stmt.where(TelemetryEvent.created_at >= start)
     if client:
         stmt = stmt.where(TelemetryEvent.client_kind == client)
-    payloads = [payload for (payload,) in (await db.execute(stmt)).all()]
+    stmt = stmt.group_by(TelemetryEvent.provider, TelemetryEvent.model_id)
 
-    def count() -> Counter:
-        counts: Counter = Counter()
-        for payload in payloads:
-            props = parse_event_props(payload)
-            if not props:
-                continue
-            model = (
-                props.get("modelId")
-                if isinstance(props.get("modelId"), str) and props.get("modelId")
-                else UNKNOWN_MODEL
-            )
-            provider = (
-                props.get("apiProvider")
-                if isinstance(props.get("apiProvider"), str)
-                else ""
-            )
-            counts[(provider, model)] += 1
-        return counts
-
-    return await anyio.to_thread.run_sync(count)
+    counts: Counter = Counter()
+    for provider, model, count in (await db.execute(stmt)).all():
+        counts[(provider or "", model or UNKNOWN_MODEL)] += count
+    return counts
 
 
 async def first_report_at(db: AsyncSession, user_id: str) -> Optional[datetime]:

@@ -1,6 +1,16 @@
 """TelemetryEvent model."""
 
-from sqlalchemy import Column, String, Text, ForeignKey, DateTime, Index
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    String,
+    Text,
+)
 from datetime import datetime, timezone
 
 from src.models.base import Base, generate_id
@@ -47,6 +57,25 @@ class TelemetryEvent(Base):
     client_kind = Column(
         String, nullable=False, default="vscode", server_default="vscode"
     )
+    # The figures of an LLM Completion or an Embedding Usage event, lifted out
+    # of `properties` at ingest (services/telemetry_vocab.event_columns), so
+    # the metrics, diagnostics and task pages read columns instead of parsing
+    # every payload of their period. NULL on every other event type; filled
+    # on every event of those two types (migration e8f9a0b1c2d3 backfilled
+    # the older ones).
+    input_tokens = Column(BigInteger, nullable=True)  # an embedding's promptTokens
+    output_tokens = Column(BigInteger, nullable=True)
+    cache_read_tokens = Column(BigInteger, nullable=True)
+    cache_write_tokens = Column(BigInteger, nullable=True)
+    cost = Column(Float, nullable=True)
+    duration_ms = Column(BigInteger, nullable=True)
+    # A name is NULL when the event did not give one.
+    model_id = Column(String, nullable=True)
+    provider = Column(String, nullable=True)
+    mode = Column(String, nullable=True)
+    embedding_source = Column(String, nullable=True)
+    completion_kind = Column(String, nullable=True)
+    usage_reported = Column(Boolean, nullable=True)
     properties = Column(Text, default="{}")
     created_at = Column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

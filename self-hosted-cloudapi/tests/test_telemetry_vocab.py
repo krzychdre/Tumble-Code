@@ -1,24 +1,35 @@
 """One telemetry vocabulary (CAPI-M3).
 
-The event names, the completion kinds, their labels, the "decode a JSON
-properties payload, skip anything that is not an object" loop and the
-``api_req_started`` parser used to be written out separately in
-``metrics_service``, ``model_attribution``, ``retention_service`` and
-``task_summary``. A copy that drifts is exactly how CB-7 happened (two ``_num``
-copies disagreed about ``bool``), so this file pins two things:
+The event names, the completion kinds, their labels, the decoding of a JSON
+properties payload and the ``api_req_started`` parser used to be written out
+separately in ``metrics_service``, ``model_attribution``,
+``retention_service`` and ``task_summary``. A copy that drifts is exactly how
+CB-7 happened (two ``_num`` copies disagreed about ``bool``), so this file pins
+three things:
 
 1. characterization: what each of the old call sites did, so the move to
    ``services/telemetry_vocab`` provably changes no behaviour;
-2. identity: every module uses the SAME objects from ``telemetry_vocab``, in the
+2. the columns ingest lifts out of an event (``event_columns``), which every
+   page reads instead of the payload;
+3. identity: every module uses the SAME objects from ``telemetry_vocab``, in the
    style of ``test_format_helpers_are_single_source_of_truth``.
 """
 
 import json
 
 import pytest
+from sqlalchemy import select
 
+from src.models.event import TelemetryEvent
 from src.services import metrics_service, model_attribution, task_summary
-from src.services.telemetry_vocab import TASK_KIND
+from src.services.telemetry_service import record_event
+from src.services.telemetry_vocab import (
+    EMBEDDING_EVENT,
+    LLM_COMPLETION_EVENT,
+    TASK_KIND,
+    event_columns,
+)
+from tests.web_helpers import _event_row, _seed_user
 
 # --- characterization: the two label maps -----------------------------------
 
@@ -61,11 +72,10 @@ def test_side_calls_summary_labels_known_and_unknown_kinds():
 
 # --- the kind read off an event: one rule for both pages --------------------
 #
-# The metrics page used to read the kind as ``str(kind or "task")``, so a
-# malformed numeric kind became its own row "5", while the task detail page
-# (``completion_from_properties``) counted it as a conversation turn. Owner
-# decision 25: both pages treat a kind that is not a non-empty string as an
-# ordinary conversation turn, through ``telemetry_vocab.completion_kind``.
+# Owner decision 25: a kind that is not a non-empty string is an ordinary
+# conversation turn (``telemetry_vocab.completion_kind``). Ingest stores the
+# kind it reads in ``completion_kind``, and the metrics page and the task
+# detail page both read that column, so they count an event the same way.
 
 # (raw completionKind, or MISSING for no key) -> the kind both pages use
 MISSING = object()
@@ -91,17 +101,9 @@ def _props_with_kind(raw) -> dict:
 
 
 @pytest.mark.parametrize("raw, kind", KIND_CASES)
-def test_completion_kind(raw, kind):
-    from src.services.telemetry_vocab import completion_kind
-
-    assert completion_kind(_props_with_kind(raw)) == kind
-
-
-@pytest.mark.parametrize("raw, kind", KIND_CASES)
-def test_completion_kind_on_the_task_detail_page(raw, kind):
-    completion = model_attribution.completion_from_properties(_props_with_kind(raw))
-    assert completion is not None
-    assert completion.kind == kind
+def test_completion_kind_stored_at_ingest(raw, kind):
+    columns = event_columns(LLM_COMPLETION_EVENT, _props_with_kind(raw))
+    assert columns["completion_kind"] == kind
 
 
 async def test_completion_kind_on_the_metrics_page_counts_a_malformed_kind_as_a_turn(
@@ -109,23 +111,17 @@ async def test_completion_kind_on_the_metrics_page_counts_a_malformed_kind_as_a_
 ):
     """A numeric, boolean, list or empty kind lands in the Conversation row,
     exactly as the task detail page counts it, instead of a row of its own."""
-    from tests.web_helpers import _seed_user
-    from src.models.event import TelemetryEvent
-
     await _seed_user(db_session)
     for kind in (5, True, ["memory"], "", "memory"):
         db_session.add(
-            TelemetryEvent(
-                user_id="user_test",
-                event_type="LLM Completion",
-                properties=json.dumps(
-                    {
-                        "modelId": "m",
-                        "inputTokens": 1,
-                        "outputTokens": 0,
-                        "completionKind": kind,
-                    }
-                ),
+            _event_row(
+                LLM_COMPLETION_EVENT,
+                {
+                    "modelId": "m",
+                    "inputTokens": 1,
+                    "outputTokens": 0,
+                    "completionKind": kind,
+                },
             )
         )
     await db_session.commit()
@@ -137,49 +133,210 @@ async def test_completion_kind_on_the_metrics_page_counts_a_malformed_kind_as_a_
     assert rows == {"task": ("Conversation", 4), "memory": ("Memory recall", 1)}
 
 
-# --- characterization: skipping undecodable payloads ------------------------
+# --- the columns ingest lifts out of an event --------------------------------
+
+# Every column event_columns fills for some event type.
+LIFTED = sorted(
+    set(event_columns(LLM_COMPLETION_EVENT, {}))
+    | set(event_columns(EMBEDDING_EVENT, {}))
+)
+NO_FIGURES = dict.fromkeys(LIFTED)
+
+INGEST_CASES = [
+    pytest.param(
+        LLM_COMPLETION_EVENT,
+        {
+            "taskId": "t1",
+            "modelId": "glm",
+            "apiProvider": "zai",
+            "mode": "code",
+            "inputTokens": 1000,
+            "outputTokens": 20,
+            "cacheReadTokens": 300,
+            "cacheWriteTokens": 40,
+            "cost": 0.25,
+            "durationMs": 1500,
+            "completionKind": "condense",
+            "usageReported": True,
+        },
+        {
+            "input_tokens": 1000,
+            "output_tokens": 20,
+            "cache_read_tokens": 300,
+            "cache_write_tokens": 40,
+            "cost": 0.25,
+            "duration_ms": 1500,
+            "model_id": "glm",
+            "provider": "zai",
+            "mode": "code",
+            "completion_kind": "condense",
+            "usage_reported": True,
+        },
+        id="completion",
+    ),
+    # Nothing but the task: every number 0, every name NULL, a reported turn.
+    pytest.param(
+        LLM_COMPLETION_EVENT,
+        {"taskId": "t1"},
+        {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost": 0.0,
+            "duration_ms": 0,
+            "completion_kind": TASK_KIND,
+            "usage_reported": True,
+        },
+        id="completion-missing-fields",
+    ),
+    # Strings and booleans are no numbers, a float duration is stored whole,
+    # an empty name is no name.
+    pytest.param(
+        LLM_COMPLETION_EVENT,
+        {
+            "modelId": "",
+            "apiProvider": "",
+            "mode": "",
+            "inputTokens": "900",
+            "outputTokens": True,
+            "cacheReadTokens": False,
+            "cost": "1.5",
+            "durationMs": 1500.0,
+            "usageReported": False,
+        },
+        {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost": 0.0,
+            "duration_ms": 1500,
+            "completion_kind": TASK_KIND,
+            "usage_reported": False,
+        },
+        id="completion-odd-values",
+    ),
+    # What a hostile client or its own server can report: a figure outside
+    # one request's bounds is none, the bounds themselves are kept.
+    pytest.param(
+        LLM_COMPLETION_EVENT,
+        {
+            "inputTokens": 10**19,
+            "outputTokens": -5,
+            "cacheReadTokens": 10**9,
+            "cacheWriteTokens": 1e9 + 1,
+            "cost": 1e300,
+            "durationMs": 24 * 3600 * 1000 + 1,
+        },
+        {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cache_read_tokens": 10**9,
+            "cache_write_tokens": 0,
+            "cost": 0.0,
+            "duration_ms": 0,
+            "completion_kind": TASK_KIND,
+            "usage_reported": True,
+        },
+        id="completion-out-of-bounds",
+    ),
+    pytest.param(
+        LLM_COMPLETION_EVENT,
+        {"cost": -1000, "durationMs": 24 * 3600 * 1000, "inputTokens": 0.5},
+        {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost": 0.0,
+            "duration_ms": 24 * 3600 * 1000,
+            "completion_kind": TASK_KIND,
+            "usage_reported": True,
+        },
+        id="completion-negative-cost",
+    ),
+    # Only a string is a name; control, format and surrogate characters go,
+    # and a name is cut to 256 bytes on a character boundary.
+    pytest.param(
+        LLM_COMPLETION_EVENT,
+        {
+            "modelId": " evil\x00mo\u200bdel\n",
+            "apiProvider": "\ud800zai",
+            "mode": 5,
+            "completionKind": "con\x00dense",
+        },
+        {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost": 0.0,
+            "duration_ms": 0,
+            "model_id": "evilmodel",
+            "provider": "zai",
+            "completion_kind": "condense",
+            "usage_reported": True,
+        },
+        id="completion-odd-names",
+    ),
+    pytest.param(
+        LLM_COMPLETION_EVENT,
+        {"modelId": "m" + "\U0001f600" * 100, "mode": ["code"], "apiProvider": {}},
+        {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost": 0.0,
+            "duration_ms": 0,
+            "model_id": "m" + "\U0001f600" * 63,
+            "completion_kind": TASK_KIND,
+            "usage_reported": True,
+        },
+        id="completion-long-name",
+    ),
+    pytest.param(
+        EMBEDDING_EVENT,
+        {"promptTokens": 5000, "totalTokens": 5000, "source": "index-scan"},
+        {"input_tokens": 5000, "embedding_source": "index-scan"},
+        id="embedding",
+    ),
+    pytest.param(
+        EMBEDDING_EVENT,
+        {"promptTokens": 2 * 10**9, "source": 7},
+        {"input_tokens": 0},
+        id="embedding-out-of-bounds",
+    ),
+    pytest.param(
+        EMBEDDING_EVENT,
+        {"promptTokens": "12"},
+        {"input_tokens": 0},
+        id="embedding-odd-values",
+    ),
+    pytest.param(
+        "Task Message",
+        {"taskId": "t1", "modelId": "glm", "inputTokens": 5},
+        {},
+        id="other-event",
+    ),
+]
 
 
-async def test_metrics_and_attribution_skip_payloads_that_are_not_json_objects(
-    db_session,
+@pytest.mark.parametrize("event_type, props, columns", INGEST_CASES)
+async def test_ingest_stores_the_figures_of_an_event(
+    db_session, event_type, props, columns
 ):
-    from tests.web_helpers import _seed_user
-    from src.models.event import TelemetryEvent
-
     await _seed_user(db_session)
-    good = {"taskId": "t1", "modelId": "m", "inputTokens": 7, "outputTokens": 3}
-    for payload in ("not json", "[1, 2]", "42", None, json.dumps(good)):
-        db_session.add(
-            TelemetryEvent(
-                user_id="user_test",
-                task_id="t1",
-                event_type="LLM Completion",
-                properties=payload,
-            )
-        )
-    for payload in ("{", '"x"', json.dumps({"promptTokens": 9, "source": "s"})):
-        db_session.add(
-            TelemetryEvent(
-                user_id="user_test", event_type="Embedding Usage", properties=payload
-            )
-        )
-    await db_session.commit()
 
-    m = await metrics_service.compute_user_metrics(
-        db_session, "user_test", period="all"
-    )
-    # ``None`` decodes as ``{}``: an empty completion is still a completion.
-    assert m["totals"]["completions"] == 2
-    assert m["totals"]["total_tokens"] == 10
-    assert m["embeddings"]["calls"] == 1
-    assert m["embeddings"]["tokens"] == 9
+    await record_event(db_session, "user_test", None, event_type, props)
 
-    completions = await model_attribution.completions_for_task(
-        db_session, "t1", "user_test"
-    )
-    assert [(c.model, c.input_tokens, c.output_tokens) for c in completions] == [
-        ("m", 7, 3)
-    ]
+    stored = (
+        await db_session.execute(
+            select(*(getattr(TelemetryEvent, name) for name in LIFTED))
+        )
+    ).one()
+    assert dict(stored._mapping) == {**NO_FIGURES, **columns}
 
 
 # --- characterization: the two api_req_started parsers ----------------------
@@ -258,12 +415,13 @@ def test_the_two_api_req_started_readers(msg, pair, metrics):
 # --- the shared module ------------------------------------------------------
 
 
-def test_iter_event_props_yields_only_json_objects():
-    from src.services.telemetry_vocab import iter_event_props, parse_event_props
+def test_parse_event_props_reads_only_json_objects():
+    from src.services.telemetry_vocab import parse_event_props
 
-    payloads = ['{"a": 1}', "not json", "[1]", "3", None, "", '{"b": 2}']
-    assert list(iter_event_props(payloads)) == [{"a": 1}, {}, {}, {"b": 2}]
+    assert parse_event_props('{"a": 1}') == {"a": 1}
+    assert parse_event_props("not json") is None
     assert parse_event_props("[1]") is None
+    assert parse_event_props("") == {}
     assert parse_event_props(None) == {}
     assert parse_event_props(b'{"c": 3}') == {"c": 3}
 
@@ -302,19 +460,15 @@ def test_telemetry_vocabulary_is_single_source_of_truth():
     assert metrics_service.LLM_COMPLETION_EVENT is vocab.LLM_COMPLETION_EVENT
     assert metrics_service.EMBEDDING_EVENT is vocab.EMBEDDING_EVENT
     assert metrics_service.KIND_LABELS is vocab.KIND_LABELS
-    assert metrics_service.iter_event_props is vocab.iter_event_props
-    assert metrics_service.parse_event_props is vocab.parse_event_props
-    assert metrics_service.completion_kind is vocab.completion_kind
 
     assert model_attribution.LLM_COMPLETION_EVENT is vocab.LLM_COMPLETION_EVENT
     assert model_attribution.TASK_KIND is vocab.TASK_KIND
     assert model_attribution.SIDE_CALL_LABELS is vocab.KIND_LABELS
-    assert model_attribution.iter_event_props is vocab.iter_event_props
     assert model_attribution.api_req_started_payload is vocab.api_req_started_payload
-    assert model_attribution.completion_kind is vocab.completion_kind
 
     assert task_summary.api_req_started_payload is vocab.api_req_started_payload
     assert telemetry_service.LLM_COMPLETION_EVENT is vocab.LLM_COMPLETION_EVENT
+    assert telemetry_service.event_columns is vocab.event_columns
 
     # Retention protects every event the metrics page reads. Extend, never shrink.
     assert retention_service.PROTECTED_EVENT_TYPES[0] is vocab.LLM_COMPLETION_EVENT

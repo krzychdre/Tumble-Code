@@ -6,6 +6,8 @@ out separately in ``metrics_service``, ``model_attribution``,
 ``retention_service`` and ``task_summary``. Copies drift (CB-7 was two ``_num``
 copies that disagreed about ``bool``), so every reader imports them from here;
 ``tests/test_telemetry_vocab.py`` checks that by object identity.
+``event_columns`` is the one rule for the figures ingest lifts out of an
+event into columns, which the pages read instead of the JSON.
 
 Keep the names and kinds in sync with ``packages/types/src/telemetry.ts``
 (``TelemetryEventName`` and the ``CompletionKind`` enum).
@@ -14,7 +16,15 @@ Keep the names and kinds in sync with ``packages/types/src/telemetry.ts``
 from __future__ import annotations
 
 import json
-from typing import Iterable, Iterator, Optional
+import unicodedata
+from typing import Optional
+
+from src.utils.format import (
+    MAX_REQUEST_COST,
+    MAX_REQUEST_MS,
+    MAX_REQUEST_TOKENS,
+    figure,
+)
 
 # TelemetryEventName.LLM_COMPLETION: one per completed request, carrying tokens,
 # cost, model, provider, mode and the task it belongs to.
@@ -66,19 +76,84 @@ KIND_LABELS: dict[str, str] = {
 }
 
 
+# The longest name stored, in UTF-8 bytes: far above any real model id (the
+# longest live one has 41 characters, a Bedrock ARN about 90).
+NAME_MAX_BYTES = 256
+
+
+def clean_name(value) -> Optional[str]:
+    """A client-sent name (model, provider, mode, kind, source) as stored, or
+    None when there is none.
+
+    Only a string is a name. Control, format and surrogate characters go (a
+    NUL or a lone surrogate is text Postgres refuses, a bidi override would
+    reorder a page), the ends are trimmed, and the rest is cut to
+    ``NAME_MAX_BYTES`` on a character boundary.
+    """
+    if not isinstance(value, str):
+        return None
+    kept = "".join(
+        ch for ch in value if unicodedata.category(ch) not in ("Cc", "Cf", "Cs")
+    )
+    return kept.encode()[:NAME_MAX_BYTES].decode(errors="ignore").strip() or None
+
+
 def completion_kind(props: dict) -> str:
     """The kind of the completion an ``LLM Completion`` event records.
 
-    Any non-empty string is taken as is (an unknown one still gets its own row,
-    see ``KIND_LABELS``). A missing, null or empty kind, and one that is not a
-    string at all (a number, a boolean, a list), is an ordinary conversation
-    turn, ``TASK_KIND``: the extension only ever sends ``CompletionKind``
-    strings, and an event from before it reported the kind has none. The
-    metrics page and the task detail page both read the kind through this
-    function, so they count the same event the same way (owner decision 25).
+    Any name is taken as ``clean_name`` reads it (an unknown one still gets
+    its own row, see ``KIND_LABELS``). A missing, null or empty kind, and one
+    that is not a string at all (a number, a boolean, a list), is an ordinary
+    conversation turn, ``TASK_KIND``: the extension only ever sends
+    ``CompletionKind`` strings, and an event from before it reported the kind
+    has none. The metrics page and the task detail page both read the kind
+    stored through this function, so they count the same event the same way
+    (owner decision 25).
     """
-    kind = props.get("completionKind")
-    return kind if isinstance(kind, str) and kind else TASK_KIND
+    return clean_name(props.get("completionKind")) or TASK_KIND
+
+
+def event_columns(event_type: str, props: dict) -> dict:
+    """The ``telemetry_events`` columns ingest lifts out of an event's properties.
+
+    An ``LLM Completion`` gives its tokens, cost, request duration, model,
+    provider, mode, kind and whether its usage was reported; an ``Embedding
+    Usage`` its prompt tokens (in ``input_tokens``) and its source. Any other
+    event gives none, and its columns stay NULL.
+
+    A number is ``figure`` of the value (anything but a finite number within
+    the bounds of one request is 0), stored whole: the extension counts tokens
+    and milliseconds in integers. A name is ``clean_name`` of the value; a
+    missing one is NULL, and each reader names that case its own way
+    ("unknown" on the metrics page, ``UNKNOWN_MODEL`` in diagnostics, no
+    attribution on the task page). ``usage_reported`` is False only when the
+    client said so. Migration e8f9a0b1c2d3 applied a frozen copy of this rule
+    to the events stored before it.
+    """
+    if event_type == LLM_COMPLETION_EVENT:
+        return {
+            "input_tokens": int(figure(props.get("inputTokens"), MAX_REQUEST_TOKENS)),
+            "output_tokens": int(figure(props.get("outputTokens"), MAX_REQUEST_TOKENS)),
+            "cache_read_tokens": int(
+                figure(props.get("cacheReadTokens"), MAX_REQUEST_TOKENS)
+            ),
+            "cache_write_tokens": int(
+                figure(props.get("cacheWriteTokens"), MAX_REQUEST_TOKENS)
+            ),
+            "cost": float(figure(props.get("cost"), MAX_REQUEST_COST)),
+            "duration_ms": int(figure(props.get("durationMs"), MAX_REQUEST_MS)),
+            "model_id": clean_name(props.get("modelId")),
+            "provider": clean_name(props.get("apiProvider")),
+            "mode": clean_name(props.get("mode")),
+            "completion_kind": completion_kind(props),
+            "usage_reported": props.get("usageReported") is not False,
+        }
+    if event_type == EMBEDDING_EVENT:
+        return {
+            "input_tokens": int(figure(props.get("promptTokens"), MAX_REQUEST_TOKENS)),
+            "embedding_source": clean_name(props.get("source")),
+        }
+    return {}
 
 
 # The ``say`` of the stored message that records one API request.
@@ -97,14 +172,6 @@ def parse_event_props(payload) -> Optional[dict]:
     except (json.JSONDecodeError, TypeError):
         return None
     return props if isinstance(props, dict) else None
-
-
-def iter_event_props(payloads: Iterable) -> Iterator[dict]:
-    """The decodable property dicts among ``payloads``, in order."""
-    for payload in payloads:
-        props = parse_event_props(payload)
-        if props is not None:
-            yield props
 
 
 def _reject_constant(name: str):

@@ -7,7 +7,6 @@ view's URLs are web/presenters/metrics_view.py; the sums are
 services/metrics_service.aggregate_user_metrics.
 """
 
-import json
 import re
 from datetime import datetime, timezone
 from html import unescape
@@ -16,14 +15,13 @@ from urllib.parse import parse_qs, urlsplit
 import pytest
 
 from src.auth.web_session import get_web_user_optional
-from src.models.event import TelemetryEvent
 from src.models.organization import Membership, Organization
 from src.models.project import Project
 from src.models.task import Task
 from src.models.user import User
 from src.services.metrics_service import compute_user_metrics
 from src.web.presenters.metrics_view import GROUPINGS
-from tests.web_helpers import _llm_event, _override_web_user, _seed_user
+from tests.web_helpers import _event_row, _llm_event, _override_web_user, _seed_user
 
 USER = "user_test"
 OTHER = "user_other"
@@ -71,10 +69,10 @@ async def seeded(db_session):
             for task, _, model, tin, cost in EVENTS
         ]
         + [
-            TelemetryEvent(
-                user_id=USER,
-                event_type="Embedding Usage",
-                properties=json.dumps({"promptTokens": 5000, "source": "index"}),
+            _event_row(
+                "Embedding Usage",
+                {"promptTokens": 5000, "source": "index"},
+                USER,
                 created_at=WHEN,
             )
         ]
