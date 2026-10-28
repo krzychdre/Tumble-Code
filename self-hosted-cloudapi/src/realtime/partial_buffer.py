@@ -24,15 +24,34 @@ What is never held:
 Held revisions are written when their socket disconnects
 (:meth:`flush_sid`) and when the app shuts down (:meth:`flush_all`), so a
 stream cut off mid-way still leaves its last revision behind.
+
+The buffer is bounded: past ``max_per_sid`` rows held for one socket, or
+``max_total`` in all, :meth:`hold` refuses a new ``(task, ts)`` and the caller
+writes it at once, so a client streaming endless distinct timestamps costs
+writes, not memory and timer tasks.
 """
 
 import asyncio
-import json
+from collections import Counter
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Optional
 
 # How long a partial row may wait for a newer revision before it is written.
 FLUSH_DELAY_S = 0.25
+# Most rows held at once for one socket, and in all. A window streams a
+# handful of messages at a time (a few parallel subtasks at most).
+MAX_HELD_PER_SID = 64
+MAX_HELD_TOTAL = 2048
+
+
+def revision_size(message: dict) -> int:
+    """How full a revision of a streamed message is: the length of its text
+    fields. A stream grows its text, so this orders revisions as the
+    database's upsert guard (length of the stored JSON) does, without
+    serializing the whole message again on every chunk (which made a long
+    stream quadratic)."""
+    return sum(len(value) for value in message.values() if isinstance(value, str))
+
 
 # write(sid, task_id, user_id, events): persist the message events of one task
 # in one transaction. Must not raise (the bridge logs and carries on).
@@ -49,10 +68,19 @@ class _Held:
 
 
 class PartialMessageBuffer:
-    def __init__(self, write: Writer, delay: float = FLUSH_DELAY_S) -> None:
+    def __init__(
+        self,
+        write: Writer,
+        delay: float = FLUSH_DELAY_S,
+        max_per_sid: int = MAX_HELD_PER_SID,
+        max_total: int = MAX_HELD_TOTAL,
+    ) -> None:
         self._write = write
         self.delay = delay
+        self.max_per_sid = max_per_sid
+        self.max_total = max_total
         self._held: dict[tuple[str, Any], _Held] = {}
+        self._held_per_sid: Counter[str] = Counter()
         # Timers that have taken their row out of ``_held`` and are writing it.
         self._writing: dict[tuple[str, Any], asyncio.Task] = {}
 
@@ -60,27 +88,45 @@ class PartialMessageBuffer:
         """How many rows are held or being written."""
         return len(self._held) + len(self._writing)
 
-    def hold(self, sid: str, task_id: str, user_id: str, data: dict) -> None:
-        """Hold the partial message event ``data`` (its message has a ``ts``)."""
+    def hold(self, sid: str, task_id: str, user_id: str, data: dict) -> bool:
+        """Hold the partial message event ``data`` (its message has a ``ts``).
+
+        False when the buffer is full for this socket or in all: nothing is
+        held and the caller writes ``data`` at once instead.
+        """
         message = data["message"]
         key = (task_id, message["ts"])
-        # The same measure as the database's upsert guard (length of the
-        # stored JSON), so the held revision is the one the guard would keep:
-        # chunks can be handled out of order, and a shorter partial must never
-        # replace a fuller one.
-        size = len(json.dumps(message))
+        # Ordered like the database's upsert guard, so the held revision is
+        # the one the guard would keep: chunks can be handled out of order,
+        # and a shorter partial must never replace a fuller one.
+        size = revision_size(message)
         held = self._held.get(key)
         if held is not None:
             if size >= held.size:
                 held.data, held.size = data, size
-            return
+            return True
+        if (
+            self._held_per_sid[sid] >= self.max_per_sid
+            or len(self._held) >= self.max_total
+        ):
+            return False
         held = _Held(sid=sid, user_id=user_id, data=data, size=size)
         self._held[key] = held
+        self._held_per_sid[sid] += 1
         held.timer = asyncio.create_task(self._write_later(key))
+        return True
+
+    def _pop(self, key: tuple[str, Any]) -> Optional[_Held]:
+        held = self._held.pop(key, None)
+        if held is not None:
+            self._held_per_sid[held.sid] -= 1
+            if self._held_per_sid[held.sid] <= 0:
+                del self._held_per_sid[held.sid]
+        return held
 
     async def _write_later(self, key: tuple[str, Any]) -> None:
         await asyncio.sleep(self.delay)
-        held = self._held.pop(key, None)
+        held = self._pop(key)
         if held is None:
             return
         self._writing[key] = held.timer
@@ -98,7 +144,7 @@ class PartialMessageBuffer:
         after the final), and returns the task's other held partials, oldest
         first, for the caller to write in the same transaction.
         """
-        own = self._held.pop((task_id, ts), None)
+        own = self._pop((task_id, ts))
         if own is not None and own.timer is not None:
             own.timer.cancel()
         underway = self._writing.get((task_id, ts))
@@ -127,7 +173,7 @@ class PartialMessageBuffer:
         """Remove and return the held rows ``keep`` selects, timers cancelled."""
         taken = [(key, held) for key, held in self._held.items() if keep(key, held)]
         for key, held in taken:
-            del self._held[key]
+            self._pop(key)
             if held.timer is not None:
                 held.timer.cancel()
         return [held for _key, held in taken]
