@@ -16,6 +16,7 @@ import pytest
 from src.auth.web_session import get_web_user_optional
 from src.models.task import Task, TaskShare
 from tests.web_helpers import (
+    _store,
     _add_message,
     _llm_event,
     _msgs,
@@ -46,7 +47,7 @@ async def _seed_everything(session_factory):
                 "text": json.dumps({"tokensIn": 10, "cost": 0.1}),
             },
         )
-        s.add(_llm_event(task_id="run"))
+        await _store(s, [_llm_event(task_id="run")])
         s.add(
             TaskShare(
                 task_id="run",

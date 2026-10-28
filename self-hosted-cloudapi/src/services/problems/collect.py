@@ -33,11 +33,11 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import anyio
-from sqlalchemy import func, select
+from sqlalchemy import BigInteger, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.error_report import ErrorReport
-from src.models.event import TelemetryEvent
+from src.models.event import TelemetryEvent, UsageRollup, quarter_of
 from src.models.task import Task, TaskMessage
 from src.services.client_kind import CLIENT_VSCODE
 from src.services.model_attribution import (
@@ -392,16 +392,23 @@ async def _request_counts(
     """The period's LLM Completion events by ``(provider, model)``, of one
     client when ``client`` names one (the model fit then compares like with
     like). A completion that names no provider counts under "", one that
-    names no model under ``UNKNOWN_MODEL``."""
-    stmt = select(TelemetryEvent.provider, TelemetryEvent.model_id, func.count()).where(
-        TelemetryEvent.user_id == user_id,
-        TelemetryEvent.event_type == LLM_COMPLETION_EVENT,
+    names no model under ``UNKNOWN_MODEL``. Summed from usage_rollup
+    (models/event.UsageRollup); ``start`` is a local midnight, so the start
+    of a quarter of an hour."""
+    stmt = select(
+        UsageRollup.provider,
+        UsageRollup.model_id,
+        # NUMERIC on Postgres; a count of stored events fits a BIGINT.
+        cast(func.sum(UsageRollup.events), BigInteger),
+    ).where(
+        UsageRollup.user_id == user_id,
+        UsageRollup.event_type == LLM_COMPLETION_EVENT,
     )
     if start is not None:
-        stmt = stmt.where(TelemetryEvent.created_at >= start)
+        stmt = stmt.where(UsageRollup.quarter >= quarter_of(start))
     if client:
-        stmt = stmt.where(TelemetryEvent.client_kind == client)
-    stmt = stmt.group_by(TelemetryEvent.provider, TelemetryEvent.model_id)
+        stmt = stmt.where(UsageRollup.client_kind == client)
+    stmt = stmt.group_by(UsageRollup.provider, UsageRollup.model_id)
 
     counts: Counter = Counter()
     for provider, model, count in (await db.execute(stmt)).all():

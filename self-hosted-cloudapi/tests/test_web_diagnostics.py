@@ -28,7 +28,13 @@ from src.services.problem_catalogue import MODEL, problem_signature
 from src.models.task import TaskMessage
 from src.services.session_quality import classify_message
 from src.services.task_summary import message_metrics
-from tests.web_helpers import _event_row, _llm_event, _override_web_user, _seed_user
+from tests.web_helpers import (
+    _event_row,
+    _llm_event,
+    _override_web_user,
+    _seed_user,
+    _store,
+)
 
 BASE = datetime(2026, 10, 1, 12, 0, tzinfo=timezone.utc)
 BASE_MS = int(BASE.timestamp() * 1000)
@@ -327,7 +333,8 @@ async def test_request_counts_are_the_periods_completions_by_provider_and_model(
     under UNKNOWN_MODEL: the keys the model fit gives a problem without them."""
     await _seed_user(db_session)
     await _seed_user(db_session, user_id="user_other", email="o@example.com")
-    db_session.add_all(
+    await _store(
+        db_session,
         [
             _llm_event(model="glm", provider="openai"),
             _llm_event(model="glm", provider="openai"),
@@ -337,7 +344,7 @@ async def test_request_counts_are_the_periods_completions_by_provider_and_model(
             _llm_event(model="glm", provider="openai", created_at=BASE),
             _llm_event("user_other", model="glm", provider="openai"),
             _event_row("Exception", {"modelId": "glm", "apiProvider": "openai"}),
-        ]
+        ],
     )
     await db_session.commit()
     week = datetime.now(timezone.utc) - timedelta(days=7)
@@ -405,15 +412,18 @@ async def _seed_conversation(
     await session.commit()
     await _add_message(session, task_id, _request(start_ms, 1000, 10))
     await _add_message(session, task_id, _say_error(start_ms + 1000, MISSING_PATH))
-    session.add(
-        _llm_event(
-            user_id=user_id,
-            task_id=task_id,
-            model="GLM-5.3-Flash-NVFP4",
-            provider="openai",
-            tin=1000,
-            tout=10,
-        )
+    await _store(
+        session,
+        [
+            _llm_event(
+                user_id=user_id,
+                task_id=task_id,
+                model="GLM-5.3-Flash-NVFP4",
+                provider="openai",
+                tin=1000,
+                tout=10,
+            )
+        ],
     )
     await session.commit()
 

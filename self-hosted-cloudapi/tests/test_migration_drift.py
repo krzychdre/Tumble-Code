@@ -44,8 +44,10 @@ What SQLite cannot check (Postgres only, untested here):
   Checked by hand on PostgreSQL 16.15 for f1a2b3c4d5e6 and create_all.
 """
 
+import calendar
 import json
 import os
+from datetime import datetime
 import sqlite3
 import subprocess
 import sys
@@ -64,6 +66,8 @@ from src.db_bootstrap import classify_and_seed
 from src.models import RETIRED_TABLES, include_name
 from src.services.model_attribution import LABEL_MAX_BYTES
 from src.services.projects import folder_key
+from src.models.event import TelemetryEvent
+from src.services.telemetry_service import rollup_key
 from src.services.telemetry_vocab import event_columns, parse_event_props
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
@@ -639,6 +643,137 @@ def test_event_figure_backfill_stores_what_ingest_stores(migrate_env):
         assert stored[row_id] == expected, row_id
     assert stored["evt_hostile"]["model_id"] == "evilmodel"
     assert sum(1 for row in stored.values() if row["input_tokens"] == 1) == filler
+
+
+def test_usage_rollup_holds_the_stored_events_as_ingest_sums_them(migrate_env):
+    """f2b3c4d5e6a7 sums the stored completions and embeddings into
+    usage_rollup: a row per user, type, quarter of an hour, task and names,
+    keyed as ingest keys it (telemetry_service.rollup_key). Events of a
+    deleted user, without a time, or of another type stay out."""
+    db_file, run = migrate_env
+    _load_baseline(db_file)
+    _alembic(run, "stamp", SQLITE_START_REVISION)
+    _alembic(run, "upgrade", "f1b2c3d4e5a6")
+
+    completion = "LLM Completion"
+    names = ("t1", "glm", "zai", "code", "task", None, "vscode")
+    # (id, user, type, created_at, (task, model, provider, mode, kind,
+    # source, client), input, output, cost, duration, usage_reported)
+    events = [
+        ("e1", "u1", completion, "10:00:00", names, 100, 10, 0.5, 1000, True),
+        ("e2", "u1", completion, "10:14:59.999999", names, 200, 20, 0.25, 0, False),
+        ("e3", "u1", completion, "10:15:00", names, 1, 1, 0.0, 0, True),
+        ("e4", "u2", completion, "10:01:00", names, 7, 0, 0.0, 0, True),
+        (
+            "e5",
+            "u1",
+            completion,
+            "10:02:00",
+            (None,) * 4 + ("task", None, "cli"),
+            3,
+            0,
+            0.0,
+            0,
+            True,
+        ),
+        (
+            "e6",
+            "u1",
+            "Embedding Usage",
+            "10:03:00",
+            (None,) * 5 + ("index", "vscode"),
+            5000,
+            None,
+            None,
+            None,
+            None,
+        ),
+        ("e7", None, completion, "10:04:00", names, 9, 9, 9.0, 9, True),
+        ("e8", "u1", completion, None, names, 9, 9, 9.0, 9, True),
+        ("e9", "u1", "Task Message", "10:05:00", names, 9, 9, 9.0, 9, True),
+    ]
+    with sqlite3.connect(db_file) as conn:
+        conn.executemany(
+            "INSERT INTO users (id, authentik_id, email) VALUES (?, ?, ?)",
+            [("u1", "ak_1", "a@b.c"), ("u2", "ak_2", "d@e.f")],
+        )
+        conn.executemany(
+            "INSERT INTO telemetry_events (id, user_id, event_type, created_at, "
+            "task_id, model_id, provider, mode, completion_kind, embedding_source, "
+            "client_kind, input_tokens, output_tokens, cost, duration_ms, "
+            "usage_reported) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                (row_id, user, kind, at and f"2026-10-01 {at}", *keys, *figures)
+                for row_id, user, kind, at, keys, *figures in events
+            ],
+        )
+
+    _alembic(run, "upgrade", "head")
+
+    with sqlite3.connect(db_file) as conn:
+        conn.row_factory = sqlite3.Row
+        stored = [
+            dict(row)
+            for row in conn.execute(
+                "SELECT * FROM usage_rollup ORDER BY first_at, user_id"
+            )
+        ]
+    quarter = calendar.timegm(datetime(2026, 10, 1, 10).utctimetuple()) // 900
+    columns = (
+        "task_id",
+        "model_id",
+        "provider",
+        "mode",
+        "completion_kind",
+        "embedding_source",
+        "client_kind",
+    )
+
+    def row(user, kind, at, keys, quarter, figures, events, unreported):
+        tokens_in, tokens_out, cost, duration = figures
+        return {
+            "user_id": user,
+            "event_type": kind,
+            "quarter": quarter,
+            "names_key": rollup_key(TelemetryEvent(**dict(zip(columns, keys)))),
+            **dict(zip(columns, keys)),
+            "input_tokens": tokens_in,
+            "output_tokens": tokens_out,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+            "cost": cost,
+            "duration_ms": duration,
+            "events": events,
+            "unreported": unreported,
+            "first_at": f"2026-10-01 {at}.000000",
+        }
+
+    embedding = (None,) * 5 + ("index", "vscode")
+    assert stored == [
+        row("u1", completion, "10:00:00", names, quarter, (300, 30, 0.75, 1000), 2, 1),
+        row("u2", completion, "10:01:00", names, quarter, (7, 0, 0.0, 0), 1, 0),
+        row(
+            "u1",
+            completion,
+            "10:02:00",
+            (None,) * 4 + ("task", None, "cli"),
+            quarter,
+            (3, 0, 0.0, 0),
+            1,
+            0,
+        ),
+        row(
+            "u1",
+            "Embedding Usage",
+            "10:03:00",
+            embedding,
+            quarter,
+            (5000, 0, 0.0, 0),
+            1,
+            0,
+        ),
+        row("u1", completion, "10:15:00", names, quarter + 1, (1, 1, 0.0, 0), 1, 0),
+    ]
 
 
 def test_seen_folders_are_bound_by_the_rules_of_a_recorded_folder(migrate_env):

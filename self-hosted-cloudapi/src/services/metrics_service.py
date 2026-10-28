@@ -12,11 +12,13 @@ the metrics page needs:
      "inputTokens", "outputTokens", "cacheReadTokens", "cacheWriteTokens", "cost"}
 
 Ingest lifts those figures out of the JSON ``properties`` into columns
-(``telemetry_vocab.event_columns``), and the page sums them in SQL. Each
-statement is a GROUP BY with a row per combination of names, quarter of an
-hour, group or indexing source, never one per event; Python only adds those
-rows up. The statements read the same on SQLite (the test suite) and
-Postgres. Event names and kind labels come from ``services/telemetry_vocab``.
+(``telemetry_vocab.event_columns``) and adds them into ``usage_rollup``, one
+row per user, quarter of an hour, task and combination of names
+(models/event.UsageRollup), which the page sums in SQL. Each statement is a
+GROUP BY with a row per combination of names, quarter of an hour, group or
+indexing source; Python only adds those rows up. The statements read the
+same on SQLite (the test suite) and Postgres. Event names and kind labels
+come from ``services/telemetry_vocab``.
 """
 
 import logging
@@ -30,16 +32,16 @@ from sqlalchemy import (
     ColumnElement,
     Row,
     Select,
+    TypeDecorator,
     and_,
-    cast,
     distinct,
-    extract,
     func,
     select,
+    type_coerce,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models.event import TelemetryEvent
+from src.models.event import QUARTER_SECONDS, UsageRollup, quarter_of
 from src.models.project import Project
 from src.models.task import Task
 from src.models.user import User
@@ -89,30 +91,19 @@ PERIOD_LABELS: dict[str, str] = {
 }
 DEFAULT_PERIOD = "7d"
 
-# The daily figures are summed per quarter of an hour of UTC, then per the
-# reader's day in Python. Every zone's offset from UTC is a whole number of
-# quarters (Nepal's +05:45 too), so no quarter straddles a local midnight.
-_QUARTER_SECONDS = 900
-_QUARTER = (
-    cast(func.floor(extract("epoch", TelemetryEvent.created_at)), BigInteger)
-    // _QUARTER_SECONDS
-)
-
-_TOKENS = TelemetryEvent.input_tokens + TelemetryEvent.output_tokens
-
 # What the breakdowns split the completions by. The completions are summed per
 # combination of these that occurs, and each breakdown adds up those sums.
 _DIMENSIONS = (
-    TelemetryEvent.model_id,
-    TelemetryEvent.mode,
-    TelemetryEvent.provider,
-    TelemetryEvent.completion_kind,
-    TelemetryEvent.client_kind,
+    UsageRollup.model_id,
+    UsageRollup.mode,
+    UsageRollup.provider,
+    UsageRollup.completion_kind,
+    UsageRollup.client_kind,
 )
 
 # Rows of a breakdown are ordered by their first event, so names that tie
 # keep the order in which they first occurred.
-_FIRST = func.min(TelemetryEvent.created_at).label("first_at")
+_FIRST = func.min(UsageRollup.first_at).label("first_at")
 
 
 def period_start(
@@ -121,7 +112,8 @@ def period_start(
     """Resolve a period key to an inclusive UTC lower bound, or None for all-time.
 
     The bound is the reader's local midnight (``zone``, utils/clientzone) that
-    many days back, today included.
+    many days back, today included: the start of a quarter of an hour
+    (models/event.quarter_of).
     """
     days = PERIODS.get(period, PERIODS[DEFAULT_PERIOD])
     if days is None:
@@ -129,9 +121,29 @@ def period_start(
     return day_start_utc(today(zone, now) - timedelta(days=days - 1), zone)
 
 
+class _Total(TypeDecorator):
+    """A SUM of whole numbers, as an int. Postgres sums BIGINT into NUMERIC,
+    which asyncpg returns as a Decimal; unlike a cast back to BIGINT, it
+    holds whatever total a flood of absurd figures adds up to."""
+
+    impl = BigInteger
+    cache_ok = True
+
+    def process_result_value(self, value, dialect):
+        return int(value)
+
+
 def _sum(column) -> ColumnElement:
-    """SUM of a whole-number column, as one: Postgres sums BIGINT into NUMERIC."""
-    return cast(func.sum(column), BigInteger)
+    """SUM of a whole-number column, as an int."""
+    return type_coerce(func.sum(column), _Total())
+
+
+# Input and output tokens, each summed before they are added, so no row's
+# figures can overflow the addition.
+_TOKENS = type_coerce(
+    func.sum(UsageRollup.input_tokens) + func.sum(UsageRollup.output_tokens),
+    _Total(),
+)
 
 
 def _completions(
@@ -140,53 +152,49 @@ def _completions(
     start: Optional[datetime],
     client: Optional[str],
 ) -> Select:
-    """The period's LLM Completion events, as a SELECT with no columns yet.
+    """The period's LLM Completion rows of usage_rollup, as a SELECT with no
+    columns yet.
 
-    The reader's own events, or with ``organization_id`` the events of that
-    organization's tasks. Joined for a group's key and name: the event's task,
+    The reader's own, or with ``organization_id`` those of that
+    organization's tasks. Joined for a group's key and name: the row's task,
     its project (named only when the user may see it: an organization they
     left) and, in an organization, the task's owner.
     """
     if organization_id is None:
-        # The (user_id, event_type, created_at) index serves the filter and
+        # The primary key (user_id, event_type, quarter) serves the filter and
         # the range. The owner is part of the join, so an event naming another
         # user's task id has no project.
         stmt = (
             select()
-            .select_from(TelemetryEvent)
+            .select_from(UsageRollup)
             .outerjoin(
-                Task, and_(Task.id == TelemetryEvent.task_id, Task.user_id == user_id)
+                Task, and_(Task.id == UsageRollup.task_id, Task.user_id == user_id)
             )
-            .where(TelemetryEvent.user_id == user_id)
+            .where(UsageRollup.user_id == user_id)
         )
     else:
         # Only the task owner's events count: anyone else's naming the task id
-        # is not the organization's. IS NOT DISTINCT FROM means "=" here (a
-        # task always has an owner), but the planner does not equate the two
-        # columns: with "=", Postgres probed a heavy user's events once per
-        # task of a page narrowed to one group (18 s a statement on the
-        # bench). The owner is joined on the event's user, which lets it read
-        # each member's events from the user-led index instead.
+        # is not the organization's.
         stmt = (
             select()
-            .select_from(TelemetryEvent)
+            .select_from(UsageRollup)
             .join(
                 Task,
                 and_(
-                    Task.id == TelemetryEvent.task_id,
-                    Task.user_id.is_not_distinct_from(TelemetryEvent.user_id),
+                    Task.id == UsageRollup.task_id,
+                    Task.user_id == UsageRollup.user_id,
                 ),
             )
-            .join(User, User.id == TelemetryEvent.user_id)
+            .join(User, User.id == UsageRollup.user_id)
             .where(Task.organization_id == organization_id)
         )
     stmt = stmt.outerjoin(
         Project, and_(Project.id == Task.project_id, visible_to(user_id))
-    ).where(TelemetryEvent.event_type == LLM_COMPLETION_EVENT)
+    ).where(UsageRollup.event_type == LLM_COMPLETION_EVENT)
     if start is not None:
-        stmt = stmt.where(TelemetryEvent.created_at >= start)
+        stmt = stmt.where(UsageRollup.quarter >= quarter_of(start))
     if client is not None:
-        stmt = stmt.where(TelemetryEvent.client_kind == client)
+        stmt = stmt.where(UsageRollup.client_kind == client)
     return stmt
 
 
@@ -204,20 +212,20 @@ async def _embeddings(
     ("what is indexing costing me?") is also a different question.
     """
     stmt = select(
-        TelemetryEvent.embedding_source,
-        _sum(TelemetryEvent.input_tokens).label("tokens"),
-        func.count().label("calls"),
+        UsageRollup.embedding_source,
+        _sum(UsageRollup.input_tokens).label("tokens"),
+        _sum(UsageRollup.events).label("calls"),
         _FIRST,
     ).where(
-        TelemetryEvent.user_id == user_id,
-        TelemetryEvent.event_type == EMBEDDING_EVENT,
+        UsageRollup.user_id == user_id,
+        UsageRollup.event_type == EMBEDDING_EVENT,
     )
     if start is not None:
-        stmt = stmt.where(TelemetryEvent.created_at >= start)
+        stmt = stmt.where(UsageRollup.quarter >= quarter_of(start))
     if client is not None:
-        stmt = stmt.where(TelemetryEvent.client_kind == client)
-    stmt = stmt.group_by(TelemetryEvent.embedding_source).order_by(
-        _FIRST, TelemetryEvent.embedding_source
+        stmt = stmt.where(UsageRollup.client_kind == client)
+    stmt = stmt.group_by(UsageRollup.embedding_source).order_by(
+        _FIRST, UsageRollup.embedding_source
     )
     return _embedding_totals((await db.execute(stmt)).all())
 
@@ -250,16 +258,16 @@ async def _by_day(db: AsyncSession, completions: Select, zone: ZoneInfo) -> list
     """Chronological {day, tokens, cost} of the reader's calendar days."""
     stmt = (
         completions.add_columns(
-            _QUARTER.label("quarter"),
-            _sum(_TOKENS).label("tokens"),
-            func.sum(TelemetryEvent.cost).label("cost"),
+            UsageRollup.quarter,
+            _TOKENS.label("tokens"),
+            func.sum(UsageRollup.cost).label("cost"),
         )
-        .group_by("quarter")
-        .order_by("quarter")
+        .group_by(UsageRollup.quarter)
+        .order_by(UsageRollup.quarter)
     )
     by_day: dict[str, dict] = {}
     for row in (await db.execute(stmt)).all():
-        start = datetime.fromtimestamp(row.quarter * _QUARTER_SECONDS, timezone.utc)
+        start = datetime.fromtimestamp(row.quarter * QUARTER_SECONDS, timezone.utc)
         day = local_day(start, zone).isoformat()
         slot = by_day.setdefault(day, {"day": day, "tokens": 0, "cost": 0.0})
         slot["tokens"] += row.tokens
@@ -276,10 +284,10 @@ async def _groups(
         completions.add_columns(
             group_by.key.label("group_key"),
             group_by.name.label("group_name"),
-            _sum(_TOKENS).label("tokens"),
-            func.sum(TelemetryEvent.cost).label("cost"),
-            func.count().label("completions"),
-            func.count(distinct(TelemetryEvent.task_id)).label("tasks"),
+            _TOKENS.label("tokens"),
+            func.sum(UsageRollup.cost).label("cost"),
+            _sum(UsageRollup.events).label("completions"),
+            func.count(distinct(UsageRollup.task_id)).label("tasks"),
             _FIRST,
         )
         .group_by("group_key", "group_name")
@@ -323,8 +331,8 @@ async def compute_user_metrics(
     that client sent; None counts both. ``zone`` is the reader's: the period
     starts at their local midnight and ``by_day`` holds their calendar days.
     ``group_by`` sums the events per group into ``groups``; ``narrow`` (a
-    condition on the events) keeps the events of one group, so every figure is
-    the group's.
+    condition on the tables of ``_completions``) keeps the events of one
+    group, so every figure is the group's.
 
     Returns a JSON-serializable dict:
       - period, period_label
@@ -351,21 +359,19 @@ async def compute_user_metrics(
         await db.execute(
             completions.add_columns(
                 *_DIMENSIONS,
-                _sum(TelemetryEvent.input_tokens).label("input"),
-                _sum(TelemetryEvent.output_tokens).label("output"),
-                _sum(TelemetryEvent.cache_read_tokens).label("cache_read"),
-                _sum(TelemetryEvent.cache_write_tokens).label("cache_write"),
-                func.sum(TelemetryEvent.cost).label("cost"),
-                func.count().label("completions"),
+                _sum(UsageRollup.input_tokens).label("input"),
+                _sum(UsageRollup.output_tokens).label("output"),
+                _sum(UsageRollup.cache_read_tokens).label("cache_read"),
+                _sum(UsageRollup.cache_write_tokens).label("cache_write"),
+                func.sum(UsageRollup.cost).label("cost"),
+                _sum(UsageRollup.events).label("completions"),
                 # Completions whose provider could not say what they cost.
                 # Counted rather than silently added in as zero, so "12 calls
                 # we have no figures for" reads as what it is instead of as
                 # twelve free calls.
-                func.count()
-                .filter(TelemetryEvent.usage_reported.is_(False))
-                .label("unreported"),
+                _sum(UsageRollup.unreported).label("unreported"),
                 # Summed from the completions that measured their request.
-                _sum(TelemetryEvent.duration_ms).label("duration_ms"),
+                _sum(UsageRollup.duration_ms).label("duration_ms"),
                 _FIRST,
             )
             .group_by(*_DIMENSIONS)
@@ -436,7 +442,7 @@ async def compute_user_metrics(
         task_count = sum(g["tasks"] for g in groups)
     else:
         task_count = await db.scalar(
-            completions.add_columns(func.count(distinct(TelemetryEvent.task_id)))
+            completions.add_columns(func.count(distinct(UsageRollup.task_id)))
         )
     # Indexing belongs to no task, so it is in no group and no organization.
     if narrow is not None or organization_id:

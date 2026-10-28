@@ -29,6 +29,7 @@ from src.services.diagnostics_service import (
 from src.services.problem_catalogue import problem_signature
 from tests.test_web_diagnostics import MISSING_PATH, _add_message, _request, _say_error
 from tests.web_helpers import (
+    _store,
     _event_row,
     _llm_event,
     _override_current_user,
@@ -178,13 +179,14 @@ async def test_every_source_carries_its_client(db_session):
 
 async def test_the_model_fit_counts_requests_of_the_filtered_client(db_session):
     await _seed_user(db_session)
-    db_session.add_all(
+    await _store(
+        db_session,
         [
             _report("r-cli", "cli"),
             _llm_event(model="glm", provider="openai", client_kind="cli"),
             _llm_event(model="glm", provider="openai"),
             _llm_event(model="glm", provider="openai"),
-        ]
+        ],
     )
     await db_session.commit()
 

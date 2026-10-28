@@ -25,6 +25,7 @@ from src.services.quality_overview import quality_overview
 from src.services.telemetry_service import upsert_task_message
 
 from tests.web_helpers import (
+    _store,
     _event_row,
     _llm_event,
     _override_current_user,
@@ -327,7 +328,8 @@ async def test_llm_exchanges_are_stamped_and_take_the_new_fields(
 
 async def _seed_two_clients(db_session):
     await _seed_user(db_session)
-    db_session.add_all(
+    await _store(
+        db_session,
         [
             _llm_event(
                 model="code-model", task_id="t-code", tin=1000, tout=0, cost=0.5
@@ -363,7 +365,7 @@ async def _seed_two_clients(db_session):
                 q_requests=1,
                 q_errors=4,
             ),
-        ]
+        ],
     )
     await db_session.commit()
 

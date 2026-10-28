@@ -12,7 +12,13 @@ from datetime import datetime, timezone
 from src.auth.web_session import get_web_user_optional
 from src.services.metrics_service import compute_user_metrics
 
-from tests.web_helpers import _event_row, _llm_event, _override_web_user, _seed_user
+from tests.web_helpers import (
+    _event_row,
+    _llm_event,
+    _override_web_user,
+    _seed_user,
+    _store,
+)
 
 
 def _embedding_event(user_id="user_test", *, prompt_tokens=1000, source="index-scan"):
@@ -31,7 +37,8 @@ def _embedding_event(user_id="user_test", *, prompt_tokens=1000, source="index-s
 
 async def test_side_calls_are_counted_and_broken_out_by_kind(db_session):
     await _seed_user(db_session)
-    db_session.add_all(
+    await _store(
+        db_session,
         [
             _llm_event(task_id="t1", model="GLM-5.2", tin=10_000, tout=500, cost=0.1),
             _llm_event(
@@ -58,7 +65,7 @@ async def test_side_calls_are_counted_and_broken_out_by_kind(db_session):
                 cost=0.0,
                 kind="memory",
             ),
-        ]
+        ],
     )
     await db_session.commit()
 
@@ -76,7 +83,9 @@ async def test_side_calls_are_counted_and_broken_out_by_kind(db_session):
 async def test_a_corpus_of_conversation_turns_has_a_single_kind(db_session):
     """So the page can hide the split panel instead of stating the obvious."""
     await _seed_user(db_session)
-    db_session.add(_llm_event(task_id="t1", model="GLM-5.2", tin=10, tout=1))
+    await _store(
+        db_session, [_llm_event(task_id="t1", model="GLM-5.2", tin=10, tout=1)]
+    )
     await db_session.commit()
 
     m = await compute_user_metrics(db_session, "user_test", period="all")
@@ -86,7 +95,8 @@ async def test_a_corpus_of_conversation_turns_has_a_single_kind(db_session):
 
 async def test_calls_the_provider_could_not_price_are_counted_not_hidden(db_session):
     await _seed_user(db_session)
-    db_session.add_all(
+    await _store(
+        db_session,
         [
             _llm_event(
                 task_id="t1",
@@ -104,7 +114,7 @@ async def test_calls_the_provider_could_not_price_are_counted_not_hidden(db_sess
                 kind="task",
                 usage_reported=True,
             ),
-        ]
+        ],
     )
     await db_session.commit()
 
@@ -117,12 +127,13 @@ async def test_calls_the_provider_could_not_price_are_counted_not_hidden(db_sess
 async def test_embeddings_are_reported_apart_from_the_token_total(db_session):
     """An index of a repository would otherwise bury the conversation figures."""
     await _seed_user(db_session)
-    db_session.add_all(
+    await _store(
+        db_session,
         [
             _llm_event(task_id="t1", model="GLM-5.2", tin=1_000, tout=100),
             _embedding_event(prompt_tokens=500_000, source="index-scan"),
             _embedding_event(prompt_tokens=1_200, source="search"),
-        ]
+        ],
     )
     await db_session.commit()
 
@@ -138,7 +149,9 @@ async def test_embeddings_are_reported_apart_from_the_token_total(db_session):
 
 async def test_no_embeddings_means_no_indexing_figure_to_show(db_session):
     await _seed_user(db_session)
-    db_session.add(_llm_event(task_id="t1", model="GLM-5.2", tin=10, tout=1))
+    await _store(
+        db_session, [_llm_event(task_id="t1", model="GLM-5.2", tin=10, tout=1)]
+    )
     await db_session.commit()
 
     m = await compute_user_metrics(db_session, "user_test", period="all")
@@ -152,7 +165,7 @@ async def test_embeddings_respect_the_selected_period(db_session):
     await _seed_user(db_session)
     old = _embedding_event(prompt_tokens=999_999)
     old.created_at = datetime.now(timezone.utc) - timedelta(days=40)
-    db_session.add_all([old, _embedding_event(prompt_tokens=7)])
+    await _store(db_session, [old, _embedding_event(prompt_tokens=7)])
     await db_session.commit()
 
     recent = await compute_user_metrics(db_session, "user_test", period="7d")
@@ -167,7 +180,8 @@ async def test_metrics_page_shows_the_indexing_tile_and_no_kind_split(
 ):
     async with session_factory() as s:
         await _seed_user(s)
-        s.add_all(
+        await _store(
+            s,
             [
                 _llm_event(
                     task_id="t1", model="GLM-5.2", tin=10_000, tout=500, kind="task"
@@ -180,7 +194,7 @@ async def test_metrics_page_shows_the_indexing_tile_and_no_kind_split(
                     kind="condense",
                 ),
                 _embedding_event(prompt_tokens=250_000),
-            ]
+            ],
         )
         await s.commit()
 

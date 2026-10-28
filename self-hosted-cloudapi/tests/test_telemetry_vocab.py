@@ -29,7 +29,7 @@ from src.services.telemetry_vocab import (
     TASK_KIND,
     event_columns,
 )
-from tests.web_helpers import _event_row, _seed_user
+from tests.web_helpers import _event_row, _seed_user, _store
 
 # --- characterization: the two label maps -----------------------------------
 
@@ -113,16 +113,19 @@ async def test_completion_kind_on_the_metrics_page_counts_a_malformed_kind_as_a_
     exactly as the task detail page counts it, instead of a row of its own."""
     await _seed_user(db_session)
     for kind in (5, True, ["memory"], "", "memory"):
-        db_session.add(
-            _event_row(
-                LLM_COMPLETION_EVENT,
-                {
-                    "modelId": "m",
-                    "inputTokens": 1,
-                    "outputTokens": 0,
-                    "completionKind": kind,
-                },
-            )
+        await _store(
+            db_session,
+            [
+                _event_row(
+                    LLM_COMPLETION_EVENT,
+                    {
+                        "modelId": "m",
+                        "inputTokens": 1,
+                        "outputTokens": 0,
+                        "completionKind": kind,
+                    },
+                )
+            ],
         )
     await db_session.commit()
 

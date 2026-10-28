@@ -1,13 +1,14 @@
 """Telemetry event recording service."""
 
+import hashlib
 import json
 
 import anyio
-from sqlalchemy import delete, desc, func, insert, select, update
+from sqlalchemy import case, delete, desc, func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import dialect_insert
-from src.models.event import TelemetryEvent
+from src.models.event import TelemetryEvent, UsageRollup, quarter_of
 from src.models.task import Task, TaskMessage
 from src.services.client_kind import CLIENT_CLI, CLIENT_VSCODE, client_kind_from
 from src.services.model_attribution import note_completion_model
@@ -34,7 +35,11 @@ from src.services.task_tree import (
     link_pending_children,
     record_relation,
 )
-from src.services.telemetry_vocab import LLM_COMPLETION_EVENT, event_columns
+from src.services.telemetry_vocab import (
+    EMBEDDING_EVENT,
+    LLM_COMPLETION_EVENT,
+    event_columns,
+)
 
 
 # The latest message time stored, 2100-01-01 in ms (the bound of the error
@@ -263,6 +268,91 @@ def event_row(
     )
 
 
+def rollup_key(event: TelemetryEvent) -> str:
+    """Which usage_rollup row of its user, type and quarter an event adds
+    into: its task, names and client, hashed to a fixed size."""
+    names = [
+        event.task_id,
+        event.model_id,
+        event.provider,
+        event.mode,
+        event.completion_kind,
+        event.embedding_source,
+        event.client_kind,
+    ]
+    return hashlib.sha256(json.dumps(names).encode()).hexdigest()
+
+
+# The usage_rollup columns that add up the events' figures.
+_ROLLUP_SUMS = (
+    "input_tokens",
+    "output_tokens",
+    "cache_read_tokens",
+    "cache_write_tokens",
+    "cost",
+    "duration_ms",
+    "events",
+    "unreported",
+)
+
+
+async def add_to_rollup(db: AsyncSession, event: TelemetryEvent) -> None:
+    """Add a stored LLM Completion or Embedding Usage event into its
+    usage_rollup row (models/event.UsageRollup); any other event adds nothing.
+
+    One INSERT ... ON CONFLICT DO UPDATE that adds to the row's sums, so two
+    transactions adding into the same row both count: the second waits for
+    the first's row lock and adds to what it committed.
+    """
+    if event.event_type not in (LLM_COMPLETION_EVENT, EMBEDDING_EVENT):
+        return
+    row = dialect_insert(db)(UsageRollup).values(
+        user_id=event.user_id,
+        event_type=event.event_type,
+        quarter=quarter_of(event.created_at),
+        names_key=rollup_key(event),
+        task_id=event.task_id,
+        client_kind=event.client_kind,
+        model_id=event.model_id,
+        provider=event.provider,
+        mode=event.mode,
+        completion_kind=event.completion_kind,
+        embedding_source=event.embedding_source,
+        input_tokens=event.input_tokens,
+        # An embedding has none of these.
+        output_tokens=event.output_tokens or 0,
+        cache_read_tokens=event.cache_read_tokens or 0,
+        cache_write_tokens=event.cache_write_tokens or 0,
+        cost=event.cost or 0.0,
+        duration_ms=event.duration_ms or 0,
+        events=1,
+        unreported=1 if event.usage_reported is False else 0,
+        first_at=event.created_at,
+    )
+    added = row.excluded
+    await db.execute(
+        row.on_conflict_do_update(
+            index_elements=[
+                UsageRollup.user_id,
+                UsageRollup.event_type,
+                UsageRollup.quarter,
+                UsageRollup.names_key,
+            ],
+            set_={
+                **{
+                    name: getattr(UsageRollup, name) + getattr(added, name)
+                    for name in _ROLLUP_SUMS
+                },
+                # Transactions may commit out of order.
+                "first_at": case(
+                    (added.first_at < UsageRollup.first_at, added.first_at),
+                    else_=UsageRollup.first_at,
+                ),
+            },
+        )
+    )
+
+
 async def record_event(
     db: AsyncSession,
     user_id: str,
@@ -290,6 +380,10 @@ async def record_event(
     # services/model_attribution.
     if event_type == LLM_COMPLETION_EVENT and event.task_id and event.model_id:
         await note_completion_model(db, event.task_id, user_id, event.model_id)
+
+    # Last: its row stays locked until the request commits, and another event
+    # of the same row waits for that.
+    await add_to_rollup(db, event)
 
 
 class TaskNotOwnedError(Exception):

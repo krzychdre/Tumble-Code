@@ -28,7 +28,7 @@ from src.models.user import User
 from src.services.quality_overview import quality_overview as _quality_overview
 from src.services.metrics_service import compute_user_metrics
 from src.web.presenters.metrics_view import GROUPINGS
-from tests.web_helpers import _event_row
+from tests.web_helpers import _event_row, _store
 
 NOW = datetime(2026, 9, 20, 12, 0, tzinfo=timezone.utc)
 USER = "user_m9"
@@ -292,7 +292,7 @@ async def seeded(db_session):
         ]
     )
     await db_session.commit()
-    db_session.add_all(_events())
+    await _store(db_session, _events())
     db_session.add_all(_tasks())
     await db_session.commit()
     return db_session
@@ -360,14 +360,13 @@ def _selected_columns(statement: str, table: str) -> set[str]:
 
 
 @pytest.mark.parametrize("group, statements", [(None, 4), ("project", 4), ("model", 5)])
-async def test_metrics_sum_in_sql_and_read_no_payload(
+async def test_metrics_sum_the_rollup_and_never_read_the_events(
     seeded, captured_sql, group, statements
 ):
-    """Every read of the events is an aggregate: a GROUP BY (per combination
+    """Every read is an aggregate of usage_rollup: a GROUP BY (per combination
     of names, quarter of an hour, group or indexing source) or the count of
     distinct tasks, which the groups give when each task is in one of them.
-    No event row reaches Python, and no statement reads the JSON payload: the
-    figures are the columns ingest lifted out of it."""
+    No statement reads telemetry_events, millions of rows in an organization."""
     await compute_user_metrics(
         seeded,
         USER,
@@ -376,13 +375,13 @@ async def test_metrics_sum_in_sql_and_read_no_payload(
         group_by=GROUPINGS[group].events if group else None,
     )
 
-    reads = [s for s in captured_sql if "FROM telemetry_events" in s]
+    reads = [s for s in captured_sql if "FROM usage_rollup" in s]
     assert len(reads) == statements, reads
+    assert [s for s in captured_sql if "telemetry_events" in s] == []
     for statement in reads:
-        assert "properties" not in statement
         assert " GROUP BY " in statement or _selected_columns(
-            statement, "telemetry_events"
-        ) == {"count(DISTINCT telemetry_events.task_id) AS count_1"}
+            statement, "usage_rollup"
+        ) == {"count(DISTINCT usage_rollup.task_id) AS count_1"}
 
 
 async def test_quality_overview_reads_only_the_columns_it_uses(seeded, captured_sql):
