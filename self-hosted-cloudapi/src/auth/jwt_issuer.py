@@ -71,10 +71,10 @@ def issue_session_token(
 def decode_token(token: str) -> Optional[Dict[str, Any]]:
     """Decode and validate a JWT this server issued. Returns None if invalid.
 
-    Besides the signature, algorithm and time claims, the token must name our
-    issuer (``iss == "rcc"``) and payload version (``v == 1``, an integer): a
-    token signed with our key but lacking either was not issued by this server
-    and is refused. This is the one check both the extension API
+    Besides the signature, algorithm and time claims, the token must carry an
+    expiry (``exp``) and name our issuer (``iss == "rcc"``) and payload
+    version (``v == 1``, an integer): a token signed with our key but lacking
+    any of them was not issued by this server and is refused. This is the one check both the extension API
     (dependencies.get_current_user) and the bridge handshake
     (realtime.sio._identity_from_token) rely on.
     """
@@ -84,7 +84,11 @@ def decode_token(token: str) -> Optional[Dict[str, Any]]:
             key=get_jwt_verify_key(),
             algorithms=[settings.jwt_algorithm],
             issuer=TOKEN_ISSUER,
-            options={"require": ["iss"]},
+            # exp is required, not only checked when present: every token this
+            # server issues carries one (session tokens a minute, the static
+            # TUMBLE_CODE_CLOUD_TOKEN ones a year), so a token signed with our
+            # key but without exp was not issued here and would never expire.
+            options={"require": ["iss", "exp"]},
         )
     except jwt.PyJWTError:
         return None

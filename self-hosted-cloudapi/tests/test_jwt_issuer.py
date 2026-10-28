@@ -171,6 +171,14 @@ def test_a_hand_signed_token_verifies(legacy_secret):
             ),
             id="alg-none",
         ),
+        pytest.param(
+            # Our key, issuer and version, but no expiry: it would never
+            # expire, and no token this server issues lacks one.
+            lambda: _hand_signed(
+                {k: v for k, v in _claims().items() if k != "exp"}, LEGACY_SECRET
+            ),
+            id="no-expiry",
+        ),
         pytest.param(lambda: LEGACY_TOKEN[:-2] + "AA", id="tampered-signature"),
         pytest.param(lambda: "", id="empty"),
     ],
@@ -195,6 +203,25 @@ def test_bad_tokens_are_refused(legacy_secret, token_factory):
 def test_a_token_without_our_issuer_and_version_is_refused(legacy_secret, claims):
     """Signed with our key, but not a token this server issues (owner decision 24)."""
     assert decode_token(_hand_signed(claims, LEGACY_SECRET)) is None
+
+
+def test_a_token_without_expiry_is_refused_by_the_api_and_the_bridge(
+    legacy_secret, client
+):
+    from src.realtime.sio import _identity_from_token
+
+    token = _hand_signed(
+        {k: v for k, v in _claims().items() if k != "exp"}, LEGACY_SECRET
+    )
+
+    resp = client.get(
+        "/api/llm-exchanges/config", headers={"Authorization": f"Bearer {token}"}
+    )
+    assert resp.status_code == 401
+    assert _identity_from_token(token) is None
+    # The year-long static token issued before the library swap carries an
+    # expiry, like every token this server hands out, and keeps working.
+    assert decode_token(LEGACY_TOKEN)["exp"] == 4102444800
 
 
 def test_rs256_round_trip(monkeypatch):
