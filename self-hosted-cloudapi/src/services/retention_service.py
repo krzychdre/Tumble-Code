@@ -139,6 +139,21 @@ async def get_policy(db: AsyncSession, user_id: str) -> RetentionPolicy:
     return policy
 
 
+def age_cutoff(now: datetime, days: Optional[int]) -> Optional[datetime]:
+    """The moment older than which a rule of ``days`` selects; None when off.
+
+    An age reaching back before year 1 (a value stored before the settings
+    form bounded it) selects nothing, as nothing is that old, instead of
+    raising OverflowError on every preview and sweep.
+    """
+    if not days or days <= 0:
+        return None
+    try:
+        return now - timedelta(days=days)
+    except OverflowError:
+        return None
+
+
 async def plan_sweep(
     db: AsyncSession,
     user_id: str,
@@ -177,11 +192,7 @@ async def plan_sweep(
     )
     rows = result.all()
 
-    cutoff = (
-        now - timedelta(days=policy.max_age_days)
-        if policy.max_age_days and policy.max_age_days > 0
-        else None
-    )
+    cutoff = age_cutoff(now, policy.max_age_days)
 
     for index, (task_id, updated_at) in enumerate(rows):
         reason = None
@@ -224,8 +235,8 @@ async def plan_sweep(
                 or 0
             )
 
-    if policy.purge_telemetry and policy.telemetry_max_age_days:
-        event_cutoff = now - timedelta(days=policy.telemetry_max_age_days)
+    event_cutoff = age_cutoff(now, policy.telemetry_max_age_days)
+    if policy.purge_telemetry and event_cutoff is not None:
         counted = await db.execute(
             _count_and_size(
                 TelemetryEvent.id, TelemetryEvent.properties, measure_size
@@ -295,8 +306,8 @@ async def apply_sweep(
         # same rule as a button press, not a looser one.
         await delete_tasks(db, plan.task_ids, user_id)
 
-    if plan.event_count and policy.purge_telemetry and policy.telemetry_max_age_days:
-        event_cutoff = now - timedelta(days=policy.telemetry_max_age_days)
+    event_cutoff = age_cutoff(now, policy.telemetry_max_age_days)
+    if plan.event_count and policy.purge_telemetry and event_cutoff is not None:
         await db.execute(
             delete(TelemetryEvent).where(*_telemetry_filters(user_id, event_cutoff))
         )
