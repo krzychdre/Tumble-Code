@@ -56,12 +56,16 @@ def _spend_fields(task: Task, tree: dict[str, list[Task]]) -> dict:
     subtasks cost $1.2434 more). The cells are marked as sums and their hover
     splits them into this task and its subtasks; a task with no subtasks shows
     its own figures, unmarked, as before.
+
+    The run's duration is its elapsed request time (``Task.run_duration_ms``),
+    not the sum of its requests: subtasks working at the same time overlap.
     """
     own = Spend.of(task)
     total = subtree_spend(tree, task)
     subtasks = subtree_size(tree, task.id)
+    duration_ms = task.run_duration_ms if subtasks else own.duration_ms
     fields = {
-        "duration": fmt_duration(total.duration_ms) if total.duration_ms else None,
+        "duration": fmt_duration(duration_ms) if duration_ms else None,
         "tokens": fmt_tokens(total.tokens) if total.tokens else None,
         "cost": fmt_cost(total.cost) if total.cost > 0 else None,
         "rollup": subtasks > 0,
@@ -76,7 +80,9 @@ def _spend_fields(task: Task, tree: dict[str, list[Task]]) -> dict:
         rest = total - own
         where = plural(subtasks, "subtask")
         fields["duration_title"] = (
-            f"{fmt_duration(total.duration_ms)} for the run: {fmt_duration(own.duration_ms)} this task"
+            f"{fmt_duration(duration_ms)} elapsed for the run;"
+            f" its requests add up to {fmt_duration(total.duration_ms)}:"
+            f" {fmt_duration(own.duration_ms)} this task"
             f" + {fmt_duration(rest.duration_ms)} in {where}"
         )
         fields["tokens_title"] = (
@@ -183,8 +189,11 @@ def _metrics_tooltip(task: Task) -> list[str]:
     return lines
 
 
-def _run_tooltip(total: Spend, subtasks: int) -> list[str]:
-    """The same breakdown for a task together with its subtasks."""
+def _run_tooltip(task: Task, total: Spend, subtasks: int) -> list[str]:
+    """The same breakdown for a task together with its subtasks.
+
+    The duration is the run's elapsed time, as the row's cell shows it.
+    """
     lines = [
         f"Σ With its {plural(subtasks, 'subtask')}",
         f"↑ In: {fmt_int(total.tokens_in)}",
@@ -194,8 +203,8 @@ def _run_tooltip(total: Spend, subtasks: int) -> list[str]:
         lines.append(
             f"⚡ Cache: {fmt_int(total.cache_writes)} write / {fmt_int(total.cache_reads)} read"
         )
-    if total.duration_ms:
-        lines.append(f"⏱ Duration: {fmt_duration(total.duration_ms)}")
+    if task.run_duration_ms:
+        lines.append(f"⏱ Duration: {fmt_duration(task.run_duration_ms)}")
     lines.append(f"$ Cost: {fmt_cost(total.cost)}")
     return lines
 
@@ -225,5 +234,5 @@ def _row_tooltip(
         own = _metrics_tooltip(task)
         blocks.append("\n".join(["This task", *own] if total else own))
     if total and (total.tokens or total.cost):
-        blocks.append("\n".join(_run_tooltip(total, subtasks)))
+        blocks.append("\n".join(_run_tooltip(task, total, subtasks)))
     return "\n\n".join(blocks) or None

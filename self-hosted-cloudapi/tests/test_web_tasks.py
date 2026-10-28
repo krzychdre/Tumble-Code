@@ -1583,12 +1583,15 @@ async def test_task_detail_shows_the_whole_subtree(client, db_session, session_f
 async def _seed_priced_run(session_factory):
     """A run whose own share is the smallest part of what it cost:
 
-        run       $0.25   1 000 in / 100 out
-          sub-a   $1.00   5 000 / 500
-          sub-b   $0.50   2 000 / 200
-            leaf  $0.25   1 000 / 100
+        run       $0.25   1 000 in / 100 out   1m 0s of requests
+          sub-a   $1.00   5 000 / 500          4m 30s
+          sub-b   $0.50   2 000 / 200          2m 0s
+            leaf  $0.25   1 000 / 100          1m 30s
 
     The run: $2.00 and 9 900 tokens; sub-b with its leaf: $0.75 and 3 300.
+    sub-a and sub-b worked at the same time, and so did sub-b and its leaf for
+    half a minute: the run's 9m 0s of requests took 5m 30s, sub-b's 3m 30s took
+    3m 0s.
     """
     await _seed_tree(
         session_factory,
@@ -1598,13 +1601,19 @@ async def _seed_priced_run(session_factory):
         ("leaf", "sub-b", "Its leaf"),
     )
     figures = {
-        "run": (0.25, 1000, 100),
-        "sub-a": (1.00, 5000, 500),
-        "sub-b": (0.50, 2000, 200),
-        "leaf": (0.25, 1000, 100),
+        "run": (0.25, 1000, 100, 60_000, 330_000),
+        "sub-a": (1.00, 5000, 500, 270_000, 270_000),
+        "sub-b": (0.50, 2000, 200, 120_000, 180_000),
+        "leaf": (0.25, 1000, 100, 90_000, 90_000),
     }
     async with session_factory() as s:
-        for task_id, (cost, tokens_in, tokens_out) in figures.items():
+        for task_id, (
+            cost,
+            tokens_in,
+            tokens_out,
+            duration_ms,
+            run_duration_ms,
+        ) in figures.items():
             await s.execute(
                 Task.__table__.update()
                 .where(Task.id == task_id)
@@ -1612,6 +1621,8 @@ async def _seed_priced_run(session_factory):
                     cost=cost,
                     tokens_in=tokens_in,
                     tokens_out=tokens_out,
+                    duration_ms=duration_ms,
+                    run_duration_ms=run_duration_ms,
                     cache_reads=10,
                 )
             )
@@ -1649,10 +1660,17 @@ async def test_a_run_row_shows_what_the_whole_run_cost(
     assert (
         'title="9,900 tokens for the run: 1,100 this task + 8,800 in 3 subtasks"' in run
     )
+    # The duration is the run's elapsed time; its hover adds the requests up.
+    assert '<span class="rollup-mark">Σ</span>5m 30s' in run
+    assert (
+        'title="5m 30s elapsed for the run; its requests add up to 9m 0s:'
+        ' 1m 0s this task + 8m 0s in 3 subtasks"' in run
+    )
 
     # A subtask that delegated further is a run of its own, one level down.
     sub_b = _row(roots, "sub-b")
     assert '<span class="rollup-mark">Σ</span>$0.7500' in sub_b
+    assert '<span class="rollup-mark">Σ</span>3m 0s' in sub_b
     assert "in 1 subtask&#34;" in sub_b or 'in 1 subtask"' in sub_b
 
     # A task with nothing beneath it shows its own figures, unmarked.
@@ -1721,6 +1739,7 @@ async def test_the_run_hover_separates_the_task_from_its_subtasks(
     assert hover.index("This task") < hover.index("$ Cost: $0.2500")
     assert hover.index("$ Cost: $0.2500") < hover.index("Σ With its 3 subtasks")
     assert hover.index("Σ With its 3 subtasks") < hover.index("$ Cost: $2.0000")
+    assert hover.index("Σ With its 3 subtasks") < hover.index("⏱ Duration: 5m 30s")
     assert "↑ In: 9,000" in hover and "↓ Out: 900" in hover
 
     # No subtasks, no split: the hover reads exactly as it always did.
@@ -1790,6 +1809,7 @@ async def test_the_task_page_states_the_run_total(
     # list's rule (a subtask with its own subtasks shows its subtree, marked).
     assert "run-total" not in page
     assert '<span class="rollup-mark">Σ</span>$0.7500' in page
+    assert '<span class="rollup-mark">Σ</span>3m 0s' in page
     assert '<span class="cell-num cell-cost">$1.0000</span>' in page
     # The quality panel says which part it describes.
     assert "This task's own conversation only" in page

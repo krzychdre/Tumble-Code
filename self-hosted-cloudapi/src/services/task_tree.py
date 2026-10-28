@@ -39,9 +39,11 @@ from sqlalchemy import (
     BigInteger,
     and_,
     bindparam,
+    case,
     cast,
     func,
     literal,
+    or_,
     select,
     update,
 )
@@ -50,7 +52,8 @@ from sqlalchemy.orm import aliased
 
 from src.database import dialect_insert
 from src.models.relation import TaskRelation
-from src.models.task import Task
+from src.models.task import Task, TaskMessage
+from src.services.session_quality import KIND_CONDENSE
 
 logger = logging.getLogger(__name__)
 
@@ -216,10 +219,12 @@ async def refresh_run_totals(db: AsyncSession, task_ids: list[str]) -> None:
     A task's run is the task plus every task beneath it of the same owner, at
     most ``RUN_DEPTH_MAX`` levels down: the walk stops at another user's task,
     and a cycle in the client-supplied parent links counts each member once.
-    A change to a task's own figures or to its parent link therefore moves the
+    The cost and tokens are the members' sums; the duration is the wall time
+    of the members' timed messages, which parallel subtasks overlap.
+    A change to a task's messages or to its parent link therefore moves the
     totals of that task and its ancestors of the same owner only, and the
     climb stops at another user's task: a write never locks or sums another
-    user's rows. They are summed again from the member rows, never adjusted
+    user's rows. They are computed again from the member rows, never adjusted
     by a difference, so this is idempotent like
     ``task_summary.refresh_task_summary``.
 
@@ -260,7 +265,7 @@ async def refresh_run_totals(db: AsyncSession, task_ids: list[str]) -> None:
 async def _changed_runs(
     db: AsyncSession, parent_of: dict[str, Optional[str]]
 ) -> list[dict]:
-    """The new totals of the runs of ``parent_of`` whose sums moved."""
+    """The new totals of the runs of ``parent_of`` that moved."""
     result = await db.execute(_RUN_TOTALS, {"run_ids": list(parent_of)})
     return [
         {
@@ -356,7 +361,8 @@ def _runs_above():
 
 
 def _run_totals():
-    """The summed figures of each run of ``run_ids`` beside its stored ones."""
+    """The figures of each run of ``run_ids`` beside its stored ones: the
+    summed cost and tokens, and the wall time of its model requests."""
     members = (
         select(
             Task.id.label("run_id"),
@@ -380,9 +386,9 @@ def _run_totals():
         .where(members.c.depth < RUN_DEPTH_MAX)
     )
     # A cycle repeats its members until the depth runs out; each counts once.
-    members = select(members.c.run_id, members.c.member_id).distinct().subquery()
+    members = select(members.c.run_id, members.c.member_id).distinct().cte("members")
     member = aliased(Task, name="member")
-    totals = (
+    sums = (
         select(
             members.c.run_id,
             func.sum(member.cost).label("cost"),
@@ -390,14 +396,83 @@ def _run_totals():
             cast(func.sum(member.tokens_in + member.tokens_out), BigInteger).label(
                 "tokens"
             ),
-            cast(func.sum(member.duration_ms), BigInteger).label("duration_ms"),
         )
         .join(member, member.id == members.c.member_id)
         .group_by(members.c.run_id)
-        .subquery("run_totals")
+        .subquery("run_sums")
     )
-    return select(totals, Task.run_cost, Task.run_tokens, Task.run_duration_ms).join(
-        Task, Task.id == totals.c.run_id
+    wall = _wall_time(members)
+    return (
+        select(
+            sums,
+            func.coalesce(wall.c.duration_ms, 0).label("duration_ms"),
+            Task.run_cost,
+            Task.run_tokens,
+            Task.run_duration_ms,
+        )
+        .join(Task, Task.id == sums.c.run_id)
+        .outerjoin(wall, wall.c.run_id == sums.c.run_id)
+    )
+
+
+def _wall_time(members):
+    """(run_id, duration_ms) of each run of ``members`` (run_id, member_id)
+    with a timed request: how long at least one of its requests was running.
+
+    Parallel subtasks run their requests at once, so their own durations
+    overlap. Ordered by start, each request adds the part of it past the
+    latest end of the requests that started before it.
+    """
+    message = aliased(TaskMessage, name="message")
+    # A condense message is said once its summary request has finished; a
+    # request message just before the request is sent.
+    start = case(
+        (
+            message.q_kind == KIND_CONDENSE,
+            message.message_ts - message.duration_ms,
+        ),
+        else_=message.message_ts,
+    )
+    requests = (
+        select(
+            members.c.run_id,
+            start.label("start_ms"),
+            (start + message.duration_ms).label("end_ms"),
+            message.duration_ms,
+            func.max(start + message.duration_ms)
+            .over(partition_by=members.c.run_id, order_by=start, rows=(None, -1))
+            .label("earlier_end_ms"),
+        )
+        .join(
+            message,
+            and_(message.task_id == members.c.member_id, message.duration_ms > 0),
+        )
+        .subquery("requests")
+    )
+    added = case(
+        # The first request, or one stored without a time, which overlaps
+        # nothing known.
+        (
+            or_(
+                requests.c.earlier_end_ms.is_(None),
+                requests.c.start_ms.is_(None),
+                requests.c.start_ms >= requests.c.earlier_end_ms,
+            ),
+            requests.c.duration_ms,
+        ),
+        (
+            requests.c.end_ms > requests.c.earlier_end_ms,
+            requests.c.end_ms - requests.c.earlier_end_ms,
+        ),
+        else_=0,
+    )
+    return (
+        select(
+            requests.c.run_id,
+            cast(func.sum(added), BigInteger).label("duration_ms"),
+        )
+        .group_by(requests.c.run_id)
+        .subquery("run_wall")
     )
 
 
@@ -504,8 +579,9 @@ class Spend:
     """What some tasks consumed: the additive figures of a task row.
 
     The message count is deliberately absent: it is a property of one
-    conversation. The duration adds up because it is the time of each task's
-    own model requests, not a span that would enclose its subtasks.
+    conversation. The duration is the time of each task's own model requests,
+    so a sum over subtasks that ran in parallel counts their overlap again:
+    it is request time, not the run's wall time (``Task.run_duration_ms``).
     """
 
     cost: float = 0.0

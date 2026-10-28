@@ -6,6 +6,7 @@ of the list is a URL: it works without scripting, survives a reload, and the
 pager, the filter chips and a bulk delete all carry it along.
 """
 
+import json
 import re
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
@@ -23,7 +24,7 @@ from src.services.model_attribution import primary_model
 from src.services.projects import folder_key
 from src.services.task_tree import refresh_run_totals
 from src.web.presenters import task_list
-from tests.web_helpers import _override_web_user, _seed_user
+from tests.web_helpers import _add_message, _override_web_user, _seed_user
 
 BASE = datetime(2026, 6, 1, 12, 0, tzinfo=timezone.utc)
 
@@ -793,7 +794,10 @@ def _groups(html: str) -> list[dict]:
 async def _seed_spend(session_factory):
     """Two projects and tasks without one. alpha is a repository whose runs
     ran in two worktrees, one with a subtask, so its run total differs from the
-    sum of its rows' own figures; beta is a folder without git."""
+    sum of its rows' own figures; beta is a folder without git.
+
+    a1's subtask started its request 10s into a1's: the run took 1m 10s of
+    the 1m 30s its requests add up to."""
     await _seed_projects(
         session_factory,
         ("prj_alpha", "alpha", "github.com/a/alpha"),
@@ -846,20 +850,36 @@ async def _seed_spend(session_factory):
         # A folder no client has reported yet has no project either.
         {"id": "n1", "title": "N1", "workspace_path": "/w/unbound", "age": 10},
     )
+    requests = {"a1": (0, 30_000), "a1-sub": (10_000, 60_000), "a2": (0, 15_000)}
+    async with session_factory() as s:
+        for task_id, (ts, duration_ms) in requests.items():
+            await _add_message(
+                s,
+                task_id,
+                {
+                    "ts": ts,
+                    "type": "say",
+                    "say": "api_req_started",
+                    "text": json.dumps({"durationMs": duration_ms}),
+                },
+            )
+        await refresh_run_totals(s, list(requests))
+        await s.commit()
 
 
 @pytest.mark.parametrize(
-    "scope, alpha_count, messages, pill",
+    "scope, alpha_count, messages, duration, pill",
     [
         # A run's row shows its whole run's spend, so the group sums run
-        # totals; messages, like the rows, are each task's own.
-        ("roots", "2 runs", "6 msg", "4 runs · 3 projects"),
+        # totals, the runs' elapsed times; messages, like the rows, are each
+        # task's own.
+        ("roots", "2 runs", "6 msg", "Σ 1m 25s", "4 runs · 3 projects"),
         # Every task is a row of its own: own figures, the subtask counted once.
-        ("all", "3 tasks", "9 msg", "5 tasks · 3 projects"),
+        ("all", "3 tasks", "9 msg", "Σ 1m 45s", "5 tasks · 3 projects"),
     ],
 )
 async def test_the_list_is_grouped_by_project_by_default(
-    scope, alpha_count, messages, pill, client, db_session, session_factory
+    scope, alpha_count, messages, duration, pill, client, db_session, session_factory
 ):
     await _seed_user(db_session)
     await _seed_spend(session_factory)
@@ -885,7 +905,7 @@ async def test_the_list_is_grouped_by_project_by_default(
         alpha_count,
         "github.com/a/alpha",
         messages,
-        "Σ 1m 45s",
+        duration,
         "Σ 1.3k tok",
         "Σ $1.3000",
     ):

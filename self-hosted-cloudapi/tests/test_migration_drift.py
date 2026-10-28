@@ -992,7 +992,7 @@ def test_run_totals_backfill_sums_each_run_and_names_its_primary_model(migrate_e
             [("below_long", "x" * 257), ("child", "root")],
         )
 
-    _alembic(run, "upgrade", "head")
+    _alembic(run, "upgrade", "f0a1b2c3d4e5")
 
     with sqlite3.connect(db_file) as conn:
         stored = {
@@ -1023,6 +1023,63 @@ def test_run_totals_backfill_sums_each_run_and_names_its_primary_model(migrate_e
         "evil_sub": (0.5, 7, 0, None),
         "x" * 257: (2.0, 0, 0, None),
         "below_long": (3.0, 0, 0, None),
+    }
+
+
+def test_run_duration_backfill_stores_each_runs_wall_time(migrate_env):
+    """f3c4d5e6a7b8 stores how long at least one timed message of each run
+    was running: a condense message ends at its time, any other starts at it,
+    and one without a time overlaps nothing. Another owner's task beneath a
+    run is no member, and a run without a timed message took no time."""
+    db_file, run = migrate_env
+    _load_baseline(db_file)
+    _alembic(run, "stamp", SQLITE_START_REVISION)
+    _alembic(run, "upgrade", "f2b3c4d5e6a7")
+
+    # id, owner, parent; every run_duration_ms is a stale sum.
+    tasks = [
+        ("root", "u1", None),
+        ("a", "u1", "root"),
+        ("b", "u1", "root"),
+        ("theirs", "u2", "root"),
+        ("idle", "u1", None),
+    ]
+    # id, task, ts, duration ms, kind: a [1000, 2000] and [4000, 5000],
+    # b [3500, 4200] and 300 ms without a time.
+    messages = [
+        ("m1", "a", 1000, 1000, "request"),
+        ("m2", "a", 5000, 1000, "condense"),
+        ("m3", "a", 1500, 0, "tool"),
+        ("m4", "b", 3500, 700, "request"),
+        ("m5", "b", None, 300, "request"),
+        ("m6", "theirs", 1000, 9000, "request"),
+    ]
+    with sqlite3.connect(db_file) as conn:
+        conn.executemany(
+            "INSERT INTO users (id, authentik_id, email) VALUES (?, ?, ?)",
+            [("u1", "ak_1", "a@b.c"), ("u2", "ak_2", "d@e.f")],
+        )
+        conn.executemany(
+            "INSERT INTO tasks (id, user_id, parent_task_id, run_duration_ms) "
+            "VALUES (?, ?, ?, 99999)",
+            tasks,
+        )
+        conn.executemany(
+            "INSERT INTO task_messages (id, task_id, message_data, message_ts, "
+            "duration_ms, q_kind) VALUES (?, ?, '{}', ?, ?, ?)",
+            messages,
+        )
+
+    _alembic(run, "upgrade", "head")
+
+    with sqlite3.connect(db_file) as conn:
+        stored = dict(conn.execute("SELECT id, run_duration_ms FROM tasks"))
+    assert stored == {
+        "root": 2800,
+        "a": 2000,
+        "b": 1000,
+        "theirs": 9000,
+        "idle": 0,
     }
 
 

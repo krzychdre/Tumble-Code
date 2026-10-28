@@ -211,7 +211,7 @@
     <div class="task-head-cells">
       <span class="head-label head-title">Task<span class="head-sub" aria-hidden="true"> · folder · model</span></span>
       {{ head_cell('messages', 'Messages') }}
-      <span class="head-label" title="Time the model spent on the task's requests, each from sending it to the end of its answer. Waits between requests are not counted.">Duration</span>
+      <span class="head-label" title="Time the model spent on the task's requests, each from sending it to the end of its answer. Waits between requests are not counted; in a run, time when its subtasks worked at the same time counts once.">Duration</span>
       {{ head_cell('tokens', 'Tokens') }}
       {{ head_cell('cost', 'Cost') }}
       <span class="head-label">Grade</span>
