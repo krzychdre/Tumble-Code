@@ -157,4 +157,22 @@ describe("Markdown", () => {
 			},
 		)
 	})
+
+	it.each([
+		["unclosed \\[", "\\[".repeat(80000)],
+		["unclosed \\(", "\\(".repeat(80000)],
+		["unclosed link brackets", "[".repeat(160000)],
+		["unclosed link targets", "[a](".repeat(40000)],
+	])("renders a line of %s at once", (_label, line) => {
+		const started = Date.now()
+		const { lastFrame } = render(<Markdown>{line}</Markdown>)
+		expect(Date.now() - started).toBeLessThan(2000)
+		expect(lastFrame()).toBeTruthy()
+	})
+
+	it("keeps a link target with balanced parentheses whole", () => {
+		const { lastFrame } = render(<Markdown>{"see [Foo](https://en.wikipedia.org/wiki/Foo_(bar)) here"}</Markdown>)
+		expect(lastFrame()).toContain("https://en.wikipedia.org/wiki/Foo_(bar)")
+		expect(lastFrame()).not.toContain("[Foo]")
+	})
 })
