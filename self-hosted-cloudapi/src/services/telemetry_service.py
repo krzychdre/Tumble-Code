@@ -11,6 +11,7 @@ from src.models.event import TelemetryEvent
 from src.models.task import Task, TaskMessage
 from src.services.client_kind import CLIENT_CLI, CLIENT_VSCODE, client_kind_from
 from src.services.model_attribution import note_completion_model
+from src.services.projects import project_id_for_folder
 from src.services.session_quality import (
     KIND_COMPLETION,
     KIND_COMPLETION_REPLY,
@@ -213,6 +214,18 @@ def _stamp_workspace_path(task, workspace_path) -> None:
     task.workspace_path = workspace_path
 
 
+async def _stamp_project(db, task) -> None:
+    """Give a new row the project its folder is bound to.
+
+    A folder bound only later claims its tasks then (services/projects), so
+    this runs once, on the row's creation.
+    """
+    if task.workspace_path:
+        task.project_id = await project_id_for_folder(
+            db, task.user_id, task.organization_id, task.workspace_path
+        )
+
+
 async def record_event(
     db: AsyncSession,
     user_id: str,
@@ -364,6 +377,8 @@ async def backfill_messages(
     if task.user_id != user_id:
         raise TaskNotOwnedError(task_id)
     _stamp_workspace_path(task, workspace_path)
+    if created:
+        await _stamp_project(db, task)
     if not created and client_kind:
         await stamp_task_client(db, task_id, user_id, client_kind)
     await _link_task_tree(db, task_id)
@@ -457,6 +472,7 @@ async def upsert_task_message(
     # legacy NULL the first time the bridge reports a path). Never overwrites.
     _stamp_workspace_path(task, workspace_path)
     if created:
+        await _stamp_project(db, task)
         # Wire the new row into the subtask tree, once. A chunk carries no
         # parent information, so for a row that already exists the link queries
         # could only find what the moments that change the tree already

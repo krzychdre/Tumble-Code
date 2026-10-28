@@ -61,6 +61,15 @@ class Task(Base, TimestampMixin):
         index=True,
     )
 
+    # The project the task's folder is bound to (models/project), stamped when
+    # the row is created or when the folder is first bound. NULL until then.
+    # The key is named like migration b0c1d2e3f4a5 names it, for its downgrade.
+    project_id = Column(
+        String,
+        ForeignKey("projects.id", ondelete="SET NULL", name="fk_tasks_project_id"),
+        nullable=True,
+        index=True,
+    )
     # --- denormalized display summary -------------------------------------
     # Maintained by services/task_summary.refresh_task_summary() on every write
     # so the task list renders from one indexed query instead of re-parsing the

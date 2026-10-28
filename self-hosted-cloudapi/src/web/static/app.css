@@ -3891,6 +3891,43 @@ table.diag-table th.diag-num {
 	color: var(--text-faint);
 }
 
+/* One project on /app/projects: its name, meta line, folders and forms. */
+.project-item {
+	padding: var(--s3) 0;
+	border-top: 1px solid var(--line);
+}
+.project-name {
+	margin: 0;
+	font-size: var(--t-title);
+	overflow-wrap: anywhere;
+}
+.project-item .settings-meta {
+	overflow-wrap: anywhere;
+}
+/* A select is as wide as its longest option, here a project name. */
+.project-item .field-input,
+.project-item select {
+	max-width: 100%;
+	min-width: 0;
+}
+/* A repository opened through many worktrees lists many folders: closed by default. */
+.project-folders {
+	margin: var(--s1) 0 var(--s2);
+	font-size: var(--t-sm);
+}
+.project-folders ul {
+	margin: var(--s1) 0 0;
+	padding-left: var(--s4);
+}
+.project-folders li {
+	overflow-wrap: anywhere;
+}
+/* The space heading carries an organization's name; .chart-title is a flex row,
+   whose bare text would not shrink below its longest word. */
+.project-space {
+	display: block;
+	overflow-wrap: anywhere;
+}
 .settings-rule {
 	border: none;
 	border-top: 1px solid var(--line);

@@ -34,6 +34,7 @@ from src.auth.web_session import get_web_user_optional
 from src.models.error_report import ErrorReport
 from src.models.task import Task, TaskShare
 from src.models.organization import Membership, Organization
+from src.services.projects import resolve_project
 from src.services.problem_catalogue import problem_signature
 from tests.test_browser_js import _find_browser
 from tests.web_helpers import (
@@ -554,6 +555,16 @@ async def _seed_hostile_text(session_factory):
             )
         )
         s.add(Membership(user_id="user_long", organization_id="org_long"))
+        await s.flush()
+        # A project with a long name and several long worktree folders, and two
+        # folder projects to merge it with.
+        project = await resolve_project(
+            s, "user_test", "org_long", _LONG_PATH, _LONG_URL
+        )
+        project.name = _NOSPACE[:100]
+        await resolve_project(s, "user_long", "org_long", f"{_LONG_PATH}-wt", _LONG_URL)
+        for n in range(2):
+            await resolve_project(s, "user_long", "org_long", f"{_LONG_PATH}-{n}", "")
         await s.commit()
 
 
@@ -575,6 +586,7 @@ async def _seed_hostile_text(session_factory):
         "/app/diagnostics/reports/phone-report",
         "/app/organizations",
         "/app/organizations/org_long",
+        "/app/projects",
         "/shared/run",
     ],
 )

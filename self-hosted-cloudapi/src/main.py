@@ -28,6 +28,7 @@ from src.routers import (
     error_reports,
     browser,
     llm_exchanges,
+    recall,
 )
 from src.routers import task_images
 from src.routers import (
@@ -36,6 +37,7 @@ from src.routers import (
     web_diagnostics,
     web_metrics,
     web_organizations,
+    web_projects,
     web_settings,
     web_tasks,
 )
@@ -182,6 +184,9 @@ app.include_router(browser.router)
 # Extension API
 app.include_router(extension.router)
 
+# Cross-session recall for the extension
+app.include_router(recall.router)
+
 # Settings API
 app.include_router(settings_router.router)
 
@@ -199,7 +204,7 @@ app.include_router(task_images.router)
 
 
 # Web UI: task list and task page, metrics, diagnostics, retention settings,
-# organizations, share links.
+# organizations, projects, share links.
 # /app/tasks/{task_id} (GET) is registered before /app/tasks/bulk-delete (POST),
 # as it always was; tests/test_route_table.py pins the pairs whose paths overlap.
 app.include_router(web_tasks.router)
@@ -208,6 +213,7 @@ app.include_router(web_diagnostics.router)
 app.include_router(web_dataset.router)
 app.include_router(web_settings.router)
 app.include_router(web_organizations.router)
+app.include_router(web_projects.router)
 app.include_router(shared.router)
 
 # Static assets for the web UI (CSS, vendored JS, the renderer). A URL with the
