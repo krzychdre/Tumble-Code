@@ -1,6 +1,7 @@
-import { setInputBoxHandler, createVSCodeAPI } from "@tumble-code/vscode-shim"
+import { setInputBoxHandler, setModalMessageHandler, createVSCodeAPI } from "@tumble-code/vscode-shim"
 
 import { useSecretPromptStore } from "../secretPromptStore.js"
+import { askModalQuestion, pickModalAnswer } from "../../hooks/useSecretPromptBridge.js"
 
 /**
  * The link between the core and the interface.
@@ -78,5 +79,68 @@ describe("showInputBox reaching the CLI prompt", () => {
 		// headless run fails instead of waiting for someone who is not there.
 		await expect(vscode.window.showInputBox({ prompt: "Password:" })).resolves.toBe("")
 		expect(useSecretPromptStore.getState().current).toBeNull()
+	})
+})
+
+/**
+ * A modal question of the core (the project MCP servers' "start them?") takes
+ * the same road: shim, handler, store, dialog, and the typed answer back.
+ */
+describe("a modal question reaching the CLI prompt", () => {
+	const vscode = createVSCodeAPI(process.cwd(), process.cwd())
+
+	beforeEach(() => setModalMessageHandler(askModalQuestion))
+
+	afterEach(() => {
+		setModalMessageHandler(undefined)
+		useSecretPromptStore.getState().cancelAll()
+	})
+
+	const ask = () =>
+		vscode.window.showWarningMessage(
+			"The project file /w/.roo/mcp.json wants to start the MCP servers below.",
+			{ modal: true, detail: "x: bash -c evil" },
+			"Start servers",
+		)
+
+	it("shows the question with its detail and returns the answer picked by number", async () => {
+		const asked = ask()
+		await Promise.resolve()
+
+		const current = useSecretPromptStore.getState().current
+		expect(current?.prompt).toContain("/w/.roo/mcp.json")
+		expect(current?.prompt).toContain("x: bash -c evil")
+		expect(current?.prompt).toContain("1 = Start servers")
+		expect(current?.masked).toBe(false)
+
+		useSecretPromptStore.getState().answer("1")
+		await expect(asked).resolves.toBe("Start servers")
+	})
+
+	it("treats esc and an unknown answer as dismissed", async () => {
+		const refused = ask()
+		await Promise.resolve()
+		useSecretPromptStore.getState().cancel()
+		await expect(refused).resolves.toBeUndefined()
+
+		const mistyped = ask()
+		await Promise.resolve()
+		useSecretPromptStore.getState().answer("yes please")
+		await expect(mistyped).resolves.toBeUndefined()
+	})
+
+	it("answers dismissed with nobody listening, and never asks for a notification", async () => {
+		setModalMessageHandler(undefined)
+		await expect(ask()).resolves.toBeUndefined()
+
+		setModalMessageHandler(askModalQuestion)
+		await expect(vscode.window.showWarningMessage("Just so you know", "OK")).resolves.toBeUndefined()
+		expect(useSecretPromptStore.getState().current).toBeNull()
+	})
+
+	it("accepts the answer's text in any case", () => {
+		expect(pickModalAnswer(["Start servers", "Later"], " start SERVERS ")).toBe("Start servers")
+		expect(pickModalAnswer(["Start servers"], "2")).toBeUndefined()
+		expect(pickModalAnswer(["Start servers"], undefined)).toBeUndefined()
 	})
 })

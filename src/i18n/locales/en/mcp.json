@@ -18,5 +18,9 @@
 		"server_deleted": "Deleted MCP server: {{serverName}}",
 		"server_not_found": "Server \"{{serverName}}\" not found in configuration",
 		"project_config_deleted": "Project MCP configuration file deleted. All project MCP servers have been disconnected."
+	},
+	"trust": {
+		"question": "The project file {{path}} wants to start the MCP servers below. They run on your computer with your permissions. Start them only if you trust this repository.",
+		"start": "Start servers"
 	}
 }

@@ -18,5 +18,9 @@
 		"server_deleted": "Servidor MCP eliminat: {{serverName}}",
 		"server_not_found": "Servidor \"{{serverName}}\" no trobat a la configuració",
 		"project_config_deleted": "Fitxer de configuració MCP del projecte eliminat. Tots els servidors MCP del projecte han estat desconnectats."
+	},
+	"trust": {
+		"question": "El fitxer {{path}} d'aquest espai de treball vol iniciar els servidors MCP següents. S'executen al vostre ordinador amb els vostres permisos. Inicieu-los només si confieu en aquest repositori.",
+		"start": "Inicia els servidors"
 	}
 }

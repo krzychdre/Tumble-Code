@@ -18,5 +18,9 @@
 		"server_deleted": "MCP sunucusu silindi: {{serverName}}",
 		"server_not_found": "Yapılandırmada \"{{serverName}}\" sunucusu bulunamadı",
 		"project_config_deleted": "Proje MCP yapılandırma dosyası silindi. Tüm proje MCP sunucuları bağlantısı kesildi."
+	},
+	"trust": {
+		"question": "Bu çalışma alanının {{path}} dosyası aşağıdaki MCP sunucularını başlatmak istiyor. Bunlar bilgisayarınızda sizin izinlerinizle çalışır. Yalnızca bu depoya güveniyorsanız başlatın.",
+		"start": "Sunucuları başlat"
 	}
 }

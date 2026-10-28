@@ -18,5 +18,9 @@
 		"server_deleted": "Server MCP dihapus: {{serverName}}",
 		"server_not_found": "Server \"{{serverName}}\" tidak ditemukan dalam konfigurasi",
 		"project_config_deleted": "File konfigurasi MCP proyek dihapus. Semua server MCP proyek telah diputus koneksinya."
+	},
+	"trust": {
+		"question": "File {{path}} di workspace ini ingin menjalankan server MCP di bawah. Server tersebut berjalan di komputer Anda dengan izin Anda. Jalankan hanya jika Anda memercayai repositori ini.",
+		"start": "Jalankan server"
 	}
 }

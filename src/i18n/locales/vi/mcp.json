@@ -18,5 +18,9 @@
 		"server_deleted": "Đã xóa máy chủ MCP: {{serverName}}",
 		"server_not_found": "Không tìm thấy máy chủ \"{{serverName}}\" trong cấu hình",
 		"project_config_deleted": "Tệp cấu hình MCP của dự án đã bị xóa. Tất cả các máy chủ MCP của dự án đã bị ngắt kết nối."
+	},
+	"trust": {
+		"question": "Tệp {{path}} của workspace này muốn khởi động các máy chủ MCP bên dưới. Chúng chạy trên máy tính của bạn với quyền của bạn. Chỉ khởi động nếu bạn tin tưởng kho mã này.",
+		"start": "Khởi động máy chủ"
 	}
 }

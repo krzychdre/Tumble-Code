@@ -14,6 +14,7 @@ import { StatusBarItem } from "../classes/StatusBarItem.js"
 import { TextEditorDecorationType } from "../classes/TextEditorDecorationType.js"
 import { TabGroupsAPI } from "./TabGroupsAPI.js"
 import { getInputBoxHandler } from "./inputBoxHandler.js"
+import { getModalMessageHandler, type ModalMessage } from "./modalMessageHandler.js"
 import { StatusBarAlignment, ViewColumn } from "../types.js"
 import type { WorkspaceAPI } from "./WorkspaceAPI.js"
 import type { Thenable } from "../types.js"
@@ -35,6 +36,24 @@ import type {
 } from "../interfaces/webview.js"
 import type { QuickPickOptions, InputBoxOptions, OpenDialogOptions, Disposable } from "../interfaces/workspace.js"
 import type { CancellationToken } from "../interfaces/document.js"
+
+/** What follows the message of `show*Message`: optional options, then the answers offered. */
+type MessageArgs = Array<string | { modal?: boolean; detail?: string } | undefined>
+
+/**
+ * A modal message with answers goes to the host's handler, which asks the user;
+ * every other message is a notification the CLI only logs, with no answer.
+ */
+function askModal(severity: ModalMessage["severity"], message: string, rest: MessageArgs): Promise<string | undefined> {
+	const [first, ...others] = rest
+	const options = typeof first === "object" && first !== null ? first : undefined
+	const items = (options ? others : rest).filter((item): item is string => typeof item === "string")
+	const handler = getModalMessageHandler()
+	if (!options?.modal || items.length === 0 || !handler) {
+		return Promise.resolve(undefined)
+	}
+	return handler({ severity, message, detail: options.detail, items })
+}
 
 /**
  * Window API mock for CLI mode
@@ -119,19 +138,19 @@ export class WindowAPI {
 		}
 	}
 
-	showInformationMessage(message: string, ..._items: string[]): Thenable<string | undefined> {
+	showInformationMessage(message: string, ...rest: MessageArgs): Thenable<string | undefined> {
 		logs.info(message, "VSCode.Window")
-		return Promise.resolve(undefined)
+		return askModal("info", message, rest)
 	}
 
-	showWarningMessage(message: string, ..._items: string[]): Thenable<string | undefined> {
+	showWarningMessage(message: string, ...rest: MessageArgs): Thenable<string | undefined> {
 		logs.warn(message, "VSCode.Window")
-		return Promise.resolve(undefined)
+		return askModal("warning", message, rest)
 	}
 
-	showErrorMessage(message: string, ..._items: string[]): Thenable<string | undefined> {
+	showErrorMessage(message: string, ...rest: MessageArgs): Thenable<string | undefined> {
 		logs.error(message, "VSCode.Window")
-		return Promise.resolve(undefined)
+		return askModal("error", message, rest)
 	}
 
 	showQuickPick(items: string[], _options?: QuickPickOptions): Thenable<string | undefined> {
