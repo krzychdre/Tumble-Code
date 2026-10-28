@@ -19,7 +19,7 @@ from src.middleware.content_security_policy import ContentSecurityPolicyMiddlewa
 from src.middleware.cors import setup_cors
 from src.middleware.csrf import CsrfOriginMiddleware
 from src.middleware.request_logging import RequestLoggingMiddleware
-from src.middleware.rate_limit import limiter
+from src.middleware.rate_limit import RateLimitMiddleware, limiter
 from src.services.organizations import run_organization_sync_loop
 from src.services.recall_cards import run_recall_loop
 from src.routers import (
@@ -173,9 +173,7 @@ app.add_middleware(ContentSecurityPolicyMiddleware)
 # Apply rate limiter if enabled
 if settings.rate_limit_enabled and limiter is not None:
     app.state.limiter = limiter
-    from slowapi.middleware import SlowAPIMiddleware
-
-    app.add_middleware(SlowAPIMiddleware)
+    app.add_middleware(RateLimitMiddleware)
 
 # A web route that needs a signed-in reader raises LoginRequired (usually via
 # the require_web_user dependency); this sends the browser to the login page.

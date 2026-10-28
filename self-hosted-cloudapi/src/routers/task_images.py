@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db
+from src.middleware.rate_limit import not_rate_limited
 from src.dependencies import get_current_user
 from src.models.task import TaskImage
 from src.routers.events import capped_request
@@ -40,7 +41,11 @@ def _bad_request(detail: str) -> HTTPException:
     return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
 
 
+# Outside the per-IP limit: the extension uploads each image of each chat
+# message as the message arrives. The Bearer token, the owner check and the
+# size cap guard it.
 @router.post("/tasks/{task_id}/images", status_code=status.HTTP_204_NO_CONTENT)
+@not_rate_limited
 async def upload_task_image_endpoint(
     task_id: str,
     request: Request,
