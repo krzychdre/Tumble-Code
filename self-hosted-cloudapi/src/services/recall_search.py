@@ -18,6 +18,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+import anyio
 from sqlalchemy import and_, case, func, select, text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -240,6 +241,11 @@ async def _conversation(db: AsyncSession, task_id: str) -> str:
         )
         .order_by(TaskMessage.message_ts)
     )
+    # A whole conversation: parsed and redacted off the event loop.
+    return await anyio.to_thread.run_sync(_redacted_conversation, first, rows.all())
+
+
+def _redacted_conversation(first, rows) -> str:
     turns = [f"User: {_text(first)}"] if first else []
     turns += [f"{_SPEAKERS[kind]}: {_text(data)}" for kind, data in rows]
     return redact_secrets("\n\n".join(turns))

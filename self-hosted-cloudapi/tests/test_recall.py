@@ -388,3 +388,63 @@ async def test_the_owner_keeps_a_task_out_of_recall(org, client, session_factory
     async with session_factory() as s:
         assert await _cards(s) == {}
         assert (await s.get(Task, "t1")).recall_excluded is True
+
+
+# --- building a card does not hold the event loop -----------------------------------
+
+
+def _record_threads(monkeypatch, module):
+    """Pass ``module.redact_secrets`` through, recording whether each call ran
+    on the event loop (as tests/test_event_loop_offload.py does)."""
+    import asyncio
+
+    calls = []
+    real = module.redact_secrets
+
+    def recorded(text):
+        try:
+            asyncio.get_running_loop()
+            calls.append("loop")
+        except RuntimeError:
+            calls.append("thread")
+        return real(text)
+
+    monkeypatch.setattr(module, "redact_secrets", recorded)
+    return calls
+
+
+async def test_a_card_is_parsed_and_redacted_off_the_event_loop(
+    org, session_factory, monkeypatch
+):
+    calls = _record_threads(monkeypatch, recall_cards)
+    async with session_factory() as s:
+        project = await _project(s)
+        await update_project(s, project, project.name, "members")
+        await _run_task(s, "t1")
+        await recall_cards.rebuild_card(s, "t1")
+        [card] = (await _cards(s)).values()
+
+    assert "keeps the org claim" in card.body
+    assert calls and set(calls) == {"thread"}
+
+
+async def test_a_conversation_is_redacted_off_the_event_loop(
+    org, client, session_factory, monkeypatch
+):
+    from src.services import recall_search
+
+    async with session_factory() as s:
+        project = await _project(s)
+        await update_project(s, project, project.name, "members")
+        await _run_task(s, "t1")
+        await recall_cards.rebuild_card(s, "t1")
+        await s.commit()
+    calls = _record_threads(monkeypatch, recall_search)
+
+    _override_current_user(client.app, ME, ORG)
+    page = client.get(
+        "/api/recall/sessions/t1", params={**_folder(), "part": "conversation"}
+    ).json()
+
+    assert page["text"].startswith("User: Fix the bridge org claim")
+    assert calls == ["thread"]

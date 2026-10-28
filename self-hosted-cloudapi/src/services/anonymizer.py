@@ -112,9 +112,12 @@ _NOT_NAMES = _GENERIC_USERS | {
     "null",
 }
 
-_PRIVATE_KEY_RE = re.compile(
-    r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z0-9 ]*PRIVATE KEY-----"
-)
+# A PEM private key: its BEGIN line, then everything up to the first END line
+# after it. Found with two searches (see _replace_private_keys) instead of one
+# pattern with a lazy body: that pattern scanned to the end of the text from
+# every BEGIN line without an END, which made many such lines quadratic.
+_PRIVATE_KEY_BEGIN_RE = re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----")
+_PRIVATE_KEY_END_RE = re.compile(r"-----END [A-Z0-9 ]*PRIVATE KEY-----")
 _JWT_RE = re.compile(r"\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}")
 _BEARER_RE = re.compile(r"\bBearer\s+[A-Za-z0-9._~+/=-]{8,}")
 _KEY_SHAPES = [
@@ -142,9 +145,14 @@ _BARE_PAIR_RE = re.compile(
 # .env and shell lines: FOO_TOKEN=..., export DB_PASSWORD="..."
 # Upper-case names only (the .env convention), and a literal value: an
 # expression such as $(cat f), os.environ[...] or ${X} is code, not a secret.
+# Linear: the indentation stays on its line (``\s*`` from every line start
+# ran over all the blank lines below it), and the name is taken whole by a
+# possessive run once a lookahead has seen the keyword in it (two greedy runs
+# around the keyword backtracked quadratically over a long name).
 _ENV_LINE_RE = re.compile(
-    r"""(?m)^(\s*(?:export\s+)?[A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|PASSWD|API_?KEY|PRIVATE_KEY|ACCESS_KEY|CREDENTIALS?)"""
-    r"""[A-Z0-9_]*\s*=\s*)(["']?)([^\s"'#()\[\]{}$]+)(\2)(?=\s|$)"""
+    r"""(?m)^([^\S\n]*(?:export\s+)?"""
+    r"""(?=[A-Z0-9_]*?(?:SECRET|TOKEN|PASSWORD|PASSWD|API_?KEY|PRIVATE_KEY|ACCESS_KEY|CREDENTIALS?))"""
+    r"""[A-Z0-9_]++\s*=\s*)(["']?)([^\s"'#()\[\]{}$]+)(\2)(?=\s|$)"""
 )
 _URL_CREDENTIALS_RE = re.compile(
     r"\b([a-z][a-z0-9+.-]*://)([^/\s:@\"']+):([^/\s@\"']+)@", re.IGNORECASE
@@ -407,7 +415,10 @@ class Anonymizer:
 
             return apply
 
-        text = _PRIVATE_KEY_RE.sub(counted("private_key", PRIVATE_KEY), text)
+        text = _replace_private_keys(
+            text,
+            lambda key: (self._count("private_key", key, PRIVATE_KEY), PRIVATE_KEY)[1],
+        )
         text = _JWT_RE.sub(counted("secret", SECRET), text)
         text = _BEARER_RE.sub(
             lambda m: (
@@ -673,6 +684,30 @@ class Anonymizer:
         ]
         rows.sort(key=lambda row: (row["category"], -row["count"], row["original"]))
         return rows
+
+
+def _replace_private_keys(text: str, replace: Callable[[str], str]) -> str:
+    """``text`` with every PEM private key block replaced by ``replace(block)``.
+
+    The same blocks as the pattern ``BEGIN ... PRIVATE KEY-----`` + lazy body
+    + ``-----END ... PRIVATE KEY-----`` found, in linear time: from the first
+    BEGIN line, the block runs to the first END line after it; with no END
+    line after a BEGIN line there is none after a later one either, so the
+    search stops there.
+    """
+    out: list[str] = []
+    pos = 0
+    while (begin := _PRIVATE_KEY_BEGIN_RE.search(text, pos)) is not None:
+        end = _PRIVATE_KEY_END_RE.search(text, begin.end())
+        if end is None:
+            break
+        out.append(text[pos : begin.start()])
+        out.append(replace(text[begin.start() : end.end()]))
+        pos = end.end()
+    if not out:
+        return text
+    out.append(text[pos:])
+    return "".join(out)
 
 
 def redact_secrets(text: str) -> str:
