@@ -85,7 +85,27 @@ _BLANK_RUN_RE = re.compile(r"\n\s*\n(?:\s*\n)+")
 _ENV_DETAILS_RE = re.compile(
     r"<environment_details>.*?(?:</environment_details>|\Z)", re.DOTALL
 )
-_MSG_WRAPPER_RE = re.compile(r"<(user_message|task|feedback)>(.*?)</\1>", re.DOTALL)
+_MSG_WRAPPER_OPEN_RE = re.compile(r"<(user_message|task|feedback)>")
+
+
+def _first_wrapped(text: str) -> str | None:
+    """The text inside the first ``<user_message>``, ``<task>`` or ``<feedback>``
+    that is closed, or None.
+
+    Found with ``find`` rather than one lazy regex: ``<(tag)>(.*?)</\\1>``
+    rescans the rest of the text for each opener without a closer, so a message
+    of ``<task>`` written 8 000 times held the event loop for seconds (the live
+    bridge derives the title from every final message).
+    """
+    last_close: dict[str, int] = {}
+    for opened in _MSG_WRAPPER_OPEN_RE.finditer(text):
+        tag = opened.group(1)
+        closer = f"</{tag}>"
+        if tag not in last_close:
+            last_close[tag] = text.rfind(closer)
+        if last_close[tag] >= opened.end():
+            return text[opened.end() : text.find(closer, opened.end())]
+    return None
 
 
 def strip_task_wrappers(text: str) -> str:
@@ -98,9 +118,9 @@ def strip_task_wrappers(text: str) -> str:
     if not text:
         return ""
     cleaned = _ENV_DETAILS_RE.sub("", text)
-    match = _MSG_WRAPPER_RE.search(cleaned)
-    if match:
-        cleaned = match.group(2)
+    wrapped = _first_wrapped(cleaned)
+    if wrapped is not None:
+        cleaned = wrapped
     return cleaned.strip()
 
 
