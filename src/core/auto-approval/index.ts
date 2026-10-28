@@ -198,6 +198,11 @@ export async function checkAutoApproval({
 			const decision = getCommandDecision(text, state.allowedCommands || [], state.deniedCommands || [])
 
 			if (decision === "auto_approve") {
+				// A command that may write a protected file (`.roo/mcp.json`,
+				// `.vscode/settings.json`) needs the same consent as a write tool.
+				if (isProtected && state.alwaysAllowWriteProtected !== true) {
+					return { decision: "ask" }
+				}
 				return { decision: "approve" }
 			} else if (decision === "auto_deny") {
 				return { decision: "deny" }

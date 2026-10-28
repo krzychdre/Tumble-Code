@@ -130,7 +130,7 @@ describe("executeCommandTool", () => {
 			})
 
 			expect(mockCline.rooIgnoreController.validateCommand).toHaveBeenCalledWith(command)
-			expect(mockAskApproval).toHaveBeenCalledWith("command", command)
+			expect(mockAskApproval).toHaveBeenCalledWith("command", command, undefined, false)
 			const terminal = await TerminalRegistry.getOrCreateTerminal("/test/workspace", "task", "execa")
 			expect(terminal.runCommand).toHaveBeenCalledWith(command, expect.anything())
 		})
@@ -151,7 +151,7 @@ describe("executeCommandTool", () => {
 			})
 
 			// Verify
-			expect(mockAskApproval).toHaveBeenCalledWith("command", "echo test")
+			expect(mockAskApproval).toHaveBeenCalledWith("command", "echo test", undefined, false)
 			expect(mockPushToolResult).toHaveBeenCalled()
 			// The exact message depends on the terminal mock's behavior
 			const result = mockPushToolResult.mock.calls[0][0]
@@ -173,7 +173,7 @@ describe("executeCommandTool", () => {
 
 			// Verify - confirm the command was approved and result was pushed
 			// The custom path handling is tested in integration tests
-			expect(mockAskApproval).toHaveBeenCalledWith("command", "echo test")
+			expect(mockAskApproval).toHaveBeenCalledWith("command", "echo test", undefined, false)
 			expect(mockPushToolResult).toHaveBeenCalled()
 			const result = mockPushToolResult.mock.calls[0][0]
 			expect(result).toContain("/custom/path")
@@ -216,7 +216,7 @@ describe("executeCommandTool", () => {
 			})
 
 			// Verify
-			expect(mockAskApproval).toHaveBeenCalledWith("command", "echo test")
+			expect(mockAskApproval).toHaveBeenCalledWith("command", "echo test", undefined, false)
 			// executeCommandInTerminal should not be called since approval was denied
 			expect(mockPushToolResult).not.toHaveBeenCalled()
 		})

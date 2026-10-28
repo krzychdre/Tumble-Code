@@ -7,7 +7,7 @@ import * as path from "path"
  * resolved on disk and the rest (a file still to be written) appended. A path
  * whose existing part cannot be resolved is returned as given.
  */
-function realPath(absolutePath: string): string {
+export function realPathOf(absolutePath: string): string {
 	let existing = absolutePath
 	const missing: string[] = []
 	for (;;) {
@@ -56,6 +56,6 @@ export function isPathOutsideWorkspace(filePath: string): boolean {
 		return true
 	}
 
-	const resolved = realPath(absolutePath)
-	return !folders.some((folderPath) => isWithin(resolved, realPath(path.resolve(folderPath))))
+	const resolved = realPathOf(absolutePath)
+	return !folders.some((folderPath) => isWithin(resolved, realPathOf(path.resolve(folderPath))))
 }

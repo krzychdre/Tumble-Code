@@ -169,3 +169,78 @@ describe("RooProtectedController", () => {
 		})
 	})
 })
+
+describe("RooProtectedController beyond the cwd", () => {
+	const workspace = path.resolve("/work/repo")
+	const home = path.resolve("/home/ann")
+	const userDir = path.resolve("/home/ann/.config/Code/User")
+	// A task working in a subfolder of the workspace.
+	const controller = new RooProtectedController(path.join(workspace, "packages/app"), {
+		roots: [workspace, home],
+		protectedDirectories: [userDir],
+	})
+
+	it.each([
+		["the workspace's .roo from a subfolder", "../../.roo/mcp.json"],
+		["the workspace's .rooignore from a subfolder", "../../.rooignore"],
+		["the workspace's .vscode settings", "../../.vscode/settings.json"],
+		["the global MCP file of the CLI", path.join(home, ".roo/mcp.json")],
+		["a global custom tool", path.join(home, ".roo/tools/tool.ts")],
+		["VS Code's user settings", path.join(userDir, "settings.json")],
+		["an extension's global storage", path.join(userDir, "globalStorage/x.y/settings/mcp_settings.json")],
+	])("protects %s", (_label, filePath) => {
+		expect(controller.isWriteProtected(filePath)).toBe(true)
+	})
+
+	it.each([
+		["a source file of the workspace", "../../src/index.ts"],
+		["a file elsewhere", "/tmp/out.txt"],
+		["a file in the home directory", path.join(home, "notes.txt")],
+	])("leaves %s writable", (_label, filePath) => {
+		expect(controller.isWriteProtected(filePath)).toBe(false)
+	})
+})
+
+describe("RooProtectedController through a symlink", () => {
+	it("protects the target of a link that leads into .roo", async () => {
+		const fs = await import("fs/promises")
+		const os = await import("os")
+		const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "protect-spec-")))
+		try {
+			await fs.mkdir(path.join(root, ".roo"))
+			await fs.symlink(path.join(root, ".roo"), path.join(root, "docs"), "dir")
+			const controller = new RooProtectedController(root)
+
+			expect(controller.isWriteProtected("docs/mcp.json")).toBe(true)
+			expect(controller.isWriteProtected("docs-not-a-link/mcp.json")).toBe(false)
+		} finally {
+			await fs.rm(root, { recursive: true, force: true })
+		}
+	})
+})
+
+describe("RooProtectedController.isCommandWriteProtected", () => {
+	const controller = new RooProtectedController("/test/workspace")
+
+	it.each([
+		"cat > .roo/mcp.json <<'X'\n{}\nX",
+		"echo '{}' >> .roo/mcp.json",
+		"printf x 1>.rooignore",
+		"tee .roo/mcp.json < config.json",
+		"cp evil.json .roo/mcp.json",
+		"sed -i s/a/b/ .vscode/settings.json",
+		"python3 write.py .roo/mcp.json",
+		"sh -c 'cat > .roo/mcp.json'",
+		"sudo cp x AGENTS.md",
+		"git status && mv a .roomodes",
+	])("finds a write to a protected file in %j", (command) => {
+		expect(controller.isCommandWriteProtected(command)).toBe(true)
+	})
+
+	it.each(["cat AGENTS.md", "grep -n mode .roomodes", "sed -n 1,5p .roo/rules.md", "npm test > out.log", "ls .roo"])(
+		"finds no write in %j",
+		(command) => {
+			expect(controller.isCommandWriteProtected(command)).toBe(false)
+		},
+	)
+})
