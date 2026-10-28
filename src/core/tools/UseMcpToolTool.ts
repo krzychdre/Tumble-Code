@@ -179,9 +179,12 @@ export class UseMcpToolTool extends BaseTool<"use_mcp_tool"> {
 				return { isValid: true }
 			}
 
-			// Get all servers to find the specific one
+			// The server the call will run on: the project's when a global server
+			// has the same name too (McpConnectionManager.findConnection).
 			const servers = mcpHub.getAllServers()
-			const server = servers.find((s) => s.name === serverName)
+			const server =
+				servers.find((s) => s.name === serverName && s.source === "project") ??
+				servers.find((s) => s.name === serverName)
 
 			if (!server) {
 				// Fail fast when server is unknown
