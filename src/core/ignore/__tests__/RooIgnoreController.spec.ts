@@ -186,6 +186,26 @@ describe("RooIgnoreController", () => {
 			["Get-Content -Path secrets/api-keys.json -Raw", "secrets/api-keys.json"],
 			["GC secrets/keys.json", "secrets/keys.json"],
 			["sls 'api-key' app.log", "app.log"],
+			// Quoting, absolute paths and expansions name the same file.
+			['cat "secrets/key.txt"', "secrets/key.txt"],
+			["cat 'secrets/key.txt'", "secrets/key.txt"],
+			[`cat ${TEST_CWD}/secrets/key.txt`, `${TEST_CWD}/secrets/key.txt`],
+			["cat $(pwd)/secrets/key.txt", "secrets/key.txt"],
+			["cat ${PWD}/secrets/key.txt", "secrets/key.txt"],
+			["cat secrets/*", "secrets/*"],
+			["cat < secrets/key.txt", "secrets/key.txt"],
+			// The commands of a chain, of a substitution and of a wrapper.
+			["cd secrets && cat key.txt", "key.txt"],
+			["echo $(cat secrets/key.txt)", "secrets/key.txt"],
+			["sh -c 'cat secrets/key.txt'", "secrets/key.txt"],
+			["sudo cat secrets/key.txt", "secrets/key.txt"],
+			["env LANG=C head secrets/key.txt", "secrets/key.txt"],
+			// Copying or encoding is reading too.
+			["cp secrets/key.txt /tmp/out", "secrets/key.txt"],
+			["base64 secrets/key.txt", "secrets/key.txt"],
+			// PowerShell: a path given as -Path:value, and a stream of the file.
+			["Get-Content -Path:secrets/keys.json", "secrets/keys.json"],
+			["Get-Content secrets/keys.json:Zone.Identifier", "secrets/keys.json:Zone.Identifier"],
 		])("blocks %j", (command, blockedPath) => {
 			expect(controller.validateCommand(command)).toBe(blockedPath)
 		})
@@ -193,8 +213,10 @@ describe("RooIgnoreController", () => {
 		it.each([
 			["a file-reading command on allowed files", "cat src/app.ts"],
 			["a command that does not read files", "ls -la node_modules"],
-			["a Windows-style switch", "type /secrets/keys.json"],
-			["an argument containing a colon", "Get-Content secrets/keys.json:Zone.Identifier"],
+			["an absolute path outside the workspace", "type /secrets/keys.json"],
+			["a Windows switch", "type /? app.txt"],
+			["removing an ignored directory", "rm -rf node_modules && npm install"],
+			["reading allowed files after cd", "cd src && cat app.ts"],
 		])("allows %s", (_label, command) => {
 			expect(controller.validateCommand(command)).toBeUndefined()
 		})
