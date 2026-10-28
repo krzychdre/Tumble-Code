@@ -1,67 +1,42 @@
 // npx vitest src/core/webview/__tests__/diagnosticsHandler.spec.ts
+// Real files in a temporary storage directory; only the editor is a stand-in.
 
+import * as fs from "fs/promises"
+import * as os from "os"
 import * as path from "path"
 
-// Mock vscode first
-vi.mock("vscode", () => {
-	const showErrorMessage = vi.fn()
-	const openTextDocument = vi.fn().mockResolvedValue({})
-	const showTextDocument = vi.fn().mockResolvedValue(undefined)
-
-	return {
-		window: {
-			showErrorMessage,
-			showTextDocument,
-		},
-		workspace: {
-			openTextDocument,
-		},
-	}
-})
-
-// Mock storage utilities
-vi.mock("../../../utils/storage", () => ({
-	getTaskDirectoryPath: vi.fn(async () => "/mock/task-dir"),
-}))
-
-// Mock fs utilities
-vi.mock("../../../utils/fs", () => ({
-	fileExistsAtPath: vi.fn(),
-}))
-
-// Mock fs/promises
-vi.mock("fs/promises", () => {
-	const mockReadFile = vi.fn()
-	const mockWriteFile = vi.fn().mockResolvedValue(undefined)
-
-	return {
-		default: {
-			readFile: mockReadFile,
-			writeFile: mockWriteFile,
-		},
-		readFile: mockReadFile,
-		writeFile: mockWriteFile,
-	}
-})
-
 import * as vscode from "vscode"
-import * as fs from "fs/promises"
-import * as fsUtils from "../../../utils/fs"
+
 import { logger } from "../../../utils/logging"
 import { generateErrorDiagnostics } from "../diagnosticsHandler"
 
-describe("generateErrorDiagnostics", () => {
-	beforeEach(() => {
-		vi.clearAllMocks()
-	})
+let storage: string
 
-	it("generates a diagnostics file with error metadata and history", async () => {
-		vi.mocked(fsUtils.fileExistsAtPath).mockResolvedValue(true as any)
-		vi.mocked(fs.readFile).mockResolvedValue('[{"role": "user", "content": "test"}]' as any)
+beforeEach(async () => {
+	storage = await fs.mkdtemp(path.join(os.tmpdir(), "diagnostics-spec-"))
+	// The editor's side: the vscode stand-in has no documents to open.
+	Object.assign(vscode.workspace, { openTextDocument: vi.fn(async () => ({})) })
+	Object.assign(vscode.window, { showTextDocument: vi.fn(async () => ({})), showErrorMessage: vi.fn() })
+})
+
+afterEach(async () => {
+	vi.restoreAllMocks()
+	await fs.rm(storage, { recursive: true, force: true })
+})
+
+async function writeHistory(taskId: string, content: string) {
+	const dir = path.join(storage, "tasks", taskId)
+	await fs.mkdir(dir, { recursive: true })
+	await fs.writeFile(path.join(dir, "api_conversation_history.json"), content)
+}
+
+describe("generateErrorDiagnostics", () => {
+	it("writes the error metadata and history to a file only the user can read, and opens it", async () => {
+		await writeHistory("test-task-id", '[{"role": "user", "content": "test"}]')
 
 		const result = await generateErrorDiagnostics({
 			taskId: "test-task-id",
-			globalStoragePath: "/mock/global/storage",
+			globalStoragePath: storage,
 			values: {
 				timestamp: "2025-01-01T00:00:00.000Z",
 				version: "1.2.3",
@@ -72,114 +47,59 @@ describe("generateErrorDiagnostics", () => {
 		})
 
 		expect(result.success).toBe(true)
-		expect(result.filePath).toContain("roo-diagnostics-")
-
-		// Verify we attempted to read API history
-		expect(fs.readFile).toHaveBeenCalledWith(path.join("/mock/task-dir", "api_conversation_history.json"), "utf8")
-
-		// Verify we wrote a diagnostics file with the expected content
-		expect(fs.writeFile).toHaveBeenCalledTimes(1)
-		const [writtenPath, writtenContent] = vi.mocked(fs.writeFile).mock.calls[0]
 		// taskId.slice(0, 8) = "test-tas" from "test-task-id"
-		expect(String(writtenPath)).toContain("roo-diagnostics-test-tas")
-		expect(String(writtenContent)).toContain(
+		expect(path.basename(result.filePath!)).toMatch(/^roo-diagnostics-test-tas-\d+\.json$/)
+		const written = await fs.readFile(result.filePath!, "utf8")
+		expect(written).toContain(
 			"// Please share this file with the Tumble Code maintainers to diagnose the issue faster",
 		)
-		expect(String(writtenContent)).toContain('"error":')
-		expect(String(writtenContent)).toContain('"history":')
-		expect(String(writtenContent)).toContain('"version": "1.2.3"')
-		expect(String(writtenContent)).toContain('"provider": "test-provider"')
-		expect(String(writtenContent)).toContain('"model": "test-model"')
-		expect(String(writtenContent)).toContain('"details": "Sample error details"')
-
-		// Verify VS Code APIs were used to open the generated file
-		expect(vscode.workspace.openTextDocument).toHaveBeenCalledTimes(1)
+		expect(written).toContain('"version": "1.2.3"')
+		expect(written).toContain('"provider": "test-provider"')
+		expect(written).toContain('"model": "test-model"')
+		expect(written).toContain('"details": "Sample error details"')
+		expect(written).toContain('"content": "test"')
+		if (process.platform !== "win32") {
+			expect((await fs.stat(result.filePath!)).mode & 0o777).toBe(0o600)
+			expect((await fs.stat(path.dirname(result.filePath!))).mode & 0o777).toBe(0o700)
+		}
+		expect(vscode.workspace.openTextDocument).toHaveBeenCalledWith(result.filePath)
 		expect(vscode.window.showTextDocument).toHaveBeenCalledTimes(1)
 	})
 
-	it("uses empty history when API history file does not exist", async () => {
-		vi.mocked(fsUtils.fileExistsAtPath).mockResolvedValue(false as any)
-
-		const result = await generateErrorDiagnostics({
-			taskId: "test-task-id",
-			globalStoragePath: "/mock/global/storage",
-			values: {
-				timestamp: "2025-01-01T00:00:00.000Z",
-				version: "1.0.0",
-				provider: "test",
-				model: "test",
-				details: "error",
-			},
-		})
+	it("uses empty history and default values when there is no history file", async () => {
+		const result = await generateErrorDiagnostics({ taskId: "no-history", globalStoragePath: storage })
 
 		expect(result.success).toBe(true)
-
-		// Should not attempt to read file when it doesn't exist
-		expect(fs.readFile).not.toHaveBeenCalled()
-
-		// Verify empty history in output
-		const [, writtenContent] = vi.mocked(fs.writeFile).mock.calls[0]
-		expect(String(writtenContent)).toContain('"history": []')
+		const written = await fs.readFile(result.filePath!, "utf8")
+		expect(written).toContain('"history": []')
+		expect(written).toContain('"version": ""')
+		expect(written).toContain('"provider": ""')
+		expect(written).toContain('"model": ""')
+		expect(written).toContain('"details": ""')
 	})
 
-	it("uses default values when values are not provided", async () => {
-		vi.mocked(fsUtils.fileExistsAtPath).mockResolvedValue(false as any)
+	it("handles a history file that is not JSON", async () => {
+		await writeHistory("bad-json", "invalid json")
 
-		const result = await generateErrorDiagnostics({
-			taskId: "test-task-id",
-			globalStoragePath: "/mock/global/storage",
-		})
+		const result = await generateErrorDiagnostics({ taskId: "bad-json", globalStoragePath: storage })
 
-		expect(result.success).toBe(true)
-
-		// Verify defaults in output
-		const [, writtenContent] = vi.mocked(fs.writeFile).mock.calls[0]
-		expect(String(writtenContent)).toContain('"version": ""')
-		expect(String(writtenContent)).toContain('"provider": ""')
-		expect(String(writtenContent)).toContain('"model": ""')
-		expect(String(writtenContent)).toContain('"details": ""')
-	})
-
-	it("handles JSON parse error gracefully", async () => {
-		vi.mocked(fsUtils.fileExistsAtPath).mockResolvedValue(true as any)
-		vi.mocked(fs.readFile).mockResolvedValue("invalid json" as any)
-
-		const result = await generateErrorDiagnostics({
-			taskId: "test-task-id",
-			globalStoragePath: "/mock/global/storage",
-			values: {
-				timestamp: "2025-01-01T00:00:00.000Z",
-				version: "1.0.0",
-				provider: "test",
-				model: "test",
-				details: "error",
-			},
-		})
-
-		// Should still succeed but with empty history
 		expect(result.success).toBe(true)
 		expect(vscode.window.showErrorMessage).toHaveBeenCalledWith("Failed to parse api_conversation_history.json")
-
-		// Verify empty history in output
-		const [, writtenContent] = vi.mocked(fs.writeFile).mock.calls[0]
-		expect(String(writtenContent)).toContain('"history": []')
+		expect(await fs.readFile(result.filePath!, "utf8")).toContain('"history": []')
 	})
 
-	it("returns error result when file write fails", async () => {
-		vi.mocked(fsUtils.fileExistsAtPath).mockResolvedValue(false as any)
-		vi.mocked(fs.writeFile).mockRejectedValue(new Error("Write failed"))
-
+	it("returns an error result when the task's storage cannot be used", async () => {
+		const notADirectory = path.join(storage, "file")
+		await fs.writeFile(notADirectory, "")
 		const loggerErrorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
 
-		const result = await generateErrorDiagnostics({
-			taskId: "test-task-id",
-			globalStoragePath: "/mock/global/storage",
-		})
+		const result = await generateErrorDiagnostics({ taskId: "t", globalStoragePath: notADirectory })
 
 		expect(result.success).toBe(false)
-		expect(result.error).toBe("Write failed")
-		expect(loggerErrorSpy).toHaveBeenCalledWith("Error generating diagnostics: Write failed")
-		loggerErrorSpy.mockRestore()
-		expect(vscode.window.showErrorMessage).toHaveBeenCalledWith("Failed to generate diagnostics: Write failed")
+		expect(result.error).toMatch(/ENOTDIR|EEXIST/)
+		expect(loggerErrorSpy).toHaveBeenCalledWith(expect.stringMatching(/^Error generating diagnostics: /))
+		expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+			expect.stringMatching(/^Failed to generate diagnostics: /),
+		)
 	})
 })

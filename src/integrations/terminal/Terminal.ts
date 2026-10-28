@@ -241,7 +241,10 @@ export class Terminal extends BaseTerminal {
 		// zsh, and the two would fight each other (VS Code's ambient env wins per
 		// issue #96295). Let VS Code handle injection for the selected profile.
 		if (Terminal.getTerminalZdotdir() && !Terminal.getTerminalProfile()) {
-			env.ZDOTDIR = ShellIntegrationManager.zshInitTmpDir(env)
+			const zdotdir = ShellIntegrationManager.zshInitTmpDir(env)
+			if (zdotdir) {
+				env.ZDOTDIR = zdotdir
+			}
 		}
 
 		return env

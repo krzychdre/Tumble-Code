@@ -35,13 +35,14 @@ export interface RegistryOptions {
 export class CustomToolRegistry {
 	private tools = new Map<string, StoredCustomTool>()
 	private tsCache = new Map<string, string>()
-	private cacheDir: string
+	private cacheDirOption?: string
+	private privateCacheDir?: string
 	private nodePaths: string[]
 	private extensionPath?: string
 	private lastLoaded: Map<string, number> = new Map()
 
 	constructor(options?: RegistryOptions) {
-		this.cacheDir = options?.cacheDir ?? path.join(os.tmpdir(), "dynamic-tools-cache")
+		this.cacheDirOption = options?.cacheDir
 		// Default to current working directory's node_modules.
 		this.nodePaths = options?.nodePaths ?? [path.join(process.cwd(), "node_modules")]
 		this.extensionPath = options?.extensionPath
@@ -238,6 +239,17 @@ export class CustomToolRegistry {
 		return this.extensionPath
 	}
 
+	/** Where transpiled tools are written and then imported (see privateCacheDirectory). */
+	private get cacheDir(): string {
+		if (this.cacheDirOption) {
+			return this.cacheDirOption
+		}
+		this.privateCacheDir ??= privateCacheDirectory(
+			path.join(os.tmpdir(), process.getuid ? `tumble-tools-${process.getuid()}` : "tumble-tools"),
+		)
+		return this.privateCacheDir
+	}
+
 	/**
 	 * Clear the TypeScript compilation cache (both in-memory and on disk).
 	 * This removes all tool-specific subdirectories and their contents.
@@ -245,11 +257,12 @@ export class CustomToolRegistry {
 	clearCache(): void {
 		this.tsCache.clear()
 
-		if (fs.existsSync(this.cacheDir)) {
+		const cacheDir = this.cacheDirOption ?? this.privateCacheDir
+		if (cacheDir && fs.existsSync(cacheDir)) {
 			try {
-				const entries = fs.readdirSync(this.cacheDir, { withFileTypes: true })
+				const entries = fs.readdirSync(cacheDir, { withFileTypes: true })
 				for (const entry of entries) {
-					const entryPath = path.join(this.cacheDir, entry.name)
+					const entryPath = path.join(cacheDir, entry.name)
 					if (entry.isDirectory()) {
 						// Remove tool-specific subdirectory and all its contents.
 						fs.rmSync(entryPath, { recursive: true, force: true })
@@ -431,6 +444,33 @@ export class CustomToolRegistry {
 
 		return value as CustomToolDefinition
 	}
+}
+
+/**
+ * The cache directory for transpiled tools: `preferred` when it is a real
+ * directory owned by this user that nobody else may enter, else a fresh one
+ * made with mkdtemp.
+ *
+ * The cache used to be the fixed shared `/tmp/dynamic-tools-cache`: another
+ * local account could create it first and supply the bundle.mjs the extension
+ * host then imported. `preferred` is per user and kept across runs, so a tool
+ * is not bundled again after a restart; a directory of that name someone else
+ * made, or left open to others, is not used.
+ */
+export function privateCacheDirectory(preferred: string): string {
+	try {
+		fs.mkdirSync(preferred, { mode: 0o700 })
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
+			return fs.mkdtempSync(path.join(path.dirname(preferred), "tumble-tools-"))
+		}
+	}
+	const stat = fs.lstatSync(preferred)
+	const ownedAndClosed = !process.getuid || (stat.uid === process.getuid() && (stat.mode & 0o077) === 0)
+	if (stat.isDirectory() && !stat.isSymbolicLink() && ownedAndClosed) {
+		return preferred
+	}
+	return fs.mkdtempSync(path.join(path.dirname(preferred), "tumble-tools-"))
 }
 
 export const customToolRegistry = new CustomToolRegistry()

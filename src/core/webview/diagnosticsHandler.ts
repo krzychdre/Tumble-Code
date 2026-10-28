@@ -1,10 +1,10 @@
 import * as path from "path"
-import * as os from "os"
 import * as fs from "fs/promises"
 import * as vscode from "vscode"
 
 import { getTaskDirectoryPath } from "../../utils/storage"
 import { fileExistsAtPath } from "../../utils/fs"
+import { writePrivateTempFile } from "../../utils/privateTempFile"
 import { logger } from "../../utils/logging"
 
 export interface ErrorDiagnosticsValues {
@@ -70,13 +70,11 @@ export async function generateErrorDiagnostics(params: GenerateDiagnosticsParams
 		const jsonContent = JSON.stringify(diagnostics, null, 2)
 		const fullContent = headerComment + jsonContent
 
-		// Create a temporary diagnostics file
-		const tmpDir = os.tmpdir()
-		const timestamp = Date.now()
-		const tempFileName = `roo-diagnostics-${taskId.slice(0, 8)}-${timestamp}.json`
-		const tempFilePath = path.join(tmpDir, tempFileName)
-
-		await fs.writeFile(tempFilePath, fullContent, "utf8")
+		// Create a temporary diagnostics file only this user can read
+		const tempFilePath = await writePrivateTempFile(
+			`roo-diagnostics-${taskId.slice(0, 8)}-${Date.now()}.json`,
+			fullContent,
+		)
 
 		// Open the diagnostics file in VS Code
 		const doc = await vscode.workspace.openTextDocument(tempFilePath)

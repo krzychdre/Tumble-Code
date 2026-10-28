@@ -2,11 +2,11 @@
 // and the window reload a stale webview asks for after the extension files were replaced.
 
 import * as path from "path"
-import * as os from "os"
 import * as fs from "fs/promises"
 import * as vscode from "vscode"
 import { openFile } from "../../../integrations/misc/open-file"
 import { fileExistsAtPath } from "../../../utils/fs"
+import { writePrivateTempFile } from "../../../utils/privateTempFile"
 import { generateErrorDiagnostics } from "../diagnosticsHandler"
 import type { DomainHandlerMap, MessageHandler } from "./types"
 import { logger } from "../../../utils/logging"
@@ -47,13 +47,9 @@ const openDebugHistory: MessageHandler = async (ctx, message) => {
 		// Prettify the JSON
 		const prettifiedContent = JSON.stringify(jsonContent, null, 2)
 
-		// Create a temporary file
-		const tmpDir = os.tmpdir()
-		const timestamp = Date.now()
-		const tempFileName = `roo-debug-${message.type === "openDebugApiHistory" ? "api" : "ui"}-${currentTask.taskId.slice(0, 8)}-${timestamp}.json`
-		const tempFilePath = path.join(tmpDir, tempFileName)
-
-		await fs.writeFile(tempFilePath, prettifiedContent, "utf8")
+		// Create a temporary file only this user can read
+		const tempFileName = `roo-debug-${message.type === "openDebugApiHistory" ? "api" : "ui"}-${currentTask.taskId.slice(0, 8)}-${Date.now()}.json`
+		const tempFilePath = await writePrivateTempFile(tempFileName, prettifiedContent)
 
 		// Open the temp file in VS Code
 		const doc = await vscode.workspace.openTextDocument(tempFilePath)
@@ -70,12 +66,7 @@ export const debugHandlers: DomainHandlerMap<"debug"> = {
 		const { provider } = ctx
 		if (message.text) {
 			try {
-				const tmpDir = os.tmpdir()
-				const timestamp = Date.now()
-				const tempFileName = `roo-preview-${timestamp}.md`
-				const tempFilePath = path.join(tmpDir, tempFileName)
-
-				await fs.writeFile(tempFilePath, message.text, "utf8")
+				const tempFilePath = await writePrivateTempFile(`roo-preview-${Date.now()}.md`, message.text)
 
 				const doc = await vscode.workspace.openTextDocument(tempFilePath)
 				await vscode.commands.executeCommand("markdown.showPreview", doc.uri)

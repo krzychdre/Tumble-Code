@@ -5,7 +5,7 @@ import { fileURLToPath } from "url"
 
 import { type CustomToolDefinition, parametersSchema as z } from "@tumble-code/types"
 
-import { CustomToolRegistry } from "../custom-tool-registry.js"
+import { CustomToolRegistry, privateCacheDirectory } from "../custom-tool-registry.js"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -269,6 +269,52 @@ describe("CustomToolRegistry", () => {
 			const tool = registry.get("legacy")
 			expect(tool?.parameters).toBeDefined()
 		}, 30000)
+	})
+
+	describe("transpiled tool cache directory", () => {
+		const posix = process.platform !== "win32"
+		let base: string
+
+		beforeEach(async () => {
+			const fs = await import("fs")
+			const os = await import("os")
+			base = fs.mkdtempSync(path.join(os.tmpdir(), "tool-cache-spec-"))
+		})
+
+		afterEach(async () => {
+			const fs = await import("fs")
+			fs.rmSync(base, { recursive: true, force: true })
+		})
+
+		it("creates the per-user directory private and keeps using it", async () => {
+			const fs = await import("fs")
+			const preferred = path.join(base, "tumble-tools-1000")
+
+			expect(privateCacheDirectory(preferred)).toBe(preferred)
+			expect(privateCacheDirectory(preferred)).toBe(preferred)
+			if (posix) {
+				expect(fs.statSync(preferred).mode & 0o777).toBe(0o700)
+			}
+		})
+
+		it.skipIf(!posix)("does not use a directory of that name others may enter, nor a link", async () => {
+			const fs = await import("fs")
+			const open = path.join(base, "open")
+			fs.mkdirSync(open, { mode: 0o777 })
+			fs.chmodSync(open, 0o777)
+			const elsewhere = path.join(base, "elsewhere")
+			fs.mkdirSync(elsewhere, { mode: 0o700 })
+			const link = path.join(base, "link")
+			fs.symlinkSync(elsewhere, link)
+
+			for (const preferred of [open, link]) {
+				const chosen = privateCacheDirectory(preferred)
+				expect(chosen).not.toBe(preferred)
+				expect(path.dirname(chosen)).toBe(base)
+				expect(path.basename(chosen)).toMatch(/^tumble-tools-.{6}$/)
+				expect(fs.statSync(chosen).mode & 0o777).toBe(0o700)
+			}
+		})
 	})
 
 	describe("clearCache", { concurrent: false }, () => {
