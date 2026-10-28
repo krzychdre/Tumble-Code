@@ -719,12 +719,22 @@ _URL = re.compile(r"\bhttps?://\S+", re.IGNORECASE)
 _UUID = re.compile(
     r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", re.IGNORECASE
 )
+# A run of hex characters with a digit and a letter in it (a hash, an id).
+# Written so no run is scanned twice: the earlier form, two alternatives of
+# three stars each, took cubic time on a long run that ended in a non-hex
+# letter (1 000 characters: 2 s; 8 000: minutes), on the event loop.
 _HEX = re.compile(
-    r"\b[0-9a-f]*\d[0-9a-f]*[a-f][0-9a-f]*\b|\b[0-9a-f]*[a-f][0-9a-f]*\d[0-9a-f]*\b",
+    r"\b(?=[0-9a-f\d]*\d)(?=[0-9a-f\d]*[a-f])[0-9a-f\d]++\b",
     re.IGNORECASE,
 )
 _QUOTED = re.compile(r"(['\"`])([^'\"`]*)\1")
-_PATH = re.compile(r"(?:[A-Za-z]:)?(?:[\w.~@+\-\[\]]*[/\\])+[\w.~@+\-]*")
+# A path starts where a run of path characters starts (or at a drive
+# letter), so a long run without a slash is scanned once, not once from each
+# of its characters.
+_PATH = re.compile(
+    r"(?:(?<![\w.~@+\-\[\]])|(?=[A-Za-z]:))"
+    r"(?:[A-Za-z]:)?(?:[\w.~@+\-\[\]]*+[/\\])+[\w.~@+\-]*"
+)
 _FILE = re.compile(r"\b[\w\-]+\.[A-Za-z][A-Za-z0-9]{0,4}\b")
 _DIGITS = re.compile(r"\d+")
 _SPACE = re.compile(r"\s+")
