@@ -25,7 +25,10 @@ function realPath(absolutePath: string): string {
 }
 
 function isWithin(filePath: string, folderPath: string): boolean {
-	return filePath === folderPath || filePath.startsWith(folderPath.endsWith(path.sep) ? folderPath : folderPath + path.sep)
+	return (
+		filePath === folderPath ||
+		filePath.startsWith(folderPath.endsWith(path.sep) ? folderPath : folderPath + path.sep)
+	)
 }
 
 /**
