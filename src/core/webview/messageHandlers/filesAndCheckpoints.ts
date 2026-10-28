@@ -5,6 +5,7 @@ import * as os from "os"
 import * as fs from "fs/promises"
 import * as vscode from "vscode"
 import { checkoutDiffPayloadSchema, checkoutRestorePayloadSchema } from "@tumble-code/types"
+import { isOpenableExternalUrl } from "@tumble-code/core/browser"
 import pWaitFor from "p-wait-for"
 import { t } from "../../../i18n"
 import { openImage, saveImage } from "../../../integrations/misc/image-handler"
@@ -13,6 +14,7 @@ import { selectImages } from "../../../integrations/misc/process-images"
 import { resolveDefaultSaveUri, saveLastExportPath } from "../../../utils/export"
 import { isPathOutsideWorkspace } from "../../../utils/pathUtils"
 import { openMention } from "../../mentions"
+import { logger } from "../../../utils/logging"
 import type { DomainHandlerMap } from "./types"
 
 export const filesAndCheckpointsHandlers: DomainHandlerMap<"filesAndCheckpoints"> = {
@@ -124,8 +126,12 @@ export const filesAndCheckpointsHandlers: DomainHandlerMap<"filesAndCheckpoints"
 	},
 
 	openExternal: (_ctx, message) => {
-		if (message.url) {
+		// The URL can come from the model (a fetched page on a chat card): only
+		// web and mail links open, never command:, file: or another handler.
+		if (message.url && isOpenableExternalUrl(message.url)) {
 			vscode.env.openExternal(vscode.Uri.parse(message.url))
+		} else if (message.url) {
+			logger.warn(`Refused to open a link that is not http, https or mailto: ${message.url.slice(0, 200)}`)
 		}
 	},
 
