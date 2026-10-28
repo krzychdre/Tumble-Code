@@ -19,6 +19,7 @@ export type ProviderProfilesWebviewMessageType =
 	| "loadApiConfiguration"
 	| "loadApiConfigurationById"
 	| "deleteApiConfiguration"
+	| "startOpenRouterSignIn"
 
 /** Provider profile and model list replies. */
 export type ProviderProfilesExtensionMessageType = "listApiConfig" | "providerModels"

@@ -40,6 +40,10 @@ export const providerProfilesHandlers: DomainHandlerMap<"providerProfiles"> = {
 		}
 	},
 
+	startOpenRouterSignIn: async (ctx) => {
+		await ctx.provider.startOpenRouterSignIn()
+	},
+
 	lockApiConfigAcrossModes: async (ctx, message) => {
 		const { provider } = ctx
 		const enabled = message.bool ?? false

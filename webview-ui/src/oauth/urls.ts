@@ -1,9 +1,0 @@
-import { Package } from "@shared/package"
-
-export function getCallbackUrl(provider: string, uriScheme?: string) {
-	return encodeURIComponent(`${uriScheme || "vscode"}://${Package.publisher}.${Package.name}/${provider}`)
-}
-
-export function getOpenRouterAuthUrl(uriScheme?: string) {
-	return `https://openrouter.ai/auth?callback_url=${getCallbackUrl("openrouter", uriScheme)}`
-}
