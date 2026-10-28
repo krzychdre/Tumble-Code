@@ -12,21 +12,22 @@ is faked. Runs when RECALL_PG_URL names an empty database the tests may own
 import json
 import os
 import time
+from datetime import datetime
 
 import pytest
-from sqlalchemy import select, text
+from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from src.database import Base, get_db
 from src.models.organization import Membership, Organization
-from src.models.recall import RecallLog
+from src.models.recall import RecallDirty, RecallLog
 from src.models.task import Task
 from src.models.user import User
 from src.services import recall_search
 from src.services.organizations import ROLE_ADMIN
 from src.services.projects import resolve_project, update_project
-from src.services.recall_cards import rebuild_card
+from src.services.recall_cards import rebuild_card, rebuild_due
 from src.services.telemetry_service import upsert_task_message
 from tests.web_helpers import _override_current_user
 
@@ -258,3 +259,36 @@ async def test_a_search_over_the_timeout_answers_too_broad(
     monkeypatch.setattr(recall_search, "STATEMENT_TIMEOUT_MS", 1)
 
     assert _search(pg_client, "bridge") == {"results": [], "tooBroad": True}
+
+
+async def test_a_hostile_text_or_time_breaks_neither_the_cards_nor_the_search(
+    pg_factory, pg_client
+):
+    """A client writes its messages' text and time. A NUL or a lone surrogate
+    in a completion (escaped in the stored JSON) failed the card's insert,
+    and with it the rebuild of every account's cards in the batch, on every
+    tick; a time past 2100 failed every search that found the card, for each
+    member who can see it. The text is stored without them, and such a time
+    is no time."""
+    await _enable(pg_factory)
+    async with pg_factory() as s:
+        for task_id, at, result in (
+            ("t-evil", 9 * 10**18, "bridge \u0000 claim \ud800 done"),
+            ("t-ok", NOW_MS, "bridge claim fixed"),
+        ):
+            for message in (
+                _say(at, "text", "Bridge claim"),
+                _say(at + 2, "completion_result", result),
+            ):
+                await upsert_task_message(
+                    s, task_id, ME, ORG, message, workspace_path="/w/roo"
+                )
+        await s.execute(update(RecallDirty).values(dirty_at=datetime(2026, 1, 1)))
+        assert await rebuild_due(s) == 2
+        await s.commit()
+
+    found = _search(pg_client, "bridge claim")["results"]
+
+    assert sorted(r["sessionId"] for r in found) == ["t-evil", "t-ok"]
+    evil = next(r for r in found if r["sessionId"] == "t-evil")
+    assert evil["lastActivity"] == "1970-01-01T00:00:00Z"

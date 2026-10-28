@@ -52,6 +52,9 @@ _NICE = (1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10)
 RANK_ROW = 34
 RANK_LABEL_CHARS = 40
 RANK_LIMIT = 8
+# The rows of a breakdown table (by model, mode, provider, client); the rest
+# fold into one row.
+BREAKDOWN_ROWS = 50
 
 
 def _axis_top(peak: float) -> float:
@@ -279,10 +282,40 @@ def ranked(rows: list[dict], what: str) -> dict:
     }
 
 
+def breakdown(rows: list[dict]) -> list[dict]:
+    """A breakdown table's rows, already sorted biggest first: the first
+    ``BREAKDOWN_ROWS``, the rest summed into one row, as ``ranked`` does.
+
+    A client names its models, modes and providers: one organization member
+    sending thousands of names made the admin's page as long as they pleased.
+    """
+    rest = rows[BREAKDOWN_ROWS:]
+    if not rest:
+        return rows
+    tokens = sum(r["tokens"] for r in rest)
+    others = {
+        "name": f"{len(rest)} others",
+        "tokens": tokens,
+        "tokens_fmt": fmt_tokens(tokens),
+        "cost": sum(r["cost"] for r in rest),
+        "count": sum(r["count"] for r in rest),
+    }
+    return rows[:BREAKDOWN_ROWS] + [others]
+
+
 def metrics_charts(metrics: dict, day_page: int = 1) -> dict:
     return {
         "daily": daily(metrics["by_day"]),
         "day_table": day_table(metrics["by_day"], day_page),
         "models": ranked(metrics["by_model"], "model"),
         "modes": ranked(metrics["by_mode"], "mode"),
+        "breakdowns": [
+            (title, breakdown(metrics[key]))
+            for title, key in (
+                ("By model", "by_model"),
+                ("By mode", "by_mode"),
+                ("By provider", "by_provider"),
+                ("By client", "by_client"),
+            )
+        ],
     }

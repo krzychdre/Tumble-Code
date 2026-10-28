@@ -20,6 +20,12 @@ fixed order:
     the same moment and claims the children that were stored first.
 
 Between them the link survives either ordering, and no event has to be replayed.
+
+A link joins two tasks of one account, the one whose telemetry states it: a
+subtask runs in its parent's client. Task ids are chosen by the client, so any
+account can name another's tasks; a link that names a task of anyone else is
+stored as a relation of the sender (which nothing then stamps) and moves no
+task, so no account can hide, fold or adopt another's runs.
 """
 
 from __future__ import annotations
@@ -60,11 +66,7 @@ RUN_DEPTH_MAX = 128
 TASK_ID_MAX = 256
 
 
-async def record_relation(
-    db: AsyncSession,
-    properties: dict,
-    user_id: Optional[str] = None,
-) -> None:
+async def record_relation(db: AsyncSession, properties: dict, user_id: str) -> None:
     """Record a child→parent link if this event's properties carry one.
 
     Silent no-op for the overwhelming majority of events, which name no parent.
@@ -116,10 +118,19 @@ async def record_relation(
     # nothing: the relation is stored above, and the parent's row claims its
     # waiting children when it is created (``link_pending_children``).
     parent_task = aliased(Task, name="parent_task")
-    parent_row = select(parent_task.id).where(parent_task.id == parent).exists()
+    parent_row = (
+        select(parent_task.id)
+        .where(parent_task.id == parent, parent_task.user_id == user_id)
+        .exists()
+    )
     stamped = await db.execute(
         update(Task)
-        .where(Task.id == child, Task.parent_task_id.is_(None), parent_row)
+        .where(
+            Task.id == child,
+            Task.user_id == user_id,
+            Task.parent_task_id.is_(None),
+            parent_row,
+        )
         .values(parent_task_id=parent)
     )
     # Most events of a subtask repeat a link stamped long ago; only a new one
@@ -136,19 +147,25 @@ async def adopt_from_relations(db: AsyncSession, task_id: str) -> None:
     """Stamp a freshly created task row with the parent telemetry already knew.
 
     Called from the task-creation paths (backfill and the live bridge). The
-    parent is only stamped when the parent task actually exists as a row —
+    parent is only stamped when the parent task actually exists as a row:
     ``tasks.parent_task_id`` is a foreign key, and a subtask whose parent was
-    never shared would otherwise fail to insert.
+    never shared would otherwise fail to insert. The relation, the task and
+    its parent must belong to one account (see the module docstring).
     """
+    child = aliased(Task, name="child")
+    parent_task = aliased(Task, name="parent_task")
     result = await db.execute(
-        select(TaskRelation.parent_task_id).where(TaskRelation.child_task_id == task_id)
+        select(TaskRelation.parent_task_id)
+        .join(child, child.id == TaskRelation.child_task_id)
+        .join(parent_task, parent_task.id == TaskRelation.parent_task_id)
+        .where(
+            TaskRelation.child_task_id == task_id,
+            TaskRelation.user_id == child.user_id,
+            parent_task.user_id == child.user_id,
+        )
     )
     parent = result.scalar_one_or_none()
     if not parent:
-        return
-
-    parent_exists = await db.execute(select(Task.id).where(Task.id == parent))
-    if parent_exists.scalar_one_or_none() is None:
         return
 
     # No run totals to recompute here: a row the bridge just created has no
@@ -167,11 +184,13 @@ async def link_pending_children(db: AsyncSession, parent_task_id: str) -> None:
     The reverse of ``adopt_from_relations``: a subtask is frequently stored
     before its parent (the parent is still running when the child finishes and
     gets shared), so its stamp was skipped for want of a foreign-key target.
-    When the parent finally lands, claim them.
+    When the parent finally lands, claim them: the children of its account.
     """
+    owner = select(Task.user_id).where(Task.id == parent_task_id).scalar_subquery()
     result = await db.execute(
         select(TaskRelation.child_task_id).where(
-            TaskRelation.parent_task_id == parent_task_id
+            TaskRelation.parent_task_id == parent_task_id,
+            TaskRelation.user_id == owner,
         )
     )
     children = [row[0] for row in result.all()]
@@ -179,7 +198,11 @@ async def link_pending_children(db: AsyncSession, parent_task_id: str) -> None:
         return
     stamped = await db.execute(
         update(Task)
-        .where(Task.id.in_(children), Task.parent_task_id.is_(None))
+        .where(
+            Task.id.in_(children),
+            Task.user_id == owner,
+            Task.parent_task_id.is_(None),
+        )
         .values(parent_task_id=parent_task_id)
     )
     if stamped.rowcount:

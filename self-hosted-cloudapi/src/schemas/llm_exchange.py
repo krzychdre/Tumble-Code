@@ -12,6 +12,8 @@ from typing import Annotated, Any, Literal, Optional, Union
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
+from src.utils.format import MAX_REQUEST_COST, MAX_REQUEST_TOKENS
+
 SHA256_PATTERN = r"^[0-9a-f]{64}$"
 
 # Not enforced on purpose: an unknown status or outcome from a newer extension
@@ -94,11 +96,18 @@ class ToolCall(_Wire):
 
 
 class Usage(_Wire):
-    input_tokens: Optional[float] = None
-    output_tokens: Optional[float] = None
-    cache_read_tokens: Optional[float] = None
-    cache_write_tokens: Optional[float] = None
-    total_cost: Optional[float] = None
+    """What the provider reported, bounded like a request's telemetry
+    (utils/format): the tokens go into BIGINT columns."""
+
+    input_tokens: Optional[float] = Field(default=None, ge=0, le=MAX_REQUEST_TOKENS)
+    output_tokens: Optional[float] = Field(default=None, ge=0, le=MAX_REQUEST_TOKENS)
+    cache_read_tokens: Optional[float] = Field(
+        default=None, ge=0, le=MAX_REQUEST_TOKENS
+    )
+    cache_write_tokens: Optional[float] = Field(
+        default=None, ge=0, le=MAX_REQUEST_TOKENS
+    )
+    total_cost: Optional[float] = Field(default=None, ge=0, le=MAX_REQUEST_COST)
 
 
 class ExchangeResponse(_Wire):
@@ -123,7 +132,7 @@ class LlmExchangeRequest(_Wire):
     task_id: str = Field(min_length=1, max_length=200)
     parent_task_id: Optional[str] = None
     root_task_id: Optional[str] = None
-    sequence: int = Field(ge=0)
+    sequence: int = Field(ge=0, le=2**31 - 1)  # an INTEGER column
     occurred_at: float = Field(ge=0, le=4_102_444_800_000)
     duration_ms: Optional[float] = None
     retry_attempt: int = Field(ge=0)

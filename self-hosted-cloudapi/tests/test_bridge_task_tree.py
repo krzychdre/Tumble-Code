@@ -29,7 +29,7 @@ import random
 from datetime import datetime
 
 import pytest
-from sqlalchemy import event, func, select, text, update
+from sqlalchemy import delete, event, func, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -362,16 +362,18 @@ async def test_run_totals_follow_every_write_that_changes_a_run(db_session):
     row created by a streamed partial, which refreshes no summary, a delete
     with or without its subtasks) every task holds its run's sums.
 
-    The opening builds the cases that matter for certain: a chain, a subtask
-    of another owner with the first owner's task beneath it, and a cycle. The
-    seeded random walk then mixes the writes."""
+    The opening builds the cases that matter for certain: a chain and a
+    cycle, and links across two owners, which record_relation refuses. The
+    seeded random walk then mixes the writes, each link sent by either
+    account."""
     db = db_session
     await _seed_users(db)
     for task, user in (("a", USER), ("b", USER), ("c", USER), ("d", OTHER)):
         await upsert_task_message(db, task, user, None, _request(1, 1))
     await upsert_task_message(db, "e", USER, None, _request(1, 4))
     for child, parent in (("b", "a"), ("c", "b"), ("d", "c"), ("e", "d"), ("a", "c")):
-        await record_relation(db, {"taskId": child, "parentTaskId": parent})
+        sender = await _owner(db, child)
+        await record_relation(db, {"taskId": child, "parentTaskId": parent}, sender)
     await _assert_runs_are_summed(db)
 
     rng = random.Random(20261028)
@@ -388,7 +390,8 @@ async def test_run_totals_follow_every_write_that_changes_a_run(db_session):
             await upsert_task_message(db, task, user, None, message)
         elif action == "link":
             parent = rng.choice(tasks)
-            await record_relation(db, {"taskId": task, "parentTaskId": parent})
+            sender = rng.choice((USER, OTHER))
+            await record_relation(db, {"taskId": task, "parentTaskId": parent}, sender)
         elif user := await _owner(db, task):
             await delete_tasks(db, [task], user, include_subtasks=rng.random() < 0.5)
         await _assert_runs_are_summed(db)
@@ -405,7 +408,7 @@ async def test_a_subtask_adds_to_its_runs_totals_but_not_its_last_activity(
     db.add(Task(id=PARENT, user_id=USER, updated_at=then))
     await db.flush()
     await upsert_task_message(db, CHILD, USER, None, _request(1, 2))
-    await record_relation(db, {"taskId": CHILD, "parentTaskId": PARENT})
+    await record_relation(db, {"taskId": CHILD, "parentTaskId": PARENT}, USER)
     await upsert_task_message(db, CHILD, USER, None, _request(2, 2))
 
     run_cost, updated = (
@@ -450,10 +453,48 @@ async def test_a_link_naming_no_task_id_links_nothing(db_session, child, parent)
         db.add(Task(id=task, user_id=USER))
     await db.flush()
 
-    await record_relation(db, {"taskId": child, "parentTaskId": parent})
+    await record_relation(db, {"taskId": child, "parentTaskId": parent}, USER)
 
     assert await db.scalar(select(func.count()).select_from(TaskRelation)) == 0
     assert await db.scalar(select(Task.parent_task_id).where(Task.id == child)) is None
+
+
+@pytest.mark.parametrize(
+    "child_owner, parent_owner",
+    [(OTHER, USER), (USER, OTHER), (OTHER, OTHER)],
+    ids=["their-child", "their-parent", "both-theirs"],
+)
+async def test_a_link_naming_another_accounts_task_moves_nothing(
+    db_session, child_owner, parent_owner
+):
+    """Task ids are the client's, so a sender can name any task: hang
+    another account's run under its own (hiding it from its list) or its
+    own under theirs (showing their title in its breadcrumb). Only a link
+    between two of the sender's tasks is stamped, whichever row comes first:
+    the event (record_relation), the child (adopt_from_relations) or the
+    parent (link_pending_children)."""
+    db = db_session
+    await _seed_users(db)
+    link = {"taskId": CHILD, "parentTaskId": PARENT}
+    rows = {CHILD: child_owner, PARENT: parent_owner}
+
+    for first in (None, CHILD, PARENT):
+        for task in (PARENT, CHILD):
+            await db.execute(delete(Task).where(Task.id == task))
+        await db.execute(delete(TaskRelation))
+        if first:
+            db.add(Task(id=first, user_id=rows[first]))
+            await db.flush()
+        await record_relation(db, link, USER)
+        for task, owner in rows.items():
+            if task != first:
+                await upsert_task_message(db, task, owner, None, _request(1, 1))
+
+        assert await _parent_of_row(db, CHILD) is None, first
+
+
+async def _parent_of_row(db, task_id: str):
+    return await db.scalar(select(Task.parent_task_id).where(Task.id == task_id))
 
 
 def _capture_run_writes(test_engine) -> list[list[str]]:

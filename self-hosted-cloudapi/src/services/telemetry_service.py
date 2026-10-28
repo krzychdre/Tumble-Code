@@ -37,6 +37,22 @@ from src.services.task_tree import (
 from src.services.telemetry_vocab import LLM_COMPLETION_EVENT, event_columns
 
 
+# The latest message time stored, 2100-01-01 in ms (the bound of the error
+# report and exchange schemas): a page turns a message's time into a date.
+MESSAGE_TS_MAX = 4_102_444_800_000
+
+
+def message_ts(message: dict) -> int | None:
+    """A message's ``ts`` as stored: a whole number of ms up to
+    ``MESSAGE_TS_MAX``, None otherwise. The extension stamps ``Date.now()``;
+    a hand-made time far ahead made a date no page can show, on the recall
+    search of the author's organization mates too."""
+    ts = message.get("ts")
+    if isinstance(ts, int) and not isinstance(ts, bool) and 0 <= ts <= MESSAGE_TS_MAX:
+        return ts
+    return None
+
+
 async def _live_quality_kind(db, task_id: str, message: dict, ts) -> str | None:
     """Quality marker for a message arriving one at a time over the bridge.
 
@@ -273,7 +289,7 @@ async def record_event(
     # `api_req_started` carries tokens and cost but no model. See
     # services/model_attribution.
     if event_type == LLM_COMPLETION_EVENT and event.task_id and event.model_id:
-        await note_completion_model(db, event.task_id, event.model_id)
+        await note_completion_model(db, event.task_id, user_id, event.model_id)
 
 
 class TaskNotOwnedError(Exception):
@@ -318,8 +334,8 @@ def _build_backfill_rows(task_id: str, messages: list) -> tuple[list[dict], str,
     # (owner decision 26). Messages without a ts append as before.
     last_index_of_ts = {}
     for index, msg in enumerate(messages):
-        ts = msg.get("ts") if isinstance(msg, dict) else None
-        if isinstance(ts, (int, float, str)):
+        ts = message_ts(msg) if isinstance(msg, dict) else None
+        if ts is not None:
             last_index_of_ts[ts] = index
 
     rows: list[dict] = []
@@ -329,14 +345,14 @@ def _build_backfill_rows(task_id: str, messages: list) -> tuple[list[dict], str,
         if is_dict:
             kind, tool_path = marks[next_mark]
             next_mark += 1
-            ts = msg.get("ts")
-            if isinstance(ts, (int, float, str)) and last_index_of_ts[ts] != index:
+            ts = message_ts(msg)
+            if ts is not None and last_index_of_ts[ts] != index:
                 continue
         rows.append(
             {
                 "task_id": task_id,
                 "message_data": msg if isinstance(msg, str) else json.dumps(msg),
-                "message_ts": msg.get("ts") if is_dict else None,
+                "message_ts": message_ts(msg) if is_dict else None,
                 "q_kind": kind,
                 "tool_path": tool_path,
                 **message_metrics(msg if is_dict else {}).as_columns(),
@@ -469,7 +485,7 @@ async def upsert_task_message(
         # task.
         return False
 
-    ts = message.get("ts")
+    ts = message_ts(message)
     payload = json.dumps(message)
     metrics = message_metrics(message).as_columns()
     quality = {

@@ -274,10 +274,7 @@
     </table>
   </div>
   {% endmacro %}
-  {{ breakdown("By model", metrics.by_model) }}
-  {{ breakdown("By mode", metrics.by_mode) }}
-  {{ breakdown("By provider", metrics.by_provider) }}
-  {{ breakdown("By client", metrics.by_client) }}
+  {% for title, rows in charts.breakdowns %}{{ breakdown(title, rows) }}{% endfor %}
 </section>
 {% else %}
 <div class="empty">

@@ -367,7 +367,9 @@ async def refresh_task_models(db: AsyncSession, task_id: str) -> None:
     )
 
 
-async def note_completion_model(db: AsyncSession, task_id: str, model: str) -> None:
+async def note_completion_model(
+    db: AsyncSession, task_id: str, user_id: str, model: str
+) -> None:
     """Cheap ingest-time path: refresh only when a *new* model shows up.
 
     Recomputing the label on every completion would re-read the task's events
@@ -377,13 +379,20 @@ async def note_completion_model(db: AsyncSession, task_id: str, model: str) -> N
     model appears, and on the next message write.
 
     A task with no row yet (telemetry for a run that was never shared) is left
-    alone entirely — there is nothing to store it on, and the label is rebuilt
-    from the events if and when the conversation does arrive.
+    alone entirely: there is nothing to store it on, and the label is rebuilt
+    from the events if and when the conversation does arrive. So is another
+    user's task: task ids are chosen by the client, and an event naming one
+    must not rewrite its row (its ``updated_at`` orders the owner's list and
+    their retention).
     """
     if not (task_id and model):
         return
     row = (
-        await db.execute(select(Task.id, Task.models).where(Task.id == task_id))
+        await db.execute(
+            select(Task.id, Task.models).where(
+                Task.id == task_id, Task.user_id == user_id
+            )
+        )
     ).one_or_none()
     if row is None:
         return

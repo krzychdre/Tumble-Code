@@ -191,6 +191,13 @@ async def test_broken_bodies_are_refused(authed, db_session, monkeypatch):
     wrong = _exchange()
     wrong["request"]["system"] = {"sha256": _sha("other"), "text": "sys"}
     assert _post(authed, "/api/llm-exchanges", wrong).status_code == 422
+    # Figures no request has: past BIGINT once stored, past the INTEGER column.
+    absurd = _exchange(response={"text": "hi", "usage": {"inputTokens": 1e300}})
+    assert _post(authed, "/api/llm-exchanges", absurd).status_code == 422
+    assert (
+        _post(authed, "/api/llm-exchanges", _exchange(sequence=2**31)).status_code
+        == 422
+    )
 
     monkeypatch.setattr(llm_exchanges, "MAX_INFLATED_BYTES", 1000)
     bomb = gzip.compress(b"{" + b" " * 100_000 + b"}")

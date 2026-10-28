@@ -155,6 +155,37 @@ async def test_cards_follow_the_scope_and_the_exclusion(org, session_factory):
         assert await _cards(s) == {}
 
 
+async def test_one_card_failing_leaves_the_other_cards_built(
+    org, session_factory, monkeypatch
+):
+    """The batch holds the tasks of every account: a card that fails rolls
+    back alone and leaves the queue, so it cannot stop the others on every
+    tick. A completion whose text is no string (a client sends any JSON)
+    failed the whole batch; it now makes a card without a result."""
+    async with session_factory() as s:
+        project = await _project(s)
+        await update_project(s, project, project.name, "members")
+        await _run_task(s, "t1")
+        await _run_task(s, "t-broken")
+        for message in (_say(1, "text", "Odd"), _say(2, "completion_result", 12345)):
+            await upsert_task_message(
+                s, "t-odd", ME, ORG, message, workspace_path="/w/roo"
+            )
+        await _age_queue(s)
+        build = recall_cards.rebuild_card
+
+        async def failing(db, task_id):
+            if task_id == "t-broken":
+                raise RuntimeError("a failure no one foresaw")
+            await build(db, task_id)
+
+        monkeypatch.setattr(recall_cards, "rebuild_card", failing)
+
+        assert await rebuild_due(s) == 3
+        assert sorted(await _cards(s)) == ["t-odd", "t1"]
+        assert (await s.execute(select(RecallDirty))).first() is None
+
+
 async def test_only_the_writes_that_change_a_card_queue_it(org, session_factory):
     async with session_factory() as s:
         await _project(s)

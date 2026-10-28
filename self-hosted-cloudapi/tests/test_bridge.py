@@ -13,8 +13,11 @@ The four guarantees under test (from the plan's Verification section):
   (d) an extension Message event upserts a TaskMessage so history stays current.
 """
 
+import asyncio
 import json
 from unittest.mock import AsyncMock
+
+from contextlib import AsyncExitStack
 
 import pytest
 from sqlalchemy import select, func
@@ -1010,3 +1013,38 @@ def test_registry_ignores_task_access_for_a_detached_socket():
     r.remember_task_access("gone", "t1", True)
     assert r.task_access("gone", "t1") is None
     assert "gone" not in r._task_access_by_sid
+
+
+# --- one account's share of the pool ------------------------------------------
+
+
+async def test_one_account_holds_at_most_its_share_of_the_sessions(
+    patch_session_factory,
+):
+    """Every bridge event of an account holds a pooled connection while it
+    writes, and a client emits events far faster than they are written. One
+    account holds at most USER_SESSIONS_MAX sessions: past them its events
+    wait for one of its own (a burst of parallel subtasks loses nothing), and
+    past USER_WAITING_MAX waiting events a flood is dropped (BridgeBusy, which
+    the save logs). Another account's event never waits for them."""
+
+    async def one_session(user_id: str) -> None:
+        async with sio_module._user_session(user_id):
+            pass
+
+    async with AsyncExitStack() as held:
+        for _ in range(sio_module.USER_SESSIONS_MAX):
+            await held.enter_async_context(sio_module._user_session("flooder"))
+        waiting = [
+            asyncio.create_task(one_session("flooder"))
+            for _ in range(sio_module.USER_WAITING_MAX)
+        ]
+        await asyncio.sleep(0)
+        assert not any(task.done() for task in waiting)
+        with pytest.raises(sio_module.BridgeBusy):
+            await asyncio.wait_for(one_session("flooder"), timeout=1)
+        assert await sio_module._user_owns_task("flooder", "any-task") is False
+        await asyncio.wait_for(one_session("someone-else"), timeout=1)
+
+    await asyncio.wait_for(asyncio.gather(*waiting), timeout=1)
+    await one_session("flooder")

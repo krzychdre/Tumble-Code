@@ -15,6 +15,7 @@ get no card, and an old one is deleted.
 import asyncio
 import json
 import logging
+import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
@@ -82,7 +83,12 @@ async def drop_project_cards(db: AsyncSession, project_id: str) -> None:
 
 
 async def rebuild_due(db: AsyncSession) -> int:
-    """Rebuild the cards of up to ``BATCH`` tasks idle for ``IDLE``; their count."""
+    """Rebuild the cards of up to ``BATCH`` tasks idle for ``IDLE``; their count.
+
+    The batch holds the tasks of every account, so each card is built inside
+    a SAVEPOINT, as retention sweeps each user: a card that fails rolls back
+    alone and leaves the queue, instead of failing the batch on every tick.
+    """
     cutoff = datetime.now(timezone.utc) - IDLE
     task_ids = (
         (
@@ -97,7 +103,11 @@ async def rebuild_due(db: AsyncSession) -> int:
         .all()
     )
     for task_id in task_ids:
-        await rebuild_card(db, task_id)
+        try:
+            async with db.begin_nested():
+                await rebuild_card(db, task_id)
+        except Exception:  # one task's card must not stop every other's
+            logger.exception("[recall] card of task %s failed", task_id)
     await db.execute(delete(RecallDirty).where(RecallDirty.task_id.in_(task_ids)))
     return len(task_ids)
 
@@ -225,8 +235,14 @@ def _search_vector(db: AsyncSession, s: CardSections):
     return vector
 
 
+# What a stored message's text may hold and Postgres' text cannot: a NUL and a
+# lone surrogate. The client sends the text as JSON, which escapes both.
+_UNSTORABLE = re.compile("[\x00\ud800-\udfff]")
+
+
 def _text(message_data: str) -> str:
-    return json.loads(message_data).get("text") or ""
+    text = json.loads(message_data).get("text")
+    return _UNSTORABLE.sub("", text) if isinstance(text, str) else ""
 
 
 async def run_recall_loop() -> None:
