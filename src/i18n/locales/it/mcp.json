@@ -18,5 +18,9 @@
 		"server_deleted": "Server MCP eliminato: {{serverName}}",
 		"server_not_found": "Server \"{{serverName}}\" non trovato nella configurazione",
 		"project_config_deleted": "File di configurazione MCP del progetto eliminato. Tutti i server MCP del progetto sono stati disconnessi."
+	},
+	"trust": {
+		"question": "Il file {{path}} di questo workspace vuole avviare i server MCP seguenti. Vengono eseguiti sul tuo computer con i tuoi permessi. Avviali solo se ti fidi di questo repository.",
+		"start": "Avvia i server"
 	}
 }

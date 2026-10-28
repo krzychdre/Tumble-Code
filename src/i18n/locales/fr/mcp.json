@@ -18,5 +18,9 @@
 		"server_deleted": "Serveur MCP supprimé : {{serverName}}",
 		"server_not_found": "Serveur \"{{serverName}}\" introuvable dans la configuration",
 		"project_config_deleted": "Fichier de configuration MCP du projet supprimé. Tous les serveurs MCP du projet ont été déconnectés."
+	},
+	"trust": {
+		"question": "Le fichier {{path}} de cet espace de travail veut démarrer les serveurs MCP ci-dessous. Ils s'exécutent sur votre ordinateur avec vos permissions. Ne les démarrez que si vous faites confiance à ce dépôt.",
+		"start": "Démarrer les serveurs"
 	}
 }

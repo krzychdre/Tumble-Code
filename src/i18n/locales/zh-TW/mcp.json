@@ -18,5 +18,9 @@
 		"server_deleted": "已刪除 MCP 伺服器：{{serverName}}",
 		"server_not_found": "在設定中沒有找到伺服器\"{{serverName}}\"",
 		"project_config_deleted": "專案MCP設定檔案已刪除。所有專案MCP伺服器已斷開連接。"
+	},
+	"trust": {
+		"question": "此工作區的 {{path}} 想要啟動以下 MCP 伺服器。它們會以你的權限在你的電腦上執行。只有在你信任此儲存庫時才啟動它們。",
+		"start": "啟動伺服器"
 	}
 }

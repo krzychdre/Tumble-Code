@@ -87,6 +87,7 @@ export {
 
 // Export utilities
 export { setInputBoxHandler, type InputBoxHandler } from "./api/inputBoxHandler.js"
+export { setModalMessageHandler, type ModalMessage, type ModalMessageHandler } from "./api/modalMessageHandler.js"
 export type { InputBoxOptions } from "./interfaces/workspace.js"
 export { logs, setLogger, type Logger } from "./utils/logger.js"
 export { VSCodeMockPaths } from "./utils/paths.js"

@@ -13,6 +13,7 @@ import { McpConfigStore } from "./McpConfigStore"
 import { McpConfigWatcher, type McpWatcherFactory, vscodeWatcherFactory } from "./McpConfigWatcher"
 import { logMcpError, type McpConnection, McpConnectionManager } from "./McpConnectionManager"
 import { McpToolCatalog, type McpRequestOptions } from "./McpToolCatalog"
+import { ProjectMcpTrust, type ProjectServerLaunch } from "./ProjectMcpTrust"
 import { logger } from "../../utils/logging"
 
 export { type McpConnection } from "./McpConnectionManager"
@@ -36,6 +37,19 @@ export interface McpHubProvider {
 export interface McpHubOptions {
 	/** Where the settings-file watchers come from; the VS Code API by default, a fake in tests. */
 	watcherFactory?: McpWatcherFactory
+	/** Asks whether to start project servers not agreed to yet; a modal dialog by default. */
+	confirmProjectServers?: (configPath: string, servers: ProjectServerLaunch[]) => Promise<boolean>
+}
+
+/** Asks, in a modal dialog naming the file and every command, whether to start a project's servers. */
+async function confirmProjectServersInDialog(configPath: string, servers: ProjectServerLaunch[]): Promise<boolean> {
+	const start = t("mcp:trust.start")
+	const answer = await vscode.window.showWarningMessage(
+		t("mcp:trust.question", { path: configPath }),
+		{ modal: true, detail: servers.map((server) => `${server.name}: ${server.launch}`).join("\n") },
+		start,
+	)
+	return answer === start
 }
 
 /**
@@ -55,6 +69,7 @@ export class McpHub {
 	private readonly configWatcher: McpConfigWatcher
 	private readonly connectionManager: McpConnectionManager
 	private readonly toolCatalog: McpToolCatalog
+	private readonly projectTrust: ProjectMcpTrust
 
 	constructor(provider: McpHubProvider, options: McpHubOptions = {}) {
 		this.providerRef = new WeakRef(provider)
@@ -67,6 +82,11 @@ export class McpHub {
 				return provider.ensureSettingsDirectoryExists()
 			},
 			workspacePath: () => this.workspacePath(),
+		})
+		this.projectTrust = new ProjectMcpTrust({
+			store: () => this.liveProvider()?.context?.globalState,
+			isWorkspaceTrusted: () => vscode.workspace.isTrusted !== false,
+			confirm: options.confirmProjectServers ?? confirmProjectServersInDialog,
 		})
 		this.connectionManager = new McpConnectionManager({
 			clientVersion: () => this.liveProvider()?.context.extension?.packageJSON?.version ?? "1.0.0",
@@ -180,7 +200,7 @@ export class McpHub {
 		try {
 			const servers = await this.readValidatedServers(filePath)
 			if (servers) {
-				await this.updateServerConnections(servers, source)
+				await this.updateServerConnections(await this.startable(servers, source, filePath), source)
 			}
 		} catch (error) {
 			// Check if the error is because the file doesn't exist
@@ -245,7 +265,7 @@ export class McpHub {
 
 			const servers = await this.readValidatedServers(projectMcpPath)
 			if (servers) {
-				await this.updateServerConnections(servers, "project")
+				await this.updateServerConnections(await this.startable(servers, "project", projectMcpPath), "project")
 			}
 		} catch (error) {
 			logMcpError(t("mcp:errors.failed_update_project"), error)
@@ -296,7 +316,11 @@ export class McpHub {
 			const result = await this.configStore.readValidated(configPath)
 			if (result.status === "valid") {
 				// Pass all servers including disabled ones - they'll be handled in updateServerConnections
-				await this.updateServerConnections(result.servers, source, false)
+				await this.updateServerConnections(
+					await this.startable(result.servers, source, configPath),
+					source,
+					false,
+				)
 			} else if (result.status === "invalid-schema") {
 				const { errorMessages } = result
 				logger.error(`Invalid ${source} MCP settings format:`, errorMessages)
@@ -318,6 +342,26 @@ export class McpHub {
 		} catch (error) {
 			logMcpError(`Failed to initialize ${source} MCP servers`, error)
 		}
+	}
+
+	/**
+	 * The servers of a settings file that may start. Global servers all may;
+	 * a project server only once the user agreed to what it runs (ProjectMcpTrust).
+	 */
+	private async startable(
+		servers: Record<string, any>,
+		source: McpConfigSource,
+		configPath: string,
+	): Promise<Record<string, any>> {
+		if (source !== "project") {
+			return servers
+		}
+		const allowed = await this.projectTrust.filter(configPath, servers)
+		const withheld = Object.keys(servers).filter((name) => !(name in allowed))
+		if (withheld.length > 0) {
+			logger.info(`[McpHub] Project MCP servers not started, not trusted: ${withheld.join(", ")}`)
+		}
+		return allowed
 	}
 
 	private async initializeGlobalMcpServers(): Promise<void> {
@@ -492,6 +536,14 @@ export class McpHub {
 						// If enabling a disabled server, connect it
 						// Re-read config from file to get updated disabled state
 						const updatedConfig = await this.readServerConfigFromFile(serverName, serverSource)
+						if (
+							serverSource === "project" &&
+							!(await this.mayStartProjectServer(serverName, updatedConfig))
+						) {
+							connection.server.disabled = true
+							await this.notifyWebviewOfServerChanges()
+							return
+						}
 						await this.deleteConnection(serverName, serverSource)
 						// When re-enabling, file watchers will be set up in connectToServer
 						await this.connectionManager.connectToServer(serverName, updatedConfig, serverSource)
@@ -512,6 +564,16 @@ export class McpHub {
 			logMcpError(`Failed to update server ${serverName} state`, error)
 			throw error
 		}
+	}
+
+	/** Whether the project server `serverName` with this (validated) config may start; asks when not agreed to yet. */
+	private async mayStartProjectServer(serverName: string, config: McpServerConfig): Promise<boolean> {
+		const configPath = await this.configStore.getProjectPath()
+		if (!configPath) {
+			return false
+		}
+		const allowed = await this.startable({ [serverName]: config }, "project", configPath)
+		return serverName in allowed
 	}
 
 	/**

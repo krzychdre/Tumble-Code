@@ -18,5 +18,9 @@
 		"server_deleted": "MCP-server verwijderd: {{serverName}}",
 		"server_not_found": "Server \"{{serverName}}\" niet gevonden in configuratie",
 		"project_config_deleted": "Project MCP-configuratiebestand verwijderd. Alle project MCP-servers zijn losgekoppeld."
+	},
+	"trust": {
+		"question": "Het bestand {{path}} van deze werkruimte wil de onderstaande MCP-servers starten. Ze draaien op je computer met jouw rechten. Start ze alleen als je deze repository vertrouwt.",
+		"start": "Servers starten"
 	}
 }

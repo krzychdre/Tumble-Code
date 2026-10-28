@@ -18,5 +18,9 @@
 		"server_deleted": "Usunięto serwer MCP: {{serverName}}",
 		"server_not_found": "Serwer \"{{serverName}}\" nie znaleziony w konfiguracji",
 		"project_config_deleted": "Plik konfiguracyjny MCP projektu został usunięty. Wszystkie serwery MCP projektu zostały odłączone."
+	},
+	"trust": {
+		"question": "Plik {{path}} tego obszaru roboczego chce uruchomić poniższe serwery MCP. Działają one na Twoim komputerze z Twoimi uprawnieniami. Uruchom je tylko wtedy, gdy ufasz temu repozytorium.",
+		"start": "Uruchom serwery"
 	}
 }

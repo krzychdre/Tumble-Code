@@ -18,5 +18,9 @@
 		"server_deleted": "MCP-Server gelöscht: {{serverName}}",
 		"server_not_found": "Server \"{{serverName}}\" nicht in der Konfiguration gefunden",
 		"project_config_deleted": "Projekt-MCP-Konfigurationsdatei gelöscht. Alle Projekt-MCP-Server wurden getrennt."
+	},
+	"trust": {
+		"question": "Die Datei {{path}} dieses Arbeitsbereichs möchte die folgenden MCP-Server starten. Sie laufen auf deinem Computer mit deinen Rechten. Starte sie nur, wenn du diesem Repository vertraust.",
+		"start": "Server starten"
 	}
 }
