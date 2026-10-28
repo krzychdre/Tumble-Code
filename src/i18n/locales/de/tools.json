@@ -4,5 +4,11 @@
 		"imageWithSize": "Bilddatei ({{size}} KB)"
 	},
 	"toolRepetitionLimitReached": "Tumble scheint in einer Schleife festzustecken und versucht wiederholt dieselbe Aktion ({{toolName}}). Dies könnte auf ein Problem mit der aktuellen Strategie hindeuten. Überlege dir, die Aufgabe umzuformulieren, genauere Anweisungen zu geben oder Tumble zu einem anderen Ansatz zu führen.",
-	"unknownToolError": "Tumble hat versucht, ein unbekanntes Tool zu verwenden: \"{{toolName}}\". Wiederhole Versuch..."
+	"unknownToolError": "Tumble hat versucht, ein unbekanntes Tool zu verwenden: \"{{toolName}}\". Wiederhole Versuch...",
+	"customTools": {
+		"trust": {
+			"question": "Der Projektordner {{path}} enthält eigene Tools: Code, der beim Laden in der Erweiterung mit deinen Rechten ausgeführt wird. Führe sie nur aus, wenn du diesem Repository vertraust.",
+			"run": "Projekt-Tools ausführen"
+		}
+	}
 }

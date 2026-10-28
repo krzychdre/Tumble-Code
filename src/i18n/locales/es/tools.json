@@ -4,5 +4,11 @@
 		"imageWithSize": "Archivo de imagen ({{size}} KB)"
 	},
 	"toolRepetitionLimitReached": "Tumble parece estar atrapado en un bucle, intentando la misma acción ({{toolName}}) repetidamente. Esto podría indicar un problema con su estrategia actual. Considera reformular la tarea, proporcionar instrucciones más específicas o guiarlo hacia un enfoque diferente.",
-	"unknownToolError": "Tumble intentó usar una herramienta desconocida: \"{{toolName}}\". Reintentando..."
+	"unknownToolError": "Tumble intentó usar una herramienta desconocida: \"{{toolName}}\". Reintentando...",
+	"customTools": {
+		"trust": {
+			"question": "La carpeta del proyecto {{path}} tiene herramientas personalizadas: código que se ejecuta dentro de la extensión con tus permisos en cuanto se carga. Ejecútalas solo si confías en este repositorio.",
+			"run": "Ejecutar herramientas del proyecto"
+		}
+	}
 }

@@ -1,5 +1,3 @@
-import path from "path"
-
 import type OpenAI from "openai"
 
 import {
@@ -12,7 +10,7 @@ import {
 import { customToolRegistry, formatNative } from "@tumble-code/core"
 
 import type { ClineProvider } from "../webview/ClineProvider"
-import { getRooDirectoriesForCwd } from "../../services/roo-config/index.js"
+import { customToolDirectories } from "../tools/projectToolTrust"
 import { getRecallScope } from "../../services/recall/recallScope"
 import { getModeAllowedMcpServers, defaultModeSlug } from "../../shared/modes"
 
@@ -195,7 +193,7 @@ export async function buildNativeToolsArrayWithRestrictions(options: BuildToolsO
 	let nativeCustomTools: OpenAI.Chat.ChatCompletionFunctionTool[] = []
 
 	if (experiments?.customTools) {
-		const toolDirs = getRooDirectoriesForCwd(cwd).map((dir) => path.join(dir, "tools"))
+		const toolDirs = await customToolDirectories(cwd, provider.context)
 		await customToolRegistry.loadFromDirectoriesIfStale(toolDirs)
 		const customTools = customToolRegistry.getAllSerialized()
 

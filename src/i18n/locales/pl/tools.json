@@ -4,5 +4,11 @@
 		"imageWithSize": "Plik obrazu ({{size}} KB)"
 	},
 	"toolRepetitionLimitReached": "Wygląda na to, że Tumble utknął w pętli, wielokrotnie próbując wykonać tę samą akcję ({{toolName}}). Może to wskazywać na problem z jego obecną strategią. Rozważ przeformułowanie zadania, podanie bardziej szczegółowych instrukcji lub nakierowanie go na inne podejście.",
-	"unknownToolError": "Tumble próbował użyć nieznanego narzędzia: \"{{toolName}}\". Ponowna próba..."
+	"unknownToolError": "Tumble próbował użyć nieznanego narzędzia: \"{{toolName}}\". Ponowna próba...",
+	"customTools": {
+		"trust": {
+			"question": "Folder projektu {{path}} zawiera własne narzędzia: kod, który po załadowaniu działa w rozszerzeniu z Twoimi uprawnieniami. Uruchom je tylko wtedy, gdy ufasz temu repozytorium.",
+			"run": "Uruchom narzędzia projektu"
+		}
+	}
 }

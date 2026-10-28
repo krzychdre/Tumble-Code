@@ -4,5 +4,11 @@
 		"imageWithSize": "Afbeeldingsbestand ({{size}} KB)"
 	},
 	"toolRepetitionLimitReached": "Tumble lijkt vast te zitten in een lus, waarbij hij herhaaldelijk dezelfde actie ({{toolName}}) probeert. Dit kan duiden op een probleem met de huidige strategie. Overweeg de taak te herformuleren, specifiekere instructies te geven of Tumble naar een andere aanpak te leiden.",
-	"unknownToolError": "Tumble probeerde een onbekende tool te gebruiken: \"{{toolName}}\". Opnieuw proberen..."
+	"unknownToolError": "Tumble probeerde een onbekende tool te gebruiken: \"{{toolName}}\". Opnieuw proberen...",
+	"customTools": {
+		"trust": {
+			"question": "De projectmap {{path}} bevat eigen tools: code die bij het laden in de extensie draait met jouw rechten. Voer ze alleen uit als je deze repository vertrouwt.",
+			"run": "Projecttools uitvoeren"
+		}
+	}
 }

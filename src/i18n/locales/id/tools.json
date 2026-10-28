@@ -7,5 +7,11 @@
 	"unknownToolError": "Tumble mencoba menggunakan alat yang tidak dikenal: \"{{toolName}}\". Mencoba lagi...",
 	"searchFiles": {
 		"workspaceBoundaryError": "Tidak dapat mencari di luar workspace. Path '{{path}}' berada di luar workspace saat ini."
+	},
+	"customTools": {
+		"trust": {
+			"question": "Folder proyek {{path}} berisi alat kustom: kode yang berjalan di dalam ekstensi dengan izin Anda begitu dimuat. Jalankan hanya jika Anda memercayai repositori ini.",
+			"run": "Jalankan alat proyek"
+		}
 	}
 }
