@@ -11,7 +11,10 @@ services/exchange_ingest and ai_plans/2026-10-02_llm-exchange-dataset.md.
 """
 
 import json
+import time
 import zlib
+from collections import Counter
+from contextlib import asynccontextmanager
 
 import anyio
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -80,10 +83,82 @@ def _parse(body: bytes, encoding: str, model: type[BaseModel]):
         )
 
 
-async def _read(request: Request, model: type[BaseModel]):
-    body = await capped_request(request, MAX_BODY_BYTES).body()
-    encoding = request.headers.get("content-encoding", "").strip().lower()
-    return await anyio.to_thread.run_sync(_parse, body, encoding, model)
+class ParseGate:
+    """How many uploads are read and parsed at once, in all and per user.
+
+    An upload is up to MAX_BODY_BYTES as sent and MAX_INFLATED_BYTES once
+    inflated, and parsing it builds several times that in Python objects. The
+    endpoints are outside the per-IP limit (see below), so without this a
+    handful of parallel uploads from one token could take the container's
+    memory. A request waits up to ``wait_seconds`` for its turn: past it the
+    answer is 429 when the user already has ``per_user`` uploads in flight,
+    else 503; both carry Retry-After, and the extension retries either.
+
+    The body is read inside the slot: until it is read, the server holds back
+    the connection's input, so a waiting upload costs a socket, not its size.
+    Waiting polls a counter instead of using an anyio primitive, which would
+    belong to the first event loop that used it (the tests run several).
+    """
+
+    POLL_SECONDS = 0.05
+
+    def __init__(self) -> None:
+        self.in_flight = 0
+        self.per_user_in_flight: Counter[str] = Counter()
+
+    async def _wait(self, has_room, deadline: float) -> bool:
+        while not has_room():
+            if time.monotonic() >= deadline:
+                return False
+            await anyio.sleep(self.POLL_SECONDS)
+        return True
+
+    @asynccontextmanager
+    async def slot(
+        self, user_id: str, *, capacity: int, per_user: int, wait_seconds: float
+    ):
+        deadline = time.monotonic() + wait_seconds
+        if not await self._wait(
+            lambda: self.per_user_in_flight[user_id] < per_user, deadline
+        ):
+            raise HTTPException(
+                status_code=429,
+                detail="Too many uploads in flight for this user",
+                headers={"Retry-After": str(RETRY_AFTER_SECONDS)},
+            )
+        self.per_user_in_flight[user_id] += 1
+        try:
+            if not await self._wait(lambda: self.in_flight < capacity, deadline):
+                raise HTTPException(
+                    status_code=503,
+                    detail="The server is busy with other uploads",
+                    headers={"Retry-After": str(RETRY_AFTER_SECONDS)},
+                )
+            self.in_flight += 1
+            try:
+                yield
+            finally:
+                self.in_flight -= 1
+        finally:
+            self.per_user_in_flight[user_id] -= 1
+            if self.per_user_in_flight[user_id] <= 0:
+                del self.per_user_in_flight[user_id]
+
+
+RETRY_AFTER_SECONDS = 5
+parse_gate = ParseGate()
+
+
+async def _read(request: Request, user_id: str, model: type[BaseModel]):
+    async with parse_gate.slot(
+        user_id,
+        capacity=settings.llm_exchange_parse_concurrency,
+        per_user=settings.llm_exchange_parse_per_user,
+        wait_seconds=settings.llm_exchange_parse_wait_seconds,
+    ):
+        body = await capped_request(request, MAX_BODY_BYTES).body()
+        encoding = request.headers.get("content-encoding", "").strip().lower()
+        return await anyio.to_thread.run_sync(_parse, body, encoding, model)
 
 
 async def _recording(db: AsyncSession, user_id: str) -> bool:
@@ -94,7 +169,8 @@ async def _recording(db: AsyncSession, user_id: str) -> bool:
 # turn every few seconds and each turn sends an exchange and its outcome, on
 # top of the telemetry events; a refused upload makes the extension restart
 # its chain with a full snapshot, which is the largest request it ever sends.
-# The Bearer token still guards them.
+# The Bearer token still guards them, and ParseGate bounds how many uploads
+# are held in memory at once.
 @router.get("/llm-exchanges/config")
 @not_rate_limited
 async def llm_exchange_config_endpoint(
@@ -117,7 +193,7 @@ async def record_llm_exchange_endpoint(
     if not await _recording(db, user_id):
         # Switched off since the extension last asked: nothing is read or kept.
         return {"success": True, "stored": False, "recording": False}
-    raw, exchange = await _read(request, LlmExchangeRequest)
+    raw, exchange = await _read(request, user_id, LlmExchangeRequest)
     # A delta whose base is gone (recordings deleted while the task ran, or a
     # chain begun on another account) cannot be rebuilt: it is stored, marked
     # incomplete by the reconstruction, and the extension is asked to send a
@@ -148,6 +224,6 @@ async def record_llm_exchange_outcome_endpoint(
     user_id = current_user["user_id"]
     if not await _recording(db, user_id):
         return {"success": True, "stored": False, "recording": False}
-    _, outcome = await _read(request, LlmExchangeOutcomeRequest)
+    _, outcome = await _read(request, user_id, LlmExchangeOutcomeRequest)
     stored = await record_outcome(db, user_id, outcome)
     return {"success": True, "stored": stored, "recording": True}
