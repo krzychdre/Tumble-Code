@@ -22,9 +22,15 @@ interface Token {
 // Inline math: `$$...$$`, `\(...\)`, `\[...\]` and `$...$` with Pandoc's rule
 // (no space inside the dollars, no digit after the closing one), so the
 // prices in "$5 and $10" stay text.
-const INLINE_MATH = String.raw`\$\$[^$]+\$\$|\\\(.+?\\\)|\\\[.+?\\\]|\$(?=[^\s$])(?:\\.|[^$\\])+?(?<=\S)\$(?!\d)`
+//
+// No marker body may run past the next opener of its kind: `\[` written
+// 30 000 times on one line, or `[a](` repeated, made each opener rescan the
+// rest of the line and held the terminal for seconds per render. A link target
+// may hold one level of balanced parentheses (Wikipedia's `Foo_(bar)`).
+const INLINE_MATH = String.raw`\$\$[^$]+\$\$|\\\((?:(?!\\\().)+?\\\)|\\\[(?:(?!\\\[).)+?\\\]|\$(?=[^\s$])(?:\\.|[^$\\])+?(?<=\S)\$(?!\d)`
+const LINK = String.raw`\[[^\][]*\]\([^()\s]*(?:\([^()\s]*\)[^()\s]*)*\)`
 const INLINE_MARKER_RE = new RegExp(
-	String.raw`(\x60[^\x60]+\x60|${INLINE_MATH}|\*\*[^*]+\*\*|\*[^*]+\*|(?<![\w])_[^_]+_(?![\w])|~~[^~]+~~|\[[^\]]*\]\([^)]*\))`,
+	String.raw`(\x60[^\x60]+\x60|${INLINE_MATH}|\*\*[^*]+\*\*|\*[^*]+\*|(?<![\w])_[^_]+_(?![\w])|~~[^~]+~~|${LINK})`,
 )
 
 /** Math inside bold, italic, struck or link text: `**token $i$**` reads `token i`. */
