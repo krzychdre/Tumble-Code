@@ -200,9 +200,11 @@ export async function loginToCloud(dependencies: CloudAuthDependencies = {}): Pr
 
 					const state = session.signInUrl ? new URL(session.signInUrl).searchParams.get("state") : null
 
-					if (state) {
-						listener.expectState(state)
+					if (!state) {
+						throw new Error("the cloud sign-in address carries no state")
 					}
+
+					listener.expectState(state)
 
 					const input = dependencies.input ?? process.stdin
 					const waiting: Promise<CloudCallback & Partial<Pick<ReceivedCallback, "reply">>>[] = [

@@ -47,8 +47,9 @@ export interface LoopbackListener {
 	redirectUrl: string
 	/**
 	 * Accept only a callback carrying this state (known once the sign-in URL
-	 * exists); any other callback gets an error page and the listener keeps
-	 * waiting, so a stray request cannot end the sign-in.
+	 * exists). Any other callback, and any callback before this is called,
+	 * gets an error page and the listener keeps waiting, so a stray request
+	 * cannot end the sign-in.
 	 */
 	expectState(state: string): void
 	/** The first valid callback. Rejects on timeout or abort. */
@@ -165,7 +166,9 @@ export async function startLoopbackListener({
 			return
 		}
 
-		if (expectedState !== undefined && parsed.state !== expectedState) {
+		// Until the sign-in URL exists nothing can be accepted: a callback that
+		// arrives first was not sent by the sign-in this terminal started.
+		if (expectedState === undefined || parsed.state !== expectedState) {
 			send(
 				response,
 				400,
