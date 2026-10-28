@@ -16,6 +16,7 @@ from src.models.task import Task
 from src.realtime import sio as sio_module
 from src.realtime.hub import registry
 from src.realtime.sio import EVT_MESSAGE
+from src.routers.web_projects import ERROR_MESSAGES
 from src.services.dataset_overview import dataset_overview
 from src.services.organizations import ROLE_ADMIN, ROLE_MEMBER
 from src.services.projects import (
@@ -311,29 +312,106 @@ async def test_a_folder_bound_already_stays_as_it_is(org, db_session, session_fa
         assert (await s.execute(select(Project.id))).scalars().all() == [first]
 
 
-# --- the page -----------------------------------------------------------------
+# --- the pages ----------------------------------------------------------------
+
+OUTSIDER = "user_outsider"
 
 
 def _post(client, path, **form):
     return client.post(path, data=form, follow_redirects=False)
 
 
-async def test_an_admin_names_and_scopes_an_organization_project(
+def _listed(page) -> list[str]:
+    """The project names in the list's rows, in order."""
+    return [
+        chunk.split('">', 1)[1].split("</a>", 1)[0]
+        for chunk in page.text.split('<a href="/app/projects/')[1:]
+    ]
+
+
+def _add_project(db_session, name, key, owner=ADMIN, org_id=None, scope="none"):
+    project = Project(
+        tenant_id=org_id or owner,
+        organization_id=org_id,
+        user_id=owner,
+        key=key,
+        name=name,
+        recall_scope=scope,
+    )
+    db_session.add(project)
+    return project
+
+
+@pytest.fixture
+async def spread(org, db_session):
+    """The admin's projects in both spaces, and a colleague's personal one."""
+    _add_project(db_session, "Alpha", "folder:a1")
+    _add_project(db_session, "Website", "github.com/acme/www", scope="owner")
+    _add_project(
+        db_session, "Backend", "github.com/acme/api", org_id=ORG, scope="members"
+    )
+    _add_project(db_session, "notes", "folder:n1", owner=MEMBER, org_id=ORG)
+    _add_project(db_session, "Alphabet", "folder:m1", owner=MEMBER)
+    await db_session.commit()
+
+
+@pytest.mark.parametrize(
+    "query, names",
+    [
+        ("", ["Alpha", "Backend", "notes", "Website"]),
+        ("q=ALP", ["Alpha"]),
+        ("q=acme/api", ["Backend"]),
+        ("space=personal", ["Alpha", "Website"]),
+        (f"space={ORG}", ["Backend", "notes"]),
+        ("space=org_elsewhere", []),
+        ("recall=off", ["Alpha", "notes"]),
+        ("recall=on&q=web", ["Website"]),
+    ],
+)
+async def test_the_list_filters_by_text_space_and_recall(spread, client, query, names):
+    _override_web_user(client.app, ADMIN)
+    page = client.get(f"/app/projects?{query}")
+    assert _listed(page) == names
+    assert ('<th scope="col">Space</th>' in page.text) == bool(names)
+    assert ("No projects match these filters." in page.text) == (not names)
+
+
+async def test_the_list_pages_by_25_and_keeps_its_filters(db_session, client):
+    await _seed_user(db_session, ADMIN)
+    for n in range(30):
+        _add_project(db_session, f"p{n:02}", f"folder:{n}")
+    _add_project(db_session, "other", "folder:x")
+    await db_session.commit()
+    _override_web_user(client.app, ADMIN)
+
+    first = client.get("/app/projects?q=p")
+    assert _listed(first) == [f"p{n:02}" for n in range(25)]
+    assert 'href="/app/projects?q=p&amp;page=2"' in first.text
+    assert '<th scope="col">Space</th>' not in first.text
+    second = client.get("/app/projects?q=p&page=2")
+    assert _listed(second) == [f"p{n:02}" for n in range(25, 30)]
+    assert _listed(client.get("/app/projects?q=p&page=9")) == _listed(second)
+
+
+async def test_a_member_views_and_an_admin_manages_an_organization_project(
     org, client, session_factory
 ):
     project = await _resolve(session_factory, MEMBER, ORG, "/u/m/roo", REPO)
 
     _override_web_user(client.app, MEMBER, email="user_member@example.com")
-    page = client.get("/app/projects")
-    assert "Roo-Code" in page.text and "Recall: Off" in page.text
+    assert _listed(client.get("/app/projects")) == ["Roo-Code"]
+    page = client.get(f"/app/projects/{project}")
+    assert "Recall: Off" in page.text and 'name="scope"' not in page.text
+    assert "/u/m/roo</code> · user_member@example.com" in page.text
     assert (
         _post(client, f"/app/projects/{project}", name="X", scope="members").status_code
         == 404
     )
 
     _override_web_user(client.app, ADMIN, email="user_admin@example.com")
+    assert 'name="scope"' in client.get(f"/app/projects/{project}").text
     resp = _post(client, f"/app/projects/{project}", name=" Tumble ", scope="members")
-    assert resp.headers["location"] == "/app/projects"
+    assert resp.headers["location"] == f"/app/projects/{project}"
     saved = await _project(session_factory, project)
     assert (saved.name, saved.recall_scope) == ("Tumble", "members")
 
@@ -352,36 +430,77 @@ async def test_a_personal_project_refuses_what_it_does_not_offer(
     project = await _resolve(session_factory, ADMIN, None, "/home/a/notes")
     _override_web_user(client.app, ADMIN)
     resp = _post(client, f"/app/projects/{project}", **form)
-    assert resp.headers["location"] == f"/app/projects?error={code}"
-    assert "All my projects" in client.get(resp.headers["location"]).text
+    assert resp.headers["location"] == f"/app/projects/{project}?error={code}"
+    page = client.get(resp.headers["location"])
+    assert ERROR_MESSAGES[code] in page.text and "All my projects" in page.text
 
 
-async def test_merging_moves_folders_and_sessions(
-    org, db_session, client, session_factory
-):
+@pytest.fixture
+async def notes(org, db_session, session_factory):
+    """Two folders named notes in the organization, one in the admin's
+    personal space renamed to private; the colleague's has a session."""
     mine = await _resolve(session_factory, ADMIN, ORG, "/a/notes")
     theirs = await _resolve(session_factory, MEMBER, ORG, "/m/notes")
     personal = await _resolve(session_factory, ADMIN, None, "/a/notes")
+    (await db_session.get(Project, personal)).name = "private"
     db_session.add(
         Task(id="t-m", user_id=MEMBER, organization_id=ORG, project_id=theirs)
     )
     await db_session.commit()
+    return mine, theirs
 
+
+async def test_merging_by_name_moves_folders_and_sessions(
+    notes, client, session_factory
+):
+    mine, theirs = notes
     _override_web_user(client.app, ADMIN)
-    cross = _post(client, f"/app/projects/{theirs}/merge", into=personal)
-    assert cross.headers["location"] == "/app/projects?error=bad_merge"
+    page = client.get(f"/app/projects/{theirs}")
+    assert '<option value="notes">' in page.text and "private" not in page.text
 
-    assert _post(client, f"/app/projects/{theirs}/merge", into=mine).status_code == 303
+    resp = _post(client, f"/app/projects/{theirs}/merge", into=" NOTES ")
+    assert resp.headers["location"] == f"/app/projects/{mine}"
     assert await _project(session_factory, theirs) is None
     assert await _task_project(session_factory, "t-m") == mine
     assert await _resolve(session_factory, MEMBER, ORG, "/m/notes") == mine
 
 
-async def test_others_cannot_manage_a_personal_project(org, client, session_factory):
-    project = await _resolve(session_factory, ADMIN, None, "/a/notes")
-    _override_web_user(client.app, MEMBER)
+@pytest.mark.parametrize(
+    "into, third, code",
+    [
+        ("private", False, "bad_merge"),
+        ("nothing", False, "bad_merge"),
+        ("notes", True, "ambiguous_merge"),
+    ],
+    ids=["other-space", "unknown", "two-named-so"],
+)
+async def test_a_merge_target_is_one_project_of_the_same_space(
+    notes, client, session_factory, into, third, code
+):
+    mine, theirs = notes
+    if third:
+        await _resolve(session_factory, MEMBER, ORG, "/m/old/notes")
+    _override_web_user(client.app, ADMIN)
+    resp = _post(client, f"/app/projects/{theirs}/merge", into=into)
+    assert resp.headers["location"] == f"/app/projects/{theirs}?error={code}"
+    assert await _project(session_factory, theirs) is not None
+
+
+@pytest.mark.parametrize(
+    "owner, org_id, reader",
+    [(ADMIN, None, MEMBER), (MEMBER, ORG, OUTSIDER)],
+    ids=["someone-elses-personal", "organization-of-others"],
+)
+async def test_a_foreign_project_is_not_listed_and_answers_404(
+    org, db_session, client, session_factory, owner, org_id, reader
+):
+    await _seed_user(db_session, OUTSIDER)
+    project = await _resolve(session_factory, owner, org_id, "/x/secret")
+    _override_web_user(client.app, reader)
+    assert "secret" not in client.get("/app/projects").text
+    assert client.get(f"/app/projects/{project}").status_code == 404
     assert (
         _post(client, f"/app/projects/{project}", name="x", scope="owner").status_code
         == 404
     )
-    assert "notes" not in client.get("/app/projects").text
+    assert _post(client, f"/app/projects/{project}/merge", into="x").status_code == 404

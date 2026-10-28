@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name }} · Tumble Code{% endblock %}
+{% import "_breadcrumbs.html" as crumbs %}
+{% block content %}
+{% macro scope_hint() %}
+  {% if project.organization_id is none %}
+  <p class="field-hint">"Only this project": earlier sessions of the same project. "All my projects": every personal project set to "All my projects" can reach the others.</p>
+  {% else %}
+  <p class="field-hint">"Whole organization": every project of {{ access.space }} set to "Whole organization" can reach the others. Only admins change these settings.</p>
+  {% endif %}
+{% endmacro %}
+<div class="detail-header">
+  {{ crumbs.breadcrumbs([
+    {"href": "/app/settings", "label": "Settings"},
+    {"href": "/app/projects", "label": "Projects"},
+  ], project.name) }}
+  <h1 class="page-title">{{ project.name }}</h1>
+  <p class="settings-meta project-meta">
+    {{ access.space }} · {{ project.key_label }} · {{ task_count }} session{{ '' if task_count == 1 else 's' }}
+  </p>
+</div>
+
+{% if error %}<div class="notice" role="alert">{{ error }}</div>{% endif %}
+
+<section class="panel settings-panel" aria-labelledby="project-recall">
+  <h2 class="chart-title" id="project-recall">Name and recall</h2>
+  {% if access.can_manage %}
+  <form method="post" action="/app/projects/{{ project.id }}" class="settings-form project-form">
+    <div class="field-grid">
+      <label class="field">
+        <span class="field-label">Name</span>
+        <span class="field-input"><input type="text" name="name" value="{{ project.name }}" required maxlength="{{ name_max }}"></span>
+      </label>
+      <label class="field">
+        <span class="field-label">Recall</span>
+        <span class="field-input">
+          <select name="scope">
+            {% for value, label in scopes.items() %}<option value="{{ value }}"{{ ' selected' if value == project.recall_scope }}>{{ label }}</option>{% endfor %}
+          </select>
+        </span>
+      </label>
+    </div>
+    {{ scope_hint() }}
+    <div class="settings-actions"><button class="btn" type="submit">Save</button></div>
+  </form>
+  {% else %}
+  <p class="settings-meta">Recall: {{ scopes[project.recall_scope] }}</p>
+  {{ scope_hint() }}
+  {% endif %}
+</section>
+
+{% if folders %}
+<section class="panel settings-panel" aria-labelledby="project-folders">
+  <h2 class="chart-title" id="project-folders">Folders</h2>
+  <ul class="project-folders">
+    {% for f in folders %}<li><code>{{ f.path }}</code>{% if project.organization_id %} · {{ f.email }}{% endif %}</li>{% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+{% if merge_names %}
+<section class="panel settings-panel" aria-labelledby="project-merge">
+  <h2 class="chart-title" id="project-merge">Merge</h2>
+  <form method="post" action="/app/projects/{{ project.id }}/merge" class="settings-form project-form"
+        data-confirm="Merge {{ project.name }} into the chosen project? Its folders and sessions move there.">
+    <label class="field">
+      <span class="field-label">Merge into</span>
+      <span class="field-input"><input type="text" name="into" list="merge-names" required autocomplete="off"
+             placeholder="Name of another project"></span>
+    </label>
+    <datalist id="merge-names">
+      {% for name in merge_names %}<option value="{{ name }}">{% endfor %}
+    </datalist>
+    <p class="field-hint">Folders that belong together, such as the same folder without git on several machines, become one project. Only a project of the same space ({{ access.space }}) can be the target.</p>
+    <div class="settings-actions"><button class="btn" type="submit">Merge</button></div>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

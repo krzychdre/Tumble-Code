@@ -25,13 +25,13 @@ import posixpath
 from dataclasses import dataclass
 from typing import Optional
 
-from sqlalchemy import and_, delete, func, select, update
+from sqlalchemy import and_, delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import dialect_insert
 from src.models.event import TelemetryEvent
 from src.models.llm_exchange import LlmExchange
-from src.models.organization import Membership
+from src.models.organization import Membership, Organization
 from src.models.project import (
     SCOPE_MEMBERS,
     SCOPE_NONE,
@@ -45,6 +45,7 @@ from src.models.user import User
 from src.services.recall_cards import drop_project_cards, mark_dirty, queue_project
 from src.services.organizations import ROLE_ADMIN
 from src.services.user_service import get_user_memberships
+from src.utils.pagination import paginate
 
 NAME_MAX = 100
 
@@ -299,7 +300,42 @@ def _task_in_tenant(org_id: Optional[str]):
     return Task.organization_id == org_id
 
 
-# --- the projects page ------------------------------------------------------
+# --- the projects pages -----------------------------------------------------
+
+PAGE_SIZE = 25
+
+# The list's Recall filter: its value in the URL and the projects it keeps.
+RECALL_FILTERS = {
+    "off": Project.recall_scope == SCOPE_NONE,
+    "on": Project.recall_scope != SCOPE_NONE,
+}
+
+
+@dataclass(frozen=True)
+class Space:
+    """The reader's personal space or one of their organizations. ``key`` is
+    the list's Space filter value: ``personal`` or the organization id."""
+
+    key: str
+    tenant_id: str
+    title: str
+
+
+@dataclass(frozen=True)
+class ProjectRow:
+    project: Project
+    space: str
+    task_count: int
+
+
+@dataclass(frozen=True)
+class ProjectAccess:
+    """A project the reader may see, the title of its space, and whether the
+    reader may change it."""
+
+    project: Project
+    space: str
+    can_manage: bool
 
 
 @dataclass(frozen=True)
@@ -308,90 +344,87 @@ class Folder:
     email: str
 
 
-@dataclass(frozen=True)
-class ProjectView:
-    project: Project
-    task_count: int
-    folders: list[Folder]
-
-
-@dataclass(frozen=True)
-class TenantSpace:
-    tenant_id: str
-    title: str
-    is_personal: bool
-    can_manage: bool
-
-
-@dataclass(frozen=True)
-class TenantView:
-    """One space on the page: the personal one or an organization."""
-
-    tenant_id: str
-    title: str
-    is_personal: bool
-    can_manage: bool
-    scopes: dict[str, str]
-    projects: list[ProjectView]
-
-
-async def tenants_for(db: AsyncSession, user_id: str) -> list[TenantView]:
+async def spaces_for(db: AsyncSession, user_id: str) -> list[Space]:
     """The reader's personal space, then each of their organizations by name."""
     memberships = await get_user_memberships(db, user_id)
-    spaces = [TenantSpace(user_id, "Personal", True, True)]
-    for m in sorted(memberships, key=lambda m: m.organization.name.lower()):
-        spaces.append(
-            TenantSpace(
-                m.organization_id, m.organization.name, False, m.role == ROLE_ADMIN
-            )
-        )
-
-    projects = (
-        (
-            await db.execute(
-                select(Project)
-                .where(Project.tenant_id.in_([space.tenant_id for space in spaces]))
-                .order_by(func.lower(Project.name))
-            )
-        )
-        .scalars()
-        .all()
-    )
-    project_ids = [p.id for p in projects]
-    counts = dict(
-        (
-            await db.execute(
-                select(Task.project_id, func.count())
-                .where(Task.project_id.in_(project_ids))
-                .group_by(Task.project_id)
-            )
-        ).all()
-    )
-    folders: dict[str, list[Folder]] = {}
-    rows = await db.execute(
-        select(ProjectBinding.project_id, ProjectBinding.workspace_path, User.email)
-        .join(User, User.id == ProjectBinding.user_id)
-        .where(ProjectBinding.project_id.in_(project_ids))
-        .order_by(ProjectBinding.workspace_path)
-    )
-    for project_id, path, email in rows:
-        folders.setdefault(project_id, []).append(Folder(path, email))
-
-    return [
-        TenantView(
-            tenant_id=space.tenant_id,
-            title=space.title,
-            is_personal=space.is_personal,
-            can_manage=space.can_manage,
-            scopes=PERSONAL_SCOPES if space.is_personal else ORGANIZATION_SCOPES,
-            projects=[
-                ProjectView(p, counts.get(p.id, 0), folders.get(p.id, []))
-                for p in projects
-                if p.tenant_id == space.tenant_id
-            ],
-        )
-        for space in spaces
+    return [Space("personal", user_id, "Personal")] + [
+        Space(m.organization_id, m.organization_id, m.organization.name)
+        for m in sorted(memberships, key=lambda m: m.organization.name.lower())
     ]
+
+
+async def project_list_page(
+    db: AsyncSession,
+    spaces: list[Space],
+    query: str,
+    space: str,
+    recall: str,
+    page: int,
+) -> tuple[list[ProjectRow], dict]:
+    """One page of the projects of ``spaces`` matching the filters, by name,
+    and the pager's fields (utils/pagination.paginate). ``space`` is a
+    ``Space.key`` or empty for all of them."""
+    titles = {s.tenant_id: s.title for s in spaces if space in ("", s.key)}
+    conditions = [Project.tenant_id.in_(titles)]
+    if query:
+        conditions.append(
+            or_(
+                Project.name.icontains(query, autoescape=True),
+                Project.key.icontains(query, autoescape=True),
+            )
+        )
+    if recall in RECALL_FILTERS:
+        conditions.append(RECALL_FILTERS[recall])
+    total = await db.scalar(
+        select(func.count()).select_from(Project).where(*conditions)
+    )
+    pager = paginate(total, page, PAGE_SIZE)
+    rows = await db.execute(
+        select(Project, _session_count())
+        .where(*conditions)
+        .order_by(func.lower(Project.name), Project.id)
+        .limit(PAGE_SIZE)
+        .offset(pager["offset"])
+    )
+    return [ProjectRow(p, titles[p.tenant_id], n) for p, n in rows], pager
+
+
+def _session_count():
+    return (
+        select(func.count())
+        .select_from(Task)
+        .where(Task.project_id == Project.id)
+        .scalar_subquery()
+    )
+
+
+async def project_access(
+    db: AsyncSession, user_id: str, project_id: str
+) -> Optional[ProjectAccess]:
+    """The project when the reader may see it: their own personal project or
+    a project of an organization they belong to, which its admins manage.
+    None when unknown or foreign (the caller answers both the same way)."""
+    project = await db.get(Project, project_id)
+    if project is None:
+        return None
+    if project.organization_id is None:
+        if project.user_id != user_id:
+            return None
+        return ProjectAccess(project, "Personal", True)
+    membership = (
+        await db.execute(
+            select(Membership.role, Organization.name)
+            .join(Organization, Organization.id == Membership.organization_id)
+            .where(
+                Membership.user_id == user_id,
+                Membership.organization_id == project.organization_id,
+            )
+        )
+    ).one_or_none()
+    if membership is None:
+        return None
+    role, organization_name = membership
+    return ProjectAccess(project, organization_name, role == ROLE_ADMIN)
 
 
 async def manageable_project(
@@ -399,18 +432,62 @@ async def manageable_project(
 ) -> Optional[Project]:
     """The project when the user may change it; None when unknown or not theirs
     to manage (the caller answers both the same way)."""
-    project = await db.get(Project, project_id)
-    if project is None:
+    access = await project_access(db, user_id, project_id)
+    if access is None or not access.can_manage:
         return None
-    if project.organization_id is None:
-        return project if project.user_id == user_id else None
-    role = await db.scalar(
-        select(Membership.role).where(
-            Membership.user_id == user_id,
-            Membership.organization_id == project.organization_id,
-        )
+    return access.project
+
+
+async def project_facts(db: AsyncSession, project: Project) -> tuple[int, list[Folder]]:
+    """The project's session count and its folders, each with its user's e-mail."""
+    task_count = await db.scalar(
+        select(func.count()).select_from(Task).where(Task.project_id == project.id)
     )
-    return project if role == ROLE_ADMIN else None
+    rows = await db.execute(
+        select(ProjectBinding.workspace_path, User.email)
+        .join(User, User.id == ProjectBinding.user_id)
+        .where(ProjectBinding.project_id == project.id)
+        .order_by(ProjectBinding.workspace_path)
+    )
+    return task_count, [Folder(path, email) for path, email in rows]
+
+
+async def merge_names(db: AsyncSession, project: Project) -> list[str]:
+    """The names the merge field offers: the space's other projects."""
+    return list(
+        (
+            await db.execute(
+                select(Project.name)
+                .where(Project.tenant_id == project.tenant_id, Project.id != project.id)
+                .distinct()
+                .order_by(Project.name)
+            )
+        ).scalars()
+    )
+
+
+async def merge_target(db: AsyncSession, source: Project, name: str) -> Project:
+    """The project of the source's space named ``name`` (case-insensitive)."""
+    found = (
+        (
+            await db.execute(
+                select(Project)
+                .where(
+                    Project.tenant_id == source.tenant_id,
+                    Project.id != source.id,
+                    func.lower(Project.name) == name.strip().lower(),
+                )
+                .limit(2)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not found:
+        raise ProjectError("bad_merge")
+    if len(found) > 1:
+        raise ProjectError("ambiguous_merge")
+    return found[0]
 
 
 def scopes_for(project: Project) -> dict[str, str]:
@@ -436,9 +513,8 @@ async def update_project(
 
 
 async def merge_project(db: AsyncSession, source: Project, target: Project) -> None:
-    """Move every folder and task of ``source`` into ``target`` and drop ``source``."""
-    if source.id == target.id or source.tenant_id != target.tenant_id:
-        raise ProjectError("bad_merge")
+    """Move every folder and task of ``source`` into ``target`` (another
+    project of its space, see ``merge_target``) and drop ``source``."""
     await db.execute(
         update(ProjectBinding)
         .where(ProjectBinding.project_id == source.id)

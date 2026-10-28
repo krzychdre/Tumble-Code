@@ -384,7 +384,8 @@ In short:
   query string, one report at `/app/diagnostics/reports/{id}`, and the agent brief as Markdown for the filtered
   list at `/app/diagnostics/report.md` and for one problem at `/app/diagnostics/problems/{key}/brief.md`,
   the dataset page at `/app/dataset` with the anonymized JSONL export, its audit and the full reconstruction of
-  one task at `/app/dataset/tasks/{task_id}.jsonl`, settings) and
+  one task at `/app/dataset/tasks/{task_id}.jsonl`, settings, the projects list at `/app/projects` with its
+  filters in the query string (`q`, `space`, `recall`) and one project's page at `/app/projects/{id}`) and
   `/shared/{task_id}` for shared tasks.
 - Live bridge: socket.io at `/bridge/socket.io` (`BRIDGE_PATH`).
 - Health: `GET /health` (process alive), `GET /health/ready` (database reachable).

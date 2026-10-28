@@ -142,6 +142,7 @@ EXPECTED = {
         "APIRoute",
     ),
     ("/app/projects", ("GET",), "projects_page", "APIRoute"),
+    ("/app/projects/{project_id}", ("GET",), "project_page", "APIRoute"),
     ("/app/projects/{project_id}", ("POST",), "update_project_action", "APIRoute"),
     (
         "/app/projects/{project_id}/merge",
@@ -192,6 +193,7 @@ def test_overlapping_routes_keep_their_order():
         ("task_detail", "bulk_delete_tasks"),
         ("settings_page", "save_settings"),
         ("organizations_page", "create_organization_action"),
+        ("project_page", "update_project_action"),
     ]
 
 
@@ -417,7 +419,18 @@ def test_web_routes_keep_their_openapi_operations():
             "projects_page_app_projects_get",
             ("web",),
             html,
-            (("error", "query", False),),
+            (
+                ("q", "query", False),
+                ("space", "query", False),
+                ("recall", "query", False),
+                ("page", "query", False),
+            ),
+        ),
+        ("/app/projects/{project_id}", "get"): (
+            "project_page_app_projects__project_id__get",
+            ("web",),
+            html,
+            (("project_id", "path", True), ("error", "query", False)),
         ),
         ("/app/projects/{project_id}", "post"): (
             "update_project_action_app_projects__project_id__post",

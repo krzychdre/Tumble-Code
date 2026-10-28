@@ -3463,7 +3463,8 @@ table.breakdown tr:last-child td {
 /* The filter form: the search box and one list per filter, side by side
    where they fit. A list is as wide as its longest option at most and never
    wider than its column, so a 90-character model id cannot widen the page. */
-.diag-filters {
+.diag-filters,
+.list-filter {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: flex-end;
@@ -3688,7 +3689,8 @@ table.diag-table {
 	width: 100%;
 	table-layout: auto;
 }
-table.diag-table th {
+/* :not() lifts this over table.breakdown's right-aligned columns 2 and on. */
+table.diag-table th:not(.diag-num) {
 	text-align: left;
 }
 table.diag-table th.diag-num {
@@ -3916,41 +3918,39 @@ table.diag-table th.diag-num {
 	color: var(--text-faint);
 }
 
-/* One project on /app/projects: its name, meta line, folders and forms. */
-.project-item {
-	padding: var(--s3) 0;
-	border-top: 1px solid var(--line);
+/* The projects list: a key can be longer than its column, the full one is
+   in the title. */
+.project-key {
+	display: block;
+	max-width: 24rem;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
-.project-name {
-	margin: 0;
-	font-size: var(--t-title);
+/* A project's page: the meta line carries the key, and an input the name. */
+.project-meta {
+	margin: var(--s1) 0 0;
 	overflow-wrap: anywhere;
 }
-.project-item .settings-meta {
-	overflow-wrap: anywhere;
-}
-/* A select is as wide as its longest option, here a project name. */
-.project-item .field-input,
-.project-item select {
+.project-form .field-input {
 	max-width: 100%;
 	min-width: 0;
 }
-/* A repository opened through many worktrees lists many folders: closed by default. */
+.project-form .field-input input {
+	width: 20rem;
+	max-width: 100%;
+	font-family: inherit;
+}
+.project-form select {
+	max-width: 100%;
+	min-width: 0;
+}
 .project-folders {
-	margin: var(--s1) 0 var(--s2);
+	margin: 0;
+	padding-left: var(--s4);
 	font-size: var(--t-sm);
 }
-.project-folders ul {
-	margin: var(--s1) 0 0;
-	padding-left: var(--s4);
-}
 .project-folders li {
-	overflow-wrap: anywhere;
-}
-/* The space heading carries an organization's name; .chart-title is a flex row,
-   whose bare text would not shrink below its longest word. */
-.project-space {
-	display: block;
 	overflow-wrap: anywhere;
 }
 .settings-rule {
