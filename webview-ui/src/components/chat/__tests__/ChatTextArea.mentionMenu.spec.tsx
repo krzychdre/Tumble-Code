@@ -256,10 +256,23 @@ describe("ChatTextArea mention menu", () => {
 		})
 
 		it("asks for commits when the query looks like a hash and lists the returned commits", () => {
-			render(<Harness />)
-			type("@abc12")
+			vi.useFakeTimers()
+			try {
+				render(<Harness />)
+				type("@a")
+				type("@abc")
+				type("@abc12")
+				expect(postedOfType("searchCommits")).toEqual([])
 
-			expect(postedOfType("searchCommits")).toContainEqual({ type: "searchCommits", query: "abc12" })
+				act(() => {
+					vi.advanceTimersByTime(200)
+				})
+
+				// One request for what was typed last, not one per keystroke.
+				expect(postedOfType("searchCommits")).toEqual([{ type: "searchCommits", query: "abc12" }])
+			} finally {
+				vi.useRealTimers()
+			}
 
 			postFromHost({
 				type: "commitSearchResults",

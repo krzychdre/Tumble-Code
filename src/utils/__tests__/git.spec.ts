@@ -131,6 +131,25 @@ describe("git commands", () => {
 		expect(result).toEqual(expected)
 	})
 
+	it.each([
+		["a command substitution", (marker: string) => `$(touch ${marker})`],
+		["backticks", (marker: string) => `\`touch ${marker}\``],
+		["a quote that ends the argument", (marker: string) => `x" --all "$(touch ${marker})`],
+	])("searches for %s as text and runs nothing", async (_, query) => {
+		const marker = path.join(root, "injected")
+
+		expect(await searchCommits(query(marker), repo)).toEqual([])
+		await expect(fs.access(marker)).rejects.toThrow()
+	})
+
+	it("shows only a commit hash, never another argument", async () => {
+		const marker = path.join(root, "injected")
+
+		expect(await getCommitInfo(`HEAD; touch ${marker}`, repo)).toMatch(/is not a commit hash$/)
+		expect(await getCommitInfo("--output=/tmp/x", repo)).toMatch(/is not a commit hash$/)
+		await expect(fs.access(marker)).rejects.toThrow()
+	})
+
 	it("describes a commit: header, description, changed files and the diff", async () => {
 		const info = await getCommitInfo(commits[0].hash, repo)
 

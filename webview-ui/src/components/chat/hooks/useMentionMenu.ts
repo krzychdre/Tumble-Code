@@ -107,14 +107,21 @@ export function useMentionMenu({
 		return onExtensionMessage(["commitSearchResults", "fileSearchResults"], messageHandler)
 	}, [searchRequestId])
 
-	// Fetch git commits when Git is selected or when typing a hash.
+	// Fetch git commits when Git is selected or when typing a hash. Each request
+	// runs git on the host, so typing waits 200ms like the file search; opening
+	// the commit submenu asks at once.
 	useEffect(() => {
 		if (selectedType === ContextMenuOptionType.Git || /^[a-f0-9]+$/i.test(searchQuery)) {
 			const message: WebviewMessage = {
 				type: "searchCommits",
 				query: searchQuery || "",
 			} as const
-			vscode.postMessage(message)
+			if (!searchQuery) {
+				vscode.postMessage(message)
+				return
+			}
+			const timer = setTimeout(() => vscode.postMessage(message), 200)
+			return () => clearTimeout(timer)
 		}
 	}, [selectedType, searchQuery])
 
