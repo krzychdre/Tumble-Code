@@ -71,6 +71,12 @@ EXPECTED = {
     ("/auth/clerk/callback", ("GET",), "auth_callback", "APIRoute"),
     ("/auth/error", ("GET",), "auth_error_page", "APIRoute"),
     ("/api/extension/share", ("POST",), "share_task_endpoint", "APIRoute"),
+    (
+        "/api/extension/share/{task_id}",
+        ("DELETE",),
+        "unshare_task_endpoint",
+        "APIRoute",
+    ),
     ("/api/extension/bridge/config", ("GET",), "bridge_config_endpoint", "APIRoute"),
     ("/api/recall/context", ("GET",), "recall_context", "APIRoute"),
     ("/api/recall/search", ("GET",), "recall_search", "APIRoute"),
@@ -125,6 +131,7 @@ EXPECTED = {
     ("/app/tasks/{task_id}/images", ("GET",), "task_image", "APIRoute"),
     ("/app/tasks/{task_id}/delete", ("POST",), "delete_task", "APIRoute"),
     ("/app/tasks/{task_id}/recall", ("POST",), "toggle_task_recall", "APIRoute"),
+    ("/app/tasks/{task_id}/unshare", ("POST",), "unshare_task_page", "APIRoute"),
     ("/app/settings", ("GET",), "settings_page", "APIRoute"),
     ("/app/settings", ("POST",), "save_settings", "APIRoute"),
     ("/app/settings/run", ("POST",), "run_retention_now", "APIRoute"),
@@ -374,6 +381,12 @@ def test_web_routes_keep_their_openapi_operations():
         ),
         ("/app/tasks/{task_id}/recall", "post"): (
             "toggle_task_recall_app_tasks__task_id__recall_post",
+            ("web",),
+            json_,
+            (("task_id", "path", True),),
+        ),
+        ("/app/tasks/{task_id}/unshare", "post"): (
+            "unshare_task_page_app_tasks__task_id__unshare_post",
             ("web",),
             json_,
             (("task_id", "path", True),),

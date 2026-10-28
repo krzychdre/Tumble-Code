@@ -24,6 +24,7 @@ from sqlalchemy import select
 from config.settings import Settings, settings
 from src.models.user import ClientToken, Session as SessionModel, User
 from src.services.auth_service import create_client_token
+from tests.web_helpers import started_here
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -265,6 +266,7 @@ def test_sign_in_logs_name_the_user_by_id_not_email(client, caplog, auth_redirec
             resp = client.get(
                 "/auth/clerk/callback",
                 params={"code": "c", "state": "s"},
+                headers=started_here("s"),
                 follow_redirects=False,
             )
 
