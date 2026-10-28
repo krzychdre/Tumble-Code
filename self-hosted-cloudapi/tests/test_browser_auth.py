@@ -5,6 +5,7 @@ from unittest.mock import patch, AsyncMock, MagicMock
 from fastapi.testclient import TestClient
 
 from src.main import app
+from tests.web_helpers import started_here
 
 
 @pytest.fixture
@@ -63,6 +64,7 @@ class TestAuthCallbackRedirect:
         response = client.get(
             "/auth/clerk/callback",
             params={"code": "test-code", "state": "test-state"},
+            headers=started_here("test-state"),
         )
 
         assert response.status_code == 200
@@ -78,6 +80,7 @@ class TestAuthCallbackRedirect:
         response = client.get(
             "/auth/clerk/callback",
             params={"code": "test-code", "state": "test-state"},
+            headers=started_here("test-state"),
         )
 
         assert response.status_code == 200
@@ -96,6 +99,7 @@ class TestAuthCallbackRedirect:
         response = client.get(
             "/auth/clerk/callback",
             params={"code": "test-code", "state": "test-state"},
+            headers=started_here("test-state"),
         )
 
         assert response.status_code == 200
@@ -112,6 +116,7 @@ class TestAuthCallbackRedirect:
         response = client.get(
             "/auth/clerk/callback",
             params={"code": "test-code", "state": "test-state"},
+            headers=started_here("test-state"),
         )
 
         assert response.status_code == 200
@@ -126,6 +131,7 @@ class TestAuthCallbackRedirect:
         response = client.get(
             "/auth/clerk/callback",
             params={"code": "test-code", "state": "test-state"},
+            headers=started_here("test-state"),
         )
 
         assert response.status_code == 200
@@ -140,6 +146,7 @@ class TestAuthCallbackRedirect:
         response = client.get(
             "/auth/clerk/callback",
             params={"code": "test-code", "state": "invalid-state"},
+            headers=started_here("invalid-state"),
         )
 
         assert response.status_code == 400

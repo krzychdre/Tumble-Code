@@ -27,6 +27,7 @@ from src.main import app
 from src.models.task import Task
 from src.models.user import Session, User
 from tests.test_remote_access import callback_mocks, client_from, local_stack  # noqa: F401
+from tests.web_helpers import started_here
 
 FOREIGN = "http://evil.example"
 OWN = "http://testserver"  # API_BASE_URL in tests/conftest.py
@@ -177,7 +178,8 @@ def _session_cookie_header(resp) -> str:
 
 def test_the_cookie_is_not_secure_over_http(local_stack, client_from, callback_mocks):  # noqa: F811
     resp = client_from("192.168.50.20").get(
-        "/auth/clerk/callback?code=c&state=s", headers={"host": "192.168.50.141:8085"}
+        "/auth/clerk/callback?code=c&state=s",
+        headers={"host": "192.168.50.141:8085", **started_here("s")},
     )
     assert resp.status_code == 303
     assert "secure" not in _session_cookie_header(resp)
@@ -193,7 +195,8 @@ def test_the_cookie_is_secure_when_the_public_url_is_https(
     the configured https address of the host is what tells."""
     monkeypatch.setattr(settings, "web_public_url", "https://tumble.example.com")
     resp = client_from("192.168.50.20").get(
-        "/auth/clerk/callback?code=c&state=s", headers={"host": "tumble.example.com"}
+        "/auth/clerk/callback?code=c&state=s",
+        headers={"host": "tumble.example.com", **started_here("s")},
     )
     assert resp.status_code == 303
     assert "; secure" in _session_cookie_header(resp)
@@ -204,6 +207,6 @@ def test_the_cookie_is_secure_when_the_request_is_https(
     session_factory,
 ):
     https = TestClient(app, base_url="https://testserver", follow_redirects=False)
-    resp = https.get("/auth/clerk/callback?code=c&state=s")
+    resp = https.get("/auth/clerk/callback?code=c&state=s", headers=started_here("s"))
     assert resp.status_code == 303
     assert "; secure" in _session_cookie_header(resp)

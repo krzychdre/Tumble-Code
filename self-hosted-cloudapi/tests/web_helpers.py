@@ -196,3 +196,11 @@ async def _backfill(client, task_id, messages):
     files, data = _backfill_files(task_id, messages)
     resp = client.post("/api/events/backfill", files=files, data=data)
     assert resp.status_code == 200
+
+
+def started_here(*states: str) -> dict:
+    """Headers of a browser that started the sign-ins with ``states``: the
+    callback only finishes a sign-in begun in the same browser."""
+    from src.routers.browser import state_cookie
+
+    return {"cookie": "; ".join("=".join(state_cookie(s)) for s in states)}

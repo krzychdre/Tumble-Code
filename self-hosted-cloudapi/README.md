@@ -439,7 +439,8 @@ In short:
   `POST /v1/client/sessions/{id}/tokens`, `GET /v1/me`, `GET /v1/me/organization_memberships`,
   `POST /v1/client/sessions/{id}/remove`.
 - Browser sign-in: `GET /extension/sign-in` (redirects to Authentik), `GET /auth/clerk/callback`, `GET /auth/error`,
-  and `GET /app/login`, `POST /app/logout` for the web panel.
+  and `GET /app/login`, `POST /app/logout` for the web panel. A sign-in finishes only in the browser that started
+  it (a cookie binds its `state`), and a `state` already used is refused.
 - Extension API on `cloudApiUrl`: `GET /api/extension-settings`, `PATCH /api/user-settings`,
   `POST /api/extension/share`, `DELETE /api/extension/share/{task_id}` (revoke the link; the owner can also do it
   from the task page, and an organization's `task_share_expiration_days` ends a link on its own),

@@ -16,6 +16,7 @@ from src.models.organization import Membership, Organization
 from src.services.auth_service import store_oauth_state
 from src.services.organizations import ROLE_ADMIN, ROLE_MEMBER, sync_organizations
 from tests.web_helpers import _override_web_user, _seed_user
+from tests.web_helpers import started_here
 
 ALICE = "user_alice"
 BOB = "user_bob"
@@ -197,7 +198,9 @@ async def _sign_in(client, db_session, sub):
         ),
     ):
         return client.get(
-            "/auth/clerk/callback?code=c&state=st", follow_redirects=False
+            "/auth/clerk/callback?code=c&state=st",
+            headers=started_here("st"),
+            follow_redirects=False,
         )
 
 
