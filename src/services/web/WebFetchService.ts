@@ -1,8 +1,10 @@
+import { promises as dns } from "dns"
+
 import TurndownService from "turndown"
 
 import { WEB_TOOLS_DEFAULTS, type ResolvedWebToolsConfig } from "@tumble-code/types"
 
-import { assertPublicHttpUrl } from "./addressGuard"
+import { assertPublicHttpUrl, blockedAddressReason, isIpLiteral } from "./addressGuard"
 
 /**
  * Raised when the fetch cannot produce readable text (bad URL, blocked target,
@@ -26,6 +28,13 @@ export interface WebFetchResult {
 	truncated: boolean
 	/** Size of the converted markdown before truncation, in bytes. */
 	totalBytes: number
+}
+
+/** The tool error for a target web_fetch must not reach. */
+function refusal(url: URL, reason: string): WebFetchError {
+	return new WebFetchError(
+		`web_fetch refused "${url.toString()}": ${reason}. web_fetch only reaches public internet addresses. Ask the user to fetch this themselves, or continue without it.`,
+	)
 }
 
 /** Maximum redirect hops followed manually before giving up. */
@@ -164,8 +173,17 @@ interface BodyReadResult {
  * at twice the markdown budget; the markdown is capped at the configured
  * budget with a truncation notice.
  */
+/** Every address a hostname resolves to. */
+export type ResolveHost = (hostname: string) => Promise<string[]>
+
+const resolveWithSystemDns: ResolveHost = async (hostname) =>
+	(await dns.lookup(hostname, { all: true, verbatim: true })).map((entry) => entry.address)
+
 export class WebFetchService {
-	constructor(private readonly config: ResolvedWebToolsConfig) {}
+	constructor(
+		private readonly config: ResolvedWebToolsConfig,
+		private readonly resolveHost: ResolveHost = resolveWithSystemDns,
+	) {}
 
 	async fetch(rawUrl: string): Promise<WebFetchResult> {
 		const url = this.parseUrl(rawUrl)
@@ -259,22 +277,40 @@ export class WebFetchService {
 			)
 		}
 
-		this.assertAllowedTarget(parsed)
+		const blocked = assertPublicHttpUrl(parsed)
+		if (blocked) {
+			throw refusal(parsed, blocked)
+		}
 
 		return parsed.toString()
 	}
 
 	/**
-	 * Rejects targets on the local machine or a private network. Rethrows the
-	 * guard's reason as a `WebFetchError` so the model gets corrective text.
+	 * Rejects targets on the local machine or a private network, by name and by
+	 * every address the name resolves to. Rethrows the guard's reason as a
+	 * `WebFetchError` so the model gets corrective text. A name that does not
+	 * resolve is left to the request, which then fails on its own.
 	 */
-	private assertAllowedTarget(parsed: URL): void {
+	private async assertAllowedTarget(parsed: URL): Promise<void> {
 		const blocked = assertPublicHttpUrl(parsed)
-
 		if (blocked) {
-			throw new WebFetchError(
-				`web_fetch refused "${parsed.toString()}": ${blocked}. web_fetch only reaches public internet addresses. Ask the user to fetch this themselves, or continue without it.`,
-			)
+			throw refusal(parsed, blocked)
+		}
+		if (isIpLiteral(parsed.hostname)) {
+			return
+		}
+
+		let addresses: string[]
+		try {
+			addresses = await this.resolveHost(parsed.hostname)
+		} catch {
+			return
+		}
+		for (const address of addresses) {
+			const reason = blockedAddressReason(address)
+			if (reason) {
+				throw refusal(parsed, `"${parsed.hostname}" resolves to ${address}, and ${reason}`)
+			}
 		}
 	}
 
@@ -290,6 +326,7 @@ export class WebFetchService {
 		let currentUrl = startUrl
 
 		for (let hop = 0; hop <= MAX_REDIRECT_HOPS; hop++) {
+			await this.assertAllowedTarget(new URL(currentUrl))
 			const response = await fetch(currentUrl, {
 				signal,
 				redirect: "manual",
@@ -322,7 +359,10 @@ export class WebFetchService {
 				)
 			}
 
-			this.assertAllowedTarget(next)
+			const blocked = assertPublicHttpUrl(next)
+			if (blocked) {
+				throw refusal(next, blocked)
+			}
 
 			currentUrl = next.toString()
 		}
