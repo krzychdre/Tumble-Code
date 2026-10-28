@@ -708,6 +708,7 @@ async function runTui({
 		const { render } = await import("ink")
 		const { App } = await import("../../ui/App.js")
 		const { createImageStdout } = await import("../../ui/utils/imageStdout.js")
+		const { createDockedStdout } = await import("../../ui/utils/dockedStdout.js")
 		const { TuiErrorBoundary } = await import("../../ui/components/TuiErrorBoundary.js")
 		const { GraphicsContext } = await import("../../ui/graphics/GraphicsContext.js")
 		const { probeTerminalGraphics } = await import("../../ui/graphics/terminalProbe.js")
@@ -753,7 +754,9 @@ async function runTui({
 				// region every frame, which blinks on each spinner tick
 				// and stream chunk.
 				incrementalRendering: true,
-				stdout: createImageStdout(process.stdout),
+				// Dock the frame to the bottom terminal row: ink alone leaves it
+				// floating right under the transcript on short screens.
+				stdout: createDockedStdout(createImageStdout(process.stdout)),
 			},
 		)
 
