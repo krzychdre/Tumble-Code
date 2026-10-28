@@ -172,6 +172,10 @@ class ShellScanner {
 			const first = words[0]!.raw
 			if (KEYWORDS_BEFORE_A_COMMAND.has(first) || FUNCTION_HEADER.test(first)) {
 				words.shift()
+				// The `time` keyword takes one option of its own: `time -p rm x` runs `rm x`.
+				if (first === "time" && words[0]?.raw === "-p") {
+					words.shift()
+				}
 			} else if (first === "function") {
 				// `function name` or `function name()`: the body that follows is checked.
 				words.splice(0, words[2]?.raw === "()" ? 3 : 2)

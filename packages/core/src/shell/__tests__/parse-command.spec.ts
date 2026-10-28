@@ -398,6 +398,7 @@ describe("parseCommand", () => {
 			["if/then/fi", "if true; then echo x; fi", ["true", "echo x"]],
 			["loop keywords", "for f in a b; do echo $f; done", ["for f in a b", "echo $f"]],
 			["negation", "! grep -q x f", ["grep -q x f"]],
+			["time keyword and its -p", "time -p make && time ls", ["make", "ls"]],
 			["function definition", "f() { echo x; }; f", ["echo x", "f"]],
 			["line continuation", "echo a \\\n  b && echo c", ["echo a b", "echo c"]],
 			["whitespace outside quotes collapses", "git   status", ["git status"]],

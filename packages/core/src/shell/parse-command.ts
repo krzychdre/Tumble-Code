@@ -1,4 +1,4 @@
-import { scanShellCommand, type ScannedCommand } from "./shell-command-scanner.js"
+import { scanShellCommand, type ScannedCommand, type ShellWord } from "./shell-command-scanner.js"
 
 /**
  * The style of quoting that opened a region.
@@ -48,6 +48,12 @@ export interface AnalyzedCommand {
 	matchText: string
 	/** False when the command word is quoted, escaped or expanded, so its identity is not proven. */
 	commandIsLiteral: boolean
+	/**
+	 * The command word and its arguments, without leading variable assignments,
+	 * each as written and after quote removal. Lets a caller look inside a
+	 * command that runs another one (`env rm`, `sh -c '...'`, `find -exec`).
+	 */
+	words: ShellWord[]
 }
 
 export interface CommandAnalysis {
@@ -409,7 +415,7 @@ export function analyzeCommand(command: string): CommandAnalysis {
 	const unterminatedQuote = scanTopLevelQuotes(command)
 	if (unterminatedQuote !== null) {
 		return {
-			commands: [{ text: command, matchText: command, commandIsLiteral: false }],
+			commands: [{ text: command, matchText: command, commandIsLiteral: false, words: [] }],
 			parseError: unterminatedQuote,
 			uncertainty: null,
 		}
@@ -431,5 +437,6 @@ function toAnalyzedCommand(command: ScannedCommand): AnalyzedCommand {
 		text,
 		matchText: commandWords.map((w) => w.literal ?? w.raw).join(" "),
 		commandIsLiteral: commandWord === undefined || commandWord.literal === commandWord.raw,
+		words: commandWords,
 	}
 }
