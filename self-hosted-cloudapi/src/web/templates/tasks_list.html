@@ -8,7 +8,7 @@
    travel together and none of them is silently dropped. #}
 {% macro chip_list(view) -%}
 <ul class="filter-chips" aria-label="Active filters">
-  {% for c in view.chips(only_label) %}
+  {% for c in view.chips(only_label, project_label) %}
   <li><a class="filter-chip" href="{{ c.href }}" aria-label="Remove filter {{ c.label }}{% if c.value %}: {{ c.value }}{% endif %}">{{ c.label }}{% if c.value %}: <b>{{ c.value }}</b>{% endif %} <span class="filter-chip-x" aria-hidden="true">✕</span></a></li>
   {% endfor %}
   <li><a class="filter-chip-clear" href="{{ view.cleared_url() }}">Clear all</a></li>
@@ -60,8 +60,8 @@
         <span class="cell-main">
           <span class="cell-title">{% if t.is_subtask and not tree_view %}<span class="subtask-mark" title="Subtask of another run">↳</span>{% endif %}{{ t.title }}{% if t.child_count %}<span class="child-count" title="{{ t.child_count }} subtask{{ '' if t.child_count == 1 else 's' }}">{{ t.child_count }}</span>{% endif %}</span>
           <span class="cell-meta">
-            {#- Inside a group the badge would repeat its header. #}
-            {%- if t.workspace_label and not (groups and view.group == 'project') %}<span class="badge badge-workspace" title="{{ t.workspace }}">{{ t.workspace_label }}</span>{% endif -%}
+            {#- The folder the task ran in: a project groups all of its worktrees. #}
+            {%- if t.workspace_label %}<span class="badge badge-workspace" title="{{ t.workspace }}">{{ t.workspace_label }}</span>{% endif -%}
             {#- VS Code is what nearly every row is, so only the CLI is marked. #}
             {%- if t.client == 'cli' %}<span class="badge badge-client" title="Ran in the CLI">CLI</span>{% endif -%}
             {%- if t.models and not (groups and view.group == 'model' and t.models.count == 1) %}<span class="badge badge-model" title="{{ t.models.title }}"><span class="badge-name">{{ t.models.name }}</span>{% if t.models.more %}<span class="badge-more">{{ t.models.more }}</span>{% endif %}</span>{% endif -%}
@@ -122,7 +122,7 @@
   <input type="hidden" name="{{ name }}" value="{{ value }}">
   {% endfor %}
   <div class="search">
-    <input type="search" name="q" value="{{ query }}" placeholder="Search title or project…" aria-label="Search tasks">
+    <input type="search" name="q" value="{{ query }}" placeholder="Search title, project or folder…" aria-label="Search tasks">
   </div>
   <details class="filter-more"{% if view.has_panel_filters %} open{% endif %}>
     <summary>Filters</summary>
@@ -134,8 +134,8 @@
       <label class="filter-field"><span class="field-label">{{ label }}</span>
         <select class="filter-pick" name="{{ name }}">
           <option value="">Any</option>
-          {% for o in options %}
-          <option value="{{ o }}"{% if view[name] == o %} selected{% endif %}>{{ o }}</option>
+          {% for value, text in options %}
+          <option value="{{ value }}"{% if view[name] == value %} selected{% endif %}>{{ text }}</option>
           {% endfor %}
         </select></label>
       {% endfor %}
@@ -210,7 +210,7 @@
     <span class="head-check" aria-hidden="true"></span>
     {% if tree_view %}<span class="tree-gutter" aria-hidden="true"></span>{% endif %}
     <div class="task-head-cells">
-      <span class="head-label head-title">Task<span class="head-sub" aria-hidden="true"> · project · model</span></span>
+      <span class="head-label head-title">Task<span class="head-sub" aria-hidden="true"> · folder · model</span></span>
       {{ head_cell('messages', 'Messages') }}
       <span class="head-label">Duration</span>
       {{ head_cell('tokens', 'Tokens') }}

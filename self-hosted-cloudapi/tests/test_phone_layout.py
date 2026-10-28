@@ -255,14 +255,28 @@ async def _seed_a_phone_sized_problem(session_factory):
     """A run with every element that ever overflowed on a phone: a long title,
     a long worktree path, a model badge, a subtask, request rows with figures,
     a long command and a code block with a line no screen could hold."""
+    workspace = (
+        "/home/someone/Projekty/ITKONTEKST/customer/lids-uniform-api-with-a-long-name"
+    )
     async with session_factory() as s:
         await _seed_user(s)
+        s.add(
+            Project(
+                id="prj_lids",
+                tenant_id="user_test",
+                user_id="user_test",
+                key=repository_key(_LONG_URL),
+                name="lids-uniform-api-with-a-long-name",
+            )
+        )
+        await s.flush()
         s.add(
             Task(
                 id="run",
                 user_id="user_test",
                 title=_LONG_TITLE,
-                workspace_path="/home/someone/Projekty/ITKONTEKST/customer/lids-uniform-api-with-a-long-name",
+                workspace_path=workspace,
+                project_id="prj_lids",
             )
         )
         await s.flush()
@@ -355,7 +369,7 @@ async def _seed_a_phone_sized_recording(session_factory):
         ("/app", "taskRows"),
         ("/app?scope=all", "taskRows"),
         # The filter panel opens when a filter beyond the search is active.
-        ("/app?project=lids&sort=cost&dir=desc", "taskRows"),
+        ("/app?project=prj_lids&sort=cost&dir=desc", "taskRows"),
         ("/app/tasks/run", "messages"),
         ("/app/metrics", None),
         ("/app/diagnostics", None),

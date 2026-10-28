@@ -440,7 +440,8 @@ In short:
   `POST /api/llm-exchanges` and `POST /api/llm-exchanges/outcome` (LLM exchange recording for the training
   dataset: only when the user switched it on at `/app/dataset/recording`; incremental, gzip, 32 MB limit).
 - Web panel: `/app` (task list, grouped by project, model or user with `group=` and narrowed to one group with
-  `only=`; a bare `/app` reopens the view last looked at; task pages, metrics at `/app/metrics` (summed per project
+  `only=`; a project is the one of the projects page, so every clone and worktree of a repository is one group, and
+  `project=` and `only=` carry its id; a bare `/app` reopens the view last looked at; task pages, metrics at `/app/metrics` (summed per project
   or model with `group=`, the whole page narrowed to one group with `only=`), the problem report at `/app/diagnostics` with filters in the
   query string, one report at `/app/diagnostics/reports/{id}`, and the agent brief as Markdown for the filtered
   list at `/app/diagnostics/report.md` and for one problem at `/app/diagnostics/problems/{key}/brief.md`,

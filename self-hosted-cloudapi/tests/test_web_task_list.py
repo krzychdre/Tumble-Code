@@ -14,7 +14,10 @@ from html import unescape
 import pytest
 
 from src.auth.web_session import get_web_user_optional
+from src.models.organization import Membership, Organization
+from src.models.project import Project
 from src.models.task import Task
+from src.services.projects import folder_key
 from src.web.presenters import task_list
 from tests.web_helpers import _override_web_user, _seed_user
 
@@ -36,6 +39,22 @@ async def _seed(session_factory, *rows, user_id="user_test"):
                 )
             )
             await s.flush()
+        await s.commit()
+
+
+async def _seed_projects(session_factory, *projects):
+    """projects: (id, name, key) of the reader's personal projects."""
+    async with session_factory() as s:
+        for project_id, name, key in projects:
+            s.add(
+                Project(
+                    id=project_id,
+                    tenant_id="user_test",
+                    user_id="user_test",
+                    key=key,
+                    name=name,
+                )
+            )
         await s.commit()
 
 
@@ -108,7 +127,7 @@ async def test_every_column_has_a_header(client, db_session, session_factory):
     ).group(1)
     assert (
         title_head.startswith("Task<")
-        and "project" in title_head
+        and "folder" in title_head
         and "model" in title_head
     )
     # A header row, not a data row: the per-row tests count class="task-item".
@@ -358,12 +377,20 @@ async def test_pager_links_keep_the_sort_and_filters(
 
 
 async def _seed_filterable(session_factory):
+    """Three projects; beta's two runs ran in two worktrees of its repository."""
+    await _seed_projects(
+        session_factory,
+        ("prj_alpha", "alpha", "github.com/a/alpha"),
+        ("prj_beta", "beta", "github.com/a/beta"),
+        ("prj_gamma", "gamma", folder_key("user_test", "C:\\work\\g-tool")),
+    )
     await _seed(
         session_factory,
         {
             "id": "clean",
             "title": "Clean run",
             "workspace_path": "/home/a/Projekty/alpha",
+            "project_id": "prj_alpha",
             "models": "claude-opus-5",
             "q_completed": True,
             "age": 60 * 24 * 10,  # 2026-05-22
@@ -372,6 +399,7 @@ async def _seed_filterable(session_factory):
             "id": "friction",
             "title": "Friction run",
             "workspace_path": "/home/a/Projekty/beta",
+            "project_id": "prj_beta",
             "models": "glm-5.3,claude-opus-5",
             "q_completed": True,
             "q_errors": 2,
@@ -380,7 +408,8 @@ async def _seed_filterable(session_factory):
         {
             "id": "repeats",
             "title": "Repeated work",
-            "workspace_path": "/home/a/Projekty/beta",
+            "workspace_path": "/tmp/beta-wt-fix",
+            "project_id": "prj_beta",
             "models": "glm-5.3",
             "q_completed": True,
             "q_tool_paths": 5,
@@ -390,7 +419,8 @@ async def _seed_filterable(session_factory):
         {
             "id": "unfinished",
             "title": "Unfinished run",
-            "workspace_path": "C:\\work\\gamma",
+            "workspace_path": "C:\\work\\g-tool",
+            "project_id": "prj_gamma",
             "models": None,
             "q_completed": False,
             "age": 0,
@@ -408,8 +438,11 @@ async def _seed_filterable(session_factory):
 @pytest.mark.parametrize(
     "params, expected",
     [
-        ({"project": "beta"}, ["repeats", "friction"]),
-        ({"project": "GAMMA"}, ["unfinished"]),
+        # Both worktrees of beta's repository.
+        ({"project": "prj_beta"}, ["repeats", "friction"]),
+        ({"project": "prj_gamma"}, ["unfinished"]),
+        # The search finds a project's name, not only paths and titles.
+        ({"q": "gamma"}, ["unfinished"]),
         ({"model": "opus"}, ["friction", "clean"]),
         ({"grade": "clean"}, ["clean"]),
         ({"grade": "friction"}, ["repeats", "friction"]),
@@ -419,7 +452,7 @@ async def _seed_filterable(session_factory):
         ({"since": "2026-05-23", "until": "2026-05-31"}, ["friction"]),
         ({"subtasks": "1"}, ["unfinished"]),
         (
-            {"project": "beta", "model": "glm", "grade": "friction"},
+            {"project": "prj_beta", "model": "glm", "grade": "friction"},
             ["repeats", "friction"],
         ),
         # Unusable values are ignored rather than failing the page.
@@ -440,16 +473,16 @@ async def test_filters_narrow_the_list(
     assert [t for t in _order(resp.text) if t != "kid"] == expected
 
 
-async def test_project_and_model_filters_match_wildcards_literally(
+async def test_the_model_filter_matches_wildcards_literally(
     client, db_session, session_factory
 ):
     await _seed_user(db_session)
     await _seed(
         session_factory,
-        {"id": "pct", "title": "Pct", "workspace_path": "/w/100%_done"},
-        {"id": "other", "title": "Other", "workspace_path": "/w/100x-done"},
+        {"id": "pct", "title": "Pct", "models": "q-100%_done"},
+        {"id": "other", "title": "Other", "models": "q-100x-done"},
     )
-    assert _order(_get(client, "/app", project="100%_").text) == ["pct"]
+    assert _order(_get(client, "/app", group="none", model="100%_").text) == ["pct"]
 
 
 async def test_the_filter_form_is_a_plain_get_form(client, db_session, session_factory):
@@ -473,29 +506,32 @@ async def test_the_filter_form_is_a_plain_get_form(client, db_session, session_f
 async def test_the_pickers_offer_every_project_and_model_whatever_is_picked(
     client, db_session, session_factory
 ):
-    """The options are the user's own projects and models, not what the
-    filtered list holds, and a value no task has any more is still shown."""
+    """The options are the projects and models of the user's own tasks, not
+    what the filtered list holds; a project is picked by id and offered by
+    name, and a value no task has any more is still shown."""
     await _seed_user(db_session)
     await _seed_filterable(session_factory)
+    # A project of no task of the reader's is not offered.
+    await _seed_projects(session_factory, ("prj_idle", "idle", "github.com/a/idle"))
 
-    html = _get(client, "/app", project="beta", model="gone-model").text
+    html = _get(client, "/app", project="prj_beta", model="gone-model").text
 
     def picker(name):
         part = html[html.index(f'<select class="filter-pick" name="{name}">') :]
         part = part[: part.index("</select>")]
-        return re.findall(r'<option value="([^"]*)"( selected)?>', part)
+        return re.findall(r'<option value="([^"]*)"( selected)?>([^<]*)<', part)
 
     assert picker("project") == [
-        ("", ""),
-        ("alpha", ""),
-        ("beta", " selected"),
-        ("gamma", ""),
+        ("", "", "Any"),
+        ("prj_alpha", "", "alpha"),
+        ("prj_beta", " selected", "beta"),
+        ("prj_gamma", "", "gamma"),
     ]
     assert picker("model") == [
-        ("", ""),
-        ("claude-opus-5", ""),
-        ("glm-5.3", ""),
-        ("gone-model", " selected"),
+        ("", "", "Any"),
+        ("claude-opus-5", "", "claude-opus-5"),
+        ("glm-5.3", "", "glm-5.3"),
+        ("gone-model", " selected", "gone-model"),
     ]
 
 
@@ -508,7 +544,7 @@ async def test_active_filters_show_as_removable_chips(
     html = _get(
         client,
         "/app",
-        project="beta",
+        project="prj_beta",
         grade="friction",
         q="run",
         sort="cost",
@@ -530,11 +566,11 @@ async def test_active_filters_show_as_removable_chips(
     )
     assert (
         by_label["Grade: Friction ✕"]
-        == "/app?scope=roots&q=run&project=beta&sort=cost&dir=asc"
+        == "/app?scope=roots&q=run&project=prj_beta&sort=cost&dir=asc"
     )
     assert (
         by_label["Search: run ✕"]
-        == "/app?scope=roots&project=beta&grade=friction&sort=cost&dir=asc"
+        == "/app?scope=roots&project=prj_beta&grade=friction&sort=cost&dir=asc"
     )
     # And one link clears them all, keeping the scope and sort.
     assert "/app?scope=roots&sort=cost&dir=asc" in _hrefs(html)
@@ -560,6 +596,32 @@ async def test_a_filtered_empty_list_offers_the_way_back(
     assert "/app?scope=roots" in _hrefs(empty)
 
 
+@pytest.mark.parametrize("name", ["project", "only"])
+async def test_a_folder_path_from_an_old_view_matches_nothing(
+    name, client, db_session, session_factory
+):
+    """Before projects were ids the project filter and a "Show all" link
+    carried a folder path. An old link, and the view it left remembered, show
+    an empty list with the chip to remove, not an error."""
+    await _seed_user(db_session)
+    await _seed_filterable(session_factory)
+    path = "/home/a/Projekty/beta"
+
+    _override_web_user(client.app)
+    try:
+        client.cookies.clear()
+        linked = client.get("/app", params={name: path})
+        remembered = client.get("/app")
+    finally:
+        client.app.dependency_overrides.pop(get_web_user_optional, None)
+
+    for resp in (linked, remembered):
+        assert resp.status_code == 200
+        assert _order(resp.text) == []
+        assert "No tasks match these filters" in resp.text
+        assert f'aria-label="Remove filter Project: {path}"' in resp.text
+
+
 async def test_the_results_are_one_swappable_region(
     client, db_session, session_factory
 ):
@@ -580,15 +642,15 @@ async def test_the_results_are_one_swappable_region(
     "params, hidden, location",
     [
         (
-            {"project": "beta", "sort": "cost", "dir": "asc", "q": "run"},
+            {"project": "prj_beta", "sort": "cost", "dir": "asc", "q": "run"},
             {
                 "scope": "roots",
                 "q": "run",
-                "project": "beta",
+                "project": "prj_beta",
                 "sort": "cost",
                 "dir": "asc",
             },
-            "/app?scope=roots&q=run&project=beta&sort=cost&dir=asc",
+            "/app?scope=roots&q=run&project=prj_beta&sort=cost&dir=asc",
         ),
         # A narrowed group is part of the view too.
         (
@@ -642,7 +704,7 @@ async def test_bulk_delete_returns_to_the_same_view(
         {
             "scope": "all",
             "group": "none",
-            "project": "beta",
+            "project": "prj_beta",
             "sort": "cost",
             "dir": "asc",
         },
@@ -716,14 +778,21 @@ def _groups(html: str) -> list[dict]:
 
 
 async def _seed_spend(session_factory):
-    """Three projects; alpha holds a run with a subtask, so its run total
-    differs from the sum of its rows' own figures."""
+    """Two projects and tasks without one. alpha is a repository whose runs
+    ran in two worktrees, one with a subtask, so its run total differs from the
+    sum of its rows' own figures; beta is a folder without git."""
+    await _seed_projects(
+        session_factory,
+        ("prj_alpha", "alpha", "github.com/a/alpha"),
+        ("prj_beta", "beta", folder_key("user_test", "/w/beta")),
+    )
     await _seed(
         session_factory,
         {
             "id": "a1",
             "title": "A1",
             "workspace_path": "/w/alpha",
+            "project_id": "prj_alpha",
             "cost": 0.1,
             "tokens_in": 100,
             "message_count": 2,
@@ -733,6 +802,7 @@ async def _seed_spend(session_factory):
             "id": "a1-sub",
             "title": "A1 sub",
             "workspace_path": "/w/alpha",
+            "project_id": "prj_alpha",
             "parent_task_id": "a1",
             "cost": 1.0,
             "tokens_in": 1000,
@@ -742,14 +812,23 @@ async def _seed_spend(session_factory):
         {
             "id": "a2",
             "title": "A2",
-            "workspace_path": "/w/alpha",
+            "workspace_path": "/tmp/alpha-wt",
+            "project_id": "prj_alpha",
             "cost": 0.2,
             "tokens_in": 200,
             "message_count": 4,
             "age": 20,
         },
-        {"id": "b1", "title": "B1", "workspace_path": "/w/beta", "cost": 5.0, "age": 0},
-        {"id": "n1", "title": "N1", "age": 10},
+        {
+            "id": "b1",
+            "title": "B1",
+            "workspace_path": "/w/beta",
+            "project_id": "prj_beta",
+            "cost": 5.0,
+            "age": 0,
+        },
+        # A folder no client has reported yet has no project either.
+        {"id": "n1", "title": "N1", "workspace_path": "/w/unbound", "age": 10},
     )
 
 
@@ -775,20 +854,30 @@ async def test_the_list_is_grouped_by_project_by_default(
     assert f'<span class="count-pill">{pill}</span>' in html
     # Every group starts closed, also the one a filter or a search picked.
     closed = '<details class="task-group" data-group="project:{}">'
-    assert closed.format("/w/alpha") in html
+    assert closed.format("prj_alpha") in html
     assert closed.format("(none)") in html
-    picked = _get(client, "/app", scope=scope, project="alpha").text
-    assert closed.format("/w/alpha") in picked
+    picked = _get(client, "/app", scope=scope, project="prj_alpha").text
+    assert closed.format("prj_alpha") in picked
     searched = _get(client, "/app", scope=scope, q="beta").text
-    assert closed.format("/w/beta") in searched
-    # Newest activity first; tasks without a workspace get a group of their own.
+    assert closed.format("prj_beta") in searched
+    # Newest activity first; tasks without a project get a group of their own.
     assert [g["label"] for g in groups] == ["beta", "No project", "alpha"]
+    # Both worktrees of alpha's repository are one group, under its key.
     alpha = groups[2]
     assert alpha["ids"] == ["a2", "a1", "a1-sub"]
-    for figure in (alpha_count, "/w/alpha", messages, "Σ 1.3k tok", "Σ $1.3000"):
+    for figure in (
+        alpha_count,
+        "github.com/a/alpha",
+        messages,
+        "Σ 1.3k tok",
+        "Σ $1.3000",
+    ):
         assert figure in alpha["text"], figure
+    assert "folder without git" in groups[0]["text"]
     assert "Σ $5.0000" in groups[0]["text"]
-    # No spend, no figure.
+    # No spend, no figure, no key.
+    assert "github.com" not in groups[1]["text"]
+    assert "folder" not in groups[1]["text"]
     assert "$" not in groups[1]["text"]
 
     by_cost = _get(client, "/app", scope=scope, sort="cost", dir="desc").text
@@ -832,9 +921,53 @@ async def test_each_grouping_keys_a_run_by_its_own_value(
     assert [(g["label"], g["ids"]) for g in groups] == expected
 
 
+@pytest.mark.parametrize("member", [True, False])
+async def test_a_project_is_named_only_to_a_reader_who_can_see_it(
+    member, client, db_session, session_factory
+):
+    """An organization's project is named to its members. A reader who left
+    the organization keeps their tasks, in a group named by the bare id."""
+    await _seed_user(db_session)
+    await _seed_user(db_session, "user_other", email="o@example.com")
+    async with session_factory() as s:
+        s.add(Organization(id="org_x", name="Acme"))
+        await s.flush()
+        s.add(
+            Project(
+                id="prj_org",
+                tenant_id="org_x",
+                organization_id="org_x",
+                user_id="user_other",
+                key="github.com/x/secret",
+                name="Secret plan",
+            )
+        )
+        if member:
+            s.add(Membership(user_id="user_test", organization_id="org_x"))
+        await s.commit()
+    await _seed(session_factory, {"id": "t1", "title": "T1", "project_id": "prj_org"})
+
+    grouped = _get(client, "/app").text
+    narrowed = _get(client, "/app", only="prj_org").text
+    filtered = _get(client, "/app", group="none", project="prj_org").text
+    searched = _get(client, "/app", group="none", q="secret").text
+
+    label = "Secret plan" if member else "prj_org"
+    assert [g["label"] for g in _groups(grouped)] == [label]
+    for page in (narrowed, filtered):
+        assert _order(page) == ["t1"]
+        assert f'aria-label="Remove filter Project: {label}"' in page
+    assert _order(searched) == (["t1"] if member else [])
+    for page in (grouped, narrowed, filtered, searched):
+        assert ("Secret plan" in page) == member
+    assert ("github.com/x/secret" in grouped) == member
+
+
 async def test_a_group_header_replaces_the_badge_it_would_repeat(
     client, db_session, session_factory
 ):
+    """The folder badge stays under a project header: a project holds every
+    worktree of its repository."""
     await _seed_user(db_session)
     await _seed_filterable(session_factory)
 
@@ -848,7 +981,7 @@ async def test_a_group_header_replaces_the_badge_it_would_repeat(
     by_model = _get(client, "/app", group="model").text
 
     assert badges(flat, "repeats", "workspace") and badges(flat, "repeats", "model")
-    assert not badges(by_project, "repeats", "workspace")
+    assert badges(by_project, "repeats", "workspace")
     assert badges(by_project, "repeats", "model")
     # Under its model's header a one-model run loses the badge; a run that
     # switched models keeps it, since the header names only the first.
@@ -862,17 +995,20 @@ async def test_a_group_header_replaces_the_badge_it_would_repeat(
     [
         (
             "project",
-            [{"workspace_path": "/x/Lab"}] * 6,
-            # A nested path is another project; five rows need no "Show all".
-            [{"workspace_path": "/x/Lab/cloud"}] * 5 + [{}],
-            "/app?scope=roots&only=%2Fx%2FLab",
+            # Two worktrees of one repository.
+            [{"project_id": "prj_lab", "workspace_path": "/x/Lab"}] * 3
+            + [{"project_id": "prj_lab", "workspace_path": "/tmp/lab-wt"}] * 3,
+            # Another project; five rows need no "Show all".
+            [{"project_id": "prj_cloud", "workspace_path": "/x/Lab/cloud"}] * 5
+            + [{"workspace_path": "/x/Lab"}],
+            "/app?scope=roots&only=prj_lab",
             "Project: Lab",
             "/app?scope=roots",
         ),
         (
             "project",
             [{}] * 6,
-            [{"workspace_path": "/x/Lab"}],
+            [{"project_id": "prj_lab", "workspace_path": "/x/Lab"}],
             "/app?scope=roots&only=%28none%29",
             "Project: No project",
             "/app?scope=roots",
@@ -896,6 +1032,11 @@ async def test_show_all_narrows_the_list_to_exactly_one_group(
     group, members, decoys, more, chip, chip_href, client, db_session, session_factory
 ):
     await _seed_user(db_session)
+    await _seed_projects(
+        session_factory,
+        ("prj_lab", "Lab", "github.com/x/lab"),
+        ("prj_cloud", "cloud", "github.com/x/cloud"),
+    )
     await _seed(
         session_factory,
         *(
