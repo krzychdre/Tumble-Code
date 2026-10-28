@@ -1,7 +1,10 @@
-"""The dataset page (/app/dataset): the recording switch, what is recorded, the export.
+"""The dataset pages (/app/dataset/...): what is recorded, the export, the tasks, the recording switch.
 
-- GET  /app/dataset                         the page (period selector, counts, export form)
-- POST /app/dataset/settings                the recording switch and the anonymization terms
+- GET  /app/dataset                         Overview: counts per model and why exchanges are left out
+- GET  /app/dataset/export                  Export: the export form
+- GET  /app/dataset/tasks                   Tasks: the recorded tasks, paged, each downloadable in full
+- GET  /app/dataset/recording               Recording: the switch, the anonymization terms, deleting recordings
+- POST /app/dataset/recording               save the switch and the terms
 - GET  /app/dataset/export.jsonl            the training dataset (streamed)
 - GET  /app/dataset/audit                   what the same export would anonymize, and how many samples
 - GET  /app/dataset/tasks/{task_id}.jsonl   one task's exchanges fully reconstructed, NOT anonymized
@@ -31,7 +34,12 @@ from src.services.dataset_export import (
     task_ids,
     task_samples,
 )
-from src.services.dataset_overview import dataset_overview, delete_recordings
+from src.services.dataset_overview import (
+    dataset_overview,
+    delete_recordings,
+    recorded_tasks,
+    recording_count,
+)
 from src.services.exchange_ingest import read_dataset_settings, save_dataset_settings
 from src.services.exchange_quality import DROP_DEFAULT, DROP_STRICT, ISSUE_LABELS
 from src.services.exchange_reconstruction import load_task
@@ -45,8 +53,22 @@ DEFAULT_DATASET_PERIOD = "all"
 AUDIT_SAMPLE_LIMIT = 2000
 
 
-def _period(value: str) -> str:
-    return value if value in PERIODS else DEFAULT_DATASET_PERIOD
+def _view(period: str, client: str) -> dict:
+    """The period and client a dataset tab shows, and its selectors."""
+    period = period if period in PERIODS else DEFAULT_DATASET_PERIOD
+    picked = parse_client(client)
+    return {
+        "period": period,
+        "client": picked,
+        "periods": [
+            {"key": key, "label": label, "active": key == period}
+            for key, label in PERIOD_LABELS.items()
+        ],
+        "clients": [
+            {"key": key, "label": label, "active": key == picked}
+            for key, label in [(None, "All clients"), *CLIENT_LABELS.items()]
+        ],
+    }
 
 
 @router.get("/app/dataset", response_class=HTMLResponse)
@@ -55,41 +77,105 @@ async def dataset_page(
     period: str = DEFAULT_DATASET_PERIOD,
     # "vscode" or "cli": what that client recorded; absent (or unknown) means both.
     client: str = "",
-    deleted: str = "",
     web: WebPage = Depends(require_web_page),
 ):
-    """Recording switch, counts per model and issue, the export form and recent tasks."""
-    db = web["db"]
-    period = _period(period)
-    picked = parse_client(client)
-    overview = await dataset_overview(
-        db, web["user"]["user_id"], period, picked, zone=web["zone"]
-    )
-    settings_row = await read_dataset_settings(db, web["user"]["user_id"])
+    """Overview: how much is recorded, per model, and why exchanges are left out."""
+    view = _view(period, client)
+    settings_row = await read_dataset_settings(web["db"], web["user"]["user_id"])
     return render_page(
         request,
         web,
         "dataset.html",
         "dataset",
-        overview=overview,
-        periods=[
-            {"key": key, "label": label, "active": key == period}
-            for key, label in PERIOD_LABELS.items()
-        ],
-        clients=[
-            {"key": key, "label": label, "active": key == picked}
-            for key, label in [(None, "All clients"), *CLIENT_LABELS.items()]
-        ],
+        view=view,
+        overview=await dataset_overview(
+            web["db"],
+            web["user"]["user_id"],
+            view["period"],
+            view["client"],
+            zone=web["zone"],
+        ),
+        recording=bool(settings_row and settings_row.recording_enabled),
+        drop_default=sorted(ISSUE_LABELS[i] for i in DROP_DEFAULT),
+        drop_strict_extra=sorted(ISSUE_LABELS[i] for i in DROP_STRICT - DROP_DEFAULT),
+    )
+
+
+@router.get("/app/dataset/export", response_class=HTMLResponse)
+async def dataset_export_page(
+    request: Request,
+    period: str = DEFAULT_DATASET_PERIOD,
+    client: str = "",
+    web: WebPage = Depends(require_web_page),
+):
+    """Export: the form behind export.jsonl and the audit, with the models and
+    projects of the period to pick from."""
+    view = _view(period, client)
+    return render_page(
+        request,
+        web,
+        "dataset_export.html",
+        "dataset",
+        view=view,
+        overview=await dataset_overview(
+            web["db"],
+            web["user"]["user_id"],
+            view["period"],
+            view["client"],
+            zone=web["zone"],
+        ),
+    )
+
+
+@router.get("/app/dataset/tasks", response_class=HTMLResponse)
+async def dataset_tasks_page(
+    request: Request,
+    period: str = DEFAULT_DATASET_PERIOD,
+    client: str = "",
+    page: int = 1,
+    web: WebPage = Depends(require_web_page),
+):
+    """Tasks: every recorded task, latest first, each downloadable in full."""
+    view = _view(period, client)
+    return render_page(
+        request,
+        web,
+        "dataset_tasks.html",
+        "dataset",
+        view=view,
+        tasks=await recorded_tasks(
+            web["db"],
+            web["user"]["user_id"],
+            view["period"],
+            view["client"],
+            page,
+            zone=web["zone"],
+        ),
+    )
+
+
+@router.get("/app/dataset/recording", response_class=HTMLResponse)
+async def dataset_recording_page(
+    request: Request,
+    deleted: str = "",
+    web: WebPage = Depends(require_web_page),
+):
+    """Recording: the switch, the anonymization terms and deleting recordings."""
+    settings_row = await read_dataset_settings(web["db"], web["user"]["user_id"])
+    return render_page(
+        request,
+        web,
+        "dataset_recording.html",
+        "dataset",
         recording=bool(settings_row and settings_row.recording_enabled),
         terms=(settings_row.anonymize_terms or "") if settings_row else "",
         telemetry_enabled=settings.telemetry_enabled,
-        drop_default=sorted(ISSUE_LABELS[i] for i in DROP_DEFAULT),
-        drop_strict_extra=sorted(ISSUE_LABELS[i] for i in DROP_STRICT - DROP_DEFAULT),
+        recorded=await recording_count(web["db"], web["user"]["user_id"]),
         deleted=deleted,
     )
 
 
-@router.post("/app/dataset/settings")
+@router.post("/app/dataset/recording")
 async def save_dataset_settings_endpoint(
     request: Request,
     web: WebPage = Depends(require_web_page),
@@ -105,7 +191,7 @@ async def save_dataset_settings_endpoint(
         terms=terms,
     )
     await web["db"].commit()
-    return RedirectResponse(url="/app/dataset", status_code=303)
+    return RedirectResponse(url="/app/dataset/recording", status_code=303)
 
 
 @router.get("/app/dataset/export.jsonl")
@@ -231,8 +317,8 @@ async def dataset_task_report(
             web["user"],
             "No recording",
             "No recorded exchanges for this task, or it is not yours.",
-            back_href="/app/dataset",
-            back_label="Back to the dataset",
+            back_href="/app/dataset/tasks",
+            back_label="Back to the recorded tasks",
         )
     lines = await anyio.to_thread.run_sync(
         lambda: "".join(_report_line(e) + "\n" for e in exchanges)
@@ -253,4 +339,6 @@ async def dataset_delete_all(
     """Delete every recorded exchange and blob of the user. The switch stays as it is."""
     removed = await delete_recordings(web["db"], web["user"]["user_id"])
     await web["db"].commit()
-    return RedirectResponse(url=f"/app/dataset?deleted={removed}", status_code=303)
+    return RedirectResponse(
+        url=f"/app/dataset/recording?deleted={removed}", status_code=303
+    )

@@ -23,8 +23,21 @@ from src.services.exchange_quality import ISSUE_LABELS, is_clean, split_issues
 from src.services.metrics_service import period_start
 from src.services.projects import exchange_binding
 from src.utils.clientzone import UTC
+from src.utils.pagination import paginate
 
-RECENT_TASKS = 20
+TASKS_PAGE = 25
+
+
+def _scope(user_id: str, period: str, client: Optional[str], zone: ZoneInfo) -> list:
+    """The user's exchanges in ``period`` (from the reader's local midnight),
+    of ``client`` ("vscode" or "cli"; None: both)."""
+    since = period_start(period, zone=zone)
+    scope = [LlmExchange.user_id == user_id]
+    if since is not None:
+        scope.append(LlmExchange.occurred_at >= since)
+    if client is not None:
+        scope.append(LlmExchange.client_kind == client)
+    return scope
 
 
 async def dataset_overview(
@@ -37,12 +50,7 @@ async def dataset_overview(
     """The page's figures over ``period``; ``client`` ("vscode" or "cli") keeps
     what that client recorded, None both. The period starts at the reader's
     local midnight (``zone``)."""
-    since = period_start(period, zone=zone)
-    scope = [LlmExchange.user_id == user_id]
-    if since is not None:
-        scope.append(LlmExchange.occurred_at >= since)
-    if client is not None:
-        scope.append(LlmExchange.client_kind == client)
+    scope = _scope(user_id, period, client, zone)
 
     grouped = await db.execute(
         select(
@@ -139,55 +147,72 @@ async def dataset_overview(
             {"id": project_id, "name": name, "exchanges": count, "tasks": tasks}
             for project_id, name, count, tasks in project_rows
         ],
-        "recent": await recent_tasks(db, user_id, since, client),
     }
 
 
-async def recent_tasks(
-    db: AsyncSession, user_id: str, since=None, client: Optional[str] = None
-) -> list[dict]:
-    """The tasks recorded most recently, each with its title when the task is synced too."""
-    query = (
-        select(
-            LlmExchange.task_id,
-            func.max(LlmExchange.occurred_at),
-            func.count(),
-            func.max(LlmExchange.model_id),
-        )
-        .where(LlmExchange.user_id == user_id)
-        .group_by(LlmExchange.task_id)
-        .order_by(func.max(LlmExchange.occurred_at).desc())
-        .limit(RECENT_TASKS)
+async def recorded_tasks(
+    db: AsyncSession,
+    user_id: str,
+    period: str,
+    client: Optional[str],
+    page: int,
+    zone: ZoneInfo = UTC,
+) -> dict:
+    """One page of the recorded tasks, latest recording first, each with its
+    title when the task is synced too, and the pager's fields."""
+    scope = _scope(user_id, period, client, zone)
+    total = await db.scalar(
+        select(func.count(func.distinct(LlmExchange.task_id))).where(*scope)
     )
-    if since is not None:
-        query = query.where(LlmExchange.occurred_at >= since)
-    if client is not None:
-        query = query.where(LlmExchange.client_kind == client)
-    rows = (await db.execute(query)).all()
+    pager = paginate(total, page, TASKS_PAGE)
+    rows = (
+        await db.execute(
+            select(
+                LlmExchange.task_id,
+                func.max(LlmExchange.occurred_at),
+                func.count(),
+                func.max(LlmExchange.model_id),
+            )
+            .where(*scope)
+            .group_by(LlmExchange.task_id)
+            .order_by(func.max(LlmExchange.occurred_at).desc(), LlmExchange.task_id)
+            .limit(TASKS_PAGE)
+            .offset(pager["offset"])
+        )
+    ).all()
     ids = [row[0] for row in rows]
-    titles = (
-        dict(
-            (
-                await db.execute(
-                    select(Task.id, Task.title).where(
-                        Task.id.in_(ids), Task.user_id == user_id
-                    )
+    titles = dict(
+        (
+            await db.execute(
+                select(Task.id, Task.title).where(
+                    Task.id.in_(ids), Task.user_id == user_id
                 )
-            ).all()
-        )
-        if ids
-        else {}
+            )
+        ).all()
     )
-    return [
-        {
-            "task_id": task_id,
-            "last": last,
-            "exchanges": count,
-            "model": model,
-            "title": titles.get(task_id),
-        }
-        for task_id, last, count, model in rows
-    ]
+    return {
+        "rows": [
+            {
+                "task_id": task_id,
+                "last": last,
+                "exchanges": count,
+                "model": model,
+                "title": titles.get(task_id),
+            }
+            for task_id, last, count, model in rows
+        ],
+        "total": total,
+        **pager,
+    }
+
+
+async def recording_count(db: AsyncSession, user_id: str) -> int:
+    """Every exchange the user has recorded, any period, any client."""
+    return await db.scalar(
+        select(func.count())
+        .select_from(LlmExchange)
+        .where(LlmExchange.user_id == user_id)
+    )
 
 
 async def delete_recordings(

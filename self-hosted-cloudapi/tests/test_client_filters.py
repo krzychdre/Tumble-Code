@@ -397,10 +397,11 @@ async def test_the_dataset_page_and_export_filter_by_client(client, db_session):
     assert "cli-model" in page and "code-model" not in page
     assert 'period-opt active" href="/app/dataset?period=all&amp;client=cli"' in page
     assert 'href="/app/dataset?period=7d&amp;client=cli"' in page
-    assert '<input type="hidden" name="client" value="cli">' in page
+    export = _get(client, "/app/dataset/export", client="cli").text
+    assert '<input type="hidden" name="client" value="cli">' in export
     everything = _get(client, "/app/dataset").text
     assert "cli-model" in everything and "code-model" in everything
-    assert 'name="client"' not in everything
+    assert 'name="client"' not in _get(client, "/app/dataset/export").text
 
     def exported(**params):
         resp = _get(

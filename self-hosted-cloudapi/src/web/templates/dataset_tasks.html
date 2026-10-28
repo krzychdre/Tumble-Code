@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% import "_dataset_head.html" as head %}
+{% import "_pager.html" as pager %}
+{% block title %}Tasks · Dataset · Tumble Code{% endblock %}
+{% block content %}
+{{ head.dataset_head("tasks", "/app/dataset/tasks", view) }}
+{% macro page_url(n) %}/app/dataset/tasks?period={{ view.period }}{% if view.client %}&amp;client={{ view.client }}{% endif %}&amp;page={{ n }}{% endmacro %}
+
+<p class="diag-lead">Every request of a task exactly as it was sent, rebuilt from the incremental records, not anonymized. The exact HTTP body is checked against the hash the extension recorded (<code>wire.verified</code>).</p>
+
+{% if tasks.rows %}
+<section class="panel" aria-labelledby="dataset-tasks">
+  <h2 class="chart-title" id="dataset-tasks">Recorded tasks <span class="count-pill">{{ tasks.total|fmt_int }}</span></h2>
+  <div class="diag-table-wrap">
+    <table class="breakdown diag-table" id="table-dataset-tasks">
+      <caption class="sr-only">Recorded tasks, latest first{% if tasks.page_count > 1 %}, page {{ tasks.page }} of {{ tasks.page_count }}{% endif %}</caption>
+      <thead><tr><th scope="col">Task</th><th scope="col">Model</th><th scope="col">Last recorded</th><th scope="col" class="diag-num">Exchanges</th><th scope="col">Download</th></tr></thead>
+      <tbody>
+        {% for r in tasks.rows %}
+        <tr>
+          <td class="diag-cell">{% if r.title %}<a href="/app/tasks/{{ r.task_id }}">{{ r.title }}</a>{% else %}<code>{{ r.task_id }}</code>{% endif %}</td>
+          <td class="diag-cell">{{ r.model or '-' }}</td>
+          <td class="diag-cell"><span class="task-date">{{ r.last | localtime }}</span></td>
+          <td class="bd-num">{{ r.exchanges|fmt_int }}</td>
+          <td class="diag-cell"><a href="/app/dataset/tasks/{{ r.task_id }}.jsonl" download>JSONL</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if tasks.page_count > 1 %}
+  {{ pager.pager(tasks.page, tasks.page_count, tasks.pages, page_url, "Recorded tasks") }}
+  {% endif %}
+</section>
+{% else %}
+<div class="empty">
+  <p class="empty-hint">No task recorded in this period. Pick a longer period above, or see <a href="/app/dataset/recording">Recording</a>.</p>
+</div>
+{% endif %}
+{% endblock %}

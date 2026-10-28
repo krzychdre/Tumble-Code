@@ -113,7 +113,10 @@ EXPECTED = {
         "APIRoute",
     ),
     ("/app/dataset", ("GET",), "dataset_page", "APIRoute"),
-    ("/app/dataset/settings", ("POST",), "save_dataset_settings_endpoint", "APIRoute"),
+    ("/app/dataset/export", ("GET",), "dataset_export_page", "APIRoute"),
+    ("/app/dataset/tasks", ("GET",), "dataset_tasks_page", "APIRoute"),
+    ("/app/dataset/recording", ("GET",), "dataset_recording_page", "APIRoute"),
+    ("/app/dataset/recording", ("POST",), "save_dataset_settings_endpoint", "APIRoute"),
     ("/app/dataset/export.jsonl", ("GET",), "dataset_export", "APIRoute"),
     ("/app/dataset/audit", ("GET",), "dataset_audit", "APIRoute"),
     ("/app/dataset/tasks/{task_id}.jsonl", ("GET",), "dataset_task_report", "APIRoute"),
@@ -191,6 +194,7 @@ def test_overlapping_routes_keep_their_order():
 
     assert overlaps == [
         ("task_detail", "bulk_delete_tasks"),
+        ("dataset_recording_page", "save_dataset_settings_endpoint"),
         ("settings_page", "save_settings"),
         ("organizations_page", "create_organization_action"),
         ("project_page", "update_project_action"),
@@ -304,11 +308,35 @@ def test_web_routes_keep_their_openapi_operations():
             (
                 ("period", "query", False),
                 ("client", "query", False),
-                ("deleted", "query", False),
             ),
         ),
-        ("/app/dataset/settings", "post"): (
-            "save_dataset_settings_endpoint_app_dataset_settings_post",
+        ("/app/dataset/export", "get"): (
+            "dataset_export_page_app_dataset_export_get",
+            ("web",),
+            html,
+            (
+                ("period", "query", False),
+                ("client", "query", False),
+            ),
+        ),
+        ("/app/dataset/tasks", "get"): (
+            "dataset_tasks_page_app_dataset_tasks_get",
+            ("web",),
+            html,
+            (
+                ("period", "query", False),
+                ("client", "query", False),
+                ("page", "query", False),
+            ),
+        ),
+        ("/app/dataset/recording", "get"): (
+            "dataset_recording_page_app_dataset_recording_get",
+            ("web",),
+            html,
+            (("deleted", "query", False),),
+        ),
+        ("/app/dataset/recording", "post"): (
+            "save_dataset_settings_endpoint_app_dataset_recording_post",
             ("web",),
             json_,
             (),

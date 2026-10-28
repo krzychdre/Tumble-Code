@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% import "_dataset_head.html" as head %}
+{% block title %}Export · Dataset · Tumble Code{% endblock %}
+{% block content %}
+{% set o = overview %}
+{{ head.dataset_head("export", "/app/dataset/export", view) }}
+
+{% if o.totals.exchanges %}
+<form method="get" action="/app/dataset/export.jsonl" class="settings-form">
+  <input type="hidden" name="period" value="{{ o.period }}">
+  {% if o.client %}<input type="hidden" name="client" value="{{ o.client }}">{% endif %}
+  <div class="export-grid">
+    <section class="panel" aria-labelledby="export-what">
+      <h2 class="chart-title" id="export-what">What goes in</h2>
+      <p class="field-hint">{{ o.totals.clean|fmt_int }} clean exchange{{ '' if o.totals.clean == 1 else 's' }} from {{ o.totals.tasks|fmt_int }} task{{ '' if o.totals.tasks == 1 else 's' }} in the period above.</p>
+      <fieldset class="dataset-fieldset">
+        <legend class="field-label">Teacher models (none ticked: all)</legend>
+        <div class="pick-list">
+          {% for r in o.models %}
+          <label class="switch-row"><input type="checkbox" name="model" value="{{ r.model }}"><span>{{ r.model }} <span class="switch-hint">{{ r.clean|fmt_int }} clean</span></span></label>
+          {% endfor %}
+        </div>
+      </fieldset>
+      {% if o.projects %}
+      <fieldset class="dataset-fieldset">
+        <legend class="field-label">Leave out projects (a client's code stays out)</legend>
+        <div class="pick-list">
+          {% for p in o.projects %}
+          <label class="switch-row"><input type="checkbox" name="exclude_project" value="{{ p.id }}"><span class="dataset-path">{{ p.name }} <span class="switch-hint">{{ p.tasks|fmt_int }} tasks, {{ p.exchanges|fmt_int }} exchanges</span></span></label>
+          {% endfor %}
+        </div>
+      </fieldset>
+      {% endif %}
+      <label class="switch-row"><input type="checkbox" name="strict" value="1">
+        <span><b>Strict</b><span class="switch-hint">Also leave out calls that ran and failed, and calls you rejected.</span></span></label>
+      <label class="field field-inline">
+        <span class="field-label">At most</span>
+        <span class="field-input"><input type="number" name="limit" min="0" placeholder="all"><span class="field-unit">samples</span></span>
+      </label>
+    </section>
+
+    <section class="panel" aria-labelledby="export-how">
+      <h2 class="chart-title" id="export-how">How it is written</h2>
+      <fieldset class="dataset-fieldset">
+        <legend class="field-label">Format</legend>
+        <label class="switch-row"><input type="radio" name="format" value="turns" checked>
+          <span><b>Turns</b><span class="switch-hint">One sample per clean answer, with the full request before it.</span></span></label>
+        <label class="switch-row"><input type="radio" name="format" value="trajectories">
+          <span><b>Trajectories</b><span class="switch-hint">One sample per run of requests that extend each other; broken answers kept as context with weight 0.</span></span></label>
+      </fieldset>
+      <input type="hidden" name="reasoning" value="0">
+      <label class="switch-row"><input type="checkbox" name="reasoning" value="1" checked>
+        <span><b>Include reasoning</b><span class="switch-hint">As <code>reasoning_content</code>, when the model produced it.</span></span></label>
+      <input type="hidden" name="anonymize" value="0">
+      <label class="switch-row"><input type="checkbox" name="anonymize" value="1" checked>
+        <span><b>Anonymize</b><span class="switch-hint">Secrets, e-mail and IP addresses, home folder and user name, project paths and names, your account and terms, PESEL, IBAN, card and phone numbers.</span></span></label>
+      <label class="switch-row"><input type="checkbox" name="metadata" value="1">
+        <span><b>Add metadata</b><span class="switch-hint">Task, exchange, model and mode per sample (some trainers refuse unknown keys).</span></span></label>
+    </section>
+  </div>
+
+  <div class="settings-actions">
+    <button class="btn" type="submit">Download dataset</button>
+    <button class="btn ghost" type="submit" formaction="/app/dataset/audit">Check anonymization</button>
+  </div>
+  <p class="field-hint">
+    Anonymization does not make someone else's source code yours to share: leave such a project out above. A name
+    that is not in your account, your <a href="/app/dataset/recording">terms</a> or a home folder path is not found;
+    check the audit before handing a dataset over.
+  </p>
+</form>
+{% else %}
+<div class="empty">
+  <p class="empty-hint">Nothing recorded in this period, so there is nothing to export. Pick a longer period above, or see <a href="/app/dataset/recording">Recording</a>.</p>
+</div>
+{% endif %}
+{% endblock %}

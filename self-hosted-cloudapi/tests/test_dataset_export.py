@@ -8,6 +8,7 @@ a file (clean), 1 fails with a 502, 2 reads a missing file (tool failed),
 
 import gzip
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -15,11 +16,12 @@ from sqlalchemy import select
 
 from src.auth.web_session import get_web_user_optional
 from src.dependencies import get_current_user
-from src.models.llm_exchange import DatasetSettings
+from src.models.llm_exchange import DatasetSettings, LlmExchange
 from src.models.project import ProjectBinding
 from src.models.user import User
+from src.services.dataset_overview import TASKS_PAGE
 
-from tests.web_helpers import _override_current_user, _override_web_user
+from tests.web_helpers import _override_current_user, _override_web_user, _seed_user
 
 FIXTURE = json.loads(
     (Path(__file__).parent / "fixtures" / "llm_exchanges_recorder.json").read_text()
@@ -155,7 +157,7 @@ async def test_a_worktree_is_its_parents_project_on_the_page_and_in_the_export(
             await s.scalars(select(ProjectBinding.project_id).distinct())
         ).all()
 
-    body = recorded.get("/app/dataset").text
+    body = recorded.get("/app/dataset/export").text
     assert body.count('name="exclude_project"') == 1
     assert f'value="{project_id}"' in body
     assert 'acme-portal <span class="switch-hint">2 tasks, 5 exchanges' in body
@@ -227,25 +229,86 @@ def test_the_task_report_reconstructs_every_request(recorded):
     assert recorded.get("/app/dataset/tasks/nope.jsonl").status_code == 404
 
 
-def test_the_page_counts_and_offers_the_export(recorded):
-    resp = recorded.get("/app/dataset")
+def test_the_tabs_count_offer_the_export_and_list_the_tasks(recorded):
+    overview = recorded.get("/app/dataset").text
+    assert 'aria-current="page">Dataset</a>' in overview
+    assert "glm-5.3" in overview
+    assert "The request failed" in overview  # the api_error issue row
 
-    assert resp.status_code == 200
-    body = resp.text
-    assert 'aria-current="page">Dataset</a>' in body
-    assert "glm-5.3" in body
-    assert "/app/dataset/tasks/task-contract.jsonl" in body
-    assert "The request failed" in body  # the api_error issue row
+    export = recorded.get("/app/dataset/export").text
+    assert 'name="model" value="glm-5.3"' in export
+    assert 'action="/app/dataset/export.jsonl"' in export
+
+    tasks = recorded.get("/app/dataset/tasks").text
+    assert "/app/dataset/tasks/task-contract.jsonl" in tasks
+
+    recording = recorded.get("/app/dataset/recording").text
+    assert 'name="recording" value="1" checked' in recording
+    assert "Globex</textarea>" in recording
+    assert "4 exchanges, every period" in recording
+
+
+def test_the_tabs_keep_the_period_and_client(recorded):
+    page = recorded.get("/app/dataset/tasks", params={"period": "7d", "client": "cli"})
+    tabs = page.text.split('<nav class="tabs"')[1].split("</nav>")[0]
+
+    assert 'href="/app/dataset?period=7d&amp;client=cli"' in tabs
+    assert 'href="/app/dataset/export?period=7d&amp;client=cli"' in tabs
+    assert (
+        '<a href="/app/dataset/tasks?period=7d&amp;client=cli" class="active"' in tabs
+    )
+    assert 'href="/app/dataset/recording"' in tabs
+    # The period selector stays on the tab it is on.
+    assert 'href="/app/dataset/tasks?period=30d&amp;client=cli"' in page.text
+
+
+async def test_the_tasks_tab_pages_latest_first(client, db_session):
+    from datetime import datetime, timedelta, timezone
+
+    await _seed_user(db_session)
+    start = datetime(2026, 10, 1, tzinfo=timezone.utc)
+    for n in range(TASKS_PAGE + 3):
+        for seq in range(2):
+            db_session.add(
+                LlmExchange(
+                    id=f"ex-{n}-{seq}",
+                    user_id="user_test",
+                    task_id=f"task-{n:02d}",
+                    sequence=seq,
+                    occurred_at=start + timedelta(hours=n, minutes=seq),
+                    status="complete",
+                    payload="{}",
+                )
+            )
+    await db_session.commit()
+    _override_web_user(client.app)
+    try:
+        first = client.get("/app/dataset/tasks").text
+        last = client.get("/app/dataset/tasks", params={"page": "9"}).text
+    finally:
+        client.app.dependency_overrides.pop(get_web_user_optional, None)
+
+    def rows(html):
+        return re.findall(r"/app/dataset/tasks/(task-\d+)\.jsonl", html)
+
+    assert rows(first)[:2] == [
+        f"task-{TASKS_PAGE + 2:02d}",
+        f"task-{TASKS_PAGE + 1:02d}",
+    ]
+    assert len(rows(first)) == TASKS_PAGE
+    # A page past the end lands on the last one: the three oldest tasks.
+    assert rows(last) == ["task-02", "task-01", "task-00"]
+    assert 'href="/app/dataset/tasks?period=all&amp;page=1"' in last
 
 
 async def test_the_switch_and_the_terms_are_saved(recorded, session_factory):
     resp = recorded.post(
-        "/app/dataset/settings",
+        "/app/dataset/recording",
         data={"terms": " Globex \n\nInitech\n"},
         follow_redirects=False,
     )
 
-    assert resp.status_code == 303
+    assert resp.headers["location"] == "/app/dataset/recording"
     async with session_factory() as s:
         row = await s.get(DatasetSettings, "user_test")
     assert (row.recording_enabled, row.anonymize_terms) == (False, "Globex\nInitech")
@@ -254,6 +317,6 @@ async def test_the_switch_and_the_terms_are_saved(recorded, session_factory):
 def test_delete_all_recordings(recorded):
     resp = recorded.post("/app/dataset/delete", follow_redirects=False)
 
-    assert resp.headers["location"] == "/app/dataset?deleted=4"
+    assert resp.headers["location"] == "/app/dataset/recording?deleted=4"
     assert _export(recorded) == []
     assert "Nothing recorded" in recorded.get("/app/dataset").text

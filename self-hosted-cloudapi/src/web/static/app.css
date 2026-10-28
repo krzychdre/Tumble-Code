@@ -4350,6 +4350,32 @@ table.diag-table th.diag-num {
 	overflow-wrap: anywhere;
 	word-break: break-word;
 }
+.dataset-panel {
+	margin-bottom: var(--s4);
+}
+/* The export form: what goes in beside how it is written; one column on a
+   phone. */
+.export-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+	gap: var(--s4);
+	align-items: start;
+}
+.export-grid .panel {
+	display: flex;
+	flex-direction: column;
+	gap: var(--s3);
+}
+/* A long list of models or projects scrolls in its own box instead of
+   stretching the form. */
+.pick-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--s2);
+	max-height: 16rem;
+	overflow-y: auto;
+	padding-right: var(--s2);
+}
 
 @media (prefers-reduced-motion: reduce) {
 	*,

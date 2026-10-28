@@ -363,6 +363,9 @@ async def _seed_a_phone_sized_recording(session_factory):
         ("/app/diagnostics/reports/phone-report", None),
         ("/app/settings", None),
         ("/app/dataset", None),
+        ("/app/dataset/export", None),
+        ("/app/dataset/tasks", None),
+        ("/app/dataset/recording", None),
     ],
 )
 async def test_every_page_fits_a_phone(

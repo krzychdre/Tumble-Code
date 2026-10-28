@@ -15,7 +15,7 @@ The extension and the CLI work fully without it. Run it and sign in, and you als
 - **Metrics.** Tokens, cost and time per model, mode and client (VS Code or CLI) over a period you choose.
 - **Problem report.** Errors the extension ran into (`/app/diagnostics`), with the model, the context size and the end
   of the request and the response, plus a Markdown brief you can hand to an agent to fix them.
-- **LLM exchange dataset**, off until you switch it on at `/app/dataset`: records what the agent sent to the model
+- **LLM exchange dataset**, off until you switch it on at `/app/dataset/recording`: records what the agent sent to the model
   and got back, and exports it anonymized as JSONL.
 - **Retention.** At `/app/settings` you choose after how many days old tasks and telemetry are deleted (by default
   nothing is).
@@ -378,14 +378,15 @@ In short:
   `POST /api/error-reports` (one problem with its model, context size, request and response; sent only while the
   extension is signed in, duplicates by id ignored, 1 MB limit), `GET /api/llm-exchanges/config`,
   `POST /api/llm-exchanges` and `POST /api/llm-exchanges/outcome` (LLM exchange recording for the training
-  dataset: only when the user switched it on at `/app/dataset`; incremental, gzip, 32 MB limit).
+  dataset: only when the user switched it on at `/app/dataset/recording`; incremental, gzip, 32 MB limit).
 - Web panel: `/app` (task list, grouped by project, model or user with `group=` and narrowed to one group with
   `only=`; a bare `/app` reopens the view last looked at; task pages, metrics, the problem report at `/app/diagnostics` with filters in the
   query string, one report at `/app/diagnostics/reports/{id}`, and the agent brief as Markdown for the filtered
   list at `/app/diagnostics/report.md` and for one problem at `/app/diagnostics/problems/{key}/brief.md`,
-  the dataset page at `/app/dataset` with the anonymized JSONL export, its audit and the full reconstruction of
-  one task at `/app/dataset/tasks/{task_id}.jsonl`, settings, the projects list at `/app/projects` with its
-  filters in the query string (`q`, `space`, `recall`) and one project's page at `/app/projects/{id}`) and
+  the dataset tabs at `/app/dataset` (overview), `/app/dataset/export` (the anonymized JSONL export and its audit),
+  `/app/dataset/tasks` (the full reconstruction of one task at `/app/dataset/tasks/{task_id}.jsonl`) and
+  `/app/dataset/recording`, settings, the projects list at `/app/projects` with its filters in the query string
+  (`q`, `space`, `recall`) and one project's page at `/app/projects/{id}`) and
   `/shared/{task_id}` for shared tasks.
 - Live bridge: socket.io at `/bridge/socket.io` (`BRIDGE_PATH`).
 - Health: `GET /health` (process alive), `GET /health/ready` (database reachable).

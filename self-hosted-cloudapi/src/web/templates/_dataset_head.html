@@ -1,0 +1,31 @@
+{% import "_tabs.html" as t %}
+{# The heading of every Dataset tab. A tab that shows a period (`view` given)
+   gets the client and period selectors, which stay on the tab, and the tabs
+   carry the period and client along. #}
+{% macro dataset_head(active, path, view=none) %}
+<div class="metrics-head">
+  <h1 class="page-title">Dataset</h1>
+  {% if view %}
+  {% set client_q = '&amp;client=' ~ view.client if view.client else '' %}
+  <div class="metrics-controls">
+  <nav class="period-control" aria-label="Client">
+    {% for c in view.clients %}
+    <a class="period-opt{{ ' active' if c.active else '' }}" href="{{ path }}?period={{ view.period }}{% if c.key %}&amp;client={{ c.key }}{% endif %}"{% if c.active %} aria-current="true"{% endif %}>{{ c.label }}</a>
+    {% endfor %}
+  </nav>
+  <nav class="period-control" aria-label="Time period">
+    {% for p in view.periods %}
+    <a class="period-opt{{ ' active' if p.active else '' }}" href="{{ path }}?period={{ p.key }}{{ client_q|safe }}"{% if p.active %} aria-current="true"{% endif %}>{{ p.label }}</a>
+    {% endfor %}
+  </nav>
+  </div>
+  {% endif %}
+</div>
+{% set q = ('?period=' ~ view.period ~ ('&client=' ~ view.client if view.client else '')) if view else '' %}
+{{ t.tabs([
+  ("overview", "/app/dataset" ~ q, "Overview"),
+  ("export", "/app/dataset/export" ~ q, "Export"),
+  ("tasks", "/app/dataset/tasks" ~ q, "Tasks"),
+  ("recording", "/app/dataset/recording", "Recording"),
+], active, "Dataset sections") }}
+{% endmacro %}

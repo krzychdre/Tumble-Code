@@ -74,6 +74,9 @@ _PANEL = (
     "/app/tasks/missing",
     "/app/diagnostics?period=all&class=model&q=x",
     "/app/dataset",
+    "/app/dataset/export",
+    "/app/dataset/tasks",
+    "/app/dataset/recording",
 )
 
 
