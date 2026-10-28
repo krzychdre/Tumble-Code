@@ -21,6 +21,7 @@
 </div>
 
 {% if error %}<div class="notice" role="alert">{{ error }}</div>{% endif %}
+{% if project.wanted_name %}<div class="notice">Renamed automatically because another project of this space was already called {{ project.wanted_name }}.{% if access.can_manage %} Rename it if you like: saving a name hides this note.{% endif %}</div>{% endif %}
 
 <section class="panel settings-panel" aria-labelledby="project-recall">
   <h2 class="chart-title" id="project-recall">Name and recall</h2>

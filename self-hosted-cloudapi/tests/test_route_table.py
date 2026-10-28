@@ -415,6 +415,7 @@ def test_web_routes_keep_their_openapi_operations():
                 ("q", "query", False),
                 ("space", "query", False),
                 ("recall", "query", False),
+                ("renamed", "query", False),
                 ("page", "query", False),
             ),
         ),

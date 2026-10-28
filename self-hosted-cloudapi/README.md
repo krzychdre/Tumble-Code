@@ -155,6 +155,12 @@ it, and its projects and recall settings are shared by its members. Organization
 Authentik, not in the web panel, which only lists them (`/app/organizations`, under Settings, with a link to
 Authentik's groups).
 
+Project names are unique in an organization and in a personal space, whatever the letter case. When a new project
+would take a name the space already has, for example two members' folders without git both called `notes`, it is
+named `notes (bob)` after its member's e-mail (a repository after its owner, such as `api (acme)`), with a number
+added if that is taken too. The API logs a warning, and the project's page and the Projects list say so until
+someone who manages the project saves a name for it.
+
 In Authentik (http://localhost:9000, as `akadmin`), under Directory > Groups:
 
 1. Create a group for the organization. Its name is the organization's name. In **Attributes** set
@@ -448,7 +454,7 @@ In short:
   the dataset tabs at `/app/dataset` (overview), `/app/dataset/export` (the anonymized JSONL export and its audit),
   `/app/dataset/tasks` (the full reconstruction of one task at `/app/dataset/tasks/{task_id}.jsonl`) and
   `/app/dataset/recording`, settings, the projects list at `/app/projects` with its filters in the query string
-  (`q`, `space`, `recall`) and one project's page at `/app/projects/{id}`, and the read-only organizations at
+  (`q`, `space`, `recall`, `renamed`) and one project's page at `/app/projects/{id}`, and the read-only organizations at
   `/app/organizations`) and
   `/shared/{task_id}` for shared tasks.
 - Live bridge: socket.io at `/bridge/socket.io` (`BRIDGE_PATH`).

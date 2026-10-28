@@ -17,12 +17,19 @@ The tenant is the organization active in the client (its token's org claim),
 or the user's personal space. Managing a project (name, recall scope, merge)
 is for the owner of a personal project and for the admins of an
 organization's.
+
+Names are unique in a tenant, case-insensitively: a new project whose default
+name is taken gets the first free of its ``name_candidates`` and keeps the
+wanted name, which its page shows until someone saves a name.
 """
 
 import hashlib
 import json
+import logging
 import posixpath
+from collections.abc import Iterator
 from dataclasses import dataclass
+from itertools import count
 from typing import Optional
 
 from sqlalchemy import and_, delete, func, or_, select, update
@@ -46,6 +53,8 @@ from src.services.recall_cards import drop_project_cards, mark_dirty, queue_proj
 from src.services.organizations import ROLE_ADMIN
 from src.services.user_service import get_user_memberships
 from src.utils.pagination import paginate
+
+logger = logging.getLogger(__name__)
 
 NAME_MAX = 100
 
@@ -112,6 +121,24 @@ def new_project_identity(
         else folder_key(user_id, workspace_path)
     )
     return key, _default_name(repository_url, workspace_path)[:NAME_MAX]
+
+
+def name_qualifier(key: str, email: str) -> str:
+    """What tells a project from another of the same name: the owner of its
+    repository (``qub-it`` of ``github.com/qub-it/roo-code``), or for a folder
+    without git the local part of its user's e-mail."""
+    if key.startswith("folder:"):
+        return email.split("@", 1)[0]
+    return posixpath.basename(posixpath.dirname(key))
+
+
+def name_candidates(wanted: str, qualifier: str) -> Iterator[str]:
+    """The names a new project tries in order, each cut to NAME_MAX:
+    ``notes``, ``notes (alice)``, ``notes (alice, 2)``, ``notes (alice, 3)``..."""
+    yield wanted
+    for n in count(1):
+        suffix = f" ({qualifier})" if n == 1 else f" ({qualifier}, {n})"
+        yield wanted[: NAME_MAX - len(suffix)] + suffix
 
 
 async def resolve_project(
@@ -204,22 +231,62 @@ async def _project_for_folder(
     workspace_path: str,
     repository_url: str,
 ) -> str:
-    """The id of the tenant's project an unbound folder becomes, created on first sight."""
+    """The id of the tenant's project an unbound folder becomes, created on
+    first sight under the first free of its ``name_candidates``."""
     tenant = tenant_of(user_id, org_id)
-    key, name = new_project_identity(user_id, workspace_path, repository_url)
-    await db.execute(
-        dialect_insert(db)(Project)
-        .values(
-            tenant_id=tenant,
-            organization_id=org_id,
-            user_id=user_id,
-            key=key,
-            name=name,
+    key, wanted = new_project_identity(user_id, workspace_path, repository_url)
+    # Between the look-ups and the insert another sign-in may create this
+    # project or take the free name: the insert then does nothing (on either
+    # unique index) and the loop looks again.
+    while True:
+        found = await db.scalar(
+            select(Project.id).where(Project.tenant_id == tenant, Project.key == key)
         )
-        .on_conflict_do_nothing(index_elements=["tenant_id", "key"])
-    )
+        if found is not None:
+            return found
+        name = await _free_name(db, tenant, key, wanted, user_id)
+        created = await db.scalar(
+            dialect_insert(db)(Project)
+            .values(
+                tenant_id=tenant,
+                organization_id=org_id,
+                user_id=user_id,
+                key=key,
+                name=name,
+                wanted_name=None if name == wanted else wanted,
+            )
+            .on_conflict_do_nothing()
+            .returning(Project.id)
+        )
+        if created is not None:
+            if name != wanted:
+                logger.warning(
+                    "[projects] tenant %s already has a project named %r: "
+                    "the new project %s is named %r",
+                    tenant,
+                    wanted,
+                    key,
+                    name,
+                )
+            return created
+
+
+async def _free_name(
+    db: AsyncSession, tenant: str, key: str, wanted: str, user_id: str
+) -> str:
+    email = await db.scalar(select(User.email).where(User.id == user_id))
+    for name in name_candidates(wanted, name_qualifier(key, email)):
+        if await _project_named(db, tenant, name) is None:
+            return name
+
+
+async def _project_named(db: AsyncSession, tenant: str, name: str) -> Optional[Project]:
+    """The tenant's project of that name; the database compares, as its
+    unique index does."""
     return await db.scalar(
-        select(Project.id).where(Project.tenant_id == tenant, Project.key == key)
+        select(Project).where(
+            Project.tenant_id == tenant, func.lower(Project.name) == func.lower(name)
+        )
     )
 
 
@@ -370,11 +437,13 @@ async def project_list_page(
     query: str,
     space: str,
     recall: str,
+    renamed: str,
     page: int,
 ) -> tuple[list[ProjectRow], dict]:
     """One page of the projects of ``spaces`` matching the filters, by name,
     and the pager's fields (utils/pagination.paginate). ``space`` is a
-    ``Space.key`` or empty for all of them."""
+    ``Space.key`` or empty for all of them; any ``renamed`` keeps the
+    projects renamed automatically."""
     titles = {s.tenant_id: s.title for s in spaces if space in ("", s.key)}
     conditions = [Project.tenant_id.in_(titles)]
     if query:
@@ -386,6 +455,8 @@ async def project_list_page(
         )
     if recall in RECALL_FILTERS:
         conditions.append(RECALL_FILTERS[recall])
+    if renamed:
+        conditions.append(Project.wanted_name.is_not(None))
     total = await db.scalar(
         select(func.count()).select_from(Project).where(*conditions)
     )
@@ -398,6 +469,19 @@ async def project_list_page(
         .offset(pager["offset"])
     )
     return [ProjectRow(p, titles[p.tenant_id], n) for p, n in rows], pager
+
+
+async def renamed_count(db: AsyncSession, spaces: list[Space]) -> int:
+    """How many projects of ``spaces`` still have the name they were given
+    because their default name was taken."""
+    return await db.scalar(
+        select(func.count())
+        .select_from(Project)
+        .where(
+            Project.tenant_id.in_([s.tenant_id for s in spaces]),
+            Project.wanted_name.is_not(None),
+        )
+    )
 
 
 def _session_count():
@@ -470,7 +554,6 @@ async def merge_names(db: AsyncSession, project: Project) -> list[str]:
             await db.execute(
                 select(Project.name)
                 .where(Project.tenant_id == project.tenant_id, Project.id != project.id)
-                .distinct()
                 .order_by(Project.name)
             )
         ).scalars()
@@ -478,27 +561,11 @@ async def merge_names(db: AsyncSession, project: Project) -> list[str]:
 
 
 async def merge_target(db: AsyncSession, source: Project, name: str) -> Project:
-    """The project of the source's space named ``name`` (case-insensitive)."""
-    found = (
-        (
-            await db.execute(
-                select(Project)
-                .where(
-                    Project.tenant_id == source.tenant_id,
-                    Project.id != source.id,
-                    func.lower(Project.name) == name.strip().lower(),
-                )
-                .limit(2)
-            )
-        )
-        .scalars()
-        .all()
-    )
-    if not found:
+    """The other project of the source's space named ``name`` (case-insensitive)."""
+    target = await _project_named(db, source.tenant_id, name.strip())
+    if target is None or target.id == source.id:
         raise ProjectError("bad_merge")
-    if len(found) > 1:
-        raise ProjectError("ambiguous_merge")
-    return found[0]
+    return target
 
 
 def scopes_for(project: Project) -> dict[str, str]:
@@ -513,8 +580,11 @@ async def update_project(
         raise ProjectError("bad_name")
     if scope not in scopes_for(project):
         raise ProjectError("bad_scope")
+    if await _project_named(db, project.tenant_id, name) not in (None, project):
+        raise ProjectError("name_taken")
     was_off = project.recall_scope == SCOPE_NONE
     project.name = name
+    project.wanted_name = None
     project.recall_scope = scope
     await db.flush()
     if scope == SCOPE_NONE:

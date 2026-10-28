@@ -589,6 +589,8 @@ async def _seed_hostile_text(session_factory):
                 user_id="user_test",
                 key=repository_key(_LONG_URL),
                 name=_NOSPACE[:100],
+                # Renamed automatically: the notice quotes the long name.
+                wanted_name=_NOSPACE[:100],
             )
         )
         await s.flush()
@@ -626,6 +628,7 @@ async def _seed_hostile_text(session_factory):
         # Nothing matches: the empty state, the unbroken search in its field.
         f"/app/organizations?q={_NOSPACE}",
         "/app/projects",
+        "/app/projects?renamed=1",
         "/app/projects/prj_long",
         "/shared/run",
     ],

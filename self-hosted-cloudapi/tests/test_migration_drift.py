@@ -33,7 +33,10 @@ What SQLite cannot check (Postgres only, untested here):
   foreign key, and b2c3d4e5f6a7 skipping provider_configs on a create_all
   database (both checked by hand on PostgreSQL 16.15).
 * Differences compare_metadata does not see on SQLite: the timezone flag of
-  DateTime, and a length added to a plain String (VARCHAR vs VARCHAR(64)).
+  DateTime, a length added to a plain String (VARCHAR vs VARCHAR(64)), and
+  an index on an expression (uq_projects_tenant_name, lower(name)), which
+  SQLite's reflection skips with a warning; the data migration test of
+  d3e4f5a6b7c8 checks that index by hitting it.
   Checked by hand to be detected: a new column, table or index, a changed
   type, nullability or server default, and a new foreign key.
 """
@@ -602,6 +605,58 @@ def test_seen_folders_are_bound_by_the_rules_of_a_recorded_folder(migrate_env):
         "folder:kept",
     }
     assert tasks["t_wt"] == tasks["t_main"]
+
+
+def test_duplicate_project_names_are_renamed_like_new_ones(migrate_env):
+    """d3e4f5a6b7c8: the oldest project of a name (case-insensitively, per
+    tenant) keeps it; the others take the first free name_candidates and
+    remember the old one; then the tenant's names are unique."""
+    db_file, run = migrate_env
+    _load_baseline(db_file)
+    _alembic(run, "stamp", SQLITE_START_REVISION)
+    _alembic(run, "upgrade", "c2d3e4f5a6b7")
+
+    with sqlite3.connect(db_file) as conn:
+        conn.executemany(
+            "INSERT INTO users (id, authentik_id, email) VALUES (?, ?, ?)",
+            [("u1", "ak_1", "alice@x.org"), ("u2", "ak_2", "bob@x.org")],
+        )
+        conn.execute("INSERT INTO organizations (id, name) VALUES ('org1', 'Acme')")
+        conn.executemany(
+            "INSERT INTO projects (id, tenant_id, user_id, key, name, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            [
+                ("p1", "org1", "u1", "folder:1", "notes", "2026-10-01"),
+                ("p2", "org1", "u2", "folder:2", "Notes", "2026-10-02"),
+                ("p3", "org1", "u2", "folder:3", "notes (bob)", "2026-10-03"),
+                ("p4", "org1", "u2", "folder:4", "notes", "2026-10-04"),
+                ("p5", "org1", "u1", "github.com/acme/api", "api", "2026-10-01"),
+                ("p6", "org1", "u1", "gitlab.com/ops/api", "api", "2026-10-01"),
+                ("p7", "u2", "u2", "folder:7", "notes", "2026-10-01"),
+            ],
+        )
+
+    _alembic(run, "upgrade", "head")
+
+    with sqlite3.connect(db_file) as conn:
+        names = {
+            row[0]: row[1:]
+            for row in conn.execute("SELECT id, name, wanted_name FROM projects")
+        }
+        assert names == {
+            "p1": ("notes", None),
+            "p2": ("Notes (bob, 2)", "Notes"),
+            "p3": ("notes (bob)", None),
+            "p4": ("notes (bob, 3)", "notes"),
+            "p5": ("api", None),
+            "p6": ("api (ops)", "api"),
+            "p7": ("notes", None),
+        }
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "INSERT INTO projects (id, tenant_id, user_id, key, name) "
+                "VALUES ('p8', 'org1', 'u1', 'folder:8', 'API')"
+            )
 
 
 def test_a_fresh_database_downgrades_through_the_chain(migrate_env):

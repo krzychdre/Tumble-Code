@@ -75,7 +75,8 @@ The bridge keeps the org claim of the socket's token, and new task rows get `org
 
 Table `projects`: `id` (`prj_...`), `organization_id` (null for a personal project), `user_id` (creator; owner of a
 personal project), `key`, `name`, `recall_scope` (default `none`), timestamps. Unique: (`organization_id`, `key`)
-for organization projects, (`user_id`, `key`) for personal ones.
+for organization projects, (`user_id`, `key`) for personal ones; the name is unique in its tenant too,
+case-insensitively (`2026-10-27_10-45_cloud-unique-project-names.md`).
 
 Table `project_bindings`: (`user_id`, `organization_id`, `workspace_path`) -> `project_id`, unique on the first
 three. A binding says "this folder of this user, in this tenant, is that project".
