@@ -413,6 +413,11 @@ def _grade_condition(grade: str):
     return and_(completed, not_(smooth))
 
 
+async def _count(db: AsyncSession, *conditions) -> int:
+    # count(*), not count(tasks.id): Postgres answers it from an index alone.
+    return await db.scalar(select(func.count()).select_from(Task).where(*conditions))
+
+
 async def list_page(
     db: AsyncSession,
     view: ListView,
@@ -440,9 +445,7 @@ async def list_page(
     subs = {p.id: p.key_label for p in projects} if view.group == "project" else {}
     shared = dict(
         # Shown on the scope toggle so the cost of switching is visible up front.
-        all_total=await db.scalar(
-            select(func.count(Task.id)).where(Task.user_id == user_id)
-        ),
+        all_total=await _count(db, Task.user_id == user_id),
         only_label=_only_label(view, names),
         project_label=project_names.get(view.project, view.project),
         **await _filter_suggestions(db, view, user_id, projects),
@@ -453,7 +456,7 @@ async def list_page(
             **await _group_page(db, view, user_id, names, subs, filters, page),
         }
 
-    total = await db.scalar(select(func.count(Task.id)).where(*filters))
+    total = await _count(db, *filters)
     pager = paginate(total, page, PAGE_SIZE)
 
     result = await db.execute(
