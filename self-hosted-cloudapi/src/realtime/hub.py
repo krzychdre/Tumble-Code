@@ -30,6 +30,9 @@ EVT_INSTANCE_STATE = "instanceState"
 class SocketMeta(TypedDict):
     role: str  # "extension" | "browser"
     user_id: str
+    # The organization active in the extension when it minted the handshake
+    # token (its org claim); None for the personal space and for browsers.
+    org_id: Optional[str]
 
 
 class ConnectionRegistry:
@@ -43,7 +46,7 @@ class ConnectionRegistry:
 
     def reset(self) -> None:
         """Forget every socket (tests: the registry is a process singleton)."""
-        # sid -> {role, user_id}
+        # sid -> {role, user_id, org_id}
         self._meta: dict[str, SocketMeta] = {}
         # user_id -> registered extension sids, oldest first
         self._ext_sids_by_user: dict[str, list[str]] = {}
@@ -58,8 +61,10 @@ class ConnectionRegistry:
 
     # --- generic socket metadata ------------------------------------------
 
-    def attach(self, sid: str, role: str, user_id: str) -> None:
-        self._meta[sid] = SocketMeta(role=role, user_id=user_id)
+    def attach(
+        self, sid: str, role: str, user_id: str, org_id: Optional[str] = None
+    ) -> None:
+        self._meta[sid] = SocketMeta(role=role, user_id=user_id, org_id=org_id)
 
     def meta(self, sid: str) -> Optional[SocketMeta]:
         return self._meta.get(sid)

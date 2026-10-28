@@ -439,7 +439,7 @@ async def test_live_stream_detects_a_completion_reply_without_the_whole_conversa
     ]
     async with session_factory() as s:
         for msg in stream:
-            await upsert_task_message(s, "q-live", "user_test", msg)
+            await upsert_task_message(s, "q-live", "user_test", None, msg)
         await s.commit()
 
     async with session_factory() as s:

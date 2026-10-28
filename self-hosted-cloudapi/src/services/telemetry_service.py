@@ -86,9 +86,17 @@ async def _link_task_tree(db, task_id: str) -> None:
 
 
 async def _get_or_create_task(
-    db, task_id: str, user_id: str, client_kind: str | None = None
+    db,
+    task_id: str,
+    user_id: str,
+    organization_id: str | None,
+    client_kind: str | None = None,
 ):
     """Return ``(task, created)``, creating the row for ``user_id`` when missing.
+
+    A new row belongs to ``organization_id``, the organization active in the
+    client that sent the record (None for the personal space). A task never
+    moves to another organization, so an existing row keeps its own.
 
     ``client_kind`` is the client the caller knows the task comes from (a
     backfill says, a bridge message does not). A new row takes it, or else the
@@ -123,14 +131,24 @@ async def _get_or_create_task(
     upsert_insert = dialect_insert(db)
     if upsert_insert is None:
         # No portable ON CONFLICT: keep the plain insert.
-        task = Task(id=task_id, user_id=user_id, client_kind=client_kind)
+        task = Task(
+            id=task_id,
+            user_id=user_id,
+            organization_id=organization_id,
+            client_kind=client_kind,
+        )
         db.add(task)
         await db.flush()
         return task, True
 
     result = await db.execute(
         upsert_insert(Task)
-        .values(id=task_id, user_id=user_id, client_kind=client_kind)
+        .values(
+            id=task_id,
+            user_id=user_id,
+            organization_id=organization_id,
+            client_kind=client_kind,
+        )
         .on_conflict_do_nothing(index_elements=["id"])
     )
     created = result.rowcount == 1
@@ -311,6 +329,7 @@ async def backfill_messages(
     db: AsyncSession,
     task_id: str,
     user_id: str,
+    organization_id: str | None,
     messages: list,
     workspace_path: str | None = None,
     client_kind: str | None = None,
@@ -325,7 +344,8 @@ async def backfill_messages(
 
     `workspace_path` is the project/worktree root (explicit client field, with a
     registry fallback resolved by the caller); stamped on the Task so offline
-    tasks show their project in the web view. `client_kind` is the client the
+    tasks show their project in the web view. `organization_id` is the
+    uploader's org claim; a new row belongs to it. `client_kind` is the client the
     upload's properties name (None when they name none).
 
     Raises TaskNotOwnedError, before touching anything, when the task already
@@ -338,7 +358,9 @@ async def backfill_messages(
     """
     # Get-or-create the parent task, owned by the uploading user. The row is
     # in the database before any message is inserted (FK on task_id).
-    task, created = await _get_or_create_task(db, task_id, user_id, client_kind)
+    task, created = await _get_or_create_task(
+        db, task_id, user_id, organization_id, client_kind
+    )
     if task.user_id != user_id:
         raise TaskNotOwnedError(task_id)
     _stamp_workspace_path(task, workspace_path)
@@ -376,6 +398,7 @@ async def upsert_task_message(
     db: AsyncSession,
     task_id: str,
     user_id: str,
+    organization_id: str | None,
     message: dict,
     workspace_path: str | None = None,
 ) -> bool:
@@ -417,7 +440,7 @@ async def upsert_task_message(
     final drops the `"partial":true"` flag and can be a few bytes shorter despite
     longer text — which is exactly why finals bypass the length check.)
     """
-    task, created = await _get_or_create_task(db, task_id, user_id)
+    task, created = await _get_or_create_task(db, task_id, user_id, organization_id)
     if task.user_id != user_id:
         # Never let a bridge event write into (or read from) another user's
         # task.

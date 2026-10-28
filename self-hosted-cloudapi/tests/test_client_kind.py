@@ -130,7 +130,7 @@ async def test_a_bridge_task_turns_cli_with_its_first_cli_event(
     """The bridge creates the row from a message, which names no client."""
     await _seed_user(db_session)
     async with session_factory() as s:
-        await upsert_task_message(s, "t-bridge", "user_test", _message())
+        await upsert_task_message(s, "t-bridge", "user_test", None, _message())
         await s.commit()
     assert await _task_client(session_factory, "t-bridge") == "vscode"
 
@@ -152,7 +152,7 @@ async def test_a_task_created_after_its_cli_events_is_the_clis(
     _event(authed, {"n": 1, "taskId": "t-late", "editorName": CLI_EDITOR})
 
     async with session_factory() as s:
-        await upsert_task_message(s, "t-late", "user_test", _message())
+        await upsert_task_message(s, "t-late", "user_test", None, _message())
         await s.commit()
 
     assert await _task_client(session_factory, "t-late") == "cli"
@@ -164,7 +164,7 @@ async def test_another_users_cli_event_does_not_touch_the_task(
     await _seed_user(db_session)
     await _seed_user(db_session, user_id="user_other", email="o@example.com")
     async with session_factory() as s:
-        await upsert_task_message(s, "t-mine", "user_test", _message())
+        await upsert_task_message(s, "t-mine", "user_test", None, _message())
         s.add(
             TelemetryEvent(
                 user_id="user_other",
@@ -181,7 +181,7 @@ async def test_another_users_cli_event_does_not_touch_the_task(
 
     # ...nor does it decide a new task of someone else.
     async with session_factory() as s:
-        await upsert_task_message(s, "t-late2", "user_test", _message())
+        await upsert_task_message(s, "t-late2", "user_test", None, _message())
         await s.commit()
     assert await _task_client(session_factory, "t-late2") == "vscode"
 
@@ -214,7 +214,7 @@ async def test_a_backfill_names_the_tasks_client(authed, db_session, session_fac
 
     # A re-share of a task the bridge created first marks it too.
     async with session_factory() as s:
-        await upsert_task_message(s, "t-reshare", "user_test", _message())
+        await upsert_task_message(s, "t-reshare", "user_test", None, _message())
         await s.commit()
     _backfill(authed, "t-reshare", json.dumps({"clientKind": "cli"}))
     assert await _task_client(session_factory, "t-reshare") == "cli"

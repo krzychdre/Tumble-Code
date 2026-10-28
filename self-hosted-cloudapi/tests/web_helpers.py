@@ -28,10 +28,10 @@ async def _seed_user(db_session, user_id="user_test", email="t@example.com"):
     return user
 
 
-def _override_current_user(client_app, user_id="user_test"):
+def _override_current_user(client_app, user_id="user_test", org_id=None):
     client_app.dependency_overrides[get_current_user] = lambda: {
         "user_id": user_id,
-        "org_id": None,
+        "org_id": org_id,
     }
 
 

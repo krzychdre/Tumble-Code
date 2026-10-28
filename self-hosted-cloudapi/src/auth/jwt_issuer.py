@@ -76,7 +76,7 @@ def decode_token(token: str) -> Optional[Dict[str, Any]]:
     token signed with our key but lacking either was not issued by this server
     and is refused. This is the one check both the extension API
     (dependencies.get_current_user) and the bridge handshake
-    (realtime.sio._user_id_from_token) rely on.
+    (realtime.sio._identity_from_token) rely on.
     """
     try:
         payload = jwt.decode(

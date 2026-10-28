@@ -35,6 +35,7 @@ from src.routers import (
     web_dataset,
     web_diagnostics,
     web_metrics,
+    web_organizations,
     web_settings,
     web_tasks,
 )
@@ -198,7 +199,7 @@ app.include_router(task_images.router)
 
 
 # Web UI: task list and task page, metrics, diagnostics, retention settings,
-# share links.
+# organizations, share links.
 # /app/tasks/{task_id} (GET) is registered before /app/tasks/bulk-delete (POST),
 # as it always was; tests/test_route_table.py pins the pairs whose paths overlap.
 app.include_router(web_tasks.router)
@@ -206,6 +207,7 @@ app.include_router(web_metrics.router)
 app.include_router(web_diagnostics.router)
 app.include_router(web_dataset.router)
 app.include_router(web_settings.router)
+app.include_router(web_organizations.router)
 app.include_router(shared.router)
 
 # Static assets for the web UI (CSS, vendored JS, the renderer). A URL with the

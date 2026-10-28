@@ -151,6 +151,7 @@ async def backfill_events_endpoint(
             db=db,
             task_id=task_id,
             user_id=user_id,
+            organization_id=current_user["org_id"],
             messages=messages,
             workspace_path=workspace_path,
             client_kind=_backfill_client_kind(form.get("properties")),

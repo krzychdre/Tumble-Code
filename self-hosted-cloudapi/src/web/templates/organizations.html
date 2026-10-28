@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Organizations · Tumble Code{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">Organizations</h1>
+</div>
+
+{% if error %}<div class="notice" role="alert">{{ error }}</div>{% endif %}
+
+<section class="panel settings-panel" aria-labelledby="orgs-mine">
+  <h2 class="chart-title" id="orgs-mine">Your organizations</h2>
+  {% if memberships %}
+  <div class="diag-table-wrap">
+    <table class="breakdown diag-table" id="table-organizations">
+      <caption class="sr-only">Organizations you are a member of</caption>
+      <thead><tr><th scope="col">Name</th><th scope="col">Your role</th><th scope="col" class="diag-num">Members</th></tr></thead>
+      <tbody>
+        {% for m in memberships %}
+        <tr>
+          <td class="diag-cell"><a href="/app/organizations/{{ m.organization_id }}">{{ m.organization.name }}</a></td>
+          <td class="diag-cell">{{ role_labels[m.role] }}</td>
+          <td class="bd-num">{{ counts[m.organization_id] }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="settings-lead">You are not a member of any organization. Your tasks belong to your personal space.</p>
+  {% endif %}
+  <p class="field-hint">The organization switcher in Tumble Code decides which space a new task belongs to.</p>
+</section>
+
+<section class="panel settings-panel" aria-labelledby="orgs-new">
+  <h2 class="chart-title" id="orgs-new">New organization</h2>
+  <form method="post" action="/app/organizations" class="settings-form">
+    <label class="field">
+      <span class="field-label">Name</span>
+      <span class="field-input"><input type="text" name="name" required maxlength="{{ name_max }}"></span>
+    </label>
+    <div class="settings-actions">
+      <button class="btn" type="submit">Create</button>
+      <span class="settings-meta">You become its admin.</span>
+    </div>
+  </form>
+</section>
+{% endblock %}

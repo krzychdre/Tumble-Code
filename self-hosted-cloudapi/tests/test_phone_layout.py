@@ -33,6 +33,7 @@ import pytest
 from src.auth.web_session import get_web_user_optional
 from src.models.error_report import ErrorReport
 from src.models.task import Task, TaskShare
+from src.models.organization import Membership, Organization
 from src.services.problem_catalogue import problem_signature
 from tests.test_browser_js import _find_browser
 from tests.web_helpers import (
@@ -544,6 +545,15 @@ async def _seed_hostile_text(session_factory):
         )
         s.add(_long_error_report())
         await _summarize(s, "run", "sub1", "sub2")
+        # An organization whose name and member e-mail have no break.
+        await _seed_user(s, "user_long", email=f"{_NOSPACE[:60]}@example.com")
+        s.add(Organization(id="org_long", name=_NOSPACE[:100]))
+        s.add(
+            Membership(
+                user_id="user_test", organization_id="org_long", role="org:admin"
+            )
+        )
+        s.add(Membership(user_id="user_long", organization_id="org_long"))
         await s.commit()
 
 
@@ -563,6 +573,8 @@ async def _seed_hostile_text(session_factory):
         # Nothing matches: the empty state and chips with unbroken values.
         f"/app/diagnostics?period=all&model={_LONG_MODEL}&q={_NOSPACE}",
         "/app/diagnostics/reports/phone-report",
+        "/app/organizations",
+        "/app/organizations/org_long",
         "/shared/run",
     ],
 )
