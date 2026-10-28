@@ -608,3 +608,52 @@ async def test_format_helpers_are_single_source_of_truth():
     assert telemetry_vocab.figure is fmt.figure
     assert metrics_service.fmt_tokens is fmt.fmt_tokens
     assert metrics_service.fmt_duration is fmt.fmt_duration
+
+
+async def test_share_follows_the_server_policy_for_a_task_without_organization(
+    client, db_session, session_factory, monkeypatch
+):
+    """ALLOW_PUBLIC_TASK_SHARING=false and ENABLE_TASK_SHARING=false hold for an
+    org-less task, the usual self-hosted case, not only for organizations."""
+    from config.settings import settings
+
+    await _seed_user(db_session, user_id="owner", email="owner@example.com")
+    async with session_factory() as s:
+        s.add(Task(id="task-orgless", user_id="owner"))
+        await s.commit()
+
+    from src.main import app
+
+    def share(visibility):
+        return client.post(
+            "/api/extension/share",
+            json={"taskId": "task-orgless", "visibility": visibility},
+        )
+
+    _override_current_user(app, user_id="owner")
+    try:
+        monkeypatch.setattr(settings, "allow_public_task_sharing", False)
+        public = share("public")
+        assert public.status_code == 403
+        assert "Public task sharing is disabled" in public.json()["detail"]
+        assert share("organization").status_code == 200
+
+        monkeypatch.setattr(settings, "enable_task_sharing", False)
+        assert share("organization").status_code == 403
+        assert share("public").status_code == 403
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+    async with session_factory() as s:
+        shares = (
+            (
+                await s.execute(
+                    select(TaskShare.visibility).where(
+                        TaskShare.task_id == "task-orgless"
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert shares == ["organization"]

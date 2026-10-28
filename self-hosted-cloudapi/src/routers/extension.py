@@ -55,7 +55,7 @@ async def share_task_endpoint(
         # service only returns these after the ownership check passes), so a
         # 403 is explicit and non-leaking — no information about the task's
         # existence is revealed to a non-owner.
-        if "disabled for this organization" in err:
+        if "sharing is disabled" in err:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=result.error,
