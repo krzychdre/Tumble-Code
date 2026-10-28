@@ -10,14 +10,18 @@ import re
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from html import unescape
+from zoneinfo import ZoneInfo
 
 import pytest
+from sqlalchemy import update
 
 from src.auth.web_session import get_web_user_optional
 from src.models.organization import Membership, Organization
 from src.models.project import Project
 from src.models.task import Task
+from src.services.model_attribution import primary_model
 from src.services.projects import folder_key
+from src.services.task_tree import refresh_run_totals
 from src.web.presenters import task_list
 from tests.web_helpers import _override_web_user, _seed_user
 
@@ -25,20 +29,27 @@ BASE = datetime(2026, 6, 1, 12, 0, tzinfo=timezone.utc)
 
 
 async def _seed(session_factory, *rows, user_id="user_test"):
-    """rows: dicts of Task columns; ``age`` (minutes before BASE) sets updated_at."""
+    """rows: dicts of Task columns; ``age`` (minutes before BASE) sets updated_at.
+
+    The derived columns are written as the write paths write them: the primary
+    model with the models label, the run totals once every row exists.
+    """
     async with session_factory() as s:
         for n, row in enumerate(rows):
             row = dict(row)
             age = row.pop("age", n)
+            models = row.get("models")
             s.add(
                 Task(
                     user_id=user_id,
                     created_at=BASE - timedelta(minutes=age),
                     updated_at=BASE - timedelta(minutes=age),
+                    primary_model=primary_model(models) if models else None,
                     **row,
                 )
             )
             await s.flush()
+        await refresh_run_totals(s, [row["id"] for row in rows])
         await s.commit()
 
 
@@ -296,10 +307,12 @@ async def test_a_cycle_does_not_break_the_run_sort(client, db_session, session_f
         {"id": "b", "title": "B", "cost": 2.0, "parent_task_id": "a"},
         {"id": "solo", "title": "Solo", "cost": 2.5},
     )
-    # Close the loop after the fact, the way client-supplied links can.
+    # Close the loop after the fact, the way client-supplied links can, and
+    # recompute as the link writers do (services/task_tree).
     async with session_factory() as s:
         a = await s.get(Task, "a")
         a.parent_task_id = "b"
+        await refresh_run_totals(s, ["a"])
         await s.commit()
 
     resp = _get(client, "/app", sort="cost", dir="desc", scope="all")
@@ -1068,6 +1081,95 @@ async def test_show_all_narrows_the_list_to_exactly_one_group(
         f'<a class="filter-chip" href="{chip_href}" aria-label="Remove filter {chip}"'
         in narrowed
     )
+
+
+async def test_groups_are_paged_and_list_their_first_rows_in_the_views_order(
+    client, db_session, session_factory, monkeypatch
+):
+    """The groups are summed in one query and paged; each group on the page
+    then lists its first GROUP_ROWS runs in the sorted order, the group of
+    tasks without a project too."""
+    monkeypatch.setattr(task_list, "PAGE_SIZE", 2)
+    monkeypatch.setattr(task_list, "GROUP_ROWS", 2)
+    await _seed_user(db_session)
+    await _seed_projects(
+        session_factory,
+        ("prj_alpha", "alpha", "github.com/a/alpha"),
+        ("prj_beta", "beta", "github.com/a/beta"),
+        ("prj_gamma", "gamma", "github.com/a/gamma"),
+    )
+    await _seed(
+        session_factory,
+        {"id": "a1", "title": "A1", "project_id": "prj_alpha", "cost": 1.0},
+        {"id": "a2", "title": "A2", "project_id": "prj_alpha", "cost": 3.0},
+        {"id": "b1", "title": "B1", "project_id": "prj_beta", "cost": 0.5},
+        {"id": "g1", "title": "G1", "project_id": "prj_gamma", "cost": 10.0},
+        {"id": "n1", "title": "N1", "cost": 2.0},
+        {"id": "n2", "title": "N2", "cost": 0.1},
+        # The costliest run of its group only through its subtask.
+        {"id": "n3", "title": "N3"},
+        {"id": "n3-sub", "title": "N3 sub", "parent_task_id": "n3", "cost": 5.0},
+    )
+
+    first = _get(client, "/app", sort="cost", dir="desc").text
+    second = _get(client, "/app", sort="cost", dir="desc", page="2").text
+
+    # Group sums: gamma 10, no project 7.1, alpha 4, beta 0.5.
+    assert [(g["label"], g["ids"]) for g in _groups(first)] == [
+        ("gamma", ["g1"]),
+        ("No project", ["n3", "n3-sub", "n1"]),
+    ]
+    assert (
+        _groups(first)[1]["more"]
+        == "/app?scope=roots&only=%28none%29&sort=cost&dir=desc"
+    )
+    assert [(g["label"], g["ids"]) for g in _groups(second)] == [
+        ("alpha", ["a2", "a1"]),
+        ("beta", ["b1"]),
+    ]
+    assert 'aria-label="Pagination, page 2 of 2"' in second
+    assert '<span class="count-pill">7 runs · 4 projects</span>' in second
+
+
+async def test_a_group_its_run_leaves_while_the_page_is_read_has_no_rows(
+    db_session, session_factory, monkeypatch
+):
+    """The groups are summed in one statement and their first rows ranked in
+    the next. A run that leaves its group in between (linked as a subtask
+    here; moved to a project, renamed model or deleted alike) leaves the
+    group's header without rows."""
+    await _seed_user(db_session)
+    await _seed_projects(
+        session_factory,
+        ("prj_alpha", "alpha", "github.com/a/alpha"),
+        ("prj_beta", "beta", "github.com/a/beta"),
+    )
+    await _seed(
+        session_factory,
+        {"id": "a1", "title": "A1", "project_id": "prj_alpha"},
+        {"id": "b1", "title": "B1", "project_id": "prj_beta"},
+    )
+    read = db_session.execute
+
+    async def execute(statement, *args, **kwargs):
+        if "row_number" in str(statement):
+            await read(update(Task).where(Task.id == "a1").values(parent_task_id="b1"))
+        return await read(statement, *args, **kwargs)
+
+    monkeypatch.setattr(db_session, "execute", execute)
+    page = await task_list.list_page(
+        db_session,
+        task_list.ListView.parse(),
+        "user_test",
+        "t@example.com",
+        ZoneInfo("UTC"),
+        1,
+    )
+
+    assert [(g["label"], len(g["rows"])) for g in page["groups"]] == [
+        ("alpha", 0),
+        ("beta", 1),
+    ]
 
 
 async def test_group_none_is_the_flat_list_and_switching_drops_the_narrowing(

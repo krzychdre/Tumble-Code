@@ -587,7 +587,7 @@ async def test_format_helpers_are_single_source_of_truth():
     from src.web.presenters import settings as settings_presenter
     from src.web.presenters import task_detail, task_rows
 
-    assert task_summary.num is fmt.num
+    assert task_summary.figure is fmt.figure
     # The web presenters (routers/web.py before CAPI-M5) format through the
     # same functions.
     assert task_rows.fmt_tokens is fmt.fmt_tokens

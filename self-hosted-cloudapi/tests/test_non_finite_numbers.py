@@ -60,6 +60,35 @@ def test_message_metrics_does_not_raise_on_an_out_of_range_number():
     assert (m.tokens_in, m.tokens_out, m.cost) == (0, 10, 0.0)
 
 
+def test_message_metrics_reads_a_figure_beyond_one_request_as_no_figure():
+    """The client writes the message, and its own server can report any
+    usage: a figure outside the bounds of one request (utils/format.figure)
+    counts as none, so a run's totals cannot overflow or go negative. The
+    bounds themselves are kept."""
+    figures = {
+        "tokensIn": 9 * 10**18,
+        "tokensOut": -5,
+        "cacheReads": 10**9,
+        "cacheWrites": 10**9 + 1,
+        "cost": 1e300,
+        "durationMs": 24 * 3600 * 1000,
+    }
+    assert message_metrics(_req(json.dumps(figures))).as_columns() == {
+        "tokens_in": 0,
+        "tokens_out": 0,
+        "cache_reads": 10**9,
+        "cache_writes": 0,
+        "cost": 0.0,
+        "duration_ms": 24 * 3600 * 1000,
+    }
+    condense = {
+        "type": "say",
+        "say": "condense_context",
+        "contextCondense": {"cost": -1.0, "durationMs": 10**20},
+    }
+    assert message_metrics(condense) == message_metrics({})
+
+
 @pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf])
 def test_num_reads_a_non_finite_float_as_zero(value):
     assert num(value) == 0

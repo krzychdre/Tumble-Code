@@ -57,11 +57,22 @@ async def _seed(db):
     await db.flush()
     db.add_all(
         [
-            Task(id="t-a1", user_id=USER, project_id="prj_a", models="gpt-a"),
-            Task(id="t-a2", user_id=USER, project_id="prj_a", models="llama-b"),
-            Task(id="t-b", user_id=USER, project_id="prj_b", models="llama-b"),
-            Task(id="t-none", user_id=USER, models="gpt-a"),
-            Task(id="t-foreign", user_id=OTHER, project_id="prj_x", models="gpt-a"),
+            # One model each, so it is also the primary one, as
+            # model_attribution.refresh_task_models stores it.
+            Task(
+                id=task,
+                user_id=user,
+                project_id=project,
+                models=model,
+                primary_model=model,
+            )
+            for task, user, project, model in (
+                ("t-a1", USER, "prj_a", "gpt-a"),
+                ("t-a2", USER, "prj_a", "llama-b"),
+                ("t-b", USER, "prj_b", "llama-b"),
+                ("t-none", USER, None, "gpt-a"),
+                ("t-foreign", OTHER, "prj_x", "gpt-a"),
+            )
         ]
     )
     db.add_all(
@@ -137,6 +148,7 @@ async def _seed_organization(db):
                 organization_id=org,
                 project_id=project,
                 models=model,
+                primary_model=model,
             )
             for task, user, org, project, model in org_tasks
         ]

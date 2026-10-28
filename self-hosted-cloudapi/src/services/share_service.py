@@ -10,7 +10,11 @@ from src.models.llm_exchange import LlmBlob, LlmExchange
 from src.models.task import Task, TaskImage, TaskMessage, TaskShare
 from src.models.settings import OrganizationSettings
 from src.schemas.share import ShareResponse
-from src.services.task_tree import descendant_ids
+from src.services.task_tree import (
+    descendant_ids,
+    lock_for_delete,
+    refresh_run_totals,
+)
 
 
 async def share_task(
@@ -153,6 +157,16 @@ async def delete_tasks(
     if not owned:
         return 0
 
+    # Before the first write, in the order the writers of a run take them.
+    await lock_for_delete(db, owned)
+    # The runs that lose these tasks: read before the links are cut.
+    parents = await db.scalars(
+        select(Task.parent_task_id).where(
+            Task.id.in_(owned), Task.parent_task_id.not_in(owned)
+        )
+    )
+    above = list(set(parents.all()))
+
     # Orphan surviving children explicitly rather than leaving it to the
     # ON DELETE SET NULL on tasks.parent_task_id. Postgres honours that
     # constraint; SQLite does not enforce foreign keys unless the connection
@@ -188,6 +202,7 @@ async def delete_tasks(
     await db.execute(delete(TaskShare).where(TaskShare.task_id.in_(owned)))
     await db.execute(delete(Task).where(Task.id.in_(owned)))
     await db.flush()
+    await refresh_run_totals(db, above)
     # `task_relations` rows are deliberately kept. They are the durable record
     # of what telemetry said, they carry no foreign keys, and keeping them means
     # re-sharing a deleted task restores its place in the tree.

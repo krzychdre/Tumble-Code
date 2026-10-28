@@ -21,10 +21,12 @@ from src.services.model_attribution import (
     Completion,
     attribute_requests,
     completions_for_task,
+    LABEL_MAX_BYTES,
     models_badge,
     models_label,
     models_summary,
     side_calls_summary,
+    split_models_label,
 )
 
 from tests.web_helpers import (
@@ -186,6 +188,21 @@ def test_models_summary_counts_requests_and_collects_modes():
     assert models_label(completions) == "GLM-5.2, gpt-5.6-sol"
 
 
+def test_a_label_keeps_the_most_used_models_that_fit_its_bytes():
+    """ix_tasks_user_models refuses an entry over 2704 bytes, and a task can
+    run through hundreds of models of up to 256 bytes each: the label keeps
+    the most-used names that fit LABEL_MAX_BYTES, whole and in order."""
+    names = [f"{n:03}" + "\U0001f600" * 63 for n in range(200)]
+    completions = [
+        _c(name, n, n) for n, name in enumerate(names) for _ in range(200 - n)
+    ]
+
+    label = models_label(completions)
+
+    assert len(label.encode()) <= LABEL_MAX_BYTES
+    assert split_models_label(label) == names[:7]
+
+
 def test_models_label_is_none_when_nothing_is_known():
     """So a refresh never overwrites a stored label with an empty one."""
     assert models_label([]) is None
@@ -261,8 +278,37 @@ async def test_a_second_model_extends_the_stored_label(db_session):
         )
     await db_session.commit()
 
-    models = await db_session.scalar(select(Task.models).where(Task.id == "task-m2"))
+    models, primary = (
+        await db_session.execute(
+            select(Task.models, Task.primary_model).where(Task.id == "task-m2")
+        )
+    ).one()
     assert models == "GLM-5.2, gpt-5.6-sol", "most-used first"
+    # The task list's model group.
+    assert primary == "GLM-5.2"
+
+
+async def test_a_model_id_of_spaces_is_no_model(db_session):
+    """A name of spaces is none (telemetry_vocab.clean_name): the task gets no
+    label, and the task list's model group is "No model"."""
+    from src.services.telemetry_service import record_event
+
+    await _seed_user(db_session)
+    db_session.add(Task(id="task-blank", user_id="user_test", title="Run"))
+    await db_session.commit()
+
+    await record_event(
+        db_session,
+        user_id="user_test",
+        org_id=None,
+        event_type="LLM Completion",
+        properties={"taskId": "task-blank", "modelId": " ", "inputTokens": 1},
+    )
+
+    stored = await db_session.execute(
+        select(Task.models, Task.primary_model).where(Task.id == "task-blank")
+    )
+    assert stored.one() == (None, None)
 
 
 async def test_telemetry_for_an_unknown_task_is_stored_but_stores_nothing_else(

@@ -790,3 +790,98 @@ def test_a_fresh_database_downgrades_through_the_chain(migrate_env):
 
     assert _alembic_version(db_file) == SQLITE_START_REVISION
     assert "task_relations" not in _tables(db_file)
+
+
+def test_run_totals_backfill_sums_each_run_and_names_its_primary_model(migrate_env):
+    """f0a1b2c3d4e5 stores each task's run totals: the task and every task
+    beneath it of the same owner, at most RUN_DEPTH_MAX levels down (the walk
+    stops at another owner's task, and a cycle counts each member once), and
+    the first name of its models label. Message figures a client stored past
+    the bounds of one request count as 0 and their tasks are summed again:
+    two of 9e18 tokens in one run overflowed the sum and stopped the upgrade.
+    A link to a parent id too long for ix_tasks_parent_user is cut."""
+    db_file, run = migrate_env
+    _load_baseline(db_file)
+    _alembic(run, "stamp", SQLITE_START_REVISION)
+    _alembic(run, "upgrade", "d4e5f6a7b8c1")
+
+    # id, owner, parent, cost, tokens in, tokens out, duration ms, models
+    tasks = [
+        ("root", "u1", None, 1.0, 10, 1, 100, "glm-5.3, opus"),
+        ("child", "u1", "root", 2.0, 20, 2, 200, "opus,glm-5.3"),
+        ("grandchild", "u1", "child", 4.0, 40, 4, 400, None),
+        ("foreign", "u2", "root", 8.0, 80, 8, 800, None),
+        ("below_foreign", "u1", "foreign", 16.0, 160, 16, 1600, None),
+        ("loop_a", "u1", "loop_b", 32.0, 0, 0, 0, None),
+        ("loop_b", "u1", "loop_a", 64.0, 0, 0, 0, None),
+        # Stored by the base code from messages of 9e18 tokens and a cost of
+        # 1e300 (task_messages below).
+        ("evil_root", "u1", None, 1e300, 9 * 10**18, 0, 0, None),
+        ("evil_sub", "u1", "evil_root", 0.5, 9 * 10**18, 7, 0, None),
+        ("x" * 257, "u1", None, 2.0, 0, 0, 0, None),
+        ("below_long", "u1", "x" * 257, 3.0, 0, 0, 0, None),
+    ]
+    # A chain one level deeper than a run reaches: its root counts every
+    # task but the last.
+    depth = 128
+    chain = [
+        (f"deep{n:03}", "u1", f"deep{n - 1:03}" if n else None, 1.0, 0, 0, 0, None)
+        for n in range(depth + 2)
+    ]
+    messages = [
+        ("m1", "evil_root", 1, 9 * 10**18, 0, 1e300),
+        ("m2", "evil_sub", 1, 9 * 10**18, 7, 0.5),
+    ]
+    with sqlite3.connect(db_file) as conn:
+        conn.executemany(
+            "INSERT INTO users (id, authentik_id, email) VALUES (?, ?, ?)",
+            [("u1", "ak_1", "a@b.c"), ("u2", "ak_2", "d@e.f")],
+        )
+        conn.executemany(
+            "INSERT INTO tasks (id, user_id, parent_task_id, cost, tokens_in, "
+            "tokens_out, duration_ms, models) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            tasks + chain,
+        )
+        conn.executemany(
+            "INSERT INTO task_messages (id, task_id, message_data, message_ts, "
+            "tokens_in, tokens_out, cost) VALUES (?, ?, '{}', ?, ?, ?, ?)",
+            messages,
+        )
+        conn.executemany(
+            "INSERT INTO task_relations (child_task_id, parent_task_id, user_id) "
+            "VALUES (?, ?, 'u1')",
+            [("below_long", "x" * 257), ("child", "root")],
+        )
+
+    _alembic(run, "upgrade", "head")
+
+    with sqlite3.connect(db_file) as conn:
+        stored = {
+            row[0]: row[1:]
+            for row in conn.execute(
+                "SELECT id, run_cost, run_tokens, run_duration_ms, primary_model "
+                "FROM tasks"
+            )
+        }
+        own = conn.execute(
+            "SELECT tokens_in, tokens_out, cost FROM tasks WHERE id = 'evil_sub'"
+        ).fetchone()
+        relations = conn.execute("SELECT child_task_id FROM task_relations").fetchall()
+    assert own == (0, 7, 0.5)
+    assert relations == [("child",)]
+    assert stored.pop("deep000")[0] == depth + 1
+    assert stored.pop(f"deep{depth + 1:03}")[0] == 1
+    stored = {k: v for k, v in stored.items() if not k.startswith("deep")}
+    assert stored == {
+        "root": (7.0, 77, 700, "glm-5.3"),
+        "child": (6.0, 66, 600, "opus"),
+        "grandchild": (4.0, 44, 400, None),
+        "foreign": (8.0, 88, 800, None),
+        "below_foreign": (16.0, 176, 1600, None),
+        "loop_a": (96.0, 0, 0, None),
+        "loop_b": (96.0, 0, 0, None),
+        "evil_root": (0.5, 7, 0, None),
+        "evil_sub": (0.5, 7, 0, None),
+        "x" * 257: (2.0, 0, 0, None),
+        "below_long": (3.0, 0, 0, None),
+    }
