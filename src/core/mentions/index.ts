@@ -4,7 +4,12 @@ import * as path from "path"
 import * as vscode from "vscode"
 import { isBinaryFile } from "isbinaryfile"
 
-import { mentionRegexGlobal, commandRegexGlobal, unescapeSpaces } from "@tumble-code/core/browser"
+import {
+	mentionRegexGlobal,
+	commandRegexGlobal,
+	isOpenableExternalUrl,
+	unescapeSpaces,
+} from "@tumble-code/core/browser"
 import { getCommitInfo, getWorkingState } from "../../utils/git"
 
 import { openFile } from "../../integrations/misc/open-file"
@@ -38,7 +43,7 @@ export async function openMention(cwd: string, mention?: string): Promise<void> 
 		vscode.commands.executeCommand("workbench.actions.view.problems")
 	} else if (mention === "terminal") {
 		vscode.commands.executeCommand("workbench.action.terminal.focus")
-	} else if (mention.startsWith("http")) {
+	} else if (isOpenableExternalUrl(mention)) {
 		vscode.env.openExternal(vscode.Uri.parse(mention))
 	}
 }
