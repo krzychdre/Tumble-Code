@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from config.settings import settings
 from src.auth.web_session import LoginRequired, WebUser, get_web_user_optional
 from src.database import get_db
-from src.routers.task_images import image_response
+from src.routers.task_images import TS_MAX, TS_MIN, image_response
 from src.routers.web_page import not_found_page
 from src.services.task_access import ShareVerdict, shared_view_access
 from src.services.task_images import load_task_image
@@ -85,7 +85,7 @@ async def shared_task(
 @router.get("/shared/{task_id}/images", response_class=Response)
 async def shared_task_image(
     task_id: str,
-    ts: int = Query(...),
+    ts: int = Query(..., ge=TS_MIN, le=TS_MAX),
     path: str = Query(...),
     user: Optional[WebUser] = Depends(get_web_user_optional),
     db: AsyncSession = Depends(get_db),

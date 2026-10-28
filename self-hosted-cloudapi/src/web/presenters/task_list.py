@@ -111,11 +111,22 @@ def _text(value: Optional[str]) -> str:
     return (value or "").strip()[:_MAX_TEXT]
 
 
+# The days a date filter may name. The filter turns a day into the UTC start
+# of the reader's day and of the day after it, which overflows at the ends of
+# the calendar: ?until=9999-12-31 raised OverflowError, and, being kept in the
+# list's view cookie, failed every visit to /app after it.
+_FIRST_DAY = date(1900, 1, 1)
+_LAST_DAY = date(9998, 12, 31)
+
+
 def _day(value: Optional[str]) -> Optional[date]:
     try:
-        return date.fromisoformat((value or "").strip()) if value else None
+        day = date.fromisoformat((value or "").strip()) if value else None
     except ValueError:
         return None
+    if day is not None and not _FIRST_DAY <= day <= _LAST_DAY:
+        return None
+    return day
 
 
 @dataclass(frozen=True)

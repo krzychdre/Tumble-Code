@@ -20,7 +20,7 @@ from src.routers.web_page import (
     render_page,
     require_web_page,
 )
-from src.routers.task_images import image_response
+from src.routers.task_images import TS_MAX, TS_MIN, image_response
 from src.services.client_kind import CLIENT_LABELS
 from src.services.recall_cards import rebuild_card
 from src.services.share_service import (
@@ -224,7 +224,7 @@ def _owner_share(share: TaskShare | None) -> dict | None:
 @router.get("/app/tasks/{task_id}/images", response_class=Response)
 async def task_image(
     task_id: str,
-    ts: int = Query(...),
+    ts: int = Query(..., ge=TS_MIN, le=TS_MAX),
     path: str = Query(...),
     web: WebPage = Depends(require_web_page),
 ):

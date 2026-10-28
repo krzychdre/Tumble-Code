@@ -8,6 +8,7 @@ shared page (/shared/{id}/images) answer with. See
 ai_plans/2026-10-12_18-00_cloud-web-task-images.md.
 """
 
+import re
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -31,6 +32,23 @@ router = APIRouter(prefix="/api", tags=["task-images"])
 # Room for the multipart framing and the two text fields around the file, so
 # a file of exactly MAX_IMAGE_BYTES is not refused for its envelope.
 _ENVELOPE_BYTES = 64 * 1024
+
+# message_ts is a BigInteger column: a timestamp outside it cannot name a row.
+TS_MIN = -(2**63)
+TS_MAX = 2**63 - 1
+# ASCII digits only, at most 19 of them, before int() is called: str.isdigit()
+# also accepted "--5" (after lstrip("-")) and other scripts' digits, and an
+# unbounded digit string, which int() refuses or the column cannot hold.
+_TS_RE = re.compile(r"-?[0-9]{1,19}")
+
+
+def parse_message_ts(raw) -> Optional[int]:
+    """A form's ``messageTs`` as an int the column can hold, else None."""
+    if not isinstance(raw, str) or not _TS_RE.fullmatch(raw.strip()):
+        return None
+    value = int(raw.strip())
+    return value if TS_MIN <= value <= TS_MAX else None
+
 
 # The bytes for one (task, ts, path) only change when the client re-uploads,
 # which is rare; an hour keeps a reread page from fetching every image again.
@@ -66,10 +84,9 @@ async def upload_task_image_endpoint(
 
     form = await capped_request(request, MAX_IMAGE_BYTES + _ENVELOPE_BYTES).form()
 
-    raw_ts = form.get("messageTs")
-    if not isinstance(raw_ts, str) or not raw_ts.strip().lstrip("-").isdigit():
+    message_ts = parse_message_ts(form.get("messageTs"))
+    if message_ts is None:
         raise _bad_request("messageTs must be an integer")
-    message_ts = int(raw_ts)
 
     path = form.get("path")
     if not isinstance(path, str) or not path:
