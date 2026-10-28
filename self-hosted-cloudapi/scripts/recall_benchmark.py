@@ -42,9 +42,9 @@ for name, value in {
     os.environ.setdefault(name, value)
 
 import asyncpg  # noqa: E402
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine  # noqa: E402
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # noqa: E402
 
-from src.database import Base  # noqa: E402
+from src.database import Base, make_engine  # noqa: E402
 from src.models.project import SCOPE_MEMBERS, SCOPE_ORGANIZATION, Project  # noqa: E402
 from src.services import recall_search  # noqa: E402
 
@@ -80,7 +80,7 @@ def _text(k: int) -> str:
 
 
 async def fill() -> None:
-    engine = create_async_engine(URL)
+    engine = make_engine(URL)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
@@ -154,7 +154,7 @@ async def fill() -> None:
 
 
 async def measure() -> None:
-    engine = create_async_engine(URL)
+    engine = make_engine(URL)
     factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     async with factory() as db:
         org_project = await db.get(Project, "p0")

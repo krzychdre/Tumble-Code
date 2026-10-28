@@ -1,7 +1,7 @@
 """Test fixtures and configuration.
 
 Env vars are populated before any `src.*` import so `config.settings.Settings()`
-and `src.database.create_async_engine(...)` see valid values during module load.
+and `src.database.make_engine(...)` see valid values during module load.
 """
 
 import os
@@ -33,7 +33,7 @@ from sqlalchemy.ext.asyncio import (  # noqa: E402
 )
 from sqlalchemy.pool import NullPool, StaticPool  # noqa: E402
 
-from src.database import Base, get_db  # noqa: E402
+from src.database import Base, get_db, make_engine  # noqa: E402
 
 # Importing src.models populates Base.metadata with all tables.
 import src.models  # noqa: E402, F401
@@ -100,10 +100,11 @@ PG_URL = os.environ.get("RECALL_PG_URL")
 @pytest.fixture
 async def pg_session():
     """Session on the Postgres of RECALL_PG_URL, its schema rebuilt from the
-    models; the test skips without it."""
+    models and its connection set up the app's way; the test skips without
+    it."""
     if not PG_URL:
         pytest.skip("RECALL_PG_URL is not set")
-    engine = create_async_engine(PG_URL, poolclass=NullPool)
+    engine = make_engine(PG_URL, poolclass=NullPool)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
