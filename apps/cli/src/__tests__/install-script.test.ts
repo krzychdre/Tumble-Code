@@ -64,6 +64,17 @@ function runInstaller(
 			`for arg in "$@"; do case "$arg" in http*) echo "$arg" >> "${log}" ;; esac; done`,
 			'case "$*" in',
 			`  *api.github.com*) echo '{"tag_name":"v1.2.3"}' ;;`,
+			// The release's checksum file: the tarball's real hash, a wrong one
+			// (TUMBLE_CHECKSUM), or none at all (TUMBLE_NO_CHECKSUM).
+			"  *.sha256*)",
+			'    if [ -n "$TUMBLE_NO_CHECKSUM" ] || [ -z "$TUMBLE_TARBALL" ]; then exit 22; fi',
+			'    sum="${TUMBLE_CHECKSUM:-$(sha256sum "$TUMBLE_TARBALL" 2>/dev/null || shasum -a 256 "$TUMBLE_TARBALL")}"',
+			'    prev=""',
+			'    for arg in "$@"; do',
+			'      if [ "$prev" = "-o" ]; then echo "$sum" > "$arg"; fi',
+			'      prev="$arg"',
+			"    done",
+			"    exit 0 ;;",
 			"  *)",
 			'    if [ -n "$TUMBLE_TARBALL" ]; then',
 			'      prev=""',
@@ -121,6 +132,9 @@ function runInstaller(
 			TUMBLE_NPM_OFFLINE_SUCCEEDS: "",
 			TUMBLE_NPM_INSTALL_HANG_SECS: "",
 			TUMBLE_NPM_INSTALL_FAILS: "",
+			TUMBLE_CHECKSUM: "",
+			TUMBLE_NO_CHECKSUM: "",
+			ROO_SKIP_CHECKSUM: "",
 			...runEnv,
 		},
 	})
@@ -260,5 +274,40 @@ describe.skipIf(process.platform === "win32")("install.sh network hardening", ()
 		expect(installs[1]).toContain("--legacy-peer-deps")
 		// Nothing lands at the target when the dependencies could not be installed.
 		expect(install.exists).toBe(false)
+	})
+})
+
+// The installer unpacked and ran whatever the download held; the release
+// publishes a .sha256 beside each tarball, now checked before unpacking.
+describe.skipIf(process.platform === "win32")("install.sh checksum", () => {
+	it("verifies the tarball against the release's checksum", () => {
+		const { status, stdout, urls } = runInstaller({}, { serveTarball: true })
+
+		expect(status).toBe(0)
+		expect(stdout).toContain("Checksum verified.")
+		expect(urls.some((url) => /\/tumble-cli-[a-z]+-[a-z0-9]+\.tar\.gz\.sha256$/.test(url))).toBe(true)
+	})
+
+	it("installs nothing when the download does not match", () => {
+		const { status, stderr, install, npmLogLines } = runInstaller(
+			{ TUMBLE_CHECKSUM: "0".repeat(64) },
+			{ serveTarball: true, previousInstall: true },
+		)
+
+		expect(status).not.toBe(0)
+		expect(stderr).toContain("does not match its published checksum")
+		expect(install.previous).toBe("keep me\n")
+		expect(npmLogLines.filter((line) => line.startsWith("npm install"))).toEqual([])
+	})
+
+	it("refuses a release without a checksum unless told to skip it", () => {
+		const refused = runInstaller({ TUMBLE_NO_CHECKSUM: "1" }, { serveTarball: true, previousInstall: true })
+		expect(refused.status).not.toBe(0)
+		expect(refused.stderr).toContain("ROO_SKIP_CHECKSUM=1")
+		expect(refused.install.previous).toBe("keep me\n")
+
+		const skipped = runInstaller({ TUMBLE_NO_CHECKSUM: "1", ROO_SKIP_CHECKSUM: "1" }, { serveTarball: true })
+		expect(skipped.status).toBe(0)
+		expect(skipped.stdout).toContain("installing without verifying")
 	})
 })

@@ -33,6 +33,9 @@ ROO_INSTALL_DIR=/opt/roo-code ROO_BIN_DIR=/usr/local/bin curl -fsSL ... | sh
 ROO_VERSION=0.1.0 curl -fsSL https://raw.githubusercontent.com/krzychdre/Tumble-Code/main/apps/cli/install.sh | sh
 ```
 
+**Checksum:** the installer checks the downloaded tarball against the `.sha256` the release publishes beside it and
+installs nothing when they differ. A release published without one installs only with `ROO_SKIP_CHECKSUM=1`.
+
 **Offline machines and flaky networks:**
 
 The installer never stalls on a bad network. It checks the npm registry with a short timeout before installing, every
