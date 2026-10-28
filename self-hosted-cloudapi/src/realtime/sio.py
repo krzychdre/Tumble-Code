@@ -375,8 +375,12 @@ async def _persist(
     """
     message = data["message"]
     ts = message.get("ts")
-    if message.get("partial") and ts is not None:
-        partial_messages.hold(sid, task_id, user_id, data)
+    # A full buffer (hold answers False) writes the partial through at once.
+    if (
+        message.get("partial")
+        and ts is not None
+        and partial_messages.hold(sid, task_id, user_id, data)
+    ):
         return True
     earlier = await partial_messages.settle(task_id, ts)
     return await _save_messages(task_id, user_id, org_id, [*earlier, data])

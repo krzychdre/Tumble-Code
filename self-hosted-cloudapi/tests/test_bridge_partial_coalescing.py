@@ -278,3 +278,86 @@ async def test_a_partial_for_a_task_of_unknown_owner_is_written_at_once(
         "first words"
     ]
     assert registry.task_access(SID, "task-new") is True
+
+
+# --- the buffer is bounded and cheap per chunk ----------------------------------
+
+
+async def test_the_buffer_holds_a_bounded_number_of_rows_and_refuses_the_rest():
+    from src.realtime.partial_buffer import PartialMessageBuffer
+
+    written = []
+
+    async def write(sid, task_id, user_id, events):
+        written.append((sid, [e["message"]["ts"] for e in events]))
+
+    buffer = PartialMessageBuffer(write, delay=0.05, max_per_sid=2, max_total=3)
+
+    assert buffer.hold("a", TASK, OWNER, _chunk(1, "x"))
+    assert buffer.hold("a", TASK, OWNER, _chunk(2, "x"))
+    # The socket's third row is refused; a newer revision of a held row is not.
+    assert not buffer.hold("a", TASK, OWNER, _chunk(3, "x"))
+    assert buffer.hold("a", TASK, OWNER, _chunk(2, "xx"))
+    # Another socket still has room until the buffer as a whole is full.
+    assert buffer.hold("b", TASK, OWNER, _chunk(4, "x"))
+    assert not buffer.hold("b", TASK, OWNER, _chunk(5, "x"))
+    assert buffer.pending() == 3
+
+    await asyncio.sleep(0.2)
+
+    assert buffer.pending() == 0
+    assert sorted(written) == [("a", [1]), ("a", [2]), ("b", [4])]
+    # Written rows free their places.
+    assert buffer.hold("a", TASK, OWNER, _chunk(6, "x"))
+    buffer.discard()
+
+
+async def test_a_partial_past_the_bound_is_written_at_once(
+    owned_task, emit, commits, delay, session_factory, monkeypatch
+):
+    delay(10)
+    monkeypatch.setattr(sio_module.partial_messages, "max_per_sid", 1)
+
+    await sio_module.on_task_event(SID, _chunk(1, "held"))
+    await sio_module.on_task_event(SID, _chunk(2, "through"))
+
+    # Written at once like a final, taking the task's held row along in the
+    # same transaction, long before the 10 s window.
+    assert [(ts, m["text"]) for ts, m in await _rows(session_factory)] == [
+        (1, "held"),
+        (2, "through"),
+    ]
+    assert len(commits) == 1
+    assert sio_module.partial_messages.pending() == 0
+    assert emit.await_count == 2
+
+
+def test_a_revisions_size_is_its_text_not_its_serialization():
+    from src.realtime.partial_buffer import revision_size
+
+    short = _chunk(1, "The user says")["message"]
+    longer = _chunk(1, "The user says they need")["message"]
+    assert revision_size(short) < revision_size(longer)
+    assert revision_size({"ts": 1, "text": "abc", "images": ["x" * 10]}) == 3
+
+
+async def test_holding_a_long_stream_costs_no_serialization_per_chunk():
+    """A long streamed message is re-sent whole on every chunk; measuring it
+    by serializing it every time made a stream quadratic. 3000 chunks of a
+    1 MB text took seconds that way and take milliseconds now."""
+    import time
+
+    from src.realtime.partial_buffer import PartialMessageBuffer
+
+    async def write(sid, task_id, user_id, events):
+        pass
+
+    buffer = PartialMessageBuffer(write, delay=60)
+    data = _chunk(1, "x" * 1_000_000)
+    started = time.perf_counter()
+    for _ in range(3000):
+        buffer.hold("a", TASK, OWNER, data)
+    elapsed = time.perf_counter() - started
+    buffer.discard()
+
+    assert elapsed < 0.5, elapsed
