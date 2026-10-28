@@ -448,3 +448,18 @@ async def test_a_conversation_is_redacted_off_the_event_loop(
 
     assert page["text"].startswith("User: Fix the bridge org claim")
     assert calls == ["thread"]
+
+
+# --- the search's statement timeout ---------------------------------------------------
+
+
+def test_the_statement_timeout_is_a_bound_parameter_never_sql_text():
+    from src.services.recall_search import statement_timeout
+
+    statement = statement_timeout(300)
+    compiled = statement.compile()
+    assert "300" not in str(compiled)
+    assert compiled.params == {"timeout": "300"}
+    for bad in ("300; DROP TABLE users", "1e3", 0, -5):
+        with pytest.raises(ValueError):
+            statement_timeout(bad)

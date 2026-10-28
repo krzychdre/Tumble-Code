@@ -22,6 +22,7 @@ import anyio
 from sqlalchemy import and_, case, func, select, text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.elements import TextClause
 
 from src.models.project import SCOPE_ORGANIZATION, SCOPE_OWNER, Project
 from src.models.recall import RecallLog, SessionCard
@@ -90,6 +91,23 @@ class SearchResult:
     too_broad: bool
 
 
+def statement_timeout(milliseconds) -> TextClause:
+    """``SET LOCAL statement_timeout`` as a statement with a bound parameter.
+
+    SET takes no bind parameters, so the value used to be formatted into the
+    SQL text. It is a module constant today, but a value formatted into SQL
+    is one refactor away from an injection; ``set_config(..., true)`` is the
+    same transaction-local setting and takes the value as a parameter, which
+    must be a positive integer number of milliseconds.
+    """
+    value = int(milliseconds)
+    if value < 1:
+        raise ValueError(f"statement timeout must be positive, not {value}")
+    return text("SELECT set_config('statement_timeout', :timeout, true)").bindparams(
+        timeout=str(value)
+    )
+
+
 async def search(
     db: AsyncSession,
     user_id: str,
@@ -139,9 +157,7 @@ async def search(
         # The timeout lives and dies with the savepoint, so a cancelled search
         # leaves the session usable for the log row below.
         async with db.begin_nested():
-            await db.execute(
-                text(f"SET LOCAL statement_timeout = {STATEMENT_TIMEOUT_MS}")
-            )
+            await db.execute(statement_timeout(STATEMENT_TIMEOUT_MS))
             rows = (await db.execute(statement)).all()
     except DBAPIError as error:
         if "statement timeout" not in str(error.orig):
