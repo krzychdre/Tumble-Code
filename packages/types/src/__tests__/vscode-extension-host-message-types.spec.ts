@@ -167,6 +167,7 @@ type ExpectedWebviewMessageType =
 	| "lockApiConfigAcrossModes"
 	| "assignCurrentApiConfigToModes"
 	| "cliModeProviderSettings"
+	| "startOpenRouterSignIn"
 	| "rooCloudSignIn"
 	| "rooCloudSignOut"
 	| "rooCloudManualUrl"

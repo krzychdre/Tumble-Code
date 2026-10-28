@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from "@/utils/test-utils"
 import type { ProviderSettings, RouterModels } from "@tumble-code/types"
 
+import { vscode } from "@src/utils/vscode"
+
 import { OpenRouter } from "../OpenRouter"
 
 const { providersQuery } = vi.hoisted(() => ({ providersQuery: vi.fn() }))
@@ -18,6 +20,7 @@ vi.mock("../../ModelPicker", () => ({ ModelPicker: () => null }))
 
 // A native select stands in for the Radix one, so a choice is one change event.
 vi.mock("@src/components/ui", () => ({
+	Button: (props: any) => <button {...props} />,
 	Input: (props: any) => <input {...props} />,
 	Select: ({ children, value, onValueChange }: any) => (
 		<select data-testid="routing" value={value} onChange={(e) => onValueChange(e.target.value)}>
@@ -44,7 +47,6 @@ const renderForm = ({
 			setApiConfigurationField={setApiConfigurationField}
 			routerModels={routerModels}
 			selectedModelId="a/one"
-			uriScheme="vscode"
 			simplifySettings={simplifySettings}
 			organizationAllowList={{ allowAll: true, providers: {} }}
 		/>,
@@ -87,5 +89,26 @@ describe("OpenRouter provider routing", () => {
 
 		renderForm({ routerModels: { openrouter: { "c/x": model, "d/y": model } } as unknown as RouterModels })
 		expect(providersQuery).toHaveBeenLastCalledWith("a/one", undefined, { enabled: false })
+	})
+})
+
+describe("OpenRouter sign-in button", () => {
+	it("asks the extension to start the sign-in instead of linking to OpenRouter itself", () => {
+		const postMessage = vi.spyOn(vscode, "postMessage").mockImplementation(() => {})
+		render(
+			<OpenRouter
+				apiConfiguration={{}}
+				setApiConfigurationField={vi.fn()}
+				selectedModelId="a/one"
+				organizationAllowList={{ allowAll: true, providers: {} }}
+			/>,
+		)
+
+		const button = screen.getByText("settings:providers.getOpenRouterApiKey")
+		expect(button.closest("a")).toBeNull()
+		fireEvent.click(button)
+
+		expect(postMessage).toHaveBeenCalledWith({ type: "startOpenRouterSignIn" })
+		postMessage.mockRestore()
 	})
 })

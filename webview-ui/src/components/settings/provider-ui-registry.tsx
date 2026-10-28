@@ -124,7 +124,6 @@ const customForms = {
 			setApiConfigurationField={context.setApiConfigurationField}
 			routerModels={context.routerModels}
 			selectedModelId={context.selectedModelId}
-			uriScheme={context.uriScheme}
 			simplifySettings={context.simplifySettings}
 			organizationAllowList={context.organizationAllowList}
 			modelValidationError={context.modelValidationError}

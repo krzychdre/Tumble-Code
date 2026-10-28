@@ -5,13 +5,12 @@ import { LabeledCheckbox } from "@src/components/ui/labeled-checkbox"
 import { type OrganizationAllowList, type RouterModels, openRouterDefaultModelId } from "@tumble-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@src/components/ui"
+import { Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@src/components/ui"
 import {
 	useOpenRouterModelProviders,
 	OPENROUTER_DEFAULT_PROVIDER_NAME,
 } from "@src/hooks/models/useOpenRouterModelProviders"
-import { getOpenRouterAuthUrl } from "@src/oauth/urls"
-import { VSCodeButtonLink } from "@src/components/common/VSCodeButtonLink"
+import { vscode } from "@src/utils/vscode"
 
 import { ModelPicker } from "../ModelPicker"
 import { OpenRouterBalanceDisplay } from "./OpenRouterBalanceDisplay"
@@ -21,7 +20,6 @@ import { settingDescription } from "../SettingsCard"
 type OpenRouterProps = ProviderFormProps & {
 	routerModels?: RouterModels
 	selectedModelId: string
-	uriScheme: string | undefined
 	simplifySettings?: boolean
 	organizationAllowList: OrganizationAllowList
 	modelValidationError?: string
@@ -32,7 +30,6 @@ export const OpenRouter = ({
 	setApiConfigurationField,
 	routerModels,
 	selectedModelId,
-	uriScheme,
 	simplifySettings,
 	organizationAllowList,
 	modelValidationError,
@@ -81,9 +78,12 @@ export const OpenRouter = ({
 				<div className={settingDescription}>{t("settings:providers.apiKeyStorageNotice")}</div>
 			</div>
 			{!apiConfiguration?.openRouterApiKey && (
-				<VSCodeButtonLink href={getOpenRouterAuthUrl(uriScheme)} style={{ width: "100%" }} appearance="primary">
+				<Button
+					variant="primary"
+					className="w-full"
+					onClick={() => vscode.postMessage({ type: "startOpenRouterSignIn" })}>
 					{t("settings:providers.getOpenRouterApiKey")}
-				</VSCodeButtonLink>
+				</Button>
 			)}
 			{!simplifySettings && (
 				<div>

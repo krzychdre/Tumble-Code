@@ -37,6 +37,7 @@ import {
 import { CloudService } from "@tumble-code/cloud"
 
 import { Package } from "../../shared/package"
+import { completeOpenRouterSignIn, startOpenRouterSignIn } from "./openRouterSignIn"
 import { findLast } from "@tumble-code/core/browser"
 import { Mode } from "../../shared/modes"
 import { EMBEDDING_MODEL_PROFILES } from "../../shared/embeddingModels"
@@ -1270,33 +1271,35 @@ export class ClineProvider
 
 	// OpenRouter
 
+	/** Opens OpenRouter's sign-in page for a sign-in this window can complete (openRouterSignIn.ts). */
+	async startOpenRouterSignIn() {
+		const callbackUrl = `${vscode.env.uriScheme || "vscode"}://${Package.publisher}.${Package.name}/openrouter`
+		await vscode.env.openExternal(vscode.Uri.parse(startOpenRouterSignIn(callbackUrl)))
+	}
+
 	async handleOpenRouterCallback(code: string) {
 		const { apiConfiguration, currentApiConfigName = SETTINGS_DEFAULTS.currentApiConfigName } =
 			await this.getState()
 
-		let apiKey: string
+		let apiKey: string | undefined
 
 		try {
-			const baseUrl = apiConfiguration.openRouterBaseUrl || "https://openrouter.ai/api/v1"
-			// Extract the base domain for the auth endpoint.
-			const baseUrlDomain = baseUrl.match(/^(https?:\/\/[^/]+)/)?.[1] || "https://openrouter.ai"
-			const response = await axios.post(
-				`${baseUrlDomain}/api/v1/auth/keys`,
-				{ code },
-				{ timeout: CONTROL_REQUEST_TIMEOUT_MS },
+			apiKey = await completeOpenRouterSignIn(
+				code,
+				apiConfiguration.openRouterBaseUrl || "https://openrouter.ai/api/v1",
+				(url, body) => axios.post(url, body, { timeout: CONTROL_REQUEST_TIMEOUT_MS }),
 			)
-
-			if (response.data && response.data.key) {
-				apiKey = response.data.key
-			} else {
-				throw new Error("Invalid response from OpenRouter API")
-			}
 		} catch (error) {
 			logger.error(
 				`Error exchanging code for API key: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`,
 			)
 
 			throw error
+		}
+
+		if (!apiKey) {
+			logger.warn("[ClineProvider] Ignored an OpenRouter sign-in callback: no sign-in was started in this window")
+			return
 		}
 
 		const newConfiguration: ProviderSettings = {
