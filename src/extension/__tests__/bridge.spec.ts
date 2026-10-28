@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import type * as vscode from "vscode"
+import * as fs from "fs/promises"
+import * as os from "os"
+import * as path from "path"
+import * as vscode from "vscode"
 
 // DEF-C50: after a server restart the first bridge config fetch can fail (the
 // session token expired while the server was down). The bridge must try again
@@ -16,9 +19,10 @@ const cloud = vi.hoisted(() => {
 	}
 	const starts: Array<() => Promise<void>> = []
 	const stops = { count: 0 }
-	const created: Array<{ onStatusChange?: (status: string) => void }> = []
+	type Options = { onStatusChange?: (status: string) => void; workspacePath?: string; repositoryUrl?: string }
+	const created: Array<Options> = []
 	class BridgeOrchestrator {
-		constructor(options: { onStatusChange?: (status: string) => void }) {
+		constructor(options: Options) {
 			created.push(options)
 		}
 		start = vi.fn(() => {
@@ -43,7 +47,9 @@ const cloud = vi.hoisted(() => {
 
 vi.mock("vscode", () => ({
 	workspace: {
-		workspaceFolders: [],
+		get workspaceFolders() {
+			return []
+		},
 		getConfiguration: () => ({ get: () => undefined }),
 	},
 }))
@@ -199,5 +205,30 @@ describe("setupRemoteControlBridge status", () => {
 		await vi.advanceTimersByTimeAsync(0)
 
 		expect(getRemoteControlStatus()).toBe("off")
+	})
+
+	it("registers the workspace with its git remote", async () => {
+		const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "bridge-spec-"))
+		await fs.mkdir(path.join(workspace, ".git"))
+		await fs.writeFile(
+			path.join(workspace, ".git", "config"),
+			'[remote "origin"]\n\turl = git@github.com:acme/tool.git\n',
+		)
+		const folders = vi
+			.spyOn(vscode.workspace, "workspaceFolders", "get")
+			.mockReturnValue([{ uri: { fsPath: workspace } }] as never)
+		try {
+			setup()
+			await vi.advanceTimersByTimeAsync(0)
+			await vi.waitFor(() => expect(cloud.created).toHaveLength(1))
+
+			expect(cloud.created[0]).toMatchObject({
+				workspacePath: workspace,
+				repositoryUrl: "https://github.com/acme/tool.git",
+			})
+		} finally {
+			folders.mockRestore()
+			await fs.rm(workspace, { recursive: true, force: true })
+		}
 	})
 })

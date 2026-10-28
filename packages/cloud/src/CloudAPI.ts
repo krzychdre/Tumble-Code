@@ -6,6 +6,81 @@ import { getTumbleCodeApiUrl } from "./config.js"
 import { getUserAgent } from "./utils.js"
 import { AuthenticationError, CloudAPIError, NetworkError, TaskNotFoundError } from "./errors.js"
 
+/** The folder a recall call names; the cloud resolves it to the project (design: cross-session recall, section 7). */
+export interface RecallFolder {
+	workspacePath: string
+	/** The sanitized https remote from `getGitRepositoryInfo`; absent without git or a remote. */
+	repositoryUrl?: string
+}
+
+const recallScopeSchema = z.enum(["none", "owner", "members", "organization"])
+
+export type RecallScope = z.infer<typeof recallScopeSchema>
+
+const recallContextSchema = z.object({
+	projectId: z.string(),
+	projectName: z.string(),
+	scope: recallScopeSchema,
+})
+
+const recallSearchSchema = z.object({
+	results: z.array(
+		z.object({
+			sessionId: z.string(),
+			projectName: z.string(),
+			author: z.string(),
+			lastActivity: z.string(),
+			title: z.string(),
+			completed: z.boolean(),
+			snippets: z.array(z.string()),
+		}),
+	),
+	tooBroad: z.boolean(),
+})
+
+export type RecallSearchResponse = z.infer<typeof recallSearchSchema>
+
+const recallSessionSchema = z.object({
+	sessionId: z.string(),
+	projectName: z.string(),
+	author: z.string(),
+	lastActivity: z.string(),
+	title: z.string(),
+	part: z.enum(["summary", "conversation"]),
+	text: z.string(),
+	nextOffset: z.number().nullable(),
+})
+
+export type RecallSession = z.infer<typeof recallSessionSchema>
+
+export interface RecallSearchParams {
+	query: string
+	/** Absent means the cloud's default, `all`. */
+	scope?: "this_project" | "all"
+	limit?: number
+	/** The asking task, left out of the hits. */
+	excludeTaskId: string
+}
+
+export interface RecallSessionParams {
+	part?: RecallSession["part"]
+	offset?: number
+}
+
+/** The query string of a recall call: the folder, then the call's own parameters that are set. */
+function recallQuery(folder: RecallFolder, params: Record<string, string | number | undefined> = {}): string {
+	const query = new URLSearchParams({ workspacePath: folder.workspacePath })
+	for (const [key, value] of Object.entries({ repositoryUrl: folder.repositoryUrl, ...params })) {
+		if (value !== undefined) {
+			query.set(key, String(value))
+		}
+	}
+	return query.toString()
+}
+
+/** The context lookup gates the tool list of a model request, so it may not hold one up for long. */
+const RECALL_CONTEXT_TIMEOUT_MS = 5_000
+
 interface CloudAPIRequestOptions extends Omit<RequestInit, "headers"> {
 	timeout?: number
 	headers?: Record<string, string>
@@ -134,5 +209,32 @@ export class CloudAPI {
 					})
 					.parse(data),
 		})
+	}
+
+	/** The project of a folder and its recall scope; the cloud creates the project when it is new. */
+	async recallContext(folder: RecallFolder) {
+		return this.request(`/api/recall/context?${recallQuery(folder)}`, {
+			method: "GET",
+			timeout: RECALL_CONTEXT_TIMEOUT_MS,
+			parseResponse: (data) => recallContextSchema.parse(data),
+		})
+	}
+
+	async recallSearch(folder: RecallFolder, params: RecallSearchParams): Promise<RecallSearchResponse> {
+		const { query, ...rest } = params
+		return this.request(`/api/recall/search?${recallQuery(folder, { q: query, ...rest })}`, {
+			method: "GET",
+			parseResponse: (data) => recallSearchSchema.parse(data),
+		})
+	}
+
+	async recallSession(folder: RecallFolder, sessionId: string, params: RecallSessionParams): Promise<RecallSession> {
+		return this.request(
+			`/api/recall/sessions/${encodeURIComponent(sessionId)}?${recallQuery(folder, { ...params })}`,
+			{
+				method: "GET",
+				parseResponse: (data) => recallSessionSchema.parse(data),
+			},
+		)
 	}
 }

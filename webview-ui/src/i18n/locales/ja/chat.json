@@ -572,6 +572,12 @@
 	"searchTaskHistory": {
 		"title": "Tumble はこのタスクの履歴を検索しました"
 	},
+	"searchPastSessions": {
+		"title": "Tumble が過去のセッションを検索しました"
+	},
+	"readPastSession": {
+		"title": "Tumble が過去のセッションを読みました"
+	},
 	"waitForSubagents": {
 		"title": "Tumble はサブエージェントを待っています"
 	},

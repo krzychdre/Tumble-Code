@@ -7,6 +7,7 @@ import type { CodeIndexManager } from "../../../services/code-index/manager"
 import type { McpHub } from "../../../services/mcp/McpHub"
 import { isToolAllowedForMode } from "../../../core/tools/validateToolUse"
 import { toolNamesWhere } from "../../tools/toolDescriptors"
+import { searchPastSessionsThisProject } from "./native-tools/search_past_sessions"
 
 /**
  * Reverse lookup map - maps alias name to canonical tool name.
@@ -21,6 +22,9 @@ const ALIAS_TO_CANONICAL: Map<string, string> = new Map(
  * Read from TOOL_GROUPS so the group definition stays the single source of truth.
  */
 const WEB_GROUP_TOOLS: readonly string[] = TOOL_GROUPS.web.tools
+
+/** Offered only while the folder's project has recall on (`settings.recallScope`, see build-tools.ts). */
+const RECALL_TOOLS = ["search_past_sessions", "read_past_session"]
 
 /**
  * The slim toolset: the only tool names a profile with `slimToolset` on may
@@ -404,7 +408,8 @@ export function applyModelToolCustomization(
  * @param customModes - Custom mode configurations
  * @param experiments - Experiment flags
  * @param codeIndexManager - Code index manager for codebase_search feature check
- * @param settings - Additional settings for tool filtering (includes modelInfo for model-specific customization)
+ * @param settings - Additional settings for tool filtering (includes modelInfo for model-specific customization,
+ *   and `recallScope`, the folder's recall scope or undefined when recall is unavailable)
  * @param mcpHub - MCP hub for checking available resources
  * @returns Filtered array of tools allowed for the mode
  */
@@ -474,6 +479,14 @@ export function filterNativeToolsForMode(
 		allowedToolNames.delete("codebase_search")
 	}
 
+	// The recall tools need a signed-in user and a project whose scope is not
+	// `none`; `recallScope` is undefined otherwise (signed out, cloud offline).
+	if (!settings?.recallScope || settings.recallScope === "none") {
+		for (const toolName of RECALL_TOOLS) {
+			allowedToolNames.delete(toolName)
+		}
+	}
+
 	// Conditionally exclude update_todo_list if disabled in settings
 	if (settings?.todoListEnabled === false) {
 		allowedToolNames.delete("update_todo_list")
@@ -522,6 +535,9 @@ export function filterNativeToolsForMode(
 				if (aliasName) {
 					// Use cached renamed tool definition to avoid per-message object allocation
 					filteredTools.push(getOrCreateRenamedTool(tool, aliasName))
+				} else if (toolName === "search_past_sessions" && settings?.recallScope !== "organization") {
+					// Only an `organization` project can search other projects.
+					filteredTools.push(searchPastSessionsThisProject)
 				} else {
 					filteredTools.push(tool)
 				}

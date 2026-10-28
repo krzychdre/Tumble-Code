@@ -578,6 +578,12 @@
 	"searchTaskHistory": {
 		"title": "Tumble mencari di riwayat tugas ini"
 	},
+	"searchPastSessions": {
+		"title": "Tumble mencari sesi sebelumnya"
+	},
+	"readPastSession": {
+		"title": "Tumble membaca sesi sebelumnya"
+	},
 	"waitForSubagents": {
 		"title": "Tumble sedang menunggu subagennya"
 	},

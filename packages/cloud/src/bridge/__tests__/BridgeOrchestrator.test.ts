@@ -107,6 +107,7 @@ describe("BridgeOrchestrator", () => {
 			provider,
 			events: bus as unknown as BridgeEventSource,
 			workspacePath: "/work",
+			repositoryUrl: "https://github.com/acme/tool.git",
 			snapshot: vi.fn(async () => ({ mode: "code", isRunning: true })),
 			ioFactory: ioFactory as any,
 			// Deterministic jitter: the top of the equal-jitter band, so the
@@ -131,7 +132,11 @@ describe("BridgeOrchestrator", () => {
 		socket.fire("connect")
 		const register = socket.emitted.find((e) => e.event === ExtensionSocketEvents.REGISTER)
 		expect(register).toBeTruthy()
-		expect(register!.data).toMatchObject({ userId: "user-1", workspacePath: "/work" })
+		expect(register!.data).toMatchObject({
+			userId: "user-1",
+			workspacePath: "/work",
+			repositoryUrl: "https://github.com/acme/tool.git",
+		})
 	})
 
 	it("forwards API Message bus events to the task:event channel", async () => {

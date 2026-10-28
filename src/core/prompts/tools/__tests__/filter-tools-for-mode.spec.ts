@@ -3,6 +3,7 @@
 import type OpenAI from "openai"
 
 import { filterNativeToolsForMode } from "../filter-tools-for-mode"
+import { getNativeTools } from "../native-tools"
 
 function makeTool(name: string): OpenAI.Chat.ChatCompletionTool {
 	return {
@@ -278,5 +279,50 @@ describe("filterNativeToolsForMode - web group", () => {
 
 		expect(names(result)).toContain("web_search")
 		expect(names(result)).not.toContain("web_fetch")
+	})
+})
+
+describe("filterNativeToolsForMode - recall tools", () => {
+	const nativeTools = getNativeTools()
+
+	/** The recall tools offered, by name: their parameters, and whether the description offers a scope. */
+	function recallTools(mode: string, recallScope: string | undefined) {
+		const offered = filterNativeToolsForMode(nativeTools, mode, undefined, undefined, undefined, { recallScope })
+		return Object.fromEntries(
+			offered
+				.map((tool) => (tool as OpenAI.Chat.ChatCompletionFunctionTool).function)
+				.filter((fn) => fn.name.includes("past_session"))
+				.map((fn) => [
+					fn.name,
+					{
+						parameters: Object.keys((fn.parameters as { properties: object }).properties),
+						describesScope: fn.description!.includes("this_project"),
+					},
+				]),
+		)
+	}
+
+	const READ = { parameters: ["session_id", "part", "offset"], describesScope: false }
+
+	it.each([undefined, "none"])("offers neither tool for recall scope %s", (scope) => {
+		expect(recallTools("code", scope)).toEqual({})
+	})
+
+	it.each(["owner", "members"])("searches only this project for scope %s: no scope parameter", (scope) => {
+		expect(recallTools("ask", scope)).toEqual({
+			search_past_sessions: { parameters: ["query", "max_results"], describesScope: false },
+			read_past_session: READ,
+		})
+	})
+
+	it("offers the scope parameter for an organization project", () => {
+		expect(recallTools("code", "organization")).toEqual({
+			search_past_sessions: { parameters: ["query", "scope", "max_results"], describesScope: true },
+			read_past_session: READ,
+		})
+	})
+
+	it("follows the mode: a mode without the read group gets neither tool", () => {
+		expect(recallTools("orchestrator", "organization")).toEqual({})
 	})
 })

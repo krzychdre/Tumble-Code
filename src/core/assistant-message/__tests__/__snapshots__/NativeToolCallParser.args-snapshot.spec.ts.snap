@@ -9169,6 +9169,452 @@ exports[`NativeToolCallParser argument parsing (characterization) > read_file > 
 ]
 `;
 
+exports[`NativeToolCallParser argument parsing (characterization) > read_past_session > complete parse, including weak-model inputs 1`] = `
+[
+  {
+    "errors": [],
+    "label": "full",
+    "result": {
+      "name": "read_past_session",
+      "nativeArgs": {
+        "offset": 8000,
+        "part": "conversation",
+        "session_id": "task-1",
+      },
+      "params": {
+        "offset": "8000",
+        "part": "conversation",
+        "session_id": "task-1",
+      },
+      "partial": false,
+      "type": "tool_use",
+    },
+    "warnings": [],
+  },
+  {
+    "errors": [],
+    "label": "camelCase id, part in capitals, offset as string",
+    "result": {
+      "name": "read_past_session",
+      "nativeArgs": {
+        "offset": 8000,
+        "part": "conversation",
+        "session_id": "task-1",
+      },
+      "params": {
+        "offset": "8000",
+        "part": " Conversation",
+      },
+      "partial": false,
+      "type": "tool_use",
+    },
+    "warnings": [
+      "Unknown parameter 'sessionId' for tool 'read_past_session'",
+      "Valid param names:",
+    ],
+  },
+  {
+    "errors": [
+      "Failed to parse tool call arguments: [NativeToolCallParser] Invalid arguments for tool 'read_past_session'. Native tool calls require a valid JSON payload matching the tool schema. Received: {"part":"summary"}",
+      "Tool call: {
+  "id": "call_read_past_session",
+  "name": "read_past_session",
+  "arguments": "{\\"part\\":\\"summary\\"}"
+}",
+    ],
+    "label": "missing session_id",
+    "result": null,
+    "warnings": [],
+  },
+]
+`;
+
+exports[`NativeToolCallParser argument parsing (characterization) > read_past_session > partial parse over growing chunks 1`] = `
+[
+  {
+    "finalized": {
+      "name": "read_past_session",
+      "nativeArgs": {
+        "offset": 8000,
+        "part": "conversation",
+        "session_id": "task-1",
+      },
+      "params": {
+        "offset": "8000",
+        "part": "conversation",
+        "session_id": "task-1",
+      },
+      "partial": false,
+      "type": "tool_use",
+    },
+    "label": "full",
+    "partials": [
+      {
+        "received": "{"sessio",
+        "result": {
+          "name": "read_past_session",
+          "nativeArgs": undefined,
+          "params": {},
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"session_id":"",
+        "result": {
+          "name": "read_past_session",
+          "nativeArgs": {
+            "offset": undefined,
+            "part": undefined,
+            "session_id": "",
+          },
+          "params": {
+            "session_id": "",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"session_id":"task-1",",
+        "result": {
+          "name": "read_past_session",
+          "nativeArgs": {
+            "offset": undefined,
+            "part": undefined,
+            "session_id": "task-1",
+          },
+          "params": {
+            "session_id": "task-1",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"session_id":"task-1","part":",
+        "result": {
+          "name": "read_past_session",
+          "nativeArgs": {
+            "offset": undefined,
+            "part": undefined,
+            "session_id": "task-1",
+          },
+          "params": {
+            "session_id": "task-1",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"session_id":"task-1","part":"conver",
+        "result": {
+          "name": "read_past_session",
+          "nativeArgs": {
+            "offset": undefined,
+            "part": "conver",
+            "session_id": "task-1",
+          },
+          "params": {
+            "part": "conver",
+            "session_id": "task-1",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"session_id":"task-1","part":"conversation",",
+        "result": {
+          "name": "read_past_session",
+          "nativeArgs": {
+            "offset": undefined,
+            "part": "conversation",
+            "session_id": "task-1",
+          },
+          "params": {
+            "part": "conversation",
+            "session_id": "task-1",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"session_id":"task-1","part":"conversation","offset",
+        "result": {
+          "name": "read_past_session",
+          "nativeArgs": {
+            "offset": undefined,
+            "part": "conversation",
+            "session_id": "task-1",
+          },
+          "params": {
+            "part": "conversation",
+            "session_id": "task-1",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"session_id":"task-1","part":"conversation","offset":8000}",
+        "result": {
+          "name": "read_past_session",
+          "nativeArgs": {
+            "offset": 8000,
+            "part": "conversation",
+            "session_id": "task-1",
+          },
+          "params": {
+            "offset": "8000",
+            "part": "conversation",
+            "session_id": "task-1",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+    ],
+  },
+  {
+    "finalized": {
+      "name": "read_past_session",
+      "nativeArgs": {
+        "offset": 8000,
+        "part": "conversation",
+        "session_id": "task-1",
+      },
+      "params": {
+        "offset": "8000",
+        "part": " Conversation",
+      },
+      "partial": false,
+      "type": "tool_use",
+    },
+    "label": "camelCase id, part in capitals, offset as string",
+    "partials": [
+      {
+        "received": "{"sessio",
+        "result": {
+          "name": "read_past_session",
+          "nativeArgs": undefined,
+          "params": {},
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"sessionId":"ta",
+        "result": {
+          "name": "read_past_session",
+          "nativeArgs": {
+            "offset": undefined,
+            "part": undefined,
+            "session_id": "ta",
+          },
+          "params": {},
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"sessionId":"task-1","",
+        "result": {
+          "name": "read_past_session",
+          "nativeArgs": {
+            "offset": undefined,
+            "part": undefined,
+            "session_id": "task-1",
+          },
+          "params": {},
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"sessionId":"task-1","part":" ",
+        "result": {
+          "name": "read_past_session",
+          "nativeArgs": {
+            "offset": undefined,
+            "part": "",
+            "session_id": "task-1",
+          },
+          "params": {
+            "part": "",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"sessionId":"task-1","part":" Conversa",
+        "result": {
+          "name": "read_past_session",
+          "nativeArgs": {
+            "offset": undefined,
+            "part": "conversa",
+            "session_id": "task-1",
+          },
+          "params": {
+            "part": " Conversa",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"sessionId":"task-1","part":" Conversation","",
+        "result": {
+          "name": "read_past_session",
+          "nativeArgs": {
+            "offset": undefined,
+            "part": "conversation",
+            "session_id": "task-1",
+          },
+          "params": {
+            "part": " Conversation",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"sessionId":"task-1","part":" Conversation","offset":",
+        "result": {
+          "name": "read_past_session",
+          "nativeArgs": {
+            "offset": undefined,
+            "part": "conversation",
+            "session_id": "task-1",
+          },
+          "params": {
+            "part": " Conversation",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"sessionId":"task-1","part":" Conversation","offset":"8000"}",
+        "result": {
+          "name": "read_past_session",
+          "nativeArgs": {
+            "offset": 8000,
+            "part": "conversation",
+            "session_id": "task-1",
+          },
+          "params": {
+            "offset": "8000",
+            "part": " Conversation",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+    ],
+  },
+  {
+    "finalized": null,
+    "label": "missing session_id",
+    "partials": [
+      {
+        "received": "{"p",
+        "result": {
+          "name": "read_past_session",
+          "nativeArgs": undefined,
+          "params": {},
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"par",
+        "result": {
+          "name": "read_past_session",
+          "nativeArgs": undefined,
+          "params": {},
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"part"",
+        "result": {
+          "name": "read_past_session",
+          "nativeArgs": undefined,
+          "params": {},
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"part":"",
+        "result": {
+          "name": "read_past_session",
+          "nativeArgs": undefined,
+          "params": {
+            "part": "",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"part":"sum",
+        "result": {
+          "name": "read_past_session",
+          "nativeArgs": undefined,
+          "params": {
+            "part": "sum",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"part":"summa",
+        "result": {
+          "name": "read_past_session",
+          "nativeArgs": undefined,
+          "params": {
+            "part": "summa",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"part":"summary",
+        "result": {
+          "name": "read_past_session",
+          "nativeArgs": undefined,
+          "params": {
+            "part": "summary",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"part":"summary"}",
+        "result": {
+          "name": "read_past_session",
+          "nativeArgs": undefined,
+          "params": {
+            "part": "summary",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+    ],
+  },
+]
+`;
+
 exports[`NativeToolCallParser argument parsing (characterization) > run_parallel_tasks > complete parse, including weak-model inputs 1`] = `
 [
   {
@@ -10404,6 +10850,458 @@ exports[`NativeToolCallParser argument parsing (characterization) > search_files
           },
           "params": {
             "regex": "x",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+    ],
+  },
+]
+`;
+
+exports[`NativeToolCallParser argument parsing (characterization) > search_past_sessions > complete parse, including weak-model inputs 1`] = `
+[
+  {
+    "errors": [],
+    "label": "full",
+    "result": {
+      "name": "search_past_sessions",
+      "nativeArgs": {
+        "max_results": 5,
+        "query": "retry wrapper",
+        "scope": "all",
+      },
+      "params": {
+        "max_results": "5",
+        "query": "retry wrapper",
+        "scope": "all",
+      },
+      "partial": false,
+      "type": "tool_use",
+    },
+    "warnings": [],
+  },
+  {
+    "errors": [],
+    "label": "scope in words, max_results as string",
+    "result": {
+      "name": "search_past_sessions",
+      "nativeArgs": {
+        "max_results": 3,
+        "query": "retry",
+        "scope": "this_project",
+      },
+      "params": {
+        "max_results": "3",
+        "query": "retry",
+        "scope": " This-Project ",
+      },
+      "partial": false,
+      "type": "tool_use",
+    },
+    "warnings": [],
+  },
+  {
+    "errors": [
+      "Failed to parse tool call arguments: [NativeToolCallParser] Invalid arguments for tool 'search_past_sessions'. Native tool calls require a valid JSON payload matching the tool schema. Received: {"scope":"all"}",
+      "Tool call: {
+  "id": "call_search_past_sessions",
+  "name": "search_past_sessions",
+  "arguments": "{\\"scope\\":\\"all\\"}"
+}",
+    ],
+    "label": "missing query",
+    "result": null,
+    "warnings": [],
+  },
+]
+`;
+
+exports[`NativeToolCallParser argument parsing (characterization) > search_past_sessions > partial parse over growing chunks 1`] = `
+[
+  {
+    "finalized": {
+      "name": "search_past_sessions",
+      "nativeArgs": {
+        "max_results": 5,
+        "query": "retry wrapper",
+        "scope": "all",
+      },
+      "params": {
+        "max_results": "5",
+        "query": "retry wrapper",
+        "scope": "all",
+      },
+      "partial": false,
+      "type": "tool_use",
+    },
+    "label": "full",
+    "partials": [
+      {
+        "received": "{"query",
+        "result": {
+          "name": "search_past_sessions",
+          "nativeArgs": undefined,
+          "params": {},
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"query":"retr",
+        "result": {
+          "name": "search_past_sessions",
+          "nativeArgs": {
+            "max_results": undefined,
+            "query": "retr",
+            "scope": undefined,
+          },
+          "params": {
+            "query": "retr",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"query":"retry wrapp",
+        "result": {
+          "name": "search_past_sessions",
+          "nativeArgs": {
+            "max_results": undefined,
+            "query": "retry wrapp",
+            "scope": undefined,
+          },
+          "params": {
+            "query": "retry wrapp",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"query":"retry wrapper","sc",
+        "result": {
+          "name": "search_past_sessions",
+          "nativeArgs": {
+            "max_results": undefined,
+            "query": "retry wrapper",
+            "scope": undefined,
+          },
+          "params": {
+            "query": "retry wrapper",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"query":"retry wrapper","scope":"a",
+        "result": {
+          "name": "search_past_sessions",
+          "nativeArgs": {
+            "max_results": undefined,
+            "query": "retry wrapper",
+            "scope": "a",
+          },
+          "params": {
+            "query": "retry wrapper",
+            "scope": "a",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"query":"retry wrapper","scope":"all","ma",
+        "result": {
+          "name": "search_past_sessions",
+          "nativeArgs": {
+            "max_results": undefined,
+            "query": "retry wrapper",
+            "scope": "all",
+          },
+          "params": {
+            "query": "retry wrapper",
+            "scope": "all",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"query":"retry wrapper","scope":"all","max_resul",
+        "result": {
+          "name": "search_past_sessions",
+          "nativeArgs": {
+            "max_results": undefined,
+            "query": "retry wrapper",
+            "scope": "all",
+          },
+          "params": {
+            "query": "retry wrapper",
+            "scope": "all",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"query":"retry wrapper","scope":"all","max_results":5}",
+        "result": {
+          "name": "search_past_sessions",
+          "nativeArgs": {
+            "max_results": 5,
+            "query": "retry wrapper",
+            "scope": "all",
+          },
+          "params": {
+            "max_results": "5",
+            "query": "retry wrapper",
+            "scope": "all",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+    ],
+  },
+  {
+    "finalized": {
+      "name": "search_past_sessions",
+      "nativeArgs": {
+        "max_results": 3,
+        "query": "retry",
+        "scope": "this_project",
+      },
+      "params": {
+        "max_results": "3",
+        "query": "retry",
+        "scope": " This-Project ",
+      },
+      "partial": false,
+      "type": "tool_use",
+    },
+    "label": "scope in words, max_results as string",
+    "partials": [
+      {
+        "received": "{"query"",
+        "result": {
+          "name": "search_past_sessions",
+          "nativeArgs": undefined,
+          "params": {},
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"query":"retry",
+        "result": {
+          "name": "search_past_sessions",
+          "nativeArgs": {
+            "max_results": undefined,
+            "query": "retry",
+            "scope": undefined,
+          },
+          "params": {
+            "query": "retry",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"query":"retry","scope",
+        "result": {
+          "name": "search_past_sessions",
+          "nativeArgs": {
+            "max_results": undefined,
+            "query": "retry",
+            "scope": undefined,
+          },
+          "params": {
+            "query": "retry",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"query":"retry","scope":" Thi",
+        "result": {
+          "name": "search_past_sessions",
+          "nativeArgs": {
+            "max_results": undefined,
+            "query": "retry",
+            "scope": "thi",
+          },
+          "params": {
+            "query": "retry",
+            "scope": " Thi",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"query":"retry","scope":" This-Projec",
+        "result": {
+          "name": "search_past_sessions",
+          "nativeArgs": {
+            "max_results": undefined,
+            "query": "retry",
+            "scope": "this_projec",
+          },
+          "params": {
+            "query": "retry",
+            "scope": " This-Projec",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"query":"retry","scope":" This-Project ","ma",
+        "result": {
+          "name": "search_past_sessions",
+          "nativeArgs": {
+            "max_results": undefined,
+            "query": "retry",
+            "scope": "this_project",
+          },
+          "params": {
+            "query": "retry",
+            "scope": " This-Project ",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"query":"retry","scope":" This-Project ","max_result",
+        "result": {
+          "name": "search_past_sessions",
+          "nativeArgs": {
+            "max_results": undefined,
+            "query": "retry",
+            "scope": "this_project",
+          },
+          "params": {
+            "query": "retry",
+            "scope": " This-Project ",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"query":"retry","scope":" This-Project ","max_results":"3"}",
+        "result": {
+          "name": "search_past_sessions",
+          "nativeArgs": {
+            "max_results": 3,
+            "query": "retry",
+            "scope": "this_project",
+          },
+          "params": {
+            "max_results": "3",
+            "query": "retry",
+            "scope": " This-Project ",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+    ],
+  },
+  {
+    "finalized": null,
+    "label": "missing query",
+    "partials": [
+      {
+        "received": "{"",
+        "result": {
+          "name": "search_past_sessions",
+          "nativeArgs": undefined,
+          "params": {},
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"sc",
+        "result": {
+          "name": "search_past_sessions",
+          "nativeArgs": undefined,
+          "params": {},
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"scop",
+        "result": {
+          "name": "search_past_sessions",
+          "nativeArgs": undefined,
+          "params": {},
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"scope"",
+        "result": {
+          "name": "search_past_sessions",
+          "nativeArgs": undefined,
+          "params": {},
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"scope":"",
+        "result": {
+          "name": "search_past_sessions",
+          "nativeArgs": undefined,
+          "params": {
+            "scope": "",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"scope":"al",
+        "result": {
+          "name": "search_past_sessions",
+          "nativeArgs": undefined,
+          "params": {
+            "scope": "al",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"scope":"all"",
+        "result": {
+          "name": "search_past_sessions",
+          "nativeArgs": undefined,
+          "params": {
+            "scope": "all",
+          },
+          "partial": true,
+          "type": "tool_use",
+        },
+      },
+      {
+        "received": "{"scope":"all"}",
+        "result": {
+          "name": "search_past_sessions",
+          "nativeArgs": undefined,
+          "params": {
+            "scope": "all",
           },
           "partial": true,
           "type": "tool_use",

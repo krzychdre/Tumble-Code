@@ -572,6 +572,12 @@
 	"searchTaskHistory": {
 		"title": "Tumble ने इस कार्य के इतिहास में खोज की"
 	},
+	"searchPastSessions": {
+		"title": "Tumble ने पिछले सत्र खोजे"
+	},
+	"readPastSession": {
+		"title": "Tumble ने एक पिछला सत्र पढ़ा"
+	},
 	"waitForSubagents": {
 		"title": "Tumble अपने सबएजेंट्स की प्रतीक्षा कर रहा है"
 	},

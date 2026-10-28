@@ -573,6 +573,12 @@
 	"searchTaskHistory": {
 		"title": "Tumble bu görevin geçmişini aradı"
 	},
+	"searchPastSessions": {
+		"title": "Tumble önceki oturumlarda arama yaptı"
+	},
+	"readPastSession": {
+		"title": "Tumble önceki bir oturumu okudu"
+	},
 	"waitForSubagents": {
 		"title": "Tumble alt ajanlarını bekliyor"
 	},

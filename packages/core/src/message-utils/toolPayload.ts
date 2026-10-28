@@ -30,6 +30,8 @@ export type ToolPayloadKind =
 	| "skill"
 	| "readArtifact"
 	| "searchTaskHistory"
+	| "searchPastSessions"
+	| "readPastSession"
 	| "runParallelTasks"
 	| "waitForSubagents"
 
@@ -46,6 +48,8 @@ const SAY_TOOL_KINDS: Record<ClineSayTool["tool"], ToolPayloadKind> = {
 	listFilesRecursive: "listFiles",
 	searchFiles: "searchFiles",
 	searchTaskHistory: "searchTaskHistory",
+	searchPastSessions: "searchPastSessions",
+	readPastSession: "readPastSession",
 	switchMode: "switchMode",
 	newTask: "newTask",
 	finishTask: "finishTask",
@@ -342,7 +346,11 @@ export function toolPayloadSubject(payload: Omit<ToolPayload, "subject">): strin
 			return nonEmpty(payload.regex)
 		case "codebaseSearch":
 		case "searchTaskHistory":
+		case "searchPastSessions":
 			return nonEmpty(payload.query)
+		case "readPastSession":
+			// ReadPastSessionTool sends the session's title as the description.
+			return nonEmpty(payload.description)
 		case "webSearch":
 			return nonEmpty(toolPayloadQueriesText(payload))
 		case "webFetch":

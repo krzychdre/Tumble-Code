@@ -20,6 +20,8 @@ export interface ClineSayTool {
 		| "listFilesRecursive"
 		| "searchFiles"
 		| "searchTaskHistory"
+		| "searchPastSessions"
+		| "readPastSession"
 		| "switchMode"
 		| "newTask"
 		| "finishTask"

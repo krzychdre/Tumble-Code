@@ -573,6 +573,12 @@
 	"searchTaskHistory": {
 		"title": "Tumble đã tìm trong lịch sử tác vụ này"
 	},
+	"searchPastSessions": {
+		"title": "Tumble đã tìm trong các phiên trước"
+	},
+	"readPastSession": {
+		"title": "Tumble đã đọc một phiên trước"
+	},
 	"waitForSubagents": {
 		"title": "Tumble đang chờ các tác tử con của nó"
 	},

@@ -5,6 +5,8 @@ import { listFilesTool } from "../tools/ListFilesTool"
 import { readFileTool } from "../tools/ReadFileTool"
 import { readArtifactTool } from "../tools/ReadArtifactTool"
 import { searchTaskHistoryTool } from "../tools/SearchTaskHistoryTool"
+import { searchPastSessionsTool } from "../tools/SearchPastSessionsTool"
+import { readPastSessionTool } from "../tools/ReadPastSessionTool"
 import { writeToFileTool } from "../tools/WriteToFileTool"
 import { editTool } from "../tools/EditTool"
 import { searchReplaceTool } from "../tools/SearchReplaceTool"
@@ -47,6 +49,8 @@ const TOOL_HANDLERS: Readonly<Record<DispatchableToolName, BaseTool<any>>> = {
 	// dispatch; it is listed so a replayed legacy block still finds a handler.
 	read_command_output: readArtifactTool,
 	search_task_history: searchTaskHistoryTool,
+	search_past_sessions: searchPastSessionsTool,
+	read_past_session: readPastSessionTool,
 	write_to_file: writeToFileTool,
 	apply_diff: applyDiffTool,
 	edit: editTool,

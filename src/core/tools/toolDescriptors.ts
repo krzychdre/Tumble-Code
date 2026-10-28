@@ -16,8 +16,10 @@ import {
 	parseNewTaskArgs,
 	parseReadArtifactArgs,
 	parseReadFileArgs,
+	parseReadPastSessionArgs,
 	parseRunParallelTasksArgs,
 	parseSearchFilesArgs,
+	parseSearchPastSessionsArgs,
 	parseSearchReplaceArgs,
 	parseSearchTaskHistoryArgs,
 	parseSkillArgs,
@@ -244,6 +246,23 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		// It searches the artifact directory: a spilled result would find itself.
 		spillExempt: true,
 		describe: forParam("query"),
+	},
+	// The two recall tools read the cloud, never the workspace.
+	search_past_sessions: {
+		parseArgs: parseSearchPastSessionsArgs,
+		approvalCategory: "none",
+		workspaceReadOnly: true,
+		compactable: true,
+		describe: forParam("query"),
+	},
+	read_past_session: {
+		parseArgs: parseReadPastSessionArgs,
+		approvalCategory: "none",
+		workspaceReadOnly: true,
+		compactable: true,
+		// Pages itself (8000 characters, then nextOffset).
+		spillExempt: true,
+		describe: forParam("session_id"),
 	},
 
 	// edit

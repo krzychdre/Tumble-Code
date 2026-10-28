@@ -668,6 +668,68 @@ exports[`BaseProvider > does not mutate its input (DEF-C10) > sends the native t
         "additionalProperties": false
       }
     }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "search_past_sessions",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "all",
+              "this_project"
+            ]
+          },
+          "max_results": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "query",
+          "scope",
+          "max_results"
+        ],
+        "additionalProperties": false
+      },
+      "strict": true
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "read_past_session",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string"
+          },
+          "part": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "conversation"
+            ]
+          },
+          "offset": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "session_id",
+          "part",
+          "offset"
+        ],
+        "additionalProperties": false
+      },
+      "strict": true
+    }
   }
 ]"
 `;

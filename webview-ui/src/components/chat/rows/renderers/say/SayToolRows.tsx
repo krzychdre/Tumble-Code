@@ -25,6 +25,27 @@ export const SearchTaskHistorySayRow = ({ tool: sayTool }: ToolRendererProps) =>
 	)
 }
 
+/** A search of earlier sessions with its query, or a read of one with its title. */
+export const PastSessionSayRow = ({ tool: sayTool }: ToolRendererProps) => {
+	const { t } = useTranslation()
+	const subject = sayTool.tool === "searchPastSessions" ? sayTool.query : sayTool.description
+	return (
+		<div style={headerStyle}>
+			<History className="w-4 shrink-0" aria-hidden="true" />
+			<span style={{ fontWeight: "bold" }}>
+				{sayTool.tool === "searchPastSessions"
+					? t("chat:searchPastSessions.title")
+					: t("chat:readPastSession.title")}
+			</span>
+			{subject && (
+				<span className="text-xs ml-1" style={{ color: "var(--vscode-descriptionForeground)" }}>
+					({subject})
+				</span>
+			)}
+		</div>
+	)
+}
+
 /** A read of a task artifact (or, in old histories, of a command's output): the range or the search. */
 export const ReadArtifactSayRow = ({ tool: sayTool }: ToolRendererProps) => {
 	const { t } = useTranslation()
@@ -62,6 +83,8 @@ export const SAY_TOOL_RENDERERS: SayToolRendererMap = {
 	// The same row as the tool ask: the say kind only changes the title to "ran".
 	runSlashCommand: RunSlashCommandToolRow,
 	searchTaskHistory: SearchTaskHistorySayRow,
+	searchPastSessions: PastSessionSayRow,
+	readPastSession: PastSessionSayRow,
 	readArtifact: ReadArtifactSayRow,
 	readCommandOutput: ReadArtifactSayRow,
 	waitForSubagents: WaitForSubagentsSayRow,

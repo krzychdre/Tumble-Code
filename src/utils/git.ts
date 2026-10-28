@@ -14,27 +14,57 @@ const execAsync = promisify(exec)
 const GIT_OUTPUT_LINE_LIMIT = 500
 
 /**
- * Extracts git repository information from the workspace's .git directory
+ * The git directory of a checkout and the common directory that holds the shared config.
+ * In a linked worktree (and a submodule) `.git` is a file `gitdir: <path>`; a worktree's
+ * git directory then names the main repository's in its `commondir` file.
+ */
+async function resolveGitDirectories(
+	workspaceRoot: string,
+): Promise<{ gitDir: string; commonDir: string } | undefined> {
+	const dotGit = path.join(workspaceRoot, ".git")
+	let stat
+	try {
+		stat = await fs.stat(dotGit)
+	} catch {
+		return undefined
+	}
+	if (stat.isDirectory()) {
+		return { gitDir: dotGit, commonDir: dotGit }
+	}
+
+	const pointer = (await fs.readFile(dotGit, "utf8")).match(/^gitdir:\s*(.+?)\s*$/m)
+	if (!pointer) {
+		return undefined
+	}
+	const gitDir = path.resolve(workspaceRoot, pointer[1])
+	try {
+		const commonDir = (await fs.readFile(path.join(gitDir, "commondir"), "utf8")).trim()
+		return { gitDir, commonDir: path.resolve(gitDir, commonDir) }
+	} catch {
+		// A submodule has no commondir: its git directory holds its own config.
+		return { gitDir, commonDir: gitDir }
+	}
+}
+
+/**
+ * Extracts git repository information from the workspace's git directory. A linked worktree
+ * reports the remote of its main checkout and the branch it has checked out.
  * @param workspaceRoot The root path of the workspace
  * @returns Git repository information or empty object if not a git repository
  */
 export async function getGitRepositoryInfo(workspaceRoot: string): Promise<GitRepositoryInfo> {
 	try {
-		const gitDir = path.join(workspaceRoot, ".git")
-
-		// Check if .git directory exists
-		try {
-			await fs.access(gitDir)
-		} catch {
-			// Not a git repository
+		const directories = await resolveGitDirectories(workspaceRoot)
+		if (!directories) {
 			return {}
 		}
+		const { gitDir, commonDir } = directories
 
 		const gitInfo: GitRepositoryInfo = {}
 
 		// Try to read git config file
 		try {
-			const configPath = path.join(gitDir, "config")
+			const configPath = path.join(commonDir, "config")
 			const configContent = await fs.readFile(configPath, "utf8")
 
 			// Very simple approach - just find any URL line

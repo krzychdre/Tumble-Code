@@ -131,6 +131,22 @@ const CASES: Record<DispatchableToolName | "write_file", Case[]> = {
 		{ label: "max_results not a number", args: { query: "retry", max_results: "many" } },
 		{ label: "missing query", args: { max_results: 3 } },
 	],
+	search_past_sessions: [
+		{ label: "full", args: { query: "retry wrapper", scope: "all", max_results: 5 } },
+		{
+			label: "scope in words, max_results as string",
+			args: { query: "retry", scope: " This-Project ", max_results: "3" },
+		},
+		{ label: "missing query", args: { scope: "all" } },
+	],
+	read_past_session: [
+		{ label: "full", args: { session_id: "task-1", part: "conversation", offset: 8000 } },
+		{
+			label: "camelCase id, part in capitals, offset as string",
+			args: { sessionId: "task-1", part: " Conversation", offset: "8000" },
+		},
+		{ label: "missing session_id", args: { part: "summary" } },
+	],
 	list_files: [
 		{ label: "full", args: { path: "src", recursive: true } },
 		{ label: "recursive as string", args: { path: "src", recursive: " FALSE " } },

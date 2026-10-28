@@ -76,6 +76,7 @@ export const TOOL_MINIMAL_EXAMPLES = {
 	read_artifact: { artifact_id: "cmd-1706119234567.txt" },
 	read_command_output: { artifact_id: "cmd-1706119234567.txt" },
 	read_file: { path: "src/app.ts" },
+	read_past_session: { session_id: "0199c7e2-5b1a-7c3e-9f00-2d4e6a8b1c3f" },
 	// Two subtasks show the array shape; one subtask is a valid call too (a follow-up
 	// started after a result).
 	run_parallel_tasks: {
@@ -87,6 +88,7 @@ export const TOOL_MINIMAL_EXAMPLES = {
 	},
 	search_and_replace: { file_path: "src/app.ts", old_string: "const a = 1", new_string: "const a = 2" },
 	search_files: { path: "src", regex: "retryPolicy", file_pattern: null },
+	search_past_sessions: { query: "retry wrapper" },
 	search_replace: { file_path: "src/app.ts", old_string: "const a = 1", new_string: "const a = 2" },
 	// `max_results` is deliberately absent: the schema is not strict, the
 	// default is 10, and a weak model copying the example should see the

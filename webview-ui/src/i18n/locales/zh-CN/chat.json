@@ -573,6 +573,12 @@
 	"searchTaskHistory": {
 		"title": "Tumble 搜索了此任务的历史"
 	},
+	"searchPastSessions": {
+		"title": "Tumble 搜索了以往的会话"
+	},
+	"readPastSession": {
+		"title": "Tumble 读取了一个以往的会话"
+	},
 	"waitForSubagents": {
 		"title": "Tumble 正在等待其子代理"
 	},

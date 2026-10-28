@@ -10,12 +10,14 @@ import executeCommand from "./execute_command"
 import listFiles from "./list_files"
 import newTask from "./new_task"
 import readArtifact from "./read_artifact"
+import readPastSession from "./read_past_session"
 import { createReadFileTool, type ReadFileToolOptions } from "./read_file"
 import runParallelTasks from "./run_parallel_tasks"
 import skill from "./skill"
 import searchReplace from "./search_replace"
 import edit_file from "./edit_file"
 import searchFiles from "./search_files"
+import searchPastSessions from "./search_past_sessions"
 import searchTaskHistory from "./search_task_history"
 import switchMode from "./switch_mode"
 import toolsLoad from "./tools_load"
@@ -80,6 +82,8 @@ export function getNativeTools(options: NativeToolsOptions = {}): OpenAI.Chat.Ch
 		// existing users their tool-array cache hit. New tools go last.
 		searchTaskHistory,
 		waitForSubagents,
+		searchPastSessions,
+		readPastSession,
 	] satisfies OpenAI.Chat.ChatCompletionTool[]
 }
 
