@@ -58,13 +58,31 @@ class ConnectionRegistry:
         self._task_sid: dict[str, str] = {}
         # task_id -> its last instanceState snapshot
         self._task_state: dict[str, dict] = {}
+        # browser sid -> the web session (Session.id) its handshake cookie
+        # named, so signing that session out can close the socket.
+        self._session_by_sid: dict[str, str] = {}
 
     # --- generic socket metadata ------------------------------------------
 
     def attach(
-        self, sid: str, role: str, user_id: str, org_id: Optional[str] = None
+        self,
+        sid: str,
+        role: str,
+        user_id: str,
+        org_id: Optional[str] = None,
+        session_id: Optional[str] = None,
     ) -> None:
         self._meta[sid] = SocketMeta(role=role, user_id=user_id, org_id=org_id)
+        if session_id is not None:
+            self._session_by_sid[sid] = session_id
+
+    def session_id(self, sid: str) -> Optional[str]:
+        """The web session a browser socket was opened with, if known."""
+        return self._session_by_sid.get(sid)
+
+    def sids_of_session(self, session_id: str) -> list[str]:
+        """The sockets opened with ``session_id``'s cookie."""
+        return [sid for sid, sess in self._session_by_sid.items() if sess == session_id]
 
     def meta(self, sid: str) -> Optional[SocketMeta]:
         return self._meta.get(sid)
@@ -72,6 +90,7 @@ class ConnectionRegistry:
     def detach(self, sid: str) -> Optional[SocketMeta]:
         """Remove a socket, and with an extension socket the tasks it streamed."""
         meta = self._meta.pop(sid, None)
+        self._session_by_sid.pop(sid, None)
         self._task_access_by_sid.pop(sid, None)
         self._instance_by_sid.pop(sid, None)
         if meta and meta["role"] == "extension":

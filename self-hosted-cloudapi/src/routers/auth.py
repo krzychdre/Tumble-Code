@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db
+from src.realtime.sio import end_web_session
 from src.services.auth_service import (
     validate_ticket,
     validate_client_token,
@@ -195,4 +196,8 @@ async def remove_session(
         )
 
     await deactivate_session(db, session_id)
+    # Committed first, then any browser socket opened with this session is
+    # closed (src/realtime/sio.end_web_session).
+    await db.commit()
+    await end_web_session(session_id)
     return {"response": "Session removed"}

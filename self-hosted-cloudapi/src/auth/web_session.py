@@ -96,6 +96,29 @@ def _decode_cookie(raw: str) -> Optional[dict]:
         return None
 
 
+async def live_session(db: AsyncSession, session_id: str) -> Optional[Session]:
+    """The session ``session_id`` while it is active and not expired, else None.
+
+    Also how the bridge re-checks a browser socket's session after its
+    handshake (src/realtime/sio.py)."""
+    result = await db.execute(
+        select(Session).where(Session.id == session_id, Session.is_active == True)  # noqa: E712
+    )
+    session = result.scalar_one_or_none()
+    if session is None:
+        return None
+
+    if session.expires_at is not None:
+        expires_at = session.expires_at
+        # SQLite's aiosqlite driver returns naive datetimes even for columns
+        # declared as DateTime(timezone=True); Postgres returns aware ones.
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at <= datetime.now(timezone.utc):
+            return None
+    return session
+
+
 async def resolve_web_user(
     raw_cookie: Optional[str], db: AsyncSession
 ) -> Optional[WebUser]:
@@ -119,21 +142,9 @@ async def resolve_web_user(
     if not session_id:
         return None
 
-    result = await db.execute(
-        select(Session).where(Session.id == session_id, Session.is_active == True)  # noqa: E712
-    )
-    session = result.scalar_one_or_none()
+    session = await live_session(db, session_id)
     if session is None:
         return None
-
-    if session.expires_at is not None:
-        expires_at = session.expires_at
-        # SQLite's aiosqlite driver returns naive datetimes even for columns
-        # declared as DateTime(timezone=True); Postgres returns aware ones.
-        if expires_at.tzinfo is None:
-            expires_at = expires_at.replace(tzinfo=timezone.utc)
-        if expires_at <= datetime.now(timezone.utc):
-            return None
 
     result = await db.execute(select(User).where(User.id == session.user_id))
     user = result.scalar_one_or_none()
