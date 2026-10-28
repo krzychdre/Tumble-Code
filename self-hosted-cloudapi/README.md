@@ -182,7 +182,6 @@ the service account `tumble-code-cloudapi`, the role **Tumble Code cloud API** t
 with the key from `.env` that does not expire. If Authentik cannot be read (a wrong token, Authentik down), the API
 logs a warning, keeps the memberships it has, and sign-in still works.
 
-
 ## Configuration reference
 
 ### Authentik addresses
@@ -253,6 +252,12 @@ docker compose exec auth_worker ak apply_blueprint custom/tumble-code.yaml
   (it arrives from the compose network's gateway) are always allowed. Public
   share links (`/shared/<id>`) stay public; the extension API is not affected.
 - The startup log prints `Web panel open to: …` with the effective list.
+- Plain `http://` carries the extension's session token, the panel's session
+  cookie and every synced task in clear text, readable and changeable by
+  anyone on the path. Use it on `localhost` or on a network you control; to
+  reach the cloud over anything else, put the stack behind a TLS-terminating
+  reverse proxy and use `https://` in `WEB_PUBLIC_URL`, `AUTHENTIK_BASE_URL`,
+  `tumble-code.cloudApiUrl` and the CLI's `cloudApiUrl`.
 - Trusted web origins: `API_BASE_URL`, `WEB_PUBLIC_URL` and the extra entries
   of `CORS_ORIGINS` (usually empty). Only these pages get a CORS grant, and
   the live bridge refuses a browser connection from any other page (a page on
