@@ -765,7 +765,7 @@
 				"output": 8991,
 				"cache_read": 300,
 				"cache_write": 40,
-				"cost": 5.704999999999999,
+				"cost": 5.705,
 				"completions": 14,
 				"total_tokens": 143448,
 				"total_tokens_fmt": "143.4k"
@@ -922,7 +922,7 @@
 				{
 					"name": "vscode",
 					"tokens": 143448,
-					"cost": 5.704999999999999,
+					"cost": 5.705,
 					"count": 14,
 					"tokens_fmt": "143.4k",
 					"label": "VS Code"

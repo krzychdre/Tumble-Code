@@ -27,6 +27,7 @@ from src.models.task import Task
 from src.models.user import User
 from src.services.quality_overview import quality_overview as _quality_overview
 from src.services.metrics_service import compute_user_metrics
+from src.web.presenters.metrics_view import GROUPINGS
 from tests.web_helpers import _event_row
 
 NOW = datetime(2026, 9, 20, 12, 0, tzinfo=timezone.utc)
@@ -358,37 +359,30 @@ def _selected_columns(statement: str, table: str) -> set[str]:
     return {part.strip().removeprefix(f"{table}.") for part in head.split(",")}
 
 
-async def test_metrics_read_only_the_columns_they_use(seeded, captured_sql):
-    """No full TelemetryEvent entity and no JSON payload: the figures are the
-    columns ingest lifted out of it. client_kind feeds the "By client"
-    breakdown, the project's id and name the "By project" one."""
-    await compute_user_metrics(seeded, USER, period="all", now=NOW)
+@pytest.mark.parametrize("group, statements", [(None, 4), ("project", 4), ("model", 5)])
+async def test_metrics_sum_in_sql_and_read_no_payload(
+    seeded, captured_sql, group, statements
+):
+    """Every read of the events is an aggregate: a GROUP BY (per combination
+    of names, quarter of an hour, group or indexing source) or the count of
+    distinct tasks, which the groups give when each task is in one of them.
+    No event row reaches Python, and no statement reads the JSON payload: the
+    figures are the columns ingest lifted out of it."""
+    await compute_user_metrics(
+        seeded,
+        USER,
+        period="all",
+        now=NOW,
+        group_by=GROUPINGS[group].events if group else None,
+    )
 
     reads = [s for s in captured_sql if "FROM telemetry_events" in s]
-    assert len(reads) == 2, reads
-    completions, embeddings = reads
-    assert _selected_columns(completions, "telemetry_events") == {
-        "task_id",
-        "input_tokens",
-        "output_tokens",
-        "cache_read_tokens",
-        "cache_write_tokens",
-        "cost",
-        "duration_ms",
-        "model_id",
-        "provider",
-        "mode",
-        "completion_kind",
-        "usage_reported",
-        "created_at",
-        "client_kind",
-        "tasks.project_id",
-        "projects.name AS project_name",
-    }
-    assert _selected_columns(embeddings, "telemetry_events") == {
-        "input_tokens",
-        "embedding_source",
-    }
+    assert len(reads) == statements, reads
+    for statement in reads:
+        assert "properties" not in statement
+        assert " GROUP BY " in statement or _selected_columns(
+            statement, "telemetry_events"
+        ) == {"count(DISTINCT telemetry_events.task_id) AS count_1"}
 
 
 async def test_quality_overview_reads_only_the_columns_it_uses(seeded, captured_sql):

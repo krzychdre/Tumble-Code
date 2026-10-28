@@ -31,7 +31,7 @@ from sqlalchemy.ext.asyncio import (  # noqa: E402
     create_async_engine,
     async_sessionmaker,
 )
-from sqlalchemy.pool import StaticPool  # noqa: E402
+from sqlalchemy.pool import NullPool, StaticPool  # noqa: E402
 
 from src.database import Base, get_db  # noqa: E402
 
@@ -90,6 +90,26 @@ async def db_session(session_factory):
     """Session for direct DB seeding/assertions inside tests."""
     async with session_factory() as session:
         yield session
+
+
+# A Postgres database the tests may own (the CI job's service container, see
+# tests/test_recall_pg.py): what SQLite cannot show runs there too.
+PG_URL = os.environ.get("RECALL_PG_URL")
+
+
+@pytest.fixture
+async def pg_session():
+    """Session on the Postgres of RECALL_PG_URL, its schema rebuilt from the
+    models; the test skips without it."""
+    if not PG_URL:
+        pytest.skip("RECALL_PG_URL is not set")
+    engine = create_async_engine(PG_URL, poolclass=NullPool)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        yield session
+    await engine.dispose()
 
 
 @pytest.fixture

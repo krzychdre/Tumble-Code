@@ -109,8 +109,8 @@ async def metrics_page(
         view.period,
         client=view.client,
         zone=web["zone"],
-        group_key=grouping.event_key if grouping else None,
-        only=view.only,
+        group_by=grouping.events if grouping else None,
+        narrow=view.events_condition(),
         organization_id=organization_id,
     )
     periods = [

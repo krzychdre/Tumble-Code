@@ -17,7 +17,6 @@ from src.models.task import Task
 from tests.web_helpers import (
     _add_message,
     _backfill_files,
-    _llm_event,
     _msgs,
     _override_current_user,
     _override_web_user,
@@ -85,24 +84,6 @@ def test_backfill_upload_parser_keeps_its_answers():
     assert _parse_backfill_upload(json.dumps(_msgs()).encode()) == _msgs()
     assert _parse_backfill_upload(b"not json") == []
     assert _parse_backfill_upload(b"\xff\xfe") == []
-
-
-async def test_metrics_aggregation_runs_off_the_loop(db_session, monkeypatch):
-    from src.services import metrics_service
-
-    calls = _spy(monkeypatch, metrics_service, "aggregate_user_metrics")
-    await _seed_user(db_session)
-    db_session.add(_llm_event())
-    await db_session.commit()
-
-    result = await metrics_service.compute_user_metrics(
-        db_session, "user_test", period="all"
-    )
-
-    assert result["totals"]["completions"] == 1
-    assert len(calls) == 1
-    assert calls[0]["on_loop"] is False
-    assert calls[0]["thread"] != threading.get_ident()
 
 
 async def test_task_page_parses_and_serializes_the_conversation_off_the_loop(

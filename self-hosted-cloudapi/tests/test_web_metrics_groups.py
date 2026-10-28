@@ -4,15 +4,17 @@ and an organization's space.
 Plans: ai_plans/2026-10-27_10-00_cloud-web-metrics-groups.md and
 ai_plans/2026-10-27_10-30_cloud-web-org-metrics.md. The grouping table and the
 view's URLs are web/presenters/metrics_view.py; the sums are
-services/metrics_service.aggregate_user_metrics.
+services/metrics_service.compute_user_metrics.
 """
 
+import json
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from html import unescape
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
+from sqlalchemy import text
 
 from src.auth.web_session import get_web_user_optional
 from src.models.organization import Membership, Organization
@@ -20,7 +22,7 @@ from src.models.project import Project
 from src.models.task import Task
 from src.models.user import User
 from src.services.metrics_service import compute_user_metrics
-from src.web.presenters.metrics_view import GROUPINGS
+from src.web.presenters.metrics_view import GROUPINGS, MetricsView
 from tests.web_helpers import _event_row, _llm_event, _override_web_user, _seed_user
 
 USER = "user_test"
@@ -42,19 +44,18 @@ EVENTS = [
 ]
 
 
-@pytest.fixture
-async def seeded(db_session):
-    await _seed_user(db_session)
-    await _seed_user(db_session, OTHER, email="o@example.com")
-    db_session.add_all(
+async def _seed(db):
+    await _seed_user(db)
+    await _seed_user(db, OTHER, email="o@example.com")
+    db.add_all(
         [
             Project(id="prj_a", tenant_id=USER, user_id=USER, key="a", name="alpha"),
             Project(id="prj_b", tenant_id=USER, user_id=USER, key="b", name="beta"),
             Project(id="prj_x", tenant_id=OTHER, user_id=OTHER, key="x", name="secret"),
         ]
     )
-    await db_session.flush()
-    db_session.add_all(
+    await db.flush()
+    db.add_all(
         [
             Task(id="t-a1", user_id=USER, project_id="prj_a", models="gpt-a"),
             Task(id="t-a2", user_id=USER, project_id="prj_a", models="llama-b"),
@@ -63,10 +64,17 @@ async def seeded(db_session):
             Task(id="t-foreign", user_id=OTHER, project_id="prj_x", models="gpt-a"),
         ]
     )
-    db_session.add_all(
+    db.add_all(
         [
-            _llm_event(task_id=task, model=model, tin=tin, tout=0, cost=cost)
-            for task, _, model, tin, cost in EVENTS
+            _llm_event(
+                task_id=task,
+                model=model,
+                tin=tin,
+                tout=0,
+                cost=cost,
+                created_at=WHEN + timedelta(minutes=n),
+            )
+            for n, (task, _, model, tin, cost) in enumerate(EVENTS)
         ]
         + [
             _event_row(
@@ -77,7 +85,12 @@ async def seeded(db_session):
             )
         ]
     )
-    await db_session.commit()
+    await db.commit()
+
+
+@pytest.fixture
+async def seeded(db_session):
+    await _seed(db_session)
     return db_session
 
 
@@ -85,12 +98,11 @@ async def seeded(db_session):
 # theirs is named by e-mail). ORG's runs: one of the reader's, two of OTHER's.
 # Not ORG's: RIVAL's run in their own organization, and RIVAL's event naming
 # OTHER's task.
-@pytest.fixture
-async def org_seeded(seeded):
-    await _seed_user(seeded, RIVAL, email="r@example.com")
-    other = await seeded.get(User, OTHER)
+async def _seed_organization(db):
+    await _seed_user(db, RIVAL, email="r@example.com")
+    other = await db.get(User, OTHER)
     other.first_name = other.last_name = ""
-    seeded.add_all(
+    db.add_all(
         [
             Organization(id=ORG, name="Acme"),
             Organization(id="org_rival", name="Rival"),
@@ -99,8 +111,8 @@ async def org_seeded(seeded):
             Membership(user_id=RIVAL, organization_id="org_rival", role="org:admin"),
         ]
     )
-    await seeded.flush()
-    seeded.add(
+    await db.flush()
+    db.add(
         Project(
             id="prj_org",
             tenant_id=ORG,
@@ -110,14 +122,14 @@ async def org_seeded(seeded):
             name="shared",
         )
     )
-    await seeded.flush()
+    await db.flush()
     org_tasks = [
         ("o-mine", USER, ORG, "prj_org", "gpt-a"),
         ("o-other", OTHER, ORG, "prj_org", "llama-b"),
         ("o-other2", OTHER, ORG, None, "gpt-a"),
         ("o-rival", RIVAL, "org_rival", None, "gpt-a"),
     ]
-    seeded.add_all(
+    db.add_all(
         [
             Task(
                 id=task,
@@ -129,36 +141,44 @@ async def org_seeded(seeded):
             for task, user, org, project, model in org_tasks
         ]
     )
-    seeded.add_all(
+    org_events = [
+        (USER, "o-mine", "gpt-a", 400, 0.2),
+        (OTHER, "o-other", "llama-b", 300, 0.4),
+        (OTHER, "o-other2", "gpt-a", 100, 0.1),
+        (RIVAL, "o-rival", "gpt-a", 5000, 2.0),
+        (RIVAL, "o-other", "gpt-a", 999, 9.0),
+    ]
+    db.add_all(
         [
             _llm_event(
-                USER, task_id="o-mine", model="gpt-a", tin=400, tout=0, cost=0.2
-            ),
-            _llm_event(
-                OTHER, task_id="o-other", model="llama-b", tin=300, tout=0, cost=0.4
-            ),
-            _llm_event(
-                OTHER, task_id="o-other2", model="gpt-a", tin=100, tout=0, cost=0.1
-            ),
-            _llm_event(
-                RIVAL, task_id="o-rival", model="gpt-a", tin=5000, tout=0, cost=2.0
-            ),
-            _llm_event(
-                RIVAL, task_id="o-other", model="gpt-a", tin=999, tout=0, cost=9.0
-            ),
+                user,
+                task_id=task,
+                model=model,
+                tin=tin,
+                tout=0,
+                cost=cost,
+                created_at=WHEN + timedelta(hours=1, minutes=n),
+            )
+            for n, (user, task, model, tin, cost) in enumerate(org_events)
         ]
     )
-    await seeded.commit()
+    await db.commit()
+
+
+@pytest.fixture
+async def org_seeded(seeded):
+    await _seed_organization(seeded)
     return seeded
 
 
 async def _metrics(db, group, only="", space=None):
+    view = MetricsView(space or "", "all", None, group, only)
     return await compute_user_metrics(
         db,
         USER,
         "all",
-        group_key=GROUPINGS[group].event_key,
-        only=only,
+        group_by=view.grouping.events,
+        narrow=view.events_condition(),
         organization_id=space,
     )
 
@@ -183,6 +203,27 @@ async def test_the_groups_add_up_to_the_page_totals(org_seeded, space, group):
         (g["cost"] for g in groups), reverse=True
     )
     assert sum(g["share"] for g in groups) == pytest.approx(100, abs=len(groups))
+
+
+def _rounded(metrics: dict) -> dict:
+    """The figures with every float rounded: the two databases add the
+    costs up in their own order."""
+    return json.loads(json.dumps(metrics), parse_float=lambda s: round(float(s), 9))
+
+
+@pytest.mark.parametrize("space, group", SPACE_GROUPS)
+async def test_postgres_sums_every_group_like_sqlite(
+    org_seeded, pg_session, space, group
+):
+    """The same page from Postgres, unnarrowed and narrowed to each group, as
+    from the SQLite this file checks."""
+    await _seed(pg_session)
+    await _seed_organization(pg_session)
+    groups = (await _metrics(org_seeded, group, space=space))["groups"]
+    for only in ["", *(g["key"] for g in groups)]:
+        assert _rounded(await _metrics(pg_session, group, only, space)) == _rounded(
+            await _metrics(org_seeded, group, only, space)
+        )
 
 
 async def test_a_project_is_the_tasks_and_none_collects_the_rest(seeded):
@@ -240,6 +281,67 @@ async def test_only_narrows_every_figure_to_the_group(org_seeded, space, group):
         # Indexing belongs to no task, so it is in no group.
         assert not m["embeddings"]["has_data"]
         assert [g["key"] for g in m["groups"]] == [row["key"]]
+
+
+async def test_rows_that_tie_keep_the_order_they_were_first_used_in(db_session):
+    """Same tokens and cost: the model used first is listed first, in the
+    table of groups and in the "By model" breakdown."""
+    await _seed_user(db_session)
+    db_session.add_all(
+        [
+            _llm_event(model="zeta", created_at=WHEN),
+            _llm_event(model="alpha", created_at=WHEN + timedelta(hours=1)),
+        ]
+    )
+    await db_session.commit()
+
+    m = await _metrics(db_session, "model")
+    assert [g["key"] for g in m["groups"]] == ["zeta", "alpha"]
+    assert [b["name"] for b in m["by_model"]] == ["zeta", "alpha"]
+
+
+async def test_a_group_counts_each_task_once(db_session):
+    await _seed_user(db_session)
+    db_session.add_all([_llm_event(task_id=task) for task in ("t-1", "t-1", "t-2")])
+    await db_session.commit()
+
+    m = await _metrics(db_session, "model")
+    assert [(g["count"], g["tasks"]) for g in m["groups"]] == [(3, 2)]
+
+
+@pytest.mark.parametrize("space, group", SPACE_GROUPS)
+async def test_a_task_in_two_groups_is_one_task_of_the_page(org_seeded, space, group):
+    """A task that used two models is in two model groups."""
+    org_seeded.add_all(
+        [
+            _llm_event(task_id=task, model="llama-b", created_at=WHEN)
+            for task in ("t-a1", "o-mine")
+        ]
+    )
+    await org_seeded.commit()
+
+    m = await _metrics(org_seeded, group, space=space)
+    plain = await compute_user_metrics(org_seeded, USER, "all", organization_id=space)
+    assert m["task_count"] == plain["task_count"]
+
+
+async def test_postgres_plans_every_load_for_its_values(pg_session):
+    """asyncpg prepares the statements, and a generic plan cannot see the
+    user, the period or the group: on a narrowed page it read a heavy user's
+    events once per task. However often a connection loads the page, none
+    of its statements gets one."""
+    await _seed(pg_session)
+    await _seed_organization(pg_session)
+    for _ in range(7):
+        await _metrics(pg_session, "project", only="prj_org", space=ORG)
+    plans = await pg_session.execute(
+        text(
+            "SELECT sum(generic_plans), sum(custom_plans) FROM pg_prepared_statements "
+            "WHERE statement LIKE '%FROM telemetry_events%' "
+            "AND statement NOT LIKE '%pg_prepared_statements%'"
+        )
+    )
+    assert plans.one() == (0, 3 * 7)
 
 
 async def test_a_group_without_usage_has_no_data(seeded):
