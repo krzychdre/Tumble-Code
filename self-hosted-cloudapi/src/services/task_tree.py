@@ -247,10 +247,9 @@ def subtree_size(tree: dict[str, list[Task]], task_id: str) -> int:
 class Spend:
     """What some tasks consumed: the additive figures of a task row.
 
-    Duration and message count are deliberately absent. A parent's span already
-    encloses the subtasks it waited on (all 17 subtasks on the live corpus lie
-    inside their parent's first/last message), so adding theirs would count the
-    same minutes twice; and a message count is a property of one conversation.
+    The message count is deliberately absent: it is a property of one
+    conversation. The duration adds up because it is the time of each task's
+    own model requests, not a span that would enclose its subtasks.
     """
 
     cost: float = 0.0
@@ -258,6 +257,7 @@ class Spend:
     tokens_out: int = 0
     cache_reads: int = 0
     cache_writes: int = 0
+    duration_ms: int = 0
 
     @classmethod
     def of(cls, task: Task) -> "Spend":
@@ -267,6 +267,7 @@ class Spend:
             tokens_out=task.tokens_out or 0,
             cache_reads=task.cache_reads or 0,
             cache_writes=task.cache_writes or 0,
+            duration_ms=task.duration_ms or 0,
         )
 
     def __add__(self, other: "Spend") -> "Spend":
@@ -276,6 +277,7 @@ class Spend:
             tokens_out=self.tokens_out + other.tokens_out,
             cache_reads=self.cache_reads + other.cache_reads,
             cache_writes=self.cache_writes + other.cache_writes,
+            duration_ms=self.duration_ms + other.duration_ms,
         )
 
     def __sub__(self, other: "Spend") -> "Spend":
@@ -285,6 +287,7 @@ class Spend:
             tokens_out=self.tokens_out - other.tokens_out,
             cache_reads=self.cache_reads - other.cache_reads,
             cache_writes=self.cache_writes - other.cache_writes,
+            duration_ms=self.duration_ms - other.duration_ms,
         )
 
     @property

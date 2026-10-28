@@ -1,6 +1,10 @@
 import { type ClineApiReqCancelReason } from "@tumble-code/types"
 
-export type UpdateApiReqMsgFn = (cancelReason?: ClineApiReqCancelReason, streamingFailedMessage?: string) => void
+export type UpdateApiReqMsgFn = (
+	cancelReason?: ClineApiReqCancelReason,
+	streamingFailedMessage?: string,
+	durationMs?: number,
+) => void
 
 export type AbortStreamFn = (cancelReason: ClineApiReqCancelReason, streamingFailedMessage?: string) => Promise<void>
 

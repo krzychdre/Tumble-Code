@@ -21,9 +21,9 @@ from src.services.model_attribution import (
     side_calls_summary,
 )
 from src.services.session_quality import quality_of
-from src.services.task_summary import DEFAULT_TITLE, duration_ms
+from src.services.task_summary import DEFAULT_TITLE
 from src.services.task_tree import Spend, subtree_size, subtree_spend
-from src.utils.format import fmt_cost, fmt_duration, fmt_int, fmt_tokens, plural
+from src.utils.format import fmt_cost, fmt_int, fmt_tokens, plural
 from src.utils.json_script import json_for_script
 from src.web.presenters.task_rows import _quality_fields, _spend_fields
 
@@ -90,12 +90,10 @@ def _tree_entry(task: Task, tree: Optional[dict[str, list[Task]]] = None) -> dic
     tree beneath it, a subtask that delegated further shows its run's figures,
     the same as it would as a list row.
     """
-    span = duration_ms(task.first_ts, task.last_ts)
     return {
         "id": task.id,
         "title": task.title or DEFAULT_TITLE,
         "message_count": task.message_count or 0,
-        "duration": fmt_duration(span) if span else None,
         # Same hover as a list row: a subtask's title is the least informative
         # of all, since a delegated run is usually named by one instruction.
         **_spend_fields(task, tree or {}),

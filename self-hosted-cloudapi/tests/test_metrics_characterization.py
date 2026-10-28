@@ -77,11 +77,12 @@ def _events() -> list[TelemetryEvent]:
                 0.5,
                 cacheReadTokens=300,
                 cacheWriteTokens=40,
+                durationMs=4_000,
             ),
             _ago(hours=2),
         ),
         _completion(
-            _props("glm-5", "code", "zai", "t1", 2000, 100, 0.25, ts=1_758_000_000_000),
+            _props("glm-5", "code", "zai", "t1", 2000, 100, 0.25, durationMs=2_500),
             _ago(hours=1),
         ),
         _completion(
@@ -116,11 +117,19 @@ def _events() -> list[TelemetryEvent]:
         # Wrong types: strings and booleans are not numbers.
         _completion(
             _props(
-                "glm-5", "code", "zai", "t3", "900", True, "1.5", cacheReadTokens=False
+                "glm-5",
+                "code",
+                "zai",
+                "t3",
+                "900",
+                True,
+                "1.5",
+                cacheReadTokens=False,
+                durationMs="700",
             ),
             _ago(days=3, hours=1),
         ),
-        # Client timestamp given as a float, and one as a bool (ignored).
+        # A request duration given as a float, and one as a bool (ignored).
         _completion(
             _props(
                 "glm-5",
@@ -130,12 +139,12 @@ def _events() -> list[TelemetryEvent]:
                 40,
                 4,
                 0.01,
-                timestamp=1_758_100_000_500.0,
+                durationMs=1_500.0,
             ),
             _ago(days=5),
         ),
         _completion(
-            _props("glm-5", "debug", "zai", "t4", 60, 6, 0.02, completedAt=True),
+            _props("glm-5", "debug", "zai", "t4", 60, 6, 0.02, durationMs=True),
             _ago(days=5, hours=2),
         ),
         # Empty object: a completion with no properties still counts.

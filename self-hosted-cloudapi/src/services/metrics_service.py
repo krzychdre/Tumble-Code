@@ -41,7 +41,7 @@ from src.services.telemetry_vocab import (
     iter_event_props,
     parse_event_props,
 )
-from src.utils.clientzone import UTC, as_utc, day_start_utc, local_day, today
+from src.utils.clientzone import UTC, day_start_utc, local_day, today
 from src.utils.format import fmt_duration, fmt_tokens, num as _num
 
 logger = logging.getLogger(__name__)
@@ -84,20 +84,6 @@ def period_start(
     if days is None:
         return None
     return day_start_utc(today(zone, now) - timedelta(days=days - 1), zone)
-
-
-def _event_ts_ms(props: dict, fallback: datetime) -> float:
-    """Best-effort completion timestamp in epoch-ms, for per-task duration spans.
-
-    LLM Completion events don't reliably carry a client ts, so we fall back to the
-    server-stamped ``created_at``. Good enough for spanning a task's activity.
-    """
-    for key in ("ts", "timestamp", "completedAt"):
-        v = props.get(key)
-        if isinstance(v, (int, float)) and not isinstance(v, bool):
-            return float(v)
-    # A naive timestamp() would read it in the host's local zone.
-    return as_utc(fallback).timestamp() * 1000.0
 
 
 async def _embedding_payloads(
@@ -178,7 +164,8 @@ async def compute_user_metrics(
       - period, period_label
       - totals: input/output/cache_read/cache_write tokens, total_tokens, cost,
         completions
-      - duration_ms / duration (per-taskId span, summed), task_count
+      - duration_ms / duration (the measured request durations, summed),
+        task_count (distinct taskIds)
       - by_model / by_mode / by_provider: lists of {name, tokens, tokens_fmt,
         cost, count}, sorted desc by tokens
       - by_client: the same, with a ``label`` ("VS Code", "CLI")
@@ -304,8 +291,9 @@ def aggregate_user_metrics(
     # than silently added in as zero, so "12 calls we have no figures for" reads
     # as what it is instead of as twelve free calls.
     unreported = 0
-    # taskId -> [min_ts_ms, max_ts_ms] for per-session duration spans.
-    task_spans: dict[str, list[float]] = {}
+    # Summed from the completions that measured their request (durationMs).
+    duration_ms = 0
+    task_ids: set[str] = set()
     groups: dict[str, dict] = {}
     # Rows of the shown group (all of them when the page is not narrowed).
     kept = 0
@@ -358,12 +346,10 @@ def aggregate_user_metrics(
         dslot["tokens"] += tokens
         dslot["cost"] += cost
 
+        duration_ms += _num(props.get("durationMs"))
         task_id = props.get("taskId")
         if task_id:
-            ts_ms = _event_ts_ms(props, created)
-            span = task_spans.setdefault(task_id, [ts_ms, ts_ms])
-            span[0] = min(span[0], ts_ms)
-            span[1] = max(span[1], ts_ms)
+            task_ids.add(task_id)
 
         if group_key is not None:
             gslot = groups.setdefault(
@@ -382,8 +368,6 @@ def aggregate_user_metrics(
             gslot["count"] += 1
             if task_id:
                 gslot["task_ids"].add(task_id)
-
-    duration_ms = sum(hi - lo for lo, hi in task_spans.values())
 
     def _sorted(store: dict) -> list[dict]:
         items = sorted(store.values(), key=lambda s: s["tokens"], reverse=True)
@@ -424,7 +408,7 @@ def aggregate_user_metrics(
         },
         "duration_ms": int(duration_ms),
         "duration": fmt_duration(duration_ms),
-        "task_count": len(task_spans),
+        "task_count": len(task_ids),
         "by_model": models,
         "by_mode": modes,
         "by_provider": providers,

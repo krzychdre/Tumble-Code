@@ -101,6 +101,28 @@ describe("condense usage telemetry", () => {
 		)
 	})
 
+	it("reports how long the request took, on the event and in the result", async () => {
+		const now = vi.spyOn(performance, "now").mockReturnValue(1_000)
+		const apiHandler = handler({ usage: { inputTokens: 10, outputTokens: 1 } })
+		const createMessage = apiHandler.createMessage
+		apiHandler.createMessage = (...args) => {
+			now.mockReturnValue(2_500)
+			return createMessage(...args)
+		}
+
+		const result = await summarizeConversation({
+			messages: conversation(),
+			apiHandler,
+			systemPrompt: "system",
+			taskId,
+			isAutomaticTrigger: true,
+		})
+		now.mockRestore()
+
+		expect(llmCompletionProperties().durationMs).toBe(1_500)
+		expect(result.durationMs).toBe(1_500)
+	})
+
 	it("names the model that condensed, which is not necessarily the task's", async () => {
 		await summarizeConversation({
 			messages: conversation(),

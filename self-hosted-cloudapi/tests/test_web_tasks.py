@@ -11,7 +11,6 @@ from sqlalchemy import select, func
 from src.dependencies import get_current_user
 from src.auth.web_session import get_web_user_optional
 from src.models.task import Task, TaskMessage, TaskShare
-from src.services.task_summary import duration_ms
 from src.web.presenters import task_list
 
 from tests.web_helpers import (
@@ -151,7 +150,8 @@ async def test_app_list_without_workspace_renders_cleanly(
 
 async def test_app_list_shows_cost_and_tokens(client, db_session, session_factory):
     await _seed_user(db_session)
-    # Two api_req messages 65s apart so duration spans the whole conversation.
+    # The request came 65s after the prompt; only the requests' own durations
+    # (4s answering, 1.5s condensing) are the task's duration.
     first = {"ts": 1000, "type": "say", "say": "text", "text": "Build me a feature"}
     api_req = {
         "ts": 66000,
@@ -164,13 +164,27 @@ async def test_app_list_shows_cost_and_tokens(client, db_session, session_factor
                 "cacheWrites": 1200,
                 "cacheReads": 8400,
                 "cost": 0.1234,
+                "durationMs": 4_000,
             }
         ),
+    }
+    condense = {
+        "ts": 90000,
+        "type": "say",
+        "say": "condense_context",
+        "contextCondense": {
+            "cost": 0,
+            "prevContextTokens": 1,
+            "newContextTokens": 1,
+            "summary": "s",
+            "durationMs": 1_500,
+        },
     }
     async with session_factory() as s:
         s.add(Task(id="task-metrics", user_id="user_test"))
         await _add_message(s, "task-metrics", first)
         await _add_message(s, "task-metrics", api_req)
+        await _add_message(s, "task-metrics", condense)
         await _summarize(s, "task-metrics")
         await s.commit()
 
@@ -187,11 +201,11 @@ async def test_app_list_shows_cost_and_tokens(client, db_session, session_factor
     # separate element, so assert on the figure - that is what must be right.
     assert "100.3k" in resp.text
     assert "$0.1234" in resp.text
-    # Hover tooltip breakdown: in/out, cache, session duration, cost.
+    # Hover tooltip breakdown: in/out, cache, duration, cost.
     assert "↑ In: 96,941" in resp.text
     assert "↓ Out: 3,365" in resp.text
     assert "1,200 write / 8,400 read" in resp.text
-    assert "⏱ Session: 1m 5s" in resp.text
+    assert "⏱ Duration: 5s" in resp.text
 
 
 # --- Web: task detail enforces ownership -----------------------------------
@@ -543,11 +557,10 @@ def _resume_ask(ts):
 async def test_a_trailing_resume_marker_does_not_extend_the_session_span(
     client, db_session, session_factory
 ):
-    """Reopening a task hours later is not four hours of work.
+    """Reopening a task hours later is not activity of the run.
 
-    The live shape that exposed this: 54 steps over 3m10s, then a `resume_task`
-    ask 4h23m after the last of them, and the list reported 4h26m. The span must
-    end at the last message of the run itself.
+    The live shape: 54 steps over 3m10s, then a `resume_task` ask 4h23m after
+    the last of them. The span must end at the last message of the run itself.
     """
     await _seed_user(db_session)
     _override_current_user(client.app)
@@ -576,50 +589,11 @@ async def test_a_trailing_resume_marker_does_not_extend_the_session_span(
         ).scalar_one()
     assert task.first_ts == 10
     assert task.last_ts == 190_252
-    assert duration_ms(task.first_ts, task.last_ts) == 190_242
     # The marker is still a stored row - it is excluded from the span, not hidden.
     assert task.message_count == 4
 
 
-async def test_time_spent_waiting_for_the_user_stays_in_the_span(
-    client, db_session, session_factory
-):
-    """Only the marker is dropped, never idle time.
-
-    A run that sat for an hour waiting for an answer and then carried on took
-    that hour: the task was open and the user was the thing it was blocked on.
-    So a resume marker *between* two real messages changes nothing, and neither
-    does the gap around it.
-    """
-    await _seed_user(db_session)
-    _override_current_user(client.app)
-    try:
-        await _backfill(
-            client,
-            "span-mid",
-            [
-                {"ts": 10, "type": "say", "say": "text", "text": "Fix the harness"},
-                {"ts": 20, "type": "say", "say": "api_req_started", "text": "{}"},
-                _resume_ask(_HOUR),
-                {
-                    "ts": 2 * _HOUR,
-                    "type": "say",
-                    "say": "completion_result",
-                    "text": "done",
-                },
-            ],
-        )
-    finally:
-        client.app.dependency_overrides.pop(get_current_user, None)
-
-    async with session_factory() as s:
-        task = (await s.execute(select(Task).where(Task.id == "span-mid"))).scalar_one()
-    assert task.first_ts == 10
-    assert task.last_ts == 2 * _HOUR
-    assert duration_ms(task.first_ts, task.last_ts) == 2 * _HOUR - 10
-
-
-async def test_a_task_of_nothing_but_resume_markers_reports_no_duration(
+async def test_a_task_of_nothing_but_resume_markers_has_no_span(
     client, db_session, session_factory
 ):
     """No message of its own means no span to state - not a fabricated one."""
@@ -636,7 +610,6 @@ async def test_a_task_of_nothing_but_resume_markers_reports_no_duration(
         ).scalar_one()
     assert task.first_ts is None
     assert task.last_ts is None
-    assert duration_ms(task.first_ts, task.last_ts) == 0
 
 
 async def test_a_resume_marker_is_classified_but_is_not_a_quality_signal(

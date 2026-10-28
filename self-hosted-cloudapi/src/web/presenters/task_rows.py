@@ -12,7 +12,7 @@ from src.models.task import Task
 from src.services.client_kind import CLIENT_VSCODE
 from src.services.model_attribution import models_badge
 from src.services.session_quality import quality_of
-from src.services.task_summary import DEFAULT_TITLE, duration_ms
+from src.services.task_summary import DEFAULT_TITLE
 from src.services.task_tree import Spend, subtree_size, subtree_spend
 from src.utils.format import fmt_cost, fmt_duration, fmt_int, fmt_tokens, plural
 
@@ -48,7 +48,7 @@ def _quality_fields(task: Task) -> dict:
 
 
 def _spend_fields(task: Task, tree: dict[str, list[Task]]) -> dict:
-    """The tokens and cost cells, and the hover that explains them.
+    """The duration, tokens and cost cells, and the hover that explains them.
 
     A task that delegated shows what its whole run consumed: itself plus every
     subtask beneath it. Its own figures alone were the parent's share only, on
@@ -61,9 +61,11 @@ def _spend_fields(task: Task, tree: dict[str, list[Task]]) -> dict:
     total = subtree_spend(tree, task)
     subtasks = subtree_size(tree, task.id)
     fields = {
+        "duration": fmt_duration(total.duration_ms) if total.duration_ms else None,
         "tokens": fmt_tokens(total.tokens) if total.tokens else None,
         "cost": fmt_cost(total.cost) if total.cost > 0 else None,
         "rollup": subtasks > 0,
+        "duration_title": None,
         "tokens_title": None,
         "cost_title": None,
         # The prompt the run started from, then its figures: the one thing a
@@ -73,6 +75,10 @@ def _spend_fields(task: Task, tree: dict[str, list[Task]]) -> dict:
     if subtasks:
         rest = total - own
         where = plural(subtasks, "subtask")
+        fields["duration_title"] = (
+            f"{fmt_duration(total.duration_ms)} for the run: {fmt_duration(own.duration_ms)} this task"
+            f" + {fmt_duration(rest.duration_ms)} in {where}"
+        )
         fields["tokens_title"] = (
             f"{fmt_int(total.tokens)} tokens for the run: {fmt_int(own.tokens)} this task"
             f" + {fmt_int(rest.tokens)} in {where}"
@@ -93,13 +99,11 @@ def _list_row(task: Task, tree: dict[str, list[Task]], nest: bool) -> dict:
     one twice.
     """
     kids = tree.get(task.id, [])
-    span = duration_ms(task.first_ts, task.last_ts)
     return {
         "id": task.id,
         "title": task.title or DEFAULT_TITLE,
         "message_count": task.message_count or 0,
         "updated_at": task.updated_at,
-        "duration": fmt_duration(span) if span else None,
         **_spend_fields(task, tree),
         "workspace": task.workspace_path,
         "workspace_label": _workspace_label(task.workspace_path),
@@ -173,9 +177,8 @@ def _metrics_tooltip(task: Task) -> list[str]:
         lines.append(
             f"⚡ Cache: {fmt_int(task.cache_writes)} write / {fmt_int(task.cache_reads)} read"
         )
-    span = duration_ms(task.first_ts, task.last_ts)
-    if span:
-        lines.append(f"⏱ Session: {fmt_duration(span)}")
+    if task.duration_ms:
+        lines.append(f"⏱ Duration: {fmt_duration(task.duration_ms)}")
     lines.append(f"$ Cost: {fmt_cost(task.cost)}")
     return lines
 
@@ -191,6 +194,8 @@ def _run_tooltip(total: Spend, subtasks: int) -> list[str]:
         lines.append(
             f"⚡ Cache: {fmt_int(total.cache_writes)} write / {fmt_int(total.cache_reads)} read"
         )
+    if total.duration_ms:
+        lines.append(f"⏱ Duration: {fmt_duration(total.duration_ms)}")
     lines.append(f"$ Cost: {fmt_cost(total.cost)}")
     return lines
 

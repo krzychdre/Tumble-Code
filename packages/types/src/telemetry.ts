@@ -203,6 +203,8 @@ export type TelemetryEventPayloads = {
 		cacheReadTokens: number
 		cost?: number
 		ttftMs?: number
+		/** From sending the request to the end of the response stream; absent before it was measured. */
+		durationMs?: number
 		reasoningChars?: number
 		toolCount?: number
 		/** Which part of the extension made the call; absent means a task turn. */

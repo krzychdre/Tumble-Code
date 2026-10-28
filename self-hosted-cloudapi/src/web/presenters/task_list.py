@@ -41,7 +41,7 @@ from src.services.session_quality import (
 )
 from src.services.task_tree import subtrees
 from src.utils.clientzone import UTC, day_start_utc
-from src.utils.format import fmt_cost, fmt_int, fmt_tokens
+from src.utils.format import fmt_cost, fmt_duration, fmt_int, fmt_tokens
 from src.utils.pagination import paginate
 from src.web.presenters.task_rows import _list_row
 
@@ -455,7 +455,7 @@ def _grade_condition(grade: str):
 
 
 def _run_totals(user_id: str):
-    """Cost and tokens of every task of the user plus everything beneath it.
+    """Cost, tokens and duration of every task of the user plus everything beneath it.
 
     A recursive CTE of (run, member) pairs, with UNION rather than UNION ALL:
     duplicates are discarded, so a cycle in the client-supplied parent links
@@ -484,6 +484,7 @@ def _run_totals(user_id: str):
             members.c.run_id,
             func.sum(member.cost).label("cost"),
             func.sum(member.tokens_in + member.tokens_out).label("tokens"),
+            func.sum(member.duration_ms).label("duration_ms"),
         )
         .join(member, member.id == members.c.member_id)
         .group_by(members.c.run_id)
@@ -574,8 +575,8 @@ async def _group_page(
     sorted column summed over the group (newest activity for "updated"), and a
     group lists its tasks in the view's order.
 
-    The group sums what its rows show. Under "Runs" a run's tokens and cost
-    include its subtasks; under "All" every task is a row of its own and the
+    The group sums what its rows show. Under "Runs" a run's duration, tokens
+    and cost include its subtasks; under "All" every task is a row of its own and the
     group sums own figures, so no subtask is counted twice.
     """
     grouping = GROUPINGS[view.group]
@@ -589,8 +590,11 @@ async def _group_page(
             Task.models,
             Task.user_id,
             Task.updated_at,
-            # A row shows its own messages and its run's tokens and cost.
+            # A row shows its own messages and its run's duration, tokens and cost.
             Task.message_count.label("messages"),
+            (
+                func.coalesce(rollup.c.duration_ms, 0) if runs else Task.duration_ms
+            ).label("duration_ms"),
             (
                 func.coalesce(rollup.c.tokens, 0)
                 if runs
@@ -613,6 +617,7 @@ async def _group_page(
                 "key": key,
                 "ids": [],
                 "messages": 0,
+                "duration_ms": 0,
                 "tokens": 0,
                 "cost": 0.0,
                 "updated": row.updated_at,
@@ -620,6 +625,7 @@ async def _group_page(
         )
         group["ids"].append(row.id)
         group["messages"] += row.messages
+        group["duration_ms"] += row.duration_ms
         group["tokens"] += row.tokens
         group["cost"] += row.cost
         group["updated"] = max(group["updated"], row.updated_at)
@@ -647,6 +653,9 @@ async def _group_page(
                 "sub": subs.get(g["key"]),
                 "count": len(g["ids"]),
                 "messages": fmt_int(g["messages"]),
+                "duration": fmt_duration(g["duration_ms"])
+                if g["duration_ms"]
+                else None,
                 "tokens": fmt_tokens(g["tokens"]) if g["tokens"] else None,
                 "cost": fmt_cost(g["cost"]) if g["cost"] > 0 else None,
                 "updated": g["updated"],

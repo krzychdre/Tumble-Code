@@ -124,7 +124,6 @@ export class TaskStreamProcessor {
 	private pendingReasoningPost: ClineMessage | undefined
 	/** Posts `pendingReasoningPost` when the interval ends, if the stream goes quiet. */
 	private reasoningPostTimer: ReturnType<typeof setTimeout> | undefined
-	private _requestStartTs: number = 0
 	private _firstChunkTs: number | undefined
 	private _assistantMessage: string = ""
 	private _inputTokens: number = 0
@@ -200,7 +199,6 @@ export class TaskStreamProcessor {
 		this.access.cachedStreamingModel = this.access.api.getModel()
 
 		// Reset accumulation state
-		this._requestStartTs = performance.now()
 		this._firstChunkTs = undefined
 		this._reasoningMessage = ""
 		this.reasoningFormatter.reset()
@@ -510,7 +508,7 @@ export class TaskStreamProcessor {
 	 * Returns a function that updates the API request message with token/cost data.
 	 */
 	createUpdateApiReqMsgFn(lastApiReqIndex: number, streamModelInfo: ModelInfo): UpdateApiReqMsgFn {
-		return (cancelReason?: ClineApiReqCancelReason, streamingFailedMessage?: string) => {
+		return (cancelReason?: ClineApiReqCancelReason, streamingFailedMessage?: string, durationMs?: number) => {
 			if (lastApiReqIndex < 0 || !this.access.clineMessages[lastApiReqIndex]) {
 				return
 			}
@@ -531,6 +529,7 @@ export class TaskStreamProcessor {
 				cacheWrites: this._cacheWriteTokens,
 				cacheReads: this._cacheReadTokens,
 				cost: this._totalCost ?? costResult.totalCost,
+				durationMs,
 				cancelReason,
 				streamingFailedMessage,
 			} satisfies ClineApiReqInfo)
@@ -592,6 +591,7 @@ export class TaskStreamProcessor {
 	 * @param iterator - The async iterator for the stream
 	 * @param currentItem - The current iterator result (captured from the main loop)
 	 * @param updateApiReqMsg - The function to update API request messages
+	 * @param requestSentAt - performance.now() when the request went to the provider
 	 * @returns A function that drains remaining usage data from the stream
 	 */
 	createBackgroundUsageDrain(
@@ -601,13 +601,13 @@ export class TaskStreamProcessor {
 		iterator: AsyncGenerator<ApiStreamChunk>,
 		currentItem: IteratorResult<ApiStreamChunk> | undefined,
 		updateApiReqMsg: UpdateApiReqMsgFn,
+		requestSentAt: number,
 	): (apiReqIndex: number) => Promise<void> {
 		const access = this.access
 
 		// Snapshot per-request metrics now: this drain is fire-and-forget and can
 		// outlive resetStreamingState() for the next request, which clears them.
-		const ttftMs =
-			this._firstChunkTs !== undefined ? Math.round(this._firstChunkTs - this._requestStartTs) : undefined
+		const ttftMs = this._firstChunkTs !== undefined ? Math.round(this._firstChunkTs - requestSentAt) : undefined
 		const reasoningChars = this._reasoningMessage.length
 		const toolCount = (access.assistantMessageContent ?? []).filter(
 			(block) => block.type === "tool_use" || block.type === "mcp_tool_use",
@@ -643,6 +643,9 @@ export class TaskStreamProcessor {
 				messageIndex: number = apiReqIndex,
 			) => {
 				if (tokens.input > 0 || tokens.output > 0 || tokens.cacheWrite > 0 || tokens.cacheRead > 0) {
+					// Captured when the drain has read the stream to its end.
+					const durationMs = Math.round(performance.now() - requestSentAt)
+
 					// Update the shared variables atomically
 					this._inputTokens = tokens.input
 					this._outputTokens = tokens.output
@@ -651,7 +654,7 @@ export class TaskStreamProcessor {
 					this._totalCost = tokens.total
 
 					// Update the API request message with the latest usage data
-					updateApiReqMsg()
+					updateApiReqMsg(undefined, undefined, durationMs)
 					// Do not persist task history once the owning task has been aborted/abandoned.
 					// This drain is fire-and-forget (launched, not awaited, in TaskApiLoop) and can
 					// outlive the task by up to DEFAULT_USAGE_COLLECTION_TIMEOUT_MS. For a parent
@@ -681,6 +684,7 @@ export class TaskStreamProcessor {
 						cacheReadTokens: tokens.cacheRead,
 						cost: tokens.total ?? costResult.totalCost,
 						ttftMs,
+						durationMs,
 						reasoningChars,
 						toolCount,
 						// Stated rather than left to default, so a reader never has

@@ -148,7 +148,7 @@
     <div class="stat-sub">{{ t.completions|plural("API completion") }}</div>
   </div>
   <div class="stat-card" data-metric="duration">
-    <div class="stat-label">Session duration</div>
+    <div class="stat-label" title="Time the model spent on requests, each from sending it to the end of its answer. Waits between requests are not counted.">Duration</div>
     <div class="stat-value">{{ metrics.duration }}</div>
     <div class="stat-sub">{{ metrics.task_count|plural("task") }}</div>
   </div>

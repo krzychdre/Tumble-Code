@@ -68,7 +68,6 @@
           </span>
         </span>
         <span class="cell-num">{{ t.message_count }}<span class="unit">msg</span></span>
-        <span class="cell-num">{{ t.duration or '' }}</span>
         {{ spend.cells(t) }}
         <span class="cell-grade"><span class="grade grade-{{ t.grade }}" title="{{ t.grade_title }}">{{ t.grade_label }}</span></span>
         <span class="cell-date"{% if t.updated_at %} title="{{ t.updated_at | localtime }}"{% endif %}>{{ t.updated_at | localtime(false) }}</span>
@@ -212,7 +211,7 @@
     <div class="task-head-cells">
       <span class="head-label head-title">Task<span class="head-sub" aria-hidden="true"> · folder · model</span></span>
       {{ head_cell('messages', 'Messages') }}
-      <span class="head-label">Duration</span>
+      <span class="head-label" title="Time the model spent on the task's requests, each from sending it to the end of its answer. Waits between requests are not counted.">Duration</span>
       {{ head_cell('tokens', 'Tokens') }}
       {{ head_cell('cost', 'Cost') }}
       <span class="head-label">Grade</span>
@@ -238,7 +237,7 @@
       <span class="group-cells">
         <span class="group-name"><span class="group-label" title="{{ g.sub or g.label }}">{{ g.label }}</span><span class="group-count">{{ g.count }} {{ row_unit }}{{ '' if g.count == 1 else 's' }}</span>{% if g.sub %}<span class="group-sub">{{ g.sub }}</span>{% endif %}</span>
         <span class="cell-num">{{ g.messages }}<span class="unit">msg</span></span>
-        <span class="cell-num"></span>
+        <span class="cell-num">{% if g.duration %}<span class="rollup-mark">Σ</span>{{ g.duration }}{% endif %}</span>
         <span class="cell-num">{% if g.tokens %}<span class="rollup-mark">Σ</span>{{ g.tokens }}<span class="unit">tok</span>{% endif %}</span>
         <span class="cell-num cell-cost">{% if g.cost %}<span class="rollup-mark">Σ</span>{{ g.cost }}{% endif %}</span>
         <span class="cell-grade"></span>

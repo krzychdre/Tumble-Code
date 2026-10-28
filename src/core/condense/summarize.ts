@@ -121,6 +121,7 @@ export type SummarizeResponse = {
 	messages: ApiMessage[] // The messages after summarization
 	summary: string // The summary text; empty string for no summary
 	cost: number // The cost of the summarization operation
+	durationMs?: number // From sending the summary request to the end of its response; absent on failure
 	newContextTokens?: number // The number of tokens in the context for the next API request
 	error?: string // Populated iff the operation fails: error message shown to the user on failure (see Task.ts)
 	errorDetails?: string // Detailed error information including stack trace and API error info
@@ -200,7 +201,12 @@ type CondenseUsage = {
  * *current task's* model, and condensing routinely runs on its own profile (see
  * BackgroundModelHandler).
  */
-function reportCondenseUsage(taskId: string, handler: ApiHandler, usage: CondenseUsage | undefined): void {
+function reportCondenseUsage(
+	taskId: string,
+	handler: ApiHandler,
+	usage: CondenseUsage | undefined,
+	durationMs: number,
+): void {
 	if (!TelemetryService.hasInstance()) {
 		return
 	}
@@ -212,6 +218,7 @@ function reportCondenseUsage(taskId: string, handler: ApiHandler, usage: Condens
 		cacheReadTokens: usage?.cacheReadTokens ?? 0,
 		cacheWriteTokens: usage?.cacheWriteTokens ?? 0,
 		cost: usage?.totalCost,
+		durationMs,
 		completionKind: "condense",
 		usageReported: usage !== undefined,
 		...(model?.id && { modelId: model.id }),
@@ -358,6 +365,7 @@ export async function summarizeConversation(options: SummarizeConversationOption
 	let summary = ""
 	let cost = 0
 	let outputTokens = 0
+	let durationMs = 0
 
 	// Background-model fallback is handled INSIDE the BackgroundModelHandler
 	// wrapper (it buffers the background stream and, on a trigger error
@@ -369,11 +377,13 @@ export async function summarizeConversation(options: SummarizeConversationOption
 	// wrapper is the single source of fallback policy and every consumer
 	// (condense, memory, future features) gets it for free.
 	try {
+		const requestStartTs = performance.now()
 		const result = await streamSummary(apiHandler, promptToUse, requestMessages, metadata)
+		durationMs = Math.round(performance.now() - requestStartTs)
 		summary = result.summary
 		cost = result.cost
 		outputTokens = result.outputTokens
-		reportCondenseUsage(taskId, apiHandler, result.usage)
+		reportCondenseUsage(taskId, apiHandler, result.usage, durationMs)
 	} catch (error) {
 		// Capture partial cost from the failed attempt (Claim 7: failed-condense
 		// spend must not be silently lost - Anthropic emits usage mid-stream).
@@ -560,6 +570,7 @@ ${commandBlocks}
 		messages: newMessages,
 		summary,
 		cost,
+		durationMs,
 		newContextTokens,
 		condenseId,
 		factsChecked: factCheck.checked,

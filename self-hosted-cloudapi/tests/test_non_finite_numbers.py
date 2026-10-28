@@ -50,6 +50,7 @@ def test_message_metrics_reads_a_non_standard_constant_as_no_figures(text):
         "cache_reads": 0,
         "cache_writes": 0,
         "cost": 0.0,
+        "duration_ms": 0,
     }
 
 

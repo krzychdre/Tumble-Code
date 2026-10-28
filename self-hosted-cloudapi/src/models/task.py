@@ -94,6 +94,9 @@ class Task(Base, TimestampMixin):
     cache_reads = Column(BigInteger, nullable=False, default=0, server_default="0")
     cache_writes = Column(BigInteger, nullable=False, default=0, server_default="0")
     cost = Column(Float, nullable=False, default=0.0, server_default="0")
+    # Sum of the task's model requests, each from sending it to the end of its
+    # response; 0 for a task whose client did not measure them yet.
+    duration_ms = Column(BigInteger, nullable=False, default=0, server_default="0")
     # ClineMessage.ts of the first/last stored message. Kept as the endpoints
     # rather than only their difference so an incremental refresh can widen the
     # span without re-reading the conversation.
@@ -157,7 +160,7 @@ class TaskMessage(Base):
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
 
-    # --- per-message token/cost contribution -------------------------------
+    # --- per-message token/cost/duration contribution ----------------------
     # Parsed once from `message_data` at write time (services/task_summary.
     # message_metrics) so the task rollup is a numeric SUM over an index rather
     # than a JSON parse of the whole conversation. Zero for the vast majority of
@@ -167,6 +170,7 @@ class TaskMessage(Base):
     cache_reads = Column(BigInteger, nullable=False, default=0, server_default="0")
     cache_writes = Column(BigInteger, nullable=False, default=0, server_default="0")
     cost = Column(Float, nullable=False, default=0.0, server_default="0")
+    duration_ms = Column(BigInteger, nullable=False, default=0, server_default="0")
 
     # --- quality marker ----------------------------------------------------
     # What this message says about how the run is going: request / error /

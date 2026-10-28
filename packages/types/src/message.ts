@@ -225,6 +225,7 @@ export type ToolProgressStatus = z.infer<typeof toolProgressStatusSchema>
  * @property newContextTokens - Token count after condensation
  * @property summary - The condensed summary that replaced the original context
  * @property condenseId - Optional unique identifier for this condensation operation
+ * @property durationMs - How long the condense request took, from sending it to the end of the response
  */
 export const contextCondenseSchema = z.object({
 	cost: z.number(),
@@ -232,6 +233,7 @@ export const contextCondenseSchema = z.object({
 	newContextTokens: z.number(),
 	summary: z.string(),
 	condenseId: z.string().optional(),
+	durationMs: z.number().optional(),
 })
 
 export type ContextCondense = z.infer<typeof contextCondenseSchema>
