@@ -4,8 +4,7 @@ problems over a period, narrowed by filters, and one report's drill-down.
 The stages live beside this module: ``collect`` (the three sources into
 ``Occurrence``), ``filters`` (one query-string state), ``aggregate``
 (signature groups and the page's figures), ``views`` (a group's row, a
-report's drill-down). Grouping runs in a worker thread, like the metrics
-page.
+report's drill-down). Grouping runs in a worker thread.
 """
 
 from __future__ import annotations

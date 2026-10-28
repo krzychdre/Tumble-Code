@@ -13,9 +13,13 @@ from dataclasses import dataclass, replace
 from typing import Callable, Optional
 from urllib.parse import quote, urlencode
 
-from sqlalchemy import Row
+from sqlalchemy import case, func
 
+from src.models.event import TelemetryEvent
+from src.models.project import Project
 from src.models.task import Task
+from src.models.user import User
+from src.services.metrics_service import GroupBy
 from src.web.presenters.task_list import GROUPINGS as TASK_GROUPINGS
 from src.web.presenters.task_list import NO_GROUP, NO_KEY
 
@@ -30,26 +34,40 @@ class Grouping:
     label: str
     # What the group of events without a key is called.
     empty: str
-    # (key, name) of an event from its row of the completions query
-    # (services/metrics_service); key None when it has none.
-    of_event: Callable[[Row], tuple[Optional[str], Optional[str]]]
+    # SQL over the tables of the completions query (services/metrics_service):
+    # an event's key, NULL when it has none, and the name of its group.
+    key: object
+    name: object
     # The tasks column a missing key is NULL in, and SQL that keeps the tasks
     # of one key: what narrows the session-quality panel.
     column: object
     match: Callable[[str], object]
+    # Whether the key is the event's task's, so each task is in one group.
+    per_task: bool
     # Offered in an organization space only: the reader's own page has one user.
     organization_only: bool = False
 
-    def event_key(self, row: Row) -> tuple[str, str]:
-        key, name = self.of_event(row)
-        return (NO_KEY, self.empty) if key is None else (key, name)
+    @property
+    def events(self) -> GroupBy:
+        """An event's group in SQL: NO_KEY and ``empty`` for an event
+        without a key."""
+        return GroupBy(
+            func.coalesce(self.key, NO_KEY),
+            case((self.key.is_(None), self.empty), else_=self.name),
+            self.per_task,
+        )
 
 
-def _event_user(row):
-    """Who ran the event, by name, else by e-mail."""
-    name = f"{row.first_name or ''} {row.last_name or ''}".strip()
-    return row.user_id, name or row.email
-
+# Who ran the event, by name, else by e-mail.
+_USER_NAME = func.coalesce(
+    func.nullif(
+        func.trim(
+            func.coalesce(User.first_name, "") + " " + func.coalesce(User.last_name, "")
+        ),
+        "",
+    ),
+    User.email,
+)
 
 GROUPINGS = {
     # The project of the event's task (models/project), by id: two projects
@@ -57,25 +75,31 @@ GROUPINGS = {
     "project": Grouping(
         "Project",
         "No project",
-        lambda row: (row.project_id, row.project_name or row.project_id),
+        Task.project_id,
+        func.coalesce(Project.name, Task.project_id),
         Task.project_id,
         lambda key: Task.project_id == key,
+        per_task=True,
     ),
     # The event's own model. A run's quality counts under its main model.
     "model": Grouping(
         "Model",
         "No model",
-        lambda row: (row.model_id, row.model_id),
+        TelemetryEvent.model_id,
+        TelemetryEvent.model_id,
         TASK_GROUPINGS["model"].column,
         TASK_GROUPINGS["model"].match,
+        per_task=False,
     ),
     # Who ran the event: the task's owner. Every event has one.
     "user": Grouping(
         "User",
         "No user",
-        _event_user,
+        TelemetryEvent.user_id,
+        _USER_NAME,
         Task.user_id,
         lambda key: Task.user_id == key,
+        per_task=True,
         organization_only=True,
     ),
 }
@@ -137,6 +161,16 @@ class MetricsView:
     def space_url(self, space: str) -> str:
         """The same view of another space; a narrowed group does not carry over."""
         return self.url(space=space, only="")
+
+    def events_condition(self):
+        """What keeps the events of the narrowed group, or None. On the key
+        column itself, not on ``events``' coalesced key, so an index on it
+        (the metrics index leads with the user) can find them."""
+        if not self.only:
+            return None
+        if self.only == NO_KEY:
+            return self.grouping.key.is_(None)
+        return self.grouping.key == self.only
 
     def tasks_condition(self):
         """What keeps the runs of the narrowed group, or None."""

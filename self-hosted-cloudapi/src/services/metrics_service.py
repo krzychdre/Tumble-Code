@@ -12,19 +12,32 @@ the metrics page needs:
      "inputTokens", "outputTokens", "cacheReadTokens", "cacheWriteTokens", "cost"}
 
 Ingest lifts those figures out of the JSON ``properties`` into columns
-(``telemetry_vocab.event_columns``), so the page reads narrow rows and parses
-no JSON. The rows are summed in Python, which reads the same on SQLite (the
-test suite) and Postgres. Event names and kind labels come from
-``services/telemetry_vocab``.
+(``telemetry_vocab.event_columns``), and the page sums them in SQL. Each
+statement is a GROUP BY with a row per combination of names, quarter of an
+hour, group or indexing source, never one per event; Python only adds those
+rows up. The statements read the same on SQLite (the test suite) and
+Postgres. Event names and kind labels come from ``services/telemetry_vocab``.
 """
 
 import logging
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Callable, Iterable, Optional, Sequence
+from typing import Optional, Sequence
 from zoneinfo import ZoneInfo
 
-import anyio
-from sqlalchemy import Row, and_, select
+from sqlalchemy import (
+    BigInteger,
+    ColumnElement,
+    Row,
+    Select,
+    and_,
+    cast,
+    distinct,
+    extract,
+    func,
+    select,
+    text,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.event import TelemetryEvent
@@ -43,9 +56,18 @@ from src.utils.format import fmt_duration, fmt_tokens
 
 logger = logging.getLogger(__name__)
 
-# (key, name) of the group an event belongs to, from its row of the
-# completions query (web/presenters/metrics_view.GROUPINGS).
-GroupKey = Callable[[Row], tuple[str, str]]
+
+@dataclass(frozen=True)
+class GroupBy:
+    """SQL key and name of the group an event belongs to, over the tables of
+    the completions query (web/presenters/metrics_view.GROUPINGS)."""
+
+    key: ColumnElement
+    name: ColumnElement
+    # The key is the event's task's (its project, its owner): each task is in
+    # one group, so the groups' task counts add up to the page's.
+    per_task: bool
+
 
 # Period presets -> how many of the reader's calendar days to include, today
 # counted (None = all time). The key is what the route accepts as ?period=...
@@ -68,6 +90,31 @@ PERIOD_LABELS: dict[str, str] = {
 }
 DEFAULT_PERIOD = "7d"
 
+# The daily figures are summed per quarter of an hour of UTC, then per the
+# reader's day in Python. Every zone's offset from UTC is a whole number of
+# quarters (Nepal's +05:45 too), so no quarter straddles a local midnight.
+_QUARTER_SECONDS = 900
+_QUARTER = (
+    cast(func.floor(extract("epoch", TelemetryEvent.created_at)), BigInteger)
+    // _QUARTER_SECONDS
+)
+
+_TOKENS = TelemetryEvent.input_tokens + TelemetryEvent.output_tokens
+
+# What the breakdowns split the completions by. The completions are summed per
+# combination of these that occurs, and each breakdown adds up those sums.
+_DIMENSIONS = (
+    TelemetryEvent.model_id,
+    TelemetryEvent.mode,
+    TelemetryEvent.provider,
+    TelemetryEvent.completion_kind,
+    TelemetryEvent.client_kind,
+)
+
+# Rows of a breakdown are ordered by their first event, so names that tie
+# keep the order in which they first occurred.
+_FIRST = func.min(TelemetryEvent.created_at).label("first_at")
+
 
 def period_start(
     period: str, now: Optional[datetime] = None, zone: ZoneInfo = UTC
@@ -83,26 +130,73 @@ def period_start(
     return day_start_utc(today(zone, now) - timedelta(days=days - 1), zone)
 
 
-async def _embedding_rows(
-    db: AsyncSession,
+def _sum(column) -> ColumnElement:
+    """SUM of a whole-number column, as one: Postgres sums BIGINT into NUMERIC."""
+    return cast(func.sum(column), BigInteger)
+
+
+def _completions(
     user_id: str,
+    organization_id: Optional[str],
     start: Optional[datetime],
-    client: Optional[str] = None,
-) -> Sequence[Row]:
-    """``(input_tokens, embedding_source)`` of the user's embedding events in
-    the period."""
-    stmt = select(TelemetryEvent.input_tokens, TelemetryEvent.embedding_source).where(
-        TelemetryEvent.user_id == user_id,
-        TelemetryEvent.event_type == EMBEDDING_EVENT,
-    )
+    client: Optional[str],
+) -> Select:
+    """The period's LLM Completion events, as a SELECT with no columns yet.
+
+    The reader's own events, or with ``organization_id`` the events of that
+    organization's tasks. Joined for a group's key and name: the event's task,
+    its project (named only when the user may see it: an organization they
+    left) and, in an organization, the task's owner.
+    """
+    if organization_id is None:
+        # The (user_id, event_type, created_at) index serves the filter and
+        # the range. The owner is part of the join, so an event naming another
+        # user's task id has no project.
+        stmt = (
+            select()
+            .select_from(TelemetryEvent)
+            .outerjoin(
+                Task, and_(Task.id == TelemetryEvent.task_id, Task.user_id == user_id)
+            )
+            .where(TelemetryEvent.user_id == user_id)
+        )
+    else:
+        # Only the task owner's events count: anyone else's naming the task id
+        # is not the organization's. IS NOT DISTINCT FROM means "=" here (a
+        # task always has an owner), but the planner does not equate the two
+        # columns: with "=", Postgres probed a heavy user's events once per
+        # task of a page narrowed to one group (18 s a statement on the
+        # bench). The owner is joined on the event's user, which lets it read
+        # each member's events from the user-led index instead.
+        stmt = (
+            select()
+            .select_from(TelemetryEvent)
+            .join(
+                Task,
+                and_(
+                    Task.id == TelemetryEvent.task_id,
+                    Task.user_id.is_not_distinct_from(TelemetryEvent.user_id),
+                ),
+            )
+            .join(User, User.id == TelemetryEvent.user_id)
+            .where(Task.organization_id == organization_id)
+        )
+    stmt = stmt.outerjoin(
+        Project, and_(Project.id == Task.project_id, visible_to(user_id))
+    ).where(TelemetryEvent.event_type == LLM_COMPLETION_EVENT)
     if start is not None:
         stmt = stmt.where(TelemetryEvent.created_at >= start)
     if client is not None:
         stmt = stmt.where(TelemetryEvent.client_kind == client)
-    return (await db.execute(stmt)).all()
+    return stmt
 
 
-def _embedding_totals(rows: Iterable[Row]) -> dict:
+async def _embeddings(
+    db: AsyncSession,
+    user_id: str,
+    start: Optional[datetime],
+    client: Optional[str],
+) -> dict:
     """Tokens spent on code-index embeddings in the period, by source.
 
     Reported apart from the completion totals rather than inside them. An index
@@ -110,21 +204,40 @@ def _embedding_totals(rows: Iterable[Row]) -> dict:
     large enough to hide everything it sits next to; the question it answers
     ("what is indexing costing me?") is also a different question.
     """
-    total = 0
-    calls = 0
+    stmt = select(
+        TelemetryEvent.embedding_source,
+        _sum(TelemetryEvent.input_tokens).label("tokens"),
+        func.count().label("calls"),
+        _FIRST,
+    ).where(
+        TelemetryEvent.user_id == user_id,
+        TelemetryEvent.event_type == EMBEDDING_EVENT,
+    )
+    if start is not None:
+        stmt = stmt.where(TelemetryEvent.created_at >= start)
+    if client is not None:
+        stmt = stmt.where(TelemetryEvent.client_kind == client)
+    stmt = stmt.group_by(TelemetryEvent.embedding_source).order_by(
+        _FIRST, TelemetryEvent.embedding_source
+    )
+    return _embedding_totals((await db.execute(stmt)).all())
+
+
+def _embedding_totals(rows: Sequence[Row]) -> dict:
+    """The indexing figures from the embeddings summed per source."""
     by_source: dict[str, dict] = {}
-    for tokens, source in rows:
-        total += tokens
-        calls += 1
-        source = source or "unknown"
+    for row in rows:
+        source = row.embedding_source or "unknown"
         slot = by_source.setdefault(source, {"name": source, "tokens": 0, "count": 0})
-        slot["tokens"] += tokens
-        slot["count"] += 1
+        slot["tokens"] += row.tokens
+        slot["count"] += row.calls
 
     sources = sorted(by_source.values(), key=lambda s: -s["tokens"])
     for row in sources:
         row["tokens_fmt"] = fmt_tokens(row["tokens"])
 
+    total = sum(s["tokens"] for s in sources)
+    calls = sum(s["count"] for s in sources)
     return {
         "tokens": total,
         "tokens_fmt": fmt_tokens(total),
@@ -134,6 +247,62 @@ def _embedding_totals(rows: Iterable[Row]) -> dict:
     }
 
 
+async def _by_day(db: AsyncSession, completions: Select, zone: ZoneInfo) -> list:
+    """Chronological {day, tokens, cost} of the reader's calendar days."""
+    stmt = (
+        completions.add_columns(
+            _QUARTER.label("quarter"),
+            _sum(_TOKENS).label("tokens"),
+            func.sum(TelemetryEvent.cost).label("cost"),
+        )
+        .group_by("quarter")
+        .order_by("quarter")
+    )
+    by_day: dict[str, dict] = {}
+    for row in (await db.execute(stmt)).all():
+        start = datetime.fromtimestamp(row.quarter * _QUARTER_SECONDS, timezone.utc)
+        day = local_day(start, zone).isoformat()
+        slot = by_day.setdefault(day, {"day": day, "tokens": 0, "cost": 0.0})
+        slot["tokens"] += row.tokens
+        slot["cost"] += row.cost
+    return list(by_day.values())
+
+
+async def _groups(
+    db: AsyncSession, completions: Select, group_by: GroupBy, total_cost: float
+) -> list[dict]:
+    """{key, name, tokens, tokens_fmt, cost, share, count, tasks} per group,
+    the costliest first."""
+    stmt = (
+        completions.add_columns(
+            group_by.key.label("group_key"),
+            group_by.name.label("group_name"),
+            _sum(_TOKENS).label("tokens"),
+            func.sum(TelemetryEvent.cost).label("cost"),
+            func.count().label("completions"),
+            func.count(distinct(TelemetryEvent.task_id)).label("tasks"),
+            _FIRST,
+        )
+        .group_by("group_key", "group_name")
+        .order_by(_FIRST, "group_key")
+    )
+    groups = [
+        {
+            "key": row.group_key,
+            "name": row.group_name,
+            "tokens": row.tokens,
+            "tokens_fmt": fmt_tokens(row.tokens),
+            "cost": row.cost,
+            # Percent of the page's cost; None when nothing cost anything.
+            "share": round(100 * row.cost / total_cost) if total_cost else None,
+            "count": row.completions,
+            "tasks": row.tasks,
+        }
+        for row in (await db.execute(stmt)).all()
+    ]
+    return sorted(groups, key=lambda g: (-g["cost"], -g["tokens"]))
+
+
 async def compute_user_metrics(
     db: AsyncSession,
     user_id: str,
@@ -141,8 +310,8 @@ async def compute_user_metrics(
     now: Optional[datetime] = None,
     client: Optional[str] = None,
     zone: ZoneInfo = UTC,
-    group_key: Optional[GroupKey] = None,
-    only: str = "",
+    group_by: Optional[GroupBy] = None,
+    narrow=None,
     organization_id: Optional[str] = None,
 ) -> dict:
     """Aggregate the user's LLM-usage metrics for the given period.
@@ -154,8 +323,9 @@ async def compute_user_metrics(
     ``client`` ("vscode" or "cli", services/client_kind) keeps only the events
     that client sent; None counts both. ``zone`` is the reader's: the period
     starts at their local midnight and ``by_day`` holds their calendar days.
-    ``group_key`` sums the events per group into ``groups``; ``only`` keeps the
-    events of that one group, so every figure is the group's.
+    ``group_by`` sums the events per group into ``groups``; ``narrow`` (a
+    condition on the events) keeps the events of one group, so every figure is
+    the group's.
 
     Returns a JSON-serializable dict:
       - period, period_label
@@ -168,119 +338,48 @@ async def compute_user_metrics(
       - by_client: the same, with a ``label`` ("VS Code", "CLI")
       - by_day: chronological list of {day, tokens, cost}
       - groups: list of {key, name, tokens, tokens_fmt, cost, share, count,
-        tasks}, sorted desc by cost; empty without ``group_key``
+        tasks}, sorted desc by cost; empty without ``group_by``
       - has_data
     """
     if period not in PERIODS:
         period = DEFAULT_PERIOD
+    if db.bind.dialect.name == "postgresql":
+        # asyncpg prepares statements, and after five runs on a connection
+        # Postgres may keep a generic plan that cannot see the user or the
+        # period. For a narrowed page that plan reads a heavy user's events
+        # once per task: minutes a statement on the bench.
+        await db.execute(text("SET LOCAL plan_cache_mode = force_custom_plan"))
     start = period_start(period, now, zone)
+    completions = _completions(user_id, organization_id, start, client)
+    if narrow is not None:
+        completions = completions.where(narrow)
 
-    # Only the columns the aggregation reads, as plain rows: no ORM entity
-    # per event (identity map, attribute instrumentation). The project is the
-    # event's task's, joined on the primary keys; its name only when the user
-    # may see it (an organization they left), as on the task list.
-    columns = [
-        TelemetryEvent.task_id,
-        TelemetryEvent.input_tokens,
-        TelemetryEvent.output_tokens,
-        TelemetryEvent.cache_read_tokens,
-        TelemetryEvent.cache_write_tokens,
-        TelemetryEvent.cost,
-        TelemetryEvent.duration_ms,
-        TelemetryEvent.model_id,
-        TelemetryEvent.provider,
-        TelemetryEvent.mode,
-        TelemetryEvent.completion_kind,
-        TelemetryEvent.usage_reported,
-        TelemetryEvent.created_at,
-        TelemetryEvent.client_kind,
-        Task.project_id,
-        Project.name.label("project_name"),
-    ]
-    if organization_id is None:
-        # The (user_id, event_type, created_at) index serves the filter, the
-        # range and the ORDER BY; the client condition only drops rows that
-        # index found. The owner is part of the join, so an event naming
-        # another user's task id has no project.
-        stmt = (
-            select(*columns)
-            .outerjoin(
-                Task, and_(Task.id == TelemetryEvent.task_id, Task.user_id == user_id)
+    combinations = (
+        await db.execute(
+            completions.add_columns(
+                *_DIMENSIONS,
+                _sum(TelemetryEvent.input_tokens).label("input"),
+                _sum(TelemetryEvent.output_tokens).label("output"),
+                _sum(TelemetryEvent.cache_read_tokens).label("cache_read"),
+                _sum(TelemetryEvent.cache_write_tokens).label("cache_write"),
+                func.sum(TelemetryEvent.cost).label("cost"),
+                func.count().label("completions"),
+                # Completions whose provider could not say what they cost.
+                # Counted rather than silently added in as zero, so "12 calls
+                # we have no figures for" reads as what it is instead of as
+                # twelve free calls.
+                func.count()
+                .filter(TelemetryEvent.usage_reported.is_(False))
+                .label("unreported"),
+                # Summed from the completions that measured their request.
+                _sum(TelemetryEvent.duration_ms).label("duration_ms"),
+                _FIRST,
             )
-            .where(TelemetryEvent.user_id == user_id)
+            .group_by(*_DIMENSIONS)
+            .order_by(_FIRST, *_DIMENSIONS)
         )
-    else:
-        # The organization's tasks are indexed (ix_tasks_organization_id), their
-        # events by task id and by user. Only the task owner's events count:
-        # anyone else's naming the task id is not the organization's. Who ran
-        # it names the "By user" group.
-        stmt = (
-            select(
-                *columns,
-                TelemetryEvent.user_id,
-                User.first_name,
-                User.last_name,
-                User.email,
-            )
-            .join(
-                Task,
-                and_(
-                    Task.id == TelemetryEvent.task_id,
-                    Task.user_id == TelemetryEvent.user_id,
-                ),
-            )
-            .join(User, User.id == Task.user_id)
-            .where(Task.organization_id == organization_id)
-        )
-    stmt = stmt.outerjoin(
-        Project, and_(Project.id == Task.project_id, visible_to(user_id))
-    ).where(TelemetryEvent.event_type == LLM_COMPLETION_EVENT)
-    if start is not None:
-        stmt = stmt.where(TelemetryEvent.created_at >= start)
-    if client is not None:
-        stmt = stmt.where(TelemetryEvent.client_kind == client)
-    stmt = stmt.order_by(TelemetryEvent.created_at)
+    ).all()
 
-    rows = (await db.execute(stmt)).all()
-    # Indexing belongs to no task, so it is in no group and no organization.
-    embeddings = (
-        []
-        if only or organization_id
-        else await _embedding_rows(db, user_id, start, client)
-    )
-
-    # The loop below is pure Python over every completion in the period (about
-    # 58 ms for all time on the live deployment); in a worker thread it no
-    # longer holds up every other request while it runs.
-    return await anyio.to_thread.run_sync(
-        aggregate_user_metrics,
-        rows,
-        embeddings,
-        period,
-        now,
-        zone,
-        group_key,
-        only,
-    )
-
-
-def aggregate_user_metrics(
-    rows: Sequence[Row],
-    embeddings: Sequence[Row],
-    period: str,
-    now: Optional[datetime] = None,
-    zone: ZoneInfo = UTC,
-    group_key: Optional[GroupKey] = None,
-    only: str = "",
-) -> dict:
-    """The metrics page's figures from the fetched rows; see compute_user_metrics.
-
-    ``rows`` are the completions query's rows (the event's task and figures,
-    ``created_at``, ``client_kind``, ``project_id``, ``project_name`` and, in
-    an organization, who ran the event) of the period's ``LLM Completion``
-    events, oldest first; ``embeddings`` the ``(input_tokens,
-    embedding_source)`` of its embedding events. Pure: no database, no I/O.
-    """
     totals = {
         "input": 0,
         "output": 0,
@@ -294,77 +393,32 @@ def aggregate_user_metrics(
     by_provider: dict[str, dict] = {}
     by_kind: dict[str, dict] = {}
     by_client: dict[str, dict] = {}
-    by_day: dict[str, dict] = {}
-    # Completions whose provider could not say what they cost. Counted rather
-    # than silently added in as zero, so "12 calls we have no figures for" reads
-    # as what it is instead of as twelve free calls.
     unreported = 0
-    # Summed from the completions that measured their request (durationMs).
     duration_ms = 0
-    task_ids: set[str] = set()
-    groups: dict[str, dict] = {}
 
-    def _bucket(store: dict, name: str, tokens: float, cost: float) -> None:
+    def _bucket(store: dict, name: str, row: Row) -> None:
         slot = store.setdefault(
             name, {"name": name, "tokens": 0, "cost": 0.0, "count": 0}
         )
-        slot["tokens"] += tokens
-        slot["cost"] += cost
-        slot["count"] += 1
+        slot["tokens"] += row.input + row.output
+        slot["cost"] += row.cost
+        slot["count"] += row.completions
 
-    for row in rows:
-        if group_key is not None:
-            key, name = group_key(row)
-            if only and key != only:
-                continue
-
-        cost = row.cost
-        tokens = row.input_tokens + row.output_tokens
-
-        totals["input"] += row.input_tokens
-        totals["output"] += row.output_tokens
-        totals["cache_read"] += row.cache_read_tokens
-        totals["cache_write"] += row.cache_write_tokens
-        totals["cost"] += cost
-        totals["completions"] += 1
-
-        if not row.usage_reported:
-            unreported += 1
-
-        _bucket(by_model, row.model_id or "unknown", tokens, cost)
-        _bucket(by_mode, row.mode or "unknown", tokens, cost)
-        _bucket(by_provider, row.provider or "unknown", tokens, cost)
-        _bucket(by_kind, row.completion_kind, tokens, cost)
-        _bucket(by_client, row.client_kind or "unknown", tokens, cost)
-
-        created = row.created_at or (now or datetime.now(timezone.utc))
-        day = local_day(created, zone).isoformat()
-        dslot = by_day.setdefault(day, {"day": day, "tokens": 0, "cost": 0.0})
-        dslot["tokens"] += tokens
-        dslot["cost"] += cost
-
+    for row in combinations:
+        totals["input"] += row.input
+        totals["output"] += row.output
+        totals["cache_read"] += row.cache_read
+        totals["cache_write"] += row.cache_write
+        totals["cost"] += row.cost
+        totals["completions"] += row.completions
+        unreported += row.unreported
         duration_ms += row.duration_ms
-        task_id = row.task_id
-        if task_id:
-            task_ids.add(task_id)
 
-        if group_key is not None:
-            gslot = groups.setdefault(
-                key,
-                {
-                    "key": key,
-                    "name": name,
-                    "tokens": 0,
-                    "cost": 0.0,
-                    "count": 0,
-                    "task_ids": set(),
-                },
-            )
-            gslot["tokens"] += tokens
-            gslot["cost"] += cost
-            gslot["count"] += 1
-            if task_id:
-                gslot["task_ids"].add(task_id)
+        _bucket(by_model, row.model_id or "unknown", row)
+        _bucket(by_mode, row.mode or "unknown", row)
+        _bucket(by_provider, row.provider or "unknown", row)
+        _bucket(by_kind, row.completion_kind, row)
+        _bucket(by_client, row.client_kind, row)
 
     def _sorted(store: dict) -> list[dict]:
         items = sorted(store.values(), key=lambda s: s["tokens"], reverse=True)
@@ -372,48 +426,50 @@ def aggregate_user_metrics(
             s["tokens_fmt"] = fmt_tokens(s["tokens"])
         return items
 
-    models = _sorted(by_model)
-    modes = _sorted(by_mode)
-    providers = _sorted(by_provider)
     kinds = _sorted(by_kind)
     for row in kinds:
         row["label"] = KIND_LABELS.get(row["name"], row["name"])
     clients = _sorted(by_client)
     for row in clients:
         row["label"] = CLIENT_LABELS.get(row["name"], row["name"])
-    days = sorted(by_day.values(), key=lambda d: d["day"])
-    embedding_totals = _embedding_totals(embeddings)
 
     total_tokens = totals["input"] + totals["output"]
-
-    by_group = sorted(groups.values(), key=lambda g: (-g["cost"], -g["tokens"]))
-    for row in by_group:
-        row["tasks"] = len(row.pop("task_ids"))
-        row["tokens_fmt"] = fmt_tokens(row["tokens"])
-        # Percent of the page's cost; None when nothing cost anything.
-        row["share"] = (
-            round(100 * row["cost"] / totals["cost"]) if totals["cost"] else None
+    groups = (
+        await _groups(db, completions, group_by, totals["cost"])
+        if group_by is not None
+        else []
+    )
+    if group_by is not None and group_by.per_task:
+        task_count = sum(g["tasks"] for g in groups)
+    else:
+        task_count = await db.scalar(
+            completions.add_columns(func.count(distinct(TelemetryEvent.task_id)))
         )
+    # Indexing belongs to no task, so it is in no group and no organization.
+    if narrow is not None or organization_id:
+        embeddings = _embedding_totals([])
+    else:
+        embeddings = await _embeddings(db, user_id, start, client)
 
     return {
         "period": period,
         "period_label": PERIOD_LABELS.get(period, period),
         "totals": {
-            **{k: int(v) if k != "cost" else v for k, v in totals.items()},
-            "total_tokens": int(total_tokens),
+            **totals,
+            "total_tokens": total_tokens,
             "total_tokens_fmt": fmt_tokens(total_tokens),
         },
-        "duration_ms": int(duration_ms),
+        "duration_ms": duration_ms,
         "duration": fmt_duration(duration_ms),
-        "task_count": len(task_ids),
-        "by_model": models,
-        "by_mode": modes,
-        "by_provider": providers,
+        "task_count": task_count,
+        "by_model": _sorted(by_model),
+        "by_mode": _sorted(by_mode),
+        "by_provider": _sorted(by_provider),
         "by_kind": kinds,
         "by_client": clients,
         "unreported": unreported,
-        "embeddings": embedding_totals,
-        "by_day": days,
-        "groups": by_group,
+        "embeddings": embeddings,
+        "by_day": await _by_day(db, completions, zone),
+        "groups": groups,
         "has_data": totals["completions"] > 0,
     }

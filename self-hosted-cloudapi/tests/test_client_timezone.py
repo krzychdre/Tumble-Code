@@ -149,6 +149,48 @@ async def test_daily_buckets_are_local_days(db_session):
     assert [(d["day"], d["tokens"]) for d in utc["by_day"]] == [("2026-10-04", 1010)]
 
 
+# The daily figures are summed per quarter of an hour of UTC in SQL, then per
+# local day (services/metrics_service._by_day): on Postgres too.
+@pytest.fixture(params=["db_session", "pg_session"])
+def any_db(request):
+    return request.getfixturevalue(request.param)
+
+
+@pytest.mark.parametrize(
+    "zone, day",
+    [
+        # Midnight is at a quarter past the hour in UTC.
+        ("Asia/Kathmandu", date(2026, 10, 5)),
+        # Summer time ends: a 25-hour day.
+        ("Europe/Warsaw", date(2026, 10, 25)),
+        # Summer time starts: a 23-hour day.
+        ("Europe/Warsaw", date(2026, 3, 29)),
+    ],
+)
+async def test_daily_buckets_end_exactly_at_local_midnight(any_db, zone, day):
+    """A call a microsecond before either midnight of the day is the day
+    before it; one at midnight is the day itself."""
+    z = ZoneInfo(zone)
+    start = day_start_utc(day, z)
+    end = day_start_utc(day + timedelta(days=1), z)
+    tick = timedelta(microseconds=1)
+    await _seed_user(any_db)
+    any_db.add_all(
+        [
+            _llm_event(tin=10**n, tout=0, created_at=stamp)
+            for n, stamp in enumerate([start - tick, start, end - tick, end])
+        ]
+    )
+    await any_db.commit()
+
+    m = await compute_user_metrics(any_db, "user_test", "all", now=NOW, zone=z)
+    assert [(d["day"], d["tokens"]) for d in m["by_day"]] == [
+        ((day - timedelta(days=1)).isoformat(), 1),
+        (day.isoformat(), 110),
+        ((day + timedelta(days=1)).isoformat(), 1000),
+    ]
+
+
 # --- problems --------------------------------------------------------------------
 
 
