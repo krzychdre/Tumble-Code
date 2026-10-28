@@ -17,6 +17,7 @@ from src.web.presenters.task_rows import _metrics_tooltip, _run_tooltip, _spend_
 
 from tests.test_side_call_metrics import _embedding_event
 from tests.web_helpers import (
+    _store,
     _add_message,
     _llm_event,
     _override_web_user,
@@ -151,29 +152,30 @@ def test_the_retention_preview_states_its_size():
 async def test_the_metrics_page_prints_its_figures(client, db_session, session_factory):
     await _seed_user(db_session)
     async with session_factory() as s:
-        s.add(
-            _llm_event(
-                model="big",
-                task_id="t1",
-                tin=1_234_567,
-                tout=3_365,
-                cread=1_500,
-                cwrite=20_000,
-                cost=0.1234,
-            )
+        await _store(
+            s,
+            [
+                _llm_event(
+                    model="big",
+                    task_id="t1",
+                    tin=1_234_567,
+                    tout=3_365,
+                    cread=1_500,
+                    cwrite=20_000,
+                    cost=0.1234,
+                ),
+                _llm_event(
+                    model="small",
+                    task_id="t1",
+                    tin=500,
+                    tout=10,
+                    cost=0.03125,
+                    kind="condense",
+                ),
+                _embedding_event(prompt_tokens=2_000),
+                _embedding_event(prompt_tokens=3_000),
+            ],
         )
-        s.add(
-            _llm_event(
-                model="small",
-                task_id="t1",
-                tin=500,
-                tout=10,
-                cost=0.03125,
-                kind="condense",
-            )
-        )
-        s.add(_embedding_event(prompt_tokens=2_000))
-        s.add(_embedding_event(prompt_tokens=3_000))
         await s.commit()
 
     _override_web_user(client.app)
@@ -202,8 +204,13 @@ async def test_the_metrics_page_says_one_in_the_singular(
 ):
     await _seed_user(db_session)
     async with session_factory() as s:
-        s.add(_llm_event(task_id="t1", tin=10, tout=1, cost=0.0))
-        s.add(_embedding_event(prompt_tokens=5))
+        await _store(
+            s,
+            [
+                _llm_event(task_id="t1", tin=10, tout=1, cost=0.0),
+                _embedding_event(prompt_tokens=5),
+            ],
+        )
         await s.commit()
 
     _override_web_user(client.app)
@@ -234,16 +241,19 @@ async def test_the_task_page_prints_the_side_call_cost(
                 "text": '{"tokensIn": 297800, "tokensOut": 5900, "cost": 0.1656}',
             },
         )
-        s.add(_llm_event(task_id="task-f", model="m", tin=297_800, tout=5_900))
-        s.add(
-            _llm_event(
-                task_id="task-f",
-                model="bg",
-                tin=40_000,
-                tout=800,
-                cost=0.4321,
-                kind="condense",
-            )
+        await _store(
+            s,
+            [
+                _llm_event(task_id="task-f", model="m", tin=297_800, tout=5_900),
+                _llm_event(
+                    task_id="task-f",
+                    model="bg",
+                    tin=40_000,
+                    tout=800,
+                    cost=0.4321,
+                    kind="condense",
+                ),
+            ],
         )
         await _summarize(s, "task-f")
         await s.commit()

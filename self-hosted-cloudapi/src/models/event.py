@@ -1,4 +1,6 @@
-"""TelemetryEvent model."""
+"""TelemetryEvent and UsageRollup models."""
+
+import calendar
 
 from sqlalchemy import (
     BigInteger,
@@ -80,3 +82,66 @@ class TelemetryEvent(Base):
     created_at = Column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
+
+
+# usage_rollup sums the figures per quarter of an hour of UTC. Every zone's
+# offset from UTC is a whole number of quarters (Nepal's +05:45 too), so a
+# reader's midnight starts a quarter and no quarter straddles one.
+QUARTER_SECONDS = 900
+
+
+def quarter_of(at: datetime) -> int:
+    """The quarter of an hour of UTC ``at`` falls in, counted from the epoch."""
+    return calendar.timegm(at.utctimetuple()) // QUARTER_SECONDS
+
+
+class UsageRollup(Base):
+    """The figures of LLM Completion and Embedding Usage events, summed per
+    user, quarter of an hour, task and combination of names.
+
+    The metrics and diagnostics pages sum these rows instead of the events:
+    an organization has millions of completions, and a few hundred thousand
+    of these rows. Ingest adds each event into its row in the event's own
+    transaction (services/telemetry_service.add_to_rollup); migration
+    f2b3c4d5e6a7 built the rows of the events stored before it. The columns
+    are the event's columns of the same names (telemetry_vocab.event_columns),
+    summed. A row of a past quarter never changes again.
+    """
+
+    __tablename__ = "usage_rollup"
+
+    # The event's user. The primary key's order serves the pages' reads: one
+    # user's rows of one type over a range of quarters. A deleted user's rows
+    # go with them; their events stay with a NULL user, which no page reads.
+    user_id = Column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    event_type = Column(String, primary_key=True)
+    quarter = Column(BigInteger, primary_key=True)  # quarter_of(created_at)
+    # The sha256 of the task, the names and the client
+    # (telemetry_service.rollup_key). A client makes those as long as it
+    # likes, and a Postgres btree entry holds at most 2704 bytes.
+    names_key = Column(String(64), primary_key=True)
+    # Not a foreign key, like telemetry_events.task_id.
+    task_id = Column(String, nullable=True)
+    client_kind = Column(String, nullable=False)
+    model_id = Column(String, nullable=True)
+    provider = Column(String, nullable=True)
+    mode = Column(String, nullable=True)
+    completion_kind = Column(String, nullable=True)
+    embedding_source = Column(String, nullable=True)
+    # Sums. An embedding adds its prompt tokens to input_tokens and zero to
+    # the figures it does not have.
+    input_tokens = Column(BigInteger, nullable=False)
+    output_tokens = Column(BigInteger, nullable=False)
+    cache_read_tokens = Column(BigInteger, nullable=False)
+    cache_write_tokens = Column(BigInteger, nullable=False)
+    cost = Column(Float, nullable=False)
+    duration_ms = Column(BigInteger, nullable=False)
+    # How many events the row sums, and how many of them are completions
+    # whose provider reported no usage (usage_reported false).
+    events = Column(BigInteger, nullable=False)
+    unreported = Column(BigInteger, nullable=False)
+    # The earliest created_at of those events: rows that tie keep the order
+    # in which their names first occurred.
+    first_at = Column(DateTime(timezone=True), nullable=False)

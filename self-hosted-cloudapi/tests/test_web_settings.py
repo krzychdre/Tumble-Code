@@ -11,6 +11,7 @@ from src.models.event import TelemetryEvent
 from src.services.metrics_service import compute_user_metrics
 
 from tests.web_helpers import (
+    _store,
     _seed_user,
     _override_web_user,
     _msgs,
@@ -168,25 +169,26 @@ async def test_a_telemetry_purge_keeps_everything_the_metrics_page_shows(
     await _seed_user(db_session)
     old = datetime.now(timezone.utc) - timedelta(days=90)
     async with session_factory() as s:
-        s.add(
-            _event_row(
-                LLM_COMPLETION_EVENT,
-                {
-                    "taskId": "t-m",
-                    "modelId": "glm",
-                    "inputTokens": 100,
-                    "outputTokens": 20,
-                    "cost": 0.5,
-                },
-                created_at=old,
-            )
-        )
-        s.add(
-            _event_row(
-                EMBEDDING_EVENT,
-                {"promptTokens": 250000, "source": "code-index"},
-                created_at=old,
-            )
+        await _store(
+            s,
+            [
+                _event_row(
+                    LLM_COMPLETION_EVENT,
+                    {
+                        "taskId": "t-m",
+                        "modelId": "glm",
+                        "inputTokens": 100,
+                        "outputTokens": 20,
+                        "cost": 0.5,
+                    },
+                    created_at=old,
+                ),
+                _event_row(
+                    EMBEDDING_EVENT,
+                    {"promptTokens": 250000, "source": "code-index"},
+                    created_at=old,
+                ),
+            ],
         )
         s.add(_event_row("Task Message", {"message": {}}, created_at=old))
         await s.commit()

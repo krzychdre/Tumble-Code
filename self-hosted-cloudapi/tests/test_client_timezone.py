@@ -18,7 +18,14 @@ from src.services.metrics_service import compute_user_metrics, period_start
 from src.services.problems.base import SOURCE_TELEMETRY, Occurrence
 from src.services.problems.views import _group_view
 from src.utils.clientzone import UTC, as_utc, day_start_utc, local_day, parse_zone
-from tests.web_helpers import _llm_event, _override_web_user, _seed_user
+from src.services.problems.collect import _request_counts
+from tests.web_helpers import (
+    _event_row,
+    _llm_event,
+    _override_web_user,
+    _seed_user,
+    _store,
+)
 
 WARSAW = ZoneInfo("Europe/Warsaw")
 NOW = datetime(2026, 10, 5, 8, 0, tzinfo=timezone.utc)  # 10:00 in Warsaw
@@ -101,7 +108,8 @@ def test_all_time_has_no_start():
 async def _seed_night(db_session):
     """One call at 01:30 Warsaw (still 4 October in UTC), one at 23:30 Warsaw on the 4th."""
     await _seed_user(db_session)
-    db_session.add_all(
+    await _store(
+        db_session,
         [
             _llm_event(
                 task_id="night",
@@ -115,7 +123,7 @@ async def _seed_night(db_session):
                 tout=0,
                 created_at=datetime(2026, 10, 4, 21, 30, tzinfo=timezone.utc),
             ),
-        ]
+        ],
     )
     await db_session.commit()
 
@@ -175,11 +183,12 @@ async def test_daily_buckets_end_exactly_at_local_midnight(any_db, zone, day):
     end = day_start_utc(day + timedelta(days=1), z)
     tick = timedelta(microseconds=1)
     await _seed_user(any_db)
-    any_db.add_all(
+    await _store(
+        any_db,
         [
             _llm_event(tin=10**n, tout=0, created_at=stamp)
             for n, stamp in enumerate([start - tick, start, end - tick, end])
-        ]
+        ],
     )
     await any_db.commit()
 
@@ -189,6 +198,31 @@ async def test_daily_buckets_end_exactly_at_local_midnight(any_db, zone, day):
         (day.isoformat(), 110),
         ((day + timedelta(days=1)).isoformat(), 1000),
     ]
+
+
+@pytest.mark.parametrize("zone", ["Asia/Kathmandu", "America/St_Johns"])
+async def test_a_period_starts_exactly_at_the_local_midnight(any_db, zone):
+    """A call at the first instant of the period counts, one a microsecond
+    before it does not: in the totals, in the indexing figure and in the
+    diagnostics' request counts."""
+    z = ZoneInfo(zone)
+    start = period_start("7d", NOW, z)
+    before = start - timedelta(microseconds=1)
+    await _seed_user(any_db)
+    await _store(
+        any_db,
+        [
+            _llm_event(tin=1, tout=0, created_at=before),
+            _llm_event(tin=10, tout=0, created_at=start),
+            _event_row("Embedding Usage", {"promptTokens": 100}, created_at=before),
+            _event_row("Embedding Usage", {"promptTokens": 1000}, created_at=start),
+        ],
+    )
+    await any_db.commit()
+
+    m = await compute_user_metrics(any_db, "user_test", "7d", now=NOW, zone=z)
+    assert (m["totals"]["input"], m["embeddings"]["tokens"]) == (10, 1000)
+    assert sum((await _request_counts(any_db, "user_test", start)).values()) == 1
 
 
 # --- problems --------------------------------------------------------------------

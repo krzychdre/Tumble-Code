@@ -15,7 +15,7 @@ from html import unescape
 from pathlib import Path
 
 from src.auth.web_session import get_web_user_optional
-from tests.web_helpers import _llm_event, _override_web_user, _seed_user
+from tests.web_helpers import _llm_event, _override_web_user, _seed_user, _store
 
 _WEB = Path(__file__).resolve().parent.parent / "src" / "web"
 
@@ -23,7 +23,7 @@ _WEB = Path(__file__).resolve().parent.parent / "src" / "web"
 async def _page(client, session_factory, events):
     async with session_factory() as s:
         await _seed_user(s)
-        s.add_all(events)
+        await _store(s, events)
         await s.commit()
     _override_web_user(client.app)
     try:
@@ -160,7 +160,7 @@ async def test_daily_chart_puts_tokens_and_cost_on_one_plot_with_an_axis_each(
 
 
 def test_quiet_days_are_zeros_on_the_chart_but_not_rows_in_the_table():
-    from src.web.presenters.charts import day_table, daily
+    from src.web.presenters.charts import daily, day_table
 
     days = [
         {"day": "2026-09-28", "tokens": 100, "cost": 1.0},
@@ -284,7 +284,7 @@ async def test_the_daily_table_pager_keeps_the_period_and_opens_the_table(
     ]
     async with session_factory() as s:
         await _seed_user(s)
-        s.add_all(events)
+        await _store(s, events)
         await s.commit()
     _override_web_user(client.app)
     try:

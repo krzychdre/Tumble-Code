@@ -15,7 +15,7 @@ from urllib.parse import quote, urlencode
 
 from sqlalchemy import case, func
 
-from src.models.event import TelemetryEvent
+from src.models.event import UsageRollup
 from src.models.project import Project
 from src.models.task import Task
 from src.models.user import User
@@ -84,8 +84,8 @@ GROUPINGS = {
     "model": Grouping(
         "Model",
         "No model",
-        TelemetryEvent.model_id,
-        TelemetryEvent.model_id,
+        UsageRollup.model_id,
+        UsageRollup.model_id,
         Task.primary_model,
         lambda key: Task.primary_model == key,
         per_task=False,
@@ -94,7 +94,7 @@ GROUPINGS = {
     "user": Grouping(
         "User",
         "No user",
-        TelemetryEvent.user_id,
+        UsageRollup.user_id,
         _USER_NAME,
         Task.user_id,
         lambda key: Task.user_id == key,
@@ -164,7 +164,7 @@ class MetricsView:
     def events_condition(self):
         """What keeps the events of the narrowed group, or None. On the key
         column itself, not on ``events``' coalesced key, so an index on it
-        (the metrics index leads with the user) can find them."""
+        (usage_rollup's primary key leads with the user) can find them."""
         if not self.only:
             return None
         if self.only == NO_KEY:

@@ -13,6 +13,7 @@ from src.models.task import Task
 from src.services.metrics_service import compute_user_metrics
 
 from tests.web_helpers import (
+    _store,
     _seed_user,
     _override_current_user,
     _override_web_user,
@@ -21,7 +22,6 @@ from tests.web_helpers import (
     _llm_event,
     _backfill,
 )
-
 
 # --- Metrics page ----------------------------------------------------------
 
@@ -34,11 +34,12 @@ async def test_metrics_redirects_to_login_without_session(client):
 
 async def test_compute_user_metrics_aggregates_dimensions(db_session):
     """Totals, breakdowns and the request duration aggregate from LLM Completion events."""
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta, timezone
 
     await _seed_user(db_session)
     base = datetime(2026, 6, 21, 12, 0, tzinfo=timezone.utc)
-    db_session.add_all(
+    await _store(
+        db_session,
         [
             _llm_event(
                 model="gpt-a",
@@ -72,7 +73,7 @@ async def test_compute_user_metrics_aggregates_dimensions(db_session):
                 cost=0.0,
                 created_at=base,
             ),
-        ]
+        ],
     )
     await db_session.commit()
 
@@ -102,17 +103,18 @@ async def test_compute_user_metrics_aggregates_dimensions(db_session):
 
 
 async def test_compute_user_metrics_period_filters_old_events(db_session):
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta, timezone
 
     await _seed_user(db_session)
     now = datetime.now(timezone.utc)
-    db_session.add_all(
+    await _store(
+        db_session,
         [
             _llm_event(task_id="recent", tin=100, tout=10, created_at=now),
             _llm_event(
                 task_id="old", tin=9999, tout=9999, created_at=now - timedelta(days=40)
             ),
-        ]
+        ],
     )
     await db_session.commit()
 
@@ -124,11 +126,12 @@ async def test_compute_user_metrics_period_filters_old_events(db_session):
 async def test_compute_user_metrics_scopes_to_user(db_session):
     await _seed_user(db_session)
     await _seed_user(db_session, user_id="other", email="o@example.com")
-    db_session.add_all(
+    await _store(
+        db_session,
         [
             _llm_event(user_id="user_test", tin=100, tout=10),
             _llm_event(user_id="other", tin=5000, tout=5000),
-        ]
+        ],
     )
     await db_session.commit()
 
@@ -140,15 +143,18 @@ async def test_compute_user_metrics_scopes_to_user(db_session):
 async def test_metrics_page_renders_dimensions(client, db_session, session_factory):
     await _seed_user(db_session)
     async with session_factory() as s:
-        s.add(
-            _llm_event(
-                model="nvidia/nemotron",
-                mode="orchestrator",
-                provider="openrouter",
-                tin=96941,
-                tout=3365,
-                cost=0.1234,
-            )
+        await _store(
+            s,
+            [
+                _llm_event(
+                    model="nvidia/nemotron",
+                    mode="orchestrator",
+                    provider="openrouter",
+                    tin=96941,
+                    tout=3365,
+                    cost=0.1234,
+                )
+            ],
         )
         await s.commit()
 

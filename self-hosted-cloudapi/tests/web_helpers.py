@@ -14,7 +14,7 @@ from src.auth.web_session import get_web_user_optional, WebUser
 from src.models.user import User
 from src.models.task import TaskMessage
 from src.models.event import TelemetryEvent
-from src.services.telemetry_service import event_row
+from src.services.telemetry_service import add_to_rollup, event_row
 
 
 async def _seed_user(db_session, user_id="user_test", email="t@example.com"):
@@ -118,6 +118,17 @@ def _backfill_files(task_id, messages):
     }, {"taskId": task_id, "properties": "{}"}
 
 
+async def _store(session, rows) -> None:
+    """Add ``rows`` as the write paths store them: a telemetry event also
+    adds into its usage_rollup row (telemetry_service.add_to_rollup), which
+    the metrics and diagnostics pages read."""
+    session.add_all(rows)
+    await session.flush()
+    for row in rows:
+        if isinstance(row, TelemetryEvent):
+            await add_to_rollup(session, row)
+
+
 def _event_row(
     event_type: str,
     props: dict,
@@ -128,7 +139,8 @@ def _event_row(
     the columns lifted out of it (task, client, a completion's figures).
 
     Seed telemetry through this, never a bare ``TelemetryEvent(...)``: the
-    pages read the lifted columns, which a bare row leaves NULL.
+    pages read the lifted columns, which a bare row leaves NULL. Store it
+    with ``_store`` for the pages that read usage_rollup.
     """
     event = event_row(user_id, None, event_type, props)
     if created_at is not None:

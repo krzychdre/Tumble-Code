@@ -8,7 +8,7 @@ from src.models.recall import RecallDirty, RecallLog, SessionCard
 from src.models.settings import OrganizationSettings, UserSettings
 from src.models.task import Task, TaskImage, TaskMessage, TaskShare
 from src.models.relation import TaskRelation
-from src.models.event import TelemetryEvent
+from src.models.event import TelemetryEvent, UsageRollup
 from src.models.error_report import ErrorReport
 from src.models.llm_exchange import DatasetSettings, LlmBlob, LlmExchange
 from src.models.oauth import AuthentikStateStore
@@ -36,6 +36,7 @@ __all__ = [
     "TaskImage",
     "TaskRelation",
     "TelemetryEvent",
+    "UsageRollup",
     "ErrorReport",
     "LlmExchange",
     "LlmBlob",

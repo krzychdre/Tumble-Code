@@ -23,7 +23,13 @@ from src.models.task import Task
 from src.models.user import User
 from src.services.metrics_service import compute_user_metrics
 from src.web.presenters.metrics_view import GROUPINGS, MetricsView
-from tests.web_helpers import _event_row, _llm_event, _override_web_user, _seed_user
+from tests.web_helpers import (
+    _event_row,
+    _llm_event,
+    _override_web_user,
+    _seed_user,
+    _store,
+)
 
 USER = "user_test"
 OTHER = "user_other"
@@ -75,7 +81,8 @@ async def _seed(db):
             )
         ]
     )
-    db.add_all(
+    await _store(
+        db,
         [
             _llm_event(
                 task_id=task,
@@ -94,7 +101,7 @@ async def _seed(db):
                 USER,
                 created_at=WHEN,
             )
-        ]
+        ],
     )
     await db.commit()
 
@@ -160,7 +167,8 @@ async def _seed_organization(db):
         (RIVAL, "o-rival", "gpt-a", 5000, 2.0),
         (RIVAL, "o-other", "gpt-a", 999, 9.0),
     ]
-    db.add_all(
+    await _store(
+        db,
         [
             _llm_event(
                 user,
@@ -172,7 +180,7 @@ async def _seed_organization(db):
                 created_at=WHEN + timedelta(hours=1, minutes=n),
             )
             for n, (user, task, model, tin, cost) in enumerate(org_events)
-        ]
+        ],
     )
     await db.commit()
 
@@ -269,7 +277,7 @@ async def test_a_project_the_reader_may_not_see_is_named_by_its_id(seeded):
             id="t-left", user_id=USER, organization_id="org_left", project_id="prj_left"
         )
     )
-    seeded.add(_llm_event(task_id="t-left", tin=1, tout=0, cost=0.0))
+    await _store(seeded, [_llm_event(task_id="t-left", tin=1, tout=0, cost=0.0)])
     await seeded.commit()
 
     m = await _metrics(seeded, "project")
@@ -299,11 +307,12 @@ async def test_rows_that_tie_keep_the_order_they_were_first_used_in(db_session):
     """Same tokens and cost: the model used first is listed first, in the
     table of groups and in the "By model" breakdown."""
     await _seed_user(db_session)
-    db_session.add_all(
+    await _store(
+        db_session,
         [
             _llm_event(model="zeta", created_at=WHEN),
             _llm_event(model="alpha", created_at=WHEN + timedelta(hours=1)),
-        ]
+        ],
     )
     await db_session.commit()
 
@@ -314,7 +323,9 @@ async def test_rows_that_tie_keep_the_order_they_were_first_used_in(db_session):
 
 async def test_a_group_counts_each_task_once(db_session):
     await _seed_user(db_session)
-    db_session.add_all([_llm_event(task_id=task) for task in ("t-1", "t-1", "t-2")])
+    await _store(
+        db_session, [_llm_event(task_id=task) for task in ("t-1", "t-1", "t-2")]
+    )
     await db_session.commit()
 
     m = await _metrics(db_session, "model")
@@ -324,11 +335,12 @@ async def test_a_group_counts_each_task_once(db_session):
 @pytest.mark.parametrize("space, group", SPACE_GROUPS)
 async def test_a_task_in_two_groups_is_one_task_of_the_page(org_seeded, space, group):
     """A task that used two models is in two model groups."""
-    org_seeded.add_all(
+    await _store(
+        org_seeded,
         [
             _llm_event(task_id=task, model="llama-b", created_at=WHEN)
             for task in ("t-a1", "o-mine")
-        ]
+        ],
     )
     await org_seeded.commit()
 
@@ -349,7 +361,7 @@ async def test_postgres_plans_every_load_for_its_values(pg_session):
     plans = await pg_session.execute(
         text(
             "SELECT sum(generic_plans), sum(custom_plans) FROM pg_prepared_statements "
-            "WHERE statement LIKE '%FROM telemetry_events%' "
+            "WHERE statement LIKE '%FROM usage_rollup%' "
             "AND statement NOT LIKE '%pg_prepared_statements%'"
         )
     )
@@ -448,8 +460,12 @@ async def test_the_grouping_falls_back_to_project_and_is_remembered(client, seed
 
 async def test_a_long_table_shows_the_top_rows_and_links_to_all(client, db_session):
     await _seed_user(db_session)
-    db_session.add_all(
-        [_llm_event(model=f"m{n}", cost=n / 100, task_id=f"t{n}") for n in range(1, 10)]
+    await _store(
+        db_session,
+        [
+            _llm_event(model=f"m{n}", cost=n / 100, task_id=f"t{n}")
+            for n in range(1, 10)
+        ],
     )
     await db_session.commit()
 

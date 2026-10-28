@@ -25,6 +25,7 @@ from src.models.task import Task, TaskShare
 
 from tests.test_model_attribution import _req
 from tests.web_helpers import (
+    _store,
     _add_message,
     _llm_event,
     _override_web_user,
@@ -127,7 +128,7 @@ async def test_metrics_island_survives_a_hostile_model_name(
 ):
     await _seed_user(db_session)
     async with session_factory() as s:
-        s.add(_llm_event(model=BREAKOUT, mode=COMMENT))
+        await _store(s, [_llm_event(model=BREAKOUT, mode=COMMENT)])
         await s.commit()
 
     _override_web_user(client.app)
