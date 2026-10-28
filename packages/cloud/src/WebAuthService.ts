@@ -361,8 +361,13 @@ export class WebAuthService extends EventEmitter<AuthServiceEvents> implements A
 		const oldCredentials = this.credentials
 
 		try {
-			// Clear credentials from storage - onDidChange will handle state transitions
+			// Clear credentials from storage. onDidChange handles the transition
+			// too, but not every secret store fires it (and it fires later): the
+			// session ends here, so a refresh still in flight finds it gone.
 			await this.clearCredentials()
+			if (this.state !== "logged-out") {
+				this.transitionToLoggedOut()
+			}
 			await this.context.globalState.update(AUTH_STATE_KEY, undefined)
 
 			if (oldCredentials) {
@@ -435,7 +440,16 @@ export class WebAuthService extends EventEmitter<AuthServiceEvents> implements A
 
 		try {
 			const previousState = this.state
-			this.sessionToken = await this.clerkCreateSessionToken()
+			const credentials = this.credentials
+			const sessionToken = await this.clerkCreateSessionToken()
+
+			// Logged out, or signed in again, while the token was on its way: it
+			// belongs to credentials that are gone and must not revive the session.
+			if (this.credentials !== credentials) {
+				this.log("[auth] Dropped a session token fetched for credentials that are no longer current")
+				return
+			}
+			this.sessionToken = sessionToken
 
 			if (previousState !== "active-session") {
 				this.changeState("active-session")

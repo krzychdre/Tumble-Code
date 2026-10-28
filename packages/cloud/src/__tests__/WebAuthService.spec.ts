@@ -383,6 +383,25 @@ describe("WebAuthService", () => {
 			expect(vscode.window.showInformationMessage).toHaveBeenCalledWith("Logged out from Tumble Code Cloud")
 		})
 
+		it("ends the session even when a token refresh finishes after it", async () => {
+			const service = await activeSession()
+			let releaseToken!: () => void
+			routes["/tokens"] = () =>
+				new Promise<Reply>((resolve) => {
+					releaseToken = () => resolve(reply(200, { jwt: "jwt-after-logout" }))
+				})
+
+			const refreshing = refresh().catch(() => false)
+			await vi.waitFor(() => expect(releaseToken).toBeDefined())
+			await service.logout()
+			releaseToken()
+			await refreshing
+
+			expect(service.getState()).toBe("logged-out")
+			expect(service.isAuthenticated()).toBe(false)
+			expect(service.getSessionToken()).toBeUndefined()
+		})
+
 		it("wraps a failing secret store", async () => {
 			context.secrets.delete.mockRejectedValue(new Error("locked"))
 
