@@ -111,9 +111,11 @@ class Task(Base, TimestampMixin):
     # --- run totals ----------------------------------------------------------
     # The task plus every task beneath it of the same owner: what a run row of
     # the list shows, sorts and groups by. Recomputed by services/task_tree.
-    # refresh_run_totals whenever an own figure or a parent link changes.
+    # refresh_run_totals whenever a member's messages or a parent link change.
     run_cost = Column(Float, nullable=False, default=0.0, server_default="0")
     run_tokens = Column(BigInteger, nullable=False, default=0, server_default="0")
+    # Wall time: how long at least one model request of the run was running.
+    # Parallel subtasks overlap, so it is less than the sum of their durations.
     run_duration_ms = Column(BigInteger, nullable=False, default=0, server_default="0")
 
     # --- session quality ---------------------------------------------------
@@ -230,6 +232,18 @@ class TaskMessage(Base):
     # accepts ON CONFLICT ON CONSTRAINT only for a constraint, not for an index.
     __table_args__ = (
         Index("uq_task_messages_task_ts", "task_id", "message_ts", unique=True),
+        # The timed messages of a task, all a run's wall time reads
+        # (services/task_tree), from the index alone: about one message in a
+        # hundred. Without it a run of 5,000 subtasks read 1.1 million rows,
+        # 3.5 s per refresh. Partial on Postgres; SQLite builds it whole.
+        Index(
+            "ix_task_messages_timed",
+            "task_id",
+            "message_ts",
+            "duration_ms",
+            "q_kind",
+            postgresql_where=duration_ms > 0,
+        ),
     )
 
     task = relationship("Task", back_populates="messages")

@@ -37,6 +37,7 @@ _ZEROS = {
     "cache_writes": 0,
     "cost": 0.0,
     "duration_ms": 0,
+    "run_duration_ms": 0,
 }
 
 
@@ -61,6 +62,8 @@ def _ado_run() -> tuple[Task, dict[str, list[Task]]]:
         cache_reads=100_000,
         cache_writes=2_000,
         duration_ms=60_000,
+        # Its subtasks partly ran while it did: 80 s elapsed for 95 s of requests.
+        run_duration_ms=80_000,
         message_count=12,
         workspace_path="/home/me/Roo-Code/",
         models="glm-5.3, qwen3, llama",
@@ -76,6 +79,7 @@ def _ado_run() -> tuple[Task, dict[str, list[Task]]]:
         tokens_out=500,
         cost=1.194,
         duration_ms=30_000,
+        run_duration_ms=32_000,
         q_completed=True,
         q_errors=1,
     )
@@ -89,7 +93,7 @@ _ROOT_HOVER = (
     "This task\n↑ In: 297,800\n↓ Out: 5,900\n⚡ Cache: 2,000 write / 100,000 read\n"
     "⏱ Duration: 1m 0s\n$ Cost: $0.1656\n\n"
     "Σ With its 3 subtasks\n↑ In: 298,811\n↓ Out: 6,406\n"
-    "⚡ Cache: 2,000 write / 100,000 read\n⏱ Duration: 1m 35s\n$ Cost: $1.4090"
+    "⚡ Cache: 2,000 write / 100,000 read\n⏱ Duration: 1m 20s\n$ Cost: $1.4090"
 )
 
 
@@ -137,14 +141,17 @@ def test_list_row_nests_the_whole_tree_and_sums_the_run():
     b_row = _leaf_row("b", "15", "$0.0493", "↑ In: 10\n↓ Out: 5\n$ Cost: $0.0493")
     a_row = {
         **_leaf_row("a", "1.5k", "$1.1941", None),
-        "duration": "35s",
+        "duration": "32s",
         "rollup": True,
-        "duration_title": "35s for the run: 30s this task + 5s in 1 subtask",
+        "duration_title": (
+            "32s elapsed for the run; its requests add up to 35s:"
+            " 30s this task + 5s in 1 subtask"
+        ),
         "tokens_title": "1,502 tokens for the run: 1,500 this task + 2 in 1 subtask",
         "cost_title": "$1.1941 for the run: $1.1940 this task + $0.0001 in 1 subtask",
         "hover_title": (
             "This task\n↑ In: 1,000\n↓ Out: 500\n⏱ Duration: 30s\n$ Cost: $1.1940\n\n"
-            "Σ With its 1 subtask\n↑ In: 1,001\n↓ Out: 501\n⏱ Duration: 35s\n$ Cost: $1.1941"
+            "Σ With its 1 subtask\n↑ In: 1,001\n↓ Out: 501\n⏱ Duration: 32s\n$ Cost: $1.1941"
         ),
         "child_count": 1,
         "descendant_count": 1,
@@ -158,11 +165,14 @@ def test_list_row_nests_the_whole_tree_and_sums_the_run():
         "title": "root",
         "message_count": 12,
         "updated_at": UPDATED,
-        "duration": "1m 35s",
+        "duration": "1m 20s",
         "tokens": "305.2k",
         "cost": "$1.4090",
         "rollup": True,
-        "duration_title": "1m 35s for the run: 1m 0s this task + 35s in 3 subtasks",
+        "duration_title": (
+            "1m 20s elapsed for the run; its requests add up to 1m 35s:"
+            " 1m 0s this task + 35s in 3 subtasks"
+        ),
         "tokens_title": "305,217 tokens for the run: 303,700 this task + 1,517 in 3 subtasks",
         "cost_title": "$1.4090 for the run: $0.1656 this task + $1.2434 in 3 subtasks",
         "hover_title": _ROOT_HOVER,
@@ -321,7 +331,7 @@ def test_row_tooltip_with_a_run_heads_the_own_figures_and_adds_the_run():
         "This task\n↑ In: 297,800\n↓ Out: 5,900\n⚡ Cache: 2,000 write / 100,000 read\n"
         "⏱ Duration: 1m 0s\n$ Cost: $0.1656\n\n"
         "Σ With its 3 subtasks\n↑ In: 299,000\n↓ Out: 6,400\n"
-        "⚡ Cache: 2,000 write / 100,000 read\n$ Cost: $1.4090"
+        "⚡ Cache: 2,000 write / 100,000 read\n⏱ Duration: 1m 20s\n$ Cost: $1.4090"
     )
 
 

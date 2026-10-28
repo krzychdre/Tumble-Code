@@ -34,7 +34,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.relation import TaskRelation
-from src.models.task import Task
+from src.models.task import Task, TaskMessage
 from src.models.user import User
 from src.realtime import sio as sio_module
 from src.realtime.hub import registry
@@ -294,12 +294,13 @@ OTHER = "someone-else"
 
 
 def _request(ts: int, scale: int, partial: bool = False) -> dict:
-    """An API request message; ``scale`` sets its figures."""
+    """An API request message; ``scale`` sets its figures. Its duration is
+    known once it ends, so a partial one has none."""
     figures = {
         "tokensIn": 100 * scale,
         "tokensOut": 10 * scale,
         "cost": 0.25 * scale,
-        "durationMs": 1000 * scale,
+        **({} if partial else {"durationMs": 1000 * scale}),
     }
     return {
         "ts": ts,
@@ -320,9 +321,25 @@ async def _owner(db, task_id: str):
     return await db.scalar(select(Task.user_id).where(Task.id == task_id))
 
 
+def _wall_ms(requests) -> int:
+    """How many milliseconds at least one of the timed messages (ts,
+    duration_ms, q_kind) covers, counted one by one; a message without a time
+    overlaps nothing."""
+    covered: set[int] = set()
+    untimed = 0
+    for ts, duration, kind in requests:
+        if ts is None:
+            untimed += duration
+            continue
+        start = ts - duration if kind == "condense" else ts
+        covered.update(range(start, start + duration))
+    return len(covered) + untimed
+
+
 async def _assert_runs_are_summed(db) -> None:
-    """Every task holds the sums of its run, walked here: the task and every
-    task beneath it of the same owner, each once."""
+    """Every task holds the totals of its run, walked here: the task and every
+    task beneath it of the same owner, each once. The cost and tokens are
+    summed, the duration is the wall time of the run's timed messages."""
     rows = (
         await db.execute(
             select(
@@ -332,11 +349,20 @@ async def _assert_runs_are_summed(db) -> None:
                 Task.cost,
                 Task.tokens_in,
                 Task.tokens_out,
-                Task.duration_ms,
                 Task.run_cost,
                 Task.run_tokens,
                 Task.run_duration_ms,
             )
+        )
+    ).all()
+    timed = (
+        await db.execute(
+            select(
+                TaskMessage.task_id,
+                TaskMessage.message_ts,
+                TaskMessage.duration_ms,
+                TaskMessage.q_kind,
+            ).where(TaskMessage.duration_ms > 0)
         )
     ).all()
     children: dict = {}
@@ -352,7 +378,7 @@ async def _assert_runs_are_summed(db) -> None:
         assert (run.run_cost, run.run_tokens, run.run_duration_ms) == (
             pytest.approx(sum(m.cost for m in members.values())),
             sum(m.tokens_in + m.tokens_out for m in members.values()),
-            sum(m.duration_ms for m in members.values()),
+            _wall_ms(m[1:] for m in timed if m.task_id in members),
         ), run.id
 
 
@@ -395,6 +421,57 @@ async def test_run_totals_follow_every_write_that_changes_a_run(db_session):
         elif user := await _owner(db, task):
             await delete_tasks(db, [task], user, include_subtasks=rng.random() < 0.5)
         await _assert_runs_are_summed(db)
+
+
+@pytest.mark.parametrize(
+    "requests, wall_ms",
+    [
+        ([("a", 1000, 1000), ("b", 1500, 1000)], 1500),
+        ([("a", 1000, 1000), ("b", 5000, 1000)], 2000),
+        # b and c lie inside a: c ends before a, not only before b.
+        ([("a", 1000, 5000), ("b", 2000, 1000), ("c", 4000, 1000)], 5000),
+        # A condense message is said when its request ends: [2000, 3000].
+        ([("b", 1500, 1000), ("a", 3000, 1000, "condense")], 1500),
+        ([("a", None, 1000), ("b", 1000, 1000)], 2000),
+        ([("a", 1000, 1000), ("theirs", 5000, 1000)], 1000),
+    ],
+    ids=["parallel", "one-after-another", "nested", "condense", "no-ts", "stranger"],
+)
+async def test_a_runs_duration_is_the_wall_time_of_its_requests(
+    any_db, requests, wall_ms
+):
+    """Subtasks a run starts in parallel run their requests at once: the run
+    took as long as at least one of its requests was running, not the sum of
+    their durations. Another account's task linked beneath it is no member.
+    Postgres sorts a message without a time last, SQLite first."""
+    db = any_db
+    await _seed_users(db)
+    for task, owner, parent in (
+        ("run", USER, None),
+        ("a", USER, "run"),
+        ("b", USER, "run"),
+        ("c", USER, "b"),
+        ("theirs", OTHER, "run"),
+    ):
+        db.add(Task(id=task, user_id=owner, parent_task_id=parent))
+        await db.flush()
+    for task, ts, duration, *kind in requests:
+        db.add(
+            TaskMessage(
+                task_id=task,
+                message_data="{}",
+                message_ts=ts,
+                duration_ms=duration,
+                q_kind=kind[0] if kind else "request",
+            )
+        )
+    await db.flush()
+
+    await refresh_run_totals(db, ["a", "c", "theirs"])
+
+    assert await db.scalar(select(Task.run_duration_ms).where(Task.id == "run")) == (
+        wall_ms
+    )
 
 
 async def test_a_subtask_adds_to_its_runs_totals_but_not_its_last_activity(

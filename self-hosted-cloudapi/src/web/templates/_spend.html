@@ -1,7 +1,8 @@
 {# The duration, tokens and cost cells of a task row, shared by the list and the subtask
    panel. A task that delegated shows its whole run, marked as a sum, and the
    cell's own hover splits it into this task and its subtasks (web/presenters/task_rows.py,
-   _spend_fields). The hover sits on the cell, so it wins over the row's. #}
+   _spend_fields). Its duration is the run's elapsed time. The hover sits on
+   the cell, so it wins over the row's. #}
 {% macro cells(t) -%}
 <span class="cell-num"{% if t.duration_title %} title="{{ t.duration_title }}"{% endif %}>{% if t.rollup and t.duration %}<span class="rollup-mark">Σ</span>{% endif %}{{ t.duration or '' }}</span>
 <span class="cell-num"{% if t.tokens_title %} title="{{ t.tokens_title }}"{% endif %}>{% if t.rollup and t.tokens %}<span class="rollup-mark">Σ</span>{% endif %}{{ t.tokens or '' }}{% if t.tokens %}<span class="unit">tok</span>{% endif %}</span>

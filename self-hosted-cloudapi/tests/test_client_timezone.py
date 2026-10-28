@@ -158,12 +158,7 @@ async def test_daily_buckets_are_local_days(db_session):
 
 
 # The daily figures are summed per quarter of an hour of UTC in SQL, then per
-# local day (services/metrics_service._by_day): on Postgres too.
-@pytest.fixture(params=["db_session", "pg_session"])
-def any_db(request):
-    return request.getfixturevalue(request.param)
-
-
+# local day (services/metrics_service._by_day): on Postgres too (any_db).
 @pytest.mark.parametrize(
     "zone, day",
     [

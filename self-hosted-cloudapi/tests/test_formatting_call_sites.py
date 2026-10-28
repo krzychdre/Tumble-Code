@@ -84,22 +84,46 @@ def test_the_metrics_tooltip_separates_thousands_and_prints_cost():
 
 
 def test_the_run_tooltip_names_its_subtasks():
-    total = Spend(cost=0.00005, tokens_in=10_000, tokens_out=999)
-    assert _run_tooltip(total, 1) == [
+    # The run's elapsed time, not the 9 minutes its requests add up to.
+    task = _task(run_duration_ms=330_000)
+    total = Spend(cost=0.00005, tokens_in=10_000, tokens_out=999, duration_ms=540_000)
+    assert _run_tooltip(task, total, 1) == [
         "Σ With its 1 subtask",
         "↑ In: 10,000",
         "↓ Out: 999",
+        "⏱ Duration: 5m 30s",
         "$ Cost: $0.0001",
     ]
 
 
 def test_a_run_row_splits_its_sum_into_this_task_and_its_subtasks():
-    parent = _task("p", tokens_in=100_000, tokens_out=2_000, cost=0.1656)
+    # Two subtasks that ran at the same time: 9m of requests in 5m 30s.
+    parent = _task(
+        "p",
+        tokens_in=100_000,
+        tokens_out=2_000,
+        cost=0.1656,
+        duration_ms=60_000,
+        run_duration_ms=330_000,
+    )
     kids = [
-        _task("c1", tokens_in=1_000_000, tokens_out=40_000, cost=1.194),
-        _task("c2", tokens_in=50_000, tokens_out=1_234, cost=0.0493),
+        _task(
+            "c1",
+            tokens_in=1_000_000,
+            tokens_out=40_000,
+            cost=1.194,
+            duration_ms=270_000,
+        ),
+        _task(
+            "c2", tokens_in=50_000, tokens_out=1_234, cost=0.0493, duration_ms=210_000
+        ),
     ]
     fields = _spend_fields(parent, {"p": kids})
+    assert fields["duration"] == "5m 30s"
+    assert fields["duration_title"] == (
+        "5m 30s elapsed for the run; its requests add up to 9m 0s:"
+        " 1m 0s this task + 8m 0s in 2 subtasks"
+    )
     assert fields["tokens"] == "1.2M"
     assert fields["cost"] == "$1.4089"
     assert fields["tokens_title"] == (

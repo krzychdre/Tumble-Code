@@ -113,6 +113,12 @@ async def pg_session():
     await engine.dispose()
 
 
+@pytest.fixture(params=["db_session", "pg_session"])
+def any_db(request):
+    """A test using it runs on SQLite and on the Postgres of RECALL_PG_URL."""
+    return request.getfixturevalue(request.param)
+
+
 @pytest.fixture
 def client(session_factory):
     """FastAPI TestClient with get_db overridden to the test engine.

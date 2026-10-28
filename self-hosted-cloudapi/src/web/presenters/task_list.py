@@ -497,9 +497,11 @@ async def _group_page(
     Groups are ordered by the sorted column summed over the group (newest
     activity for "updated"), and a group lists its tasks in the view's order.
 
-    The group sums what its rows show. Under "Runs" a run's duration, tokens
-    and cost include its subtasks; under "All" every task is a row of its own and the
-    group sums own figures, so no subtask is counted twice.
+    The group sums what its rows show. Under "Runs" a run's tokens and cost
+    include its subtasks and its duration is the run's elapsed time; under
+    "All" every task is a row of its own and the group sums own figures, so no
+    subtask is counted twice. Either way the duration is a sum over rows: rows
+    that ran at the same time each count in full.
     """
     grouping = GROUPINGS[view.group]
     runs = view.scope == "roots"
