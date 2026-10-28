@@ -245,22 +245,9 @@ def test_web_routes_keep_their_openapi_operations():
             "task_list_app_get",
             ("web",),
             html,
-            (
-                ("page", "query", False),
-                ("q", "query", False),
-                ("scope", "query", False),
-                ("group", "query", False),
-                ("only", "query", False),
-                ("project", "query", False),
-                ("model", "query", False),
-                ("client", "query", False),
-                ("grade", "query", False),
-                ("since", "query", False),
-                ("until", "query", False),
-                ("subtasks", "query", False),
-                ("sort", "query", False),
-                ("dir", "query", False),
-            ),
+            # The view's own parameters are read from the query string or
+            # the remembered view (routers/web_tasks.VIEW_COOKIE), not declared.
+            (("page", "query", False),),
         ),
         ("/app/metrics", "get"): (
             "metrics_page_app_metrics_get",

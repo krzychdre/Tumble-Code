@@ -10,7 +10,7 @@
 <form id="filter-form" method="get" action="/app" role="search">
   <input type="hidden" name="scope" value="roots">
   <input type="search" name="q" value="">
-  <input type="text" name="project" value="">
+  <select name="project"><option value="">Any</option><option value="beta">beta</option></select>
   <select name="grade"><option value="">Any</option><option value="clean">Clean</option></select>
   <input type="checkbox" name="subtasks" value="1">
   <button type="submit" id="apply">Apply</button>
@@ -49,6 +49,7 @@
   // Stubbed before tasklist.js loads; the answer is the page a filtered
   // request would return: fewer rows, a new count.
   try { localStorage.removeItem("tumble.listDensity") } catch (e) {}
+  try { localStorage.setItem("tumble.openFolds", JSON.stringify(["project:/w/new"])) } catch (e) {}
   window.__fetches = []
   window.__answer = '<!DOCTYPE html><html><body>' +
     '<h1>Your tasks<span id="list-count" data-swap> <span class="count-pill">1 run</span></span></h1>' +
@@ -56,9 +57,10 @@
     '<div class="select-head"><label class="select-mode"><input type="checkbox" id="select-mode"></label>' +
     '<label class="select-all"><input type="checkbox" id="select-all"></label>' +
     '<button type="button" id="density-toggle" aria-pressed="false" hidden>Compact</button></div>' +
+    '<details class="task-group" data-group="project:/w/new"><summary class="group-head">new</summary>' +
     '<ul class="task-list"><li class="task-node"><div class="task-item">' +
     '<label class="task-check"><input type="checkbox" name="task_ids" value="new1" data-child-count="0"></label>' +
-    '<a class="task-link" href="/app/tasks/new1"><span class="cell-title">New one</span></a></div></li></ul>' +
+    '<a class="task-link" href="/app/tasks/new1"><span class="cell-title">New one</span></a></div></li></ul></details>' +
     '<div id="bulk-bar" class="bulk-bar" hidden><b id="bulk-n">0</b>' +
     '<label id="bulk-subtasks-wrap" hidden><input type="checkbox" id="include-subtasks"><b id="bulk-children">0</b></label>' +
     '<button type="button" id="bulk-clear">Clear</button><button type="submit" id="bulk-delete">Delete</button></div>' +
@@ -122,6 +124,7 @@ window.addEventListener("load", function () {
           check("count swapped too", document.querySelector("#list-count .count-pill").textContent === "1 run")
           check("the new count is announced", document.getElementById("list-status").textContent === "1 run")
           check("the form (and its caret) was not replaced", document.getElementById("filter-form") === form && q.value === "abc")
+          check("a remembered group reopens in the swapped list", document.querySelector(".task-group").open === true)
           // The new rows are live: the selection code re-bound to them.
           var fresh = document.querySelector('input[name="task_ids"]')
           fresh.click()

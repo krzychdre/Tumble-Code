@@ -9,8 +9,10 @@ import logging
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy import select
+from starlette.datastructures import QueryParams
 
 from config.settings import settings
+from src.auth.web_session import cookie_should_be_secure
 from src.models.task import Task
 from src.routers.web_page import (
     WebPage,
@@ -54,6 +56,14 @@ async def root_redirect():
     return RedirectResponse(url="/app", status_code=307)
 
 
+# The list view the reader last looked at (the query string of ListView.url()).
+# A bare /app (the nav link, the redirect after a delete) opens on it; any URL
+# with parameters is a whole view of its own, because every link the list
+# writes carries the full state, and it becomes the remembered one.
+VIEW_COOKIE = "tumble_task_list_view"
+VIEW_COOKIE_MAX_AGE = 365 * 24 * 3600
+
+
 @router.get("/app", response_class=HTMLResponse)
 async def task_list(
     request: Request,
@@ -61,21 +71,6 @@ async def task_list(
     # number, and an out-of-range one should land on the nearest real page
     # instead of replacing the list with a 422.
     page: int = Query(1),
-    q: str = Query("", max_length=200),
-    scope: str = Query("roots"),
-    group: str = Query(""),
-    only: str = Query(""),
-    # The rest of the view (web/presenters/task_list.ListView): read as plain
-    # strings and normalized there, so a bad value is dropped, never a 422.
-    project: str = Query(""),
-    model: str = Query(""),
-    client: str = Query(""),
-    grade: str = Query(""),
-    since: str = Query(""),
-    until: str = Query(""),
-    subtasks: str = Query(""),
-    sort: str = Query(""),
-    dir: str = Query(""),
     web: WebPage = Depends(require_web_page),
 ):
     """List the logged-in user's shared tasks, one page at a time.
@@ -95,24 +90,18 @@ async def task_list(
     one header per group; ``only`` narrows it to one group's tasks.
 
     Sorting (updated, cost, tokens, messages) and the filters are allow-listed
-    GET parameters (``ListView``); the default is newest first.
+    GET parameters (``ListView``, the names in ``_VIEW_FIELDS``), read as plain
+    strings and normalized there, so a bad value is dropped, never a 422. The
+    default is newest first.
     """
-    view = ListView.parse(
-        scope=scope,
-        group=group,
-        only=only,
-        q=q,
-        project=project,
-        model=model,
-        client=client,
-        grade=grade,
-        since=since,
-        until=until,
-        subtasks=subtasks,
-        sort=sort,
-        dir=dir,
+    explicit = bool(request.query_params)
+    source = (
+        request.query_params
+        if explicit
+        else QueryParams(request.cookies.get(VIEW_COOKIE, ""))
     )
-    return render_page(
+    view = ListView.parse(**{name: source.get(name) for name in _VIEW_FIELDS})
+    response = render_page(
         request,
         web,
         "tasks_list.html",
@@ -131,6 +120,17 @@ async def task_list(
             page,
         ),
     )
+    if explicit:
+        response.set_cookie(
+            key=VIEW_COOKIE,
+            value=view.query(),
+            max_age=VIEW_COOKIE_MAX_AGE,
+            httponly=True,
+            samesite="lax",
+            secure=cookie_should_be_secure(request),
+            path="/app",
+        )
+    return response
 
 
 @router.get("/app/tasks/{task_id}", response_class=HTMLResponse)

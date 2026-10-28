@@ -43,6 +43,8 @@ _STATIC = Path(__file__).resolve().parent.parent / "src" / "web" / "static"
 
 
 def _get(client, path, **params):
+    """One visit from a fresh browser: nothing remembered from the last one."""
+    client.cookies.clear()
     _override_web_user(client.app)
     try:
         return client.get(path, params=params or None)
@@ -466,10 +468,35 @@ async def test_the_filter_form_is_a_plain_get_form(client, db_session, session_f
     assert 'name="sort" value="cost"' in form
     assert 'name="dir" value="asc"' in form
     assert 'type="submit"' in form
-    # Suggestions come from the user's own projects and models.
-    assert '<option value="beta">' in html
-    assert '<option value="glm-5.3">' in html
-    assert '<option value="claude-opus-5">' in html
+
+
+async def test_the_pickers_offer_every_project_and_model_whatever_is_picked(
+    client, db_session, session_factory
+):
+    """The options are the user's own projects and models, not what the
+    filtered list holds, and a value no task has any more is still shown."""
+    await _seed_user(db_session)
+    await _seed_filterable(session_factory)
+
+    html = _get(client, "/app", project="beta", model="gone-model").text
+
+    def picker(name):
+        part = html[html.index(f'<select class="filter-pick" name="{name}">') :]
+        part = part[: part.index("</select>")]
+        return re.findall(r'<option value="([^"]*)"( selected)?>', part)
+
+    assert picker("project") == [
+        ("", ""),
+        ("alpha", ""),
+        ("beta", " selected"),
+        ("gamma", ""),
+    ]
+    assert picker("model") == [
+        ("", ""),
+        ("claude-opus-5", ""),
+        ("glm-5.3", ""),
+        ("gone-model", " selected"),
+    ]
 
 
 async def test_active_filters_show_as_removable_chips(
@@ -609,6 +636,45 @@ async def test_bulk_delete_returns_to_the_same_view(
     assert resp.headers["location"] == location
 
 
+@pytest.mark.parametrize(
+    "params",
+    [
+        {
+            "scope": "all",
+            "group": "none",
+            "project": "beta",
+            "sort": "cost",
+            "dir": "asc",
+        },
+        # Characters a query string and a cookie both treat specially.
+        {"group": "model", "q": 'a+b&c=%"; d', "only": "glm-5.3"},
+    ],
+)
+async def test_a_bare_visit_opens_on_the_view_last_looked_at(
+    params, client, db_session, session_factory
+):
+    """The nav link is a bare /app; it restores the last view. A URL with
+    parameters is a whole view, wins over the remembered one and replaces it."""
+    await _seed_user(db_session)
+    await _seed_filterable(session_factory)
+    fresh = _get(client, "/app").text
+
+    _override_web_user(client.app)
+    try:
+        picked = client.get("/app", params=params).text
+        restored = client.get("/app").text
+        cleared = client.get("/app", params={"scope": "roots"}).text
+        after_clear = client.get("/app").text
+    finally:
+        client.app.dependency_overrides.pop(get_web_user_optional, None)
+
+    # Every link on the page is built from the view, so equal links are an
+    # equal view.
+    assert _hrefs(restored) == _hrefs(picked) != _hrefs(fresh)
+    assert _order(restored) == _order(picked)
+    assert _hrefs(cleared) == _hrefs(after_clear) == _hrefs(fresh)
+
+
 async def test_select_mode_and_density_controls_are_on_the_page(
     client, db_session, session_factory
 ):
@@ -707,6 +773,14 @@ async def test_the_list_is_grouped_by_project_by_default(
     groups = _groups(html)
 
     assert f'<span class="count-pill">{pill}</span>' in html
+    # Every group starts closed, also the one a filter or a search picked.
+    closed = '<details class="task-group" data-group="project:{}">'
+    assert closed.format("/w/alpha") in html
+    assert closed.format("(none)") in html
+    picked = _get(client, "/app", scope=scope, project="alpha").text
+    assert closed.format("/w/alpha") in picked
+    searched = _get(client, "/app", scope=scope, q="beta").text
+    assert closed.format("/w/beta") in searched
     # Newest activity first; tasks without a workspace get a group of their own.
     assert [g["label"] for g in groups] == ["beta", "No project", "alpha"]
     alpha = groups[2]

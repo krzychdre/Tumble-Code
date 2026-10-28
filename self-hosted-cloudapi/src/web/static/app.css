@@ -1724,7 +1724,9 @@ a.signal-value:hover {
 	gap: 2px;
 	max-width: 100%;
 }
-.filter-field input[type="text"] {
+/* A picker is as wide as its longest option otherwise, and a workspace or
+   model name can be longer than a phone. */
+.filter-pick {
 	width: 12rem;
 	max-width: 100%;
 }

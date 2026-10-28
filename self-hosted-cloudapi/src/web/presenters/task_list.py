@@ -233,9 +233,12 @@ class ListView:
             return value.isoformat()
         return value or ""
 
-    def url(self, page: Optional[int] = None) -> str:
+    def query(self, page: Optional[int] = None) -> str:
         # quote, not quote_plus: a "+" in a search must read back as "+".
-        return "/app?" + urlencode(self.params(page), quote_via=quote)
+        return urlencode(self.params(page), quote_via=quote)
+
+    def url(self, page: Optional[int] = None) -> str:
+        return "/app?" + self.query(page)
 
     def hidden_fields(self, *, keep_filters: bool = True) -> list[tuple[str, str]]:
         """Hidden inputs that make a form submission keep this view."""
@@ -499,7 +502,7 @@ async def list_page(
             select(func.count(Task.id)).where(Task.user_id == user_id)
         ),
         only_label=_only_label(view, names),
-        **await _filter_suggestions(db, user_id),
+        **await _filter_suggestions(db, view, user_id),
     )
     if view.grouped:
         return {**shared, **await _group_page(db, view, user_id, names, filters, page)}
@@ -619,6 +622,8 @@ async def _group_page(
         tasks=[],
         groups=[
             {
+                # What tasklist.js remembers an open group by.
+                "key": f"{view.group}:{g['key'] or NO_KEY}",
                 "label": _group_label(grouping, g["key"], names),
                 # The full path, so sibling worktrees with one name differ.
                 "sub": g["key"] if view.group == "project" else None,
@@ -661,12 +666,13 @@ def _only_label(view: ListView, names: dict) -> str:
     return _group_label(GROUPINGS[view.group], key, names)
 
 
-async def _filter_suggestions(db: AsyncSession, user_id: str) -> dict:
-    """The user's own projects and models, offered as the filter fields'
-    suggestions (a <datalist>, so any other text can still be typed).
+async def _filter_suggestions(db: AsyncSession, view: ListView, user_id: str) -> dict:
+    """The user's own projects and models, the options of the filter's pickers.
 
     Two DISTINCT reads over the user's rows; the project is offered by its
     badge label (the last path segment), which is what the filter matches.
+    A filter value no task has any more (an old bookmark, a remembered view)
+    is offered too, so its picker still shows what the list is filtered by.
     """
     paths = await db.scalars(
         select(Task.workspace_path)
@@ -680,6 +686,10 @@ async def _filter_suggestions(db: AsyncSession, user_id: str) -> dict:
         .distinct()
     )
     models = {m for value in joined.all() for m in split_models_label(value)}
+    if view.project:
+        labels.add(view.project)
+    if view.model:
+        models.add(view.model)
     return {
         "project_options": sorted(labels, key=str.lower),
         "model_options": sorted(models, key=str.lower),

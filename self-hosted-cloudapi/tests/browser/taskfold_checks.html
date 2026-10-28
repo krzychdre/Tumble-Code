@@ -1,0 +1,87 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>
+<!--
+  What the reader left open (static/tasklist.js): every group and run tree is
+  served closed, the script reopens the ones remembered in localStorage and
+  keeps the list up to date as they are opened and closed. Keys of groups and
+  trees on other pages or under another grouping must survive.
+-->
+<form id="bulk-form" method="post" action="/app/tasks/bulk-delete">
+  <div class="select-head">
+    <label class="select-all"><input type="checkbox" id="select-all"><span>Select page</span></label>
+  </div>
+  <details class="task-group" data-group="project:/w/a">
+    <summary class="group-head">a</summary>
+    <ul class="task-list"><li class="task-node"><div class="task-item">
+      <label class="task-check"><input type="checkbox" name="task_ids" value="a1" data-child-count="1"></label>
+      <span class="tree-gutter"><button type="button" class="tree-toggle" aria-expanded="false" aria-controls="subtree-a1"></button></span>
+    </div>
+    <ul class="task-children" id="subtree-a1" hidden>
+      <li class="task-node"><div class="task-item is-subtask">
+        <label class="task-check"><input type="checkbox" name="task_ids" value="a1-sub" data-child-count="0"></label>
+      </div></li>
+    </ul></li></ul>
+  </details>
+  <details class="task-group" data-group="project:/w/b">
+    <summary class="group-head">b</summary>
+    <ul class="task-list"><li class="task-node"><div class="task-item">
+      <label class="task-check"><input type="checkbox" name="task_ids" value="b1" data-child-count="1"></label>
+      <span class="tree-gutter"><button type="button" class="tree-toggle" aria-expanded="false" aria-controls="subtree-b1"></button></span>
+    </div>
+    <ul class="task-children" id="subtree-b1" hidden>
+      <li class="task-node"><div class="task-item is-subtask">
+        <label class="task-check"><input type="checkbox" name="task_ids" value="b1-sub" data-child-count="0"></label>
+      </div></li>
+    </ul></li></ul>
+  </details>
+  <details class="task-group" data-group="project:(none)">
+    <summary class="group-head">No project</summary>
+    <ul class="task-list"><li class="task-node"><div class="task-item">
+      <label class="task-check"><input type="checkbox" name="task_ids" value="n1" data-child-count="0"></label>
+    </div></li></ul>
+  </details>
+  <div id="bulk-bar" class="bulk-bar" hidden><b id="bulk-n">0</b></div>
+</form>
+
+<script>
+  // Left open on an earlier visit: a group and a run tree of this page, and a
+  // group of another grouping and a tree of another page.
+  localStorage.setItem(
+    "tumble.openFolds",
+    JSON.stringify(["project:/w/b", "subtree-b1", "model:glm-5.3", "subtree-elsewhere"]),
+  )
+</script>
+<script src="../../src/web/static/tasklist.js"></script>
+<script>
+window.addEventListener("load", function () {
+  var out = [], fail = 0
+  function check(name, cond) { out.push((cond ? "PASS " : "FAIL ") + name); if (!cond) fail++ }
+  function later(ms, fn) { setTimeout(fn, ms) }
+  function group(key) { return document.querySelector('.task-group[data-group="' + key + '"]') }
+  function toggle(id) { return document.querySelector('.tree-toggle[aria-controls="subtree-' + id + '"]') }
+  function stored() { return JSON.parse(localStorage.getItem("tumble.openFolds")).sort().join(",") }
+
+  check("a remembered group is reopened", group("project:/w/b").open === true)
+  check("the other groups stay closed", !group("project:/w/a").open && !group("project:(none)").open)
+  check("a remembered run tree is reopened",
+        document.getElementById("subtree-b1").hidden === false && toggle("b1").getAttribute("aria-expanded") === "true")
+  check("the other run trees stay closed", document.getElementById("subtree-a1").hidden === true)
+
+  later(50, function () {
+    check("reopening keeps the list as it was",
+          stored() === "model:glm-5.3,project:/w/b,subtree-b1,subtree-elsewhere")
+    group("project:/w/a").open = true
+    group("project:/w/b").open = false
+    toggle("a1").click()
+    toggle("b1").click()
+    later(50, function () {
+      check("opening and closing groups and run trees is remembered",
+            stored() === "model:glm-5.3,project:/w/a,subtree-a1,subtree-elsewhere")
+      var pre = document.createElement("pre")
+      pre.id = "results"
+      pre.textContent = out.join("\n") + "\nTOTAL_FAILURES=" + fail
+      document.body.appendChild(pre)
+    })
+  })
+})
+</script>
+</body></html>
