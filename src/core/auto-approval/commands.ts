@@ -1,5 +1,7 @@
 import { type AnalyzedCommand, analyzeCommand } from "@tumble-code/core/browser"
 
+import { programName, unwrapCommand } from "./commandWrappers"
+
 /**
  * Detect dangerous parameter substitutions that could lead to command execution.
  * These patterns are never auto-approved and always require explicit user approval.
@@ -173,6 +175,21 @@ export function getCommandDecision(
 	allowedCommands: string[],
 	deniedCommands?: string[],
 ): CommandDecision {
+	return decideCommand(command, allowedCommands, deniedCommands, 0)
+}
+
+/**
+ * How deep wrappers are followed (`sudo env nice sh -c '...'`). Deeper
+ * nesting is not approved automatically.
+ */
+const MAX_WRAPPER_DEPTH = 8
+
+function decideCommand(
+	command: string,
+	allowedCommands: string[],
+	deniedCommands: string[] | undefined,
+	depth: number,
+): CommandDecision {
 	if (!command?.trim()) {
 		return "auto_approve"
 	}
@@ -192,7 +209,7 @@ export function getCommandDecision(
 	}
 
 	const decisions: CommandDecision[] = subCommands.map((cmd) =>
-		getAnalyzedCommandDecision(cmd, allowedCommands, deniedCommands),
+		getAnalyzedCommandDecision(cmd, allowedCommands, deniedCommands, depth),
 	)
 
 	// If any sub-command is denied, deny the whole command
@@ -221,15 +238,22 @@ export function getCommandDecision(
 
 /**
  * Decision for one analyzed sub-command. The deny list is matched against the
- * command as written and after quote removal (so `'r'm` or `FOO=1 rm` cannot
- * dodge a denied `rm`). The allow list is matched only when the command word
- * is a plain literal: a quoted, escaped or expanded command word could be any
- * program, so it is never auto-approved.
+ * command as written, after quote removal (so `'r'm` or `FOO=1 rm` cannot
+ * dodge a denied `rm`) and with the program's directory dropped (`/bin/rm`).
+ * The allow list is matched only when the command word is a plain literal: a
+ * quoted, escaped or expanded command word could be any program, so it is
+ * never auto-approved.
+ *
+ * A command that runs another (`env rm`, `sh -c '...'`, `find -exec`, see
+ * commandWrappers) is decided together with what it runs: a denied inner
+ * command denies the whole, and the whole is approved only when the inner
+ * commands are approved too.
  */
 function getAnalyzedCommandDecision(
 	cmd: AnalyzedCommand,
 	allowedCommands: string[],
-	deniedCommands?: string[],
+	deniedCommands: string[] | undefined,
+	depth: number,
 ): CommandDecision {
 	// Remove simple PowerShell-like redirections (e.g. 2>&1) before checking
 	const text = cmd.text.replace(/\d*>&\d*/, "").trim()
@@ -237,14 +261,47 @@ function getAnalyzedCommandDecision(
 
 	if (!text) return "auto_approve"
 
+	const [commandWord, ...args] = cmd.words
+	const programText =
+		commandWord?.literal != null
+			? [programName(commandWord.literal), ...args.map((word) => word.literal ?? word.raw)].join(" ")
+			: matchText
+
 	const longestAllowedMatch = cmd.commandIsLiteral ? findLongestPrefixMatch(text, allowedCommands || []) : null
-	const deniedMatches = [text, matchText]
-		.map((form) => findLongestPrefixMatch(form, deniedCommands || []))
-		.filter((match): match is string => match !== null)
-	const longestDeniedMatch = deniedMatches.sort((a, b) => b.length - a.length)[0] ?? null
+	const longestDeniedMatch = longestMatchOf([text, matchText, programText], deniedCommands)
 
 	if (longestDeniedMatch && (!longestAllowedMatch || longestDeniedMatch.length >= longestAllowedMatch.length)) {
 		return "auto_deny"
 	}
-	return longestAllowedMatch ? "auto_approve" : "ask_user"
+	const own: CommandDecision = longestAllowedMatch ? "auto_approve" : "ask_user"
+
+	const unwrapped = unwrapCommand(cmd.words)
+	if (unwrapped.commands.length === 0 && !unwrapped.opaque && unwrapped.tails.length === 0) {
+		return own
+	}
+	if (depth >= MAX_WRAPPER_DEPTH) {
+		return "ask_user"
+	}
+	const inner = unwrapped.commands.map((command) => {
+		const decision = decideCommand(command, allowedCommands, deniedCommands, depth + 1)
+		// A payload the shell cannot parse is not approved, but only a real denial denies.
+		return decision === "malformed_command" ? "ask_user" : decision
+	})
+	if (inner.includes("auto_deny")) {
+		return "auto_deny"
+	}
+	if (unwrapped.opaque || longestMatchOf(unwrapped.tails, deniedCommands)) {
+		return "ask_user"
+	}
+	return own === "auto_approve" && inner.every((decision) => decision === "auto_approve")
+		? "auto_approve"
+		: "ask_user"
+}
+
+/** The longest list entry that prefixes any of `forms`. */
+function longestMatchOf(forms: string[], prefixes: string[] | undefined): string | null {
+	const matches = forms
+		.map((form) => findLongestPrefixMatch(form, prefixes || []))
+		.filter((match): match is string => match !== null)
+	return matches.sort((a, b) => b.length - a.length)[0] ?? null
 }

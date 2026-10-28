@@ -117,13 +117,17 @@ describe("getCommandDecision — multi-line script wrapped in a quoted argument"
 		`"'`,
 	].join("\n")
 
-	it("auto-approves a multi-line single-quoted script when the wrapper prefix is allowed", () => {
-		expect(getCommandDecision(wrappedSingleQuoted, ["sh"])).toBe("auto_approve")
+	it("auto-approves a multi-line single-quoted script when the wrapper and its script are allowed", () => {
+		expect(getCommandDecision(wrappedSingleQuoted, ["sh", "kubectl"])).toBe("auto_approve")
 	})
 
-	it("auto-approves a multi-line double-quoted script when the wrapper prefix is allowed", () => {
+	it("auto-approves a multi-line double-quoted script when the wrapper and its script are allowed", () => {
 		const wrappedDoubleQuoted = 'sh -c "echo line1\necho line2"'
-		expect(getCommandDecision(wrappedDoubleQuoted, ["sh"])).toBe("auto_approve")
+		expect(getCommandDecision(wrappedDoubleQuoted, ["sh", "echo"])).toBe("auto_approve")
+	})
+
+	it("asks when only the wrapper is allowed: sh does not vouch for its script", () => {
+		expect(getCommandDecision(wrappedSingleQuoted, ["sh"])).toBe("ask_user")
 	})
 
 	it("asks user when the wrapper prefix is not in the allowlist", () => {
@@ -142,9 +146,9 @@ describe("getCommandDecision — multi-line script wrapped in a quoted argument"
 		expect(getCommandDecision(multiStatement, ["echo", "ls"])).toBe("auto_approve")
 	})
 
-	it("auto-approves an ANSI-C quoted ($'...') multi-line argument when the wrapper prefix is allowed", () => {
+	it("asks for an ANSI-C quoted ($'...') script, whose text is only known after expansion", () => {
 		const ansiC = "sh -c $'echo 1\necho 2'"
-		expect(getCommandDecision(ansiC, ["sh"])).toBe("auto_approve")
+		expect(getCommandDecision(ansiC, ["sh", "echo"])).toBe("ask_user")
 	})
 
 	it("returns malformed_command for a command with an unterminated quote regardless of allowlist", () => {
@@ -192,6 +196,7 @@ describe("getCommandDecision - denied commands the splitter must not hide (DEF-S
 		["quoted argument of a denied prefix", 'git "push" origin', ["git"]],
 		["environment assignment before the command", "FOO=1 rm -rf x", ["*"]],
 		["line continuation before the operator", "echo a \\\n&& rm x", ["echo"]],
+		["single-quoted script argument", "sh -c 'echo a && rm b'", ["sh"]],
 	])("%s: %j is denied", (_label, command, allow) => {
 		expect(getCommandDecision(command, allow, deny)).toBe("auto_deny")
 	})
@@ -215,7 +220,7 @@ describe("getCommandDecision - denied commands the splitter must not hide (DEF-S
 		["redirection and pipe", "npm test 2>&1 | tail -20", ["npm test", "tail"]],
 		["output redirection", "echo a > /tmp/out 2>&1", ["echo"]],
 		["quoted heredoc delimiter keeps the body literal", "cat <<'EOF' > out.txt\n$(rm -rf x)\nEOF", ["cat"]],
-		["single-quoted script argument", "sh -c 'echo a && rm b'", ["sh"]],
+		["single-quoted script argument", "sh -c 'echo a' && sh -c \"ls\"", ["sh", "echo", "ls"]],
 		["cd then build", "cd src && npm run build", ["cd", "npm run"]],
 		[
 			"commit message from a quoted heredoc inside a substitution",
