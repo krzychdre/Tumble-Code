@@ -88,7 +88,8 @@ export function buildMermaidConfig(kind: VscodeThemeKind, colors: EditorColors =
 
 	return {
 		startOnLoad: false,
-		securityLevel: "loose",
+		// The diagram text comes from the model: no javascript: links, no click callbacks.
+		securityLevel: "strict",
 		theme: light ? "default" : "dark",
 		look: "classic",
 		flowchart: { ...DAGRE, ...CLASSIC_NODE_SIZES },
