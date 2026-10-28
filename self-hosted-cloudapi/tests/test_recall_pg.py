@@ -16,10 +16,10 @@ from datetime import datetime
 
 import pytest
 from sqlalchemy import select, text, update
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.pool import NullPool
 
-from src.database import Base, get_db
+from src.database import Base, get_db, make_engine
 from src.models.organization import Membership, Organization
 from src.models.recall import RecallDirty, RecallLog
 from src.models.task import Task
@@ -43,7 +43,7 @@ FOLDER = {"workspacePath": "/w/roo", "repositoryUrl": "https://github.com/a/roo"
 async def pg_factory():
     # No pool: the test client runs the app on its own event loop, and an
     # asyncpg connection belongs to the loop that opened it.
-    engine = create_async_engine(PG_URL, poolclass=NullPool)
+    engine = make_engine(PG_URL, poolclass=NullPool)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)

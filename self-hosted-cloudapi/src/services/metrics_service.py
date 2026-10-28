@@ -36,7 +36,6 @@ from sqlalchemy import (
     extract,
     func,
     select,
-    text,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -343,12 +342,6 @@ async def compute_user_metrics(
     """
     if period not in PERIODS:
         period = DEFAULT_PERIOD
-    if db.bind.dialect.name == "postgresql":
-        # asyncpg prepares statements, and after five runs on a connection
-        # Postgres may keep a generic plan that cannot see the user or the
-        # period. For a narrowed page that plan reads a heavy user's events
-        # once per task: minutes a statement on the bench.
-        await db.execute(text("SET LOCAL plan_cache_mode = force_custom_plan"))
     start = period_start(period, now, zone)
     completions = _completions(user_id, organization_id, start, client)
     if narrow is not None:

@@ -16,11 +16,11 @@ from datetime import datetime, timezone
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.pool import NullPool
 
 from src.auth.web_session import get_web_user_optional
-from src.database import Base, get_db
+from src.database import Base, get_db, make_engine
 from src.dependencies import get_current_user
 from src.main import app
 from src.models.organization import Membership, Organization
@@ -52,7 +52,7 @@ async def factory(request, session_factory):
         return
     if not PG_URL:
         pytest.skip("RECALL_PG_URL is not set")
-    engine = create_async_engine(PG_URL, poolclass=NullPool)
+    engine = make_engine(PG_URL, poolclass=NullPool)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)

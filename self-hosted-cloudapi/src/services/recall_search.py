@@ -141,10 +141,6 @@ async def search(
             await db.execute(
                 text(f"SET LOCAL statement_timeout = {STATEMENT_TIMEOUT_MS}")
             )
-            # asyncpg prepares statements, and after five runs Postgres may
-            # keep a generic plan that cannot see which project or how common
-            # the word is; that plan reads the word index for every search.
-            await db.execute(text("SET LOCAL plan_cache_mode = force_custom_plan"))
             rows = (await db.execute(statement)).all()
     except DBAPIError as error:
         if "statement timeout" not in str(error.orig):

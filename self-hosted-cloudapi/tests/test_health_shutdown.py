@@ -8,9 +8,12 @@
 - The lifespan closes the socket.io server on shutdown (when the bridge is on).
 - The engine is created with ``pool_pre_ping``, so a connection dropped behind
   the pool's back is replaced instead of raising on first use.
+- Every Postgres connection plans each statement for its values and never
+  JIT-compiles (src/database.make_engine).
 """
 
 import pytest
+from sqlalchemy import text
 
 from src.database import ASYNC_DATABASE_URL, _engine_kwargs
 
@@ -253,3 +256,11 @@ def test_engine_uses_pool_pre_ping():
 def test_pool_pre_ping_works_on_the_test_database_too():
     """The kwargs apply to both drivers: SQLite (tests) and Postgres (prod)."""
     assert ASYNC_DATABASE_URL, "the engine must be built from the settings URL"
+
+
+async def test_postgres_connections_plan_for_their_values_without_jit(pg_session):
+    """pg_session's engine comes from make_engine, as the app's does."""
+    shown = await pg_session.execute(
+        text("SELECT current_setting('plan_cache_mode'), current_setting('jit')")
+    )
+    assert shown.one() == ("force_custom_plan", "off")

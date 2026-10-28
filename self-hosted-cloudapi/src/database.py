@@ -3,7 +3,12 @@
 from typing import Callable, Optional
 
 from sqlalchemy.dialects import postgresql, sqlite
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlalchemy.orm import DeclarativeBase
 
 from config.settings import settings
@@ -23,7 +28,24 @@ if ASYNC_DATABASE_URL.startswith("postgresql"):
     _engine_kwargs["pool_size"] = 20
     _engine_kwargs["max_overflow"] = 10
 
-engine = create_async_engine(ASYNC_DATABASE_URL, **_engine_kwargs)
+# The session settings of every Postgres connection. asyncpg prepares each
+# statement, and after five runs on a pooled connection Postgres may keep a
+# generic plan that cannot see the user, the period or the filter: the task
+# list's statements and a heavy user's live writes then took several times
+# longer, a narrowed metrics page minutes. JIT compiled each large metrics
+# statement for about a second more than it saved.
+_PG_SESSION_SETTINGS = {"plan_cache_mode": "force_custom_plan", "jit": "off"}
+
+
+def make_engine(url: str, **options) -> AsyncEngine:
+    """An async engine on ``url``; on Postgres every connection it opens
+    starts with the app's session settings."""
+    if url.startswith("postgresql"):
+        options["connect_args"] = {"server_settings": _PG_SESSION_SETTINGS}
+    return create_async_engine(url, **options)
+
+
+engine = make_engine(ASYNC_DATABASE_URL, **_engine_kwargs)
 
 async_session_factory = async_sessionmaker(
     engine,
