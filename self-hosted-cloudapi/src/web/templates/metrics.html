@@ -3,12 +3,19 @@
 {% block title %}Usage metrics · Tumble Code{% endblock %}
 {% block content %}
 {# Every link of the page is view.url (web/presenters/metrics_view), so the
-   period, client, grouping and narrowed group ride along on all of them. #}
+   space, period, client, grouping and narrowed group ride along on all of them. #}
 {# A page of the daily table: same view, table opened and scrolled to. #}
 {% macro day_url(n) %}{{ view.url() }}&amp;day_page={{ n }}#daily-table{% endmacro %}
 <div class="metrics-head">
   <h1 class="page-title">Usage metrics</h1>
   <div class="metrics-controls">
+  {% if spaces|length > 1 %}
+  <nav class="period-control" aria-label="Space">
+    {% for key, label in spaces %}
+    <a class="period-opt{{ ' active' if view.space == key else '' }}" href="{{ view.space_url(key) }}">{{ label }}</a>
+    {% endfor %}
+  </nav>
+  {% endif %}
   <nav class="period-control" aria-label="Group">
     {% for key, label in group_options %}
     <a class="period-opt{{ ' active' if view.group == key else '' }}" href="{{ view.group_url(key) }}">{{ label }}</a>
@@ -84,7 +91,7 @@
   {% set t = quality.totals %}
   <div class="quality-signals">
     <div class="signal{{ ' is-zero' if not t.interventions else ' tone-bad' }}">
-      <span class="signal-value">{{ t.interventions }}</span><span class="signal-label">Your corrections</span>
+      <span class="signal-value">{{ t.interventions }}</span><span class="signal-label">{{ 'Corrections' if view.space else 'Your corrections' }}</span>
     </div>
     <div class="signal{{ ' is-zero' if not t.completion_replies else '' }}">
       <span class="signal-value">{{ t.completion_replies }}</span><span class="signal-label">Replies to a result</span>
@@ -106,13 +113,14 @@
   {% if quality.roughest %}
   <h3 class="chart-title rough-title">Roughest runs</h3>
   <ul class="rough-list">
+    {# A run opens for its owner only, so an organization's are not links. #}
     {% for r in quality.roughest %}
     <li>
-      <a class="rough-link" href="/app/tasks/{{ r.id }}">
+      {% if view.space %}<div class="rough-link">{% else %}<a class="rough-link" href="/app/tasks/{{ r.id }}">{% endif %}
         <span class="cell-title">{{ r.title }}</span>
         <span class="rough-why">{{ r.reasons }}</span>
         <span class="cell-num">{{ r.friction }}</span>
-      </a>
+      {% if view.space %}</div>{% else %}</a>{% endif %}
     </li>
     {% endfor %}
   </ul>

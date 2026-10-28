@@ -65,6 +65,19 @@ async def membership_of(
     )
 
 
+async def administered_organizations(
+    db: AsyncSession, user_id: str
+) -> list[Organization]:
+    """The organizations the user is an admin of, by name."""
+    result = await db.scalars(
+        select(Organization)
+        .join(Membership)
+        .where(Membership.user_id == user_id, Membership.role == ROLE_ADMIN)
+        .order_by(func.lower(Organization.name), Organization.id)
+    )
+    return list(result.all())
+
+
 @dataclass(frozen=True)
 class OrganizationRow:
     organization: Organization

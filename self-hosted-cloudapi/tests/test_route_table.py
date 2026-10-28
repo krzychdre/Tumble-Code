@@ -258,6 +258,7 @@ def test_web_routes_keep_their_openapi_operations():
             html,
             (
                 ("period", "query", False),
+                ("space", "query", False),
                 ("client", "query", False),
                 ("group", "query", False),
                 ("only", "query", False),

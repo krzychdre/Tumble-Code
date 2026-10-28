@@ -1314,7 +1314,7 @@ a.signal-value:hover {
 	color: var(--text);
 	font-size: var(--t-sm);
 }
-.rough-link:hover {
+a.rough-link:hover {
 	color: var(--signal);
 	text-decoration: none;
 }

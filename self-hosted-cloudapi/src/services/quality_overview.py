@@ -1,4 +1,5 @@
-"""How a user's runs went over a period, in aggregate (the metrics page panel)."""
+"""How a user's runs, or an organization's, went over a period, in aggregate
+(the metrics page panel)."""
 
 from zoneinfo import ZoneInfo
 
@@ -42,6 +43,7 @@ async def quality_overview(
     client: str | None = None,
     zone: ZoneInfo = UTC,
     narrow=None,
+    organization_id: str | None = None,
 ) -> dict:
     """How the user's runs went over the period, in aggregate.
 
@@ -54,9 +56,15 @@ async def quality_overview(
     which is the only time the task row itself carries. ``client`` ("vscode"
     or "cli") keeps the runs of that client only, as on the rest of the page,
     and ``narrow`` (a condition on ``tasks``) the runs of the group the page is
-    narrowed to.
+    narrowed to. With ``organization_id`` the runs are that organization's,
+    whoever ran them, instead of the user's.
     """
-    filters = [Task.user_id == user_id, Task.parent_task_id.is_(None)]
+    owner = (
+        Task.user_id == user_id
+        if organization_id is None
+        else Task.organization_id == organization_id
+    )
+    filters = [owner, Task.parent_task_id.is_(None)]
     start = period_start(period, zone=zone)
     if start is not None:
         filters.append(Task.updated_at >= start)

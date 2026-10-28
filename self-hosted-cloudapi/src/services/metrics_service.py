@@ -1,4 +1,5 @@
-"""Usage-metrics aggregation for the web view.
+"""Usage-metrics aggregation for the web view: the reader's own, or that of an
+organization they administer.
 
 Aggregates the logged-in user's LLM usage from ``telemetry_events`` — NOT from
 ``task_messages``. Only *shared/live* tasks ever land in ``task_messages``, and
@@ -23,13 +24,15 @@ from typing import Callable, Iterable, Optional, Sequence
 from zoneinfo import ZoneInfo
 
 import anyio
-from sqlalchemy import and_, select
+from sqlalchemy import Row, and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.event import TelemetryEvent
 from src.models.project import Project
 from src.models.task import Task
+from src.models.user import User
 from src.services.client_kind import CLIENT_LABELS
+from src.services.projects import visible_to
 from src.services.telemetry_vocab import (
     EMBEDDING_EVENT,
     KIND_LABELS,
@@ -43,9 +46,9 @@ from src.utils.format import fmt_duration, fmt_tokens, num as _num
 
 logger = logging.getLogger(__name__)
 
-# (key, name) of the group an event belongs to, from its payload and its task's
-# project id and name (web/presenters/metrics_view.GROUPINGS).
-GroupKey = Callable[[dict, Optional[str], Optional[str]], tuple[str, str]]
+# (key, name) of the group an event belongs to, from its payload and its row
+# of the completions query (web/presenters/metrics_view.GROUPINGS).
+GroupKey = Callable[[dict, Row], tuple[str, str]]
 
 # Period presets -> how many of the reader's calendar days to include, today
 # counted (None = all time). The key is what the route accepts as ?period=...
@@ -157,8 +160,13 @@ async def compute_user_metrics(
     zone: ZoneInfo = UTC,
     group_key: Optional[GroupKey] = None,
     only: str = "",
+    organization_id: Optional[str] = None,
 ) -> dict:
     """Aggregate the user's LLM-usage metrics for the given period.
+
+    With ``organization_id`` the figures are that organization's instead: every
+    completion of its tasks, whoever ran them, and no indexing (it belongs to
+    no task). The caller has checked that the user administers it.
 
     ``client`` ("vscode" or "cli", services/client_kind) keeps only the events
     that client sent; None counts both. ``zone`` is the reader's: the period
@@ -183,29 +191,55 @@ async def compute_user_metrics(
         period = DEFAULT_PERIOD
     start = period_start(period, now, zone)
 
-    # Only the columns the aggregation reads, as plain tuples: no ORM entity
-    # per event (identity map, attribute instrumentation). The (user_id,
-    # event_type, created_at) index serves the filter, the range and the ORDER
-    # BY; the client condition only drops rows that index found. The project is
-    # the event's task's, joined on the primary keys; the owner is part of the
-    # join, so an event naming another user's task id has no project.
-    stmt = (
-        select(
-            TelemetryEvent.properties,
-            TelemetryEvent.created_at,
-            TelemetryEvent.client_kind,
-            Project.id,
-            Project.name,
+    # Only the columns the aggregation reads, as plain rows: no ORM entity
+    # per event (identity map, attribute instrumentation). The project is the
+    # event's task's, joined on the primary keys; its name only when the user
+    # may see it (an organization they left), as on the task list.
+    columns = [
+        TelemetryEvent.properties,
+        TelemetryEvent.created_at,
+        TelemetryEvent.client_kind,
+        Task.project_id,
+        Project.name.label("project_name"),
+    ]
+    if organization_id is None:
+        # The (user_id, event_type, created_at) index serves the filter, the
+        # range and the ORDER BY; the client condition only drops rows that
+        # index found. The owner is part of the join, so an event naming
+        # another user's task id has no project.
+        stmt = (
+            select(*columns)
+            .outerjoin(
+                Task, and_(Task.id == TelemetryEvent.task_id, Task.user_id == user_id)
+            )
+            .where(TelemetryEvent.user_id == user_id)
         )
-        .outerjoin(
-            Task, and_(Task.id == TelemetryEvent.task_id, Task.user_id == user_id)
+    else:
+        # The organization's tasks are indexed (ix_tasks_organization_id), their
+        # events by task id and by user. Only the task owner's events count:
+        # anyone else's naming the task id is not the organization's. Who ran
+        # it names the "By user" group.
+        stmt = (
+            select(
+                *columns,
+                TelemetryEvent.user_id,
+                User.first_name,
+                User.last_name,
+                User.email,
+            )
+            .join(
+                Task,
+                and_(
+                    Task.id == TelemetryEvent.task_id,
+                    Task.user_id == TelemetryEvent.user_id,
+                ),
+            )
+            .join(User, User.id == Task.user_id)
+            .where(Task.organization_id == organization_id)
         )
-        .outerjoin(Project, Project.id == Task.project_id)
-        .where(
-            TelemetryEvent.user_id == user_id,
-            TelemetryEvent.event_type == LLM_COMPLETION_EVENT,
-        )
-    )
+    stmt = stmt.outerjoin(
+        Project, and_(Project.id == Task.project_id, visible_to(user_id))
+    ).where(TelemetryEvent.event_type == LLM_COMPLETION_EVENT)
     if start is not None:
         stmt = stmt.where(TelemetryEvent.created_at >= start)
     if client is not None:
@@ -213,9 +247,11 @@ async def compute_user_metrics(
     stmt = stmt.order_by(TelemetryEvent.created_at)
 
     rows = (await db.execute(stmt)).all()
-    # Indexing belongs to no task, so it is in no group.
+    # Indexing belongs to no task, so it is in no group and no organization.
     embedding_payloads = (
-        [] if only else await _embedding_payloads(db, user_id, start, client)
+        []
+        if only or organization_id
+        else await _embedding_payloads(db, user_id, start, client)
     )
 
     # The loop below is pure Python over every completion in the period (about
@@ -244,8 +280,9 @@ def aggregate_user_metrics(
 ) -> dict:
     """The metrics page's figures from the fetched rows; see compute_user_metrics.
 
-    ``rows`` are ``(properties, created_at, client_kind, project_id,
-    project_name)`` of the period's ``LLM Completion`` events, oldest first;
+    ``rows`` are the completions query's rows (``properties``, ``created_at``,
+    ``client_kind``, ``project_id``, ``project_name`` and, in an organization,
+    who ran the event) of the period's ``LLM Completion`` events, oldest first;
     ``embedding_payloads`` the ``properties`` of its embedding events. Pure: no
     database, no I/O.
     """
@@ -281,10 +318,10 @@ def aggregate_user_metrics(
         slot["cost"] += cost
         slot["count"] += 1
 
-    for payload, created_at, client_kind, project_id, project_name in rows:
-        props = parse_event_props(payload)
+    for row in rows:
+        props = parse_event_props(row.properties)
         if group_key is not None:
-            key, name = group_key(props or {}, project_id, project_name)
+            key, name = group_key(props or {}, row)
             if only and key != only:
                 continue
         kept += 1
@@ -313,9 +350,9 @@ def aggregate_user_metrics(
         _bucket(by_mode, str(props.get("mode") or "unknown"), tokens, cost)
         _bucket(by_provider, str(props.get("apiProvider") or "unknown"), tokens, cost)
         _bucket(by_kind, kind, tokens, cost)
-        _bucket(by_client, client_kind or "unknown", tokens, cost)
+        _bucket(by_client, row.client_kind or "unknown", tokens, cost)
 
-        created = created_at or (now or datetime.now(timezone.utc))
+        created = row.created_at or (now or datetime.now(timezone.utc))
         day = local_day(created, zone).isoformat()
         dslot = by_day.setdefault(day, {"day": day, "tokens": 0, "cost": 0.0})
         dslot["tokens"] += tokens
