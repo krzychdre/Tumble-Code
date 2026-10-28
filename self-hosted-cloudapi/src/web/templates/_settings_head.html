@@ -1,0 +1,12 @@
+{# The heading of every Settings tab. #}
+{% import "_tabs.html" as t %}
+{% macro settings_head(active) %}
+<div class="page-head">
+  <h1 class="page-title">Settings</h1>
+</div>
+{{ t.tabs([
+  ("retention", "/app/settings", "Retention"),
+  ("projects", "/app/projects", "Projects"),
+  ("organizations", "/app/organizations", "Organizations"),
+], active, "Settings sections") }}
+{% endmacro %}

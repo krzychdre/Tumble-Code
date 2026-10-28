@@ -265,7 +265,13 @@ def test_day_table_pages_newest_first_and_clamps_the_page():
     last = day_table(days, 99)
     assert last["page"] == 3 and [r["day"] for r in last["rows"]][-1] == "2026-01-01"
     assert day_table(days, -4)["page"] == 1
-    assert day_table([], 1) == {"rows": [], "page": 1, "page_count": 1, "pages": [1]}
+    assert day_table([], 1) == {
+        "rows": [],
+        "page": 1,
+        "page_count": 1,
+        "pages": [1],
+        "offset": 0,
+    }
 
 
 async def test_the_daily_table_pager_keeps_the_period_and_opens_the_table(

@@ -5,7 +5,9 @@ page, a page number that outran a corpus that shrank), asserted here directly
 rather than through rendered HTML.
 """
 
-from src.utils.pagination import page_window
+import pytest
+
+from src.utils.pagination import page_window, paginate
 
 
 def test_window_keeps_both_ends_and_elides_the_middle():
@@ -50,3 +52,23 @@ def test_no_pages_no_window():
 def test_radius_controls_the_width():
     assert page_window(8, 16, radius=1) == [1, None, 7, 8, 9, None, 16]
     assert page_window(8, 16, radius=0) == [1, None, 8, None, 16]
+
+
+@pytest.mark.parametrize(
+    "total, asked, page, page_count, offset",
+    [
+        (0, 1, 1, 1, 0),
+        (25, 2, 1, 1, 0),
+        (26, 2, 2, 2, 25),
+        (26, 0, 1, 2, 0),
+    ],
+)
+def test_paginate_clamps_the_page_and_counts_the_offset(
+    total, asked, page, page_count, offset
+):
+    pager = paginate(total, asked, 25)
+    assert (pager["page"], pager["page_count"], pager["offset"]) == (
+        page,
+        page_count,
+        offset,
+    )

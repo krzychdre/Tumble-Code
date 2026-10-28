@@ -1,9 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Projects · Tumble Code{% endblock %}
+{% import "_settings_head.html" as head %}
 {% block content %}
-<div class="page-head">
-  <h1 class="page-title">Projects</h1>
-</div>
+{{ head.settings_head("projects") }}
 
 {% if error %}<div class="notice" role="alert">{{ error }}</div>{% endif %}
 

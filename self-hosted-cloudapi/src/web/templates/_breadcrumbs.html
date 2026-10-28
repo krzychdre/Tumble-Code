@@ -1,0 +1,13 @@
+{# The path from a section down to the page you are on. `links` holds dicts
+   with href, label and an optional title (the hover text); `here` names the
+   current page and is not a link. #}
+{% macro breadcrumbs(links, here, label="Breadcrumb") %}
+<nav class="trail" aria-label="{{ label }}">
+  {% for l in links %}
+  {% if not loop.first %}<span class="trail-sep">/</span>{% endif %}
+  <a href="{{ l.href }}"{% if l.title %} title="{{ l.title }}"{% endif %}>{{ l.label }}</a>
+  {% endfor %}
+  <span class="trail-sep">/</span>
+  <span class="trail-here" aria-current="page">{{ here }}</span>
+</nav>
+{% endmacro %}

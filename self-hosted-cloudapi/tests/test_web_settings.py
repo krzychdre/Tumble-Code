@@ -557,3 +557,22 @@ async def test_saving_settings_persists_the_values(client, db_session, session_f
     # And the saved values come back on the page rather than only in the DB.
     assert 'value="45"' in page.text
     assert 'value="250"' in page.text
+
+
+# --- settings tabs ------------------------------------------------------------
+
+
+async def test_every_settings_tab_marks_itself_and_links_the_others(client, db_session):
+    await _seed_user(db_session)
+    _override_web_user(client.app)
+    try:
+        for path in ("/app/settings", "/app/projects", "/app/organizations"):
+            tabs = (
+                client.get(path).text.split('<nav class="tabs"')[1].split("</nav>")[0]
+            )
+            assert tabs.count('aria-current="page"') == 1
+            assert f'<a href="{path}" class="active" aria-current="page">' in tabs
+            for other in ("/app/settings", "/app/projects", "/app/organizations"):
+                assert f'href="{other}"' in tabs
+    finally:
+        client.app.dependency_overrides.pop(get_web_user_optional, None)

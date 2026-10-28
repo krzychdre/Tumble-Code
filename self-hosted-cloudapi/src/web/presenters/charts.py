@@ -27,7 +27,7 @@ import math
 from datetime import date, timedelta
 
 from src.utils.format import fmt_cost, fmt_tokens
-from src.utils.pagination import page_window
+from src.utils.pagination import paginate
 
 # Daily chart: each day is a 10-unit slot of a 100-unit-high viewBox that
 # the stylesheet stretches to the card (preserveAspectRatio="none"); a day's
@@ -222,15 +222,9 @@ def day_table(days: list[dict], page: int) -> dict:
     """One page of the daily table: the active days, newest first, TABLE_PAGE
     to a page. An out-of-range ``page`` lands on the nearest real one, as on
     the task list."""
-    page_count = max(1, math.ceil(len(days) / TABLE_PAGE))
-    page = min(max(page, 1), page_count)
-    newest_first = days[::-1]
-    return {
-        "rows": newest_first[(page - 1) * TABLE_PAGE : page * TABLE_PAGE],
-        "page": page,
-        "page_count": page_count,
-        "pages": page_window(page, page_count),
-    }
+    pager = paginate(len(days), page, TABLE_PAGE)
+    first = pager["offset"]
+    return {"rows": days[::-1][first : first + TABLE_PAGE], **pager}
 
 
 def _truncate(name: str) -> str:

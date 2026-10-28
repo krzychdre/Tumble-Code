@@ -45,3 +45,18 @@ def page_window(page: int, page_count: int, radius: int = RADIUS) -> list[int | 
                 out.append(None)
         out.append(number)
     return out
+
+
+def paginate(total: int, page: int, size: int) -> dict:
+    """The pager's fields for ``total`` items, ``size`` to a page: ``page``,
+    ``page_count``, the numbered ``pages`` and the ``offset`` of the page's
+    first item. An out-of-range ``page`` lands on the nearest real one, and an
+    empty list still has page 1."""
+    page_count = max(1, -(-total // size))
+    page = min(max(page, 1), page_count)
+    return {
+        "page": page,
+        "page_count": page_count,
+        "pages": page_window(page, page_count),
+        "offset": (page - 1) * size,
+    }

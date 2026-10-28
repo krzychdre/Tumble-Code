@@ -38,7 +38,7 @@ from src.services.session_quality import (
 from src.services.task_tree import subtrees
 from src.utils.clientzone import UTC, day_start_utc
 from src.utils.format import fmt_cost, fmt_int, fmt_tokens
-from src.utils.pagination import page_window
+from src.utils.pagination import paginate
 from src.web.presenters.task_rows import _list_row, _workspace_label
 
 # Column key -> what the column header says. Only these can be sorted by;
@@ -508,15 +508,14 @@ async def list_page(
         return {**shared, **await _group_page(db, view, user_id, names, filters, page)}
 
     total = await db.scalar(select(func.count(Task.id)).where(*filters))
-    page_count = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
-    page = min(max(page, 1), page_count)
+    pager = paginate(total, page, PAGE_SIZE)
 
     order, rollup = view.order_by(user_id)
     query = select(Task).where(*filters)
     if rollup is not None:
         query = query.outerjoin(rollup, rollup.c.run_id == Task.id)
     result = await db.execute(
-        query.order_by(*order).limit(PAGE_SIZE).offset((page - 1) * PAGE_SIZE)
+        query.order_by(*order).limit(PAGE_SIZE).offset(pager["offset"])
     )
 
     page_tasks = list(result.scalars().all())
@@ -529,11 +528,7 @@ async def list_page(
         tasks=[_list_row(task, tree, nest) for task in page_tasks],
         groups=[],
         tree_view=nest,
-        page=page,
-        page_count=page_count,
-        # Numbered links, so any page is one click away rather than N
-        # clicks of "Older"; None entries render as an ellipsis.
-        pages=page_window(page, page_count),
+        **pager,
         total=total,
     )
 
@@ -609,9 +604,8 @@ async def _group_page(
     )
     ordered.sort(key=lambda g: g[view.sort], reverse=view.dir == "desc")
 
-    page_count = max(1, (len(ordered) + PAGE_SIZE - 1) // PAGE_SIZE)
-    page = min(max(page, 1), page_count)
-    shown = ordered[(page - 1) * PAGE_SIZE : page * PAGE_SIZE]
+    pager = paginate(len(ordered), page, PAGE_SIZE)
+    shown = ordered[pager["offset"] : pager["offset"] + PAGE_SIZE]
 
     ids = [task_id for g in shown for task_id in g["ids"][:GROUP_ROWS]]
     loaded = await db.scalars(select(Task).where(Task.id.in_(ids)))
@@ -645,9 +639,7 @@ async def _group_page(
         group_count=len(ordered),
         group_unit=grouping.unit,
         tree_view=runs,
-        page=page,
-        page_count=page_count,
-        pages=page_window(page, page_count),
+        **pager,
         total=total,
     )
 
