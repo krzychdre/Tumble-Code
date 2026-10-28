@@ -62,7 +62,7 @@ describe("MermaidBlock with the real Mermaid parser", () => {
 		expect(calls.initialize).toHaveLength(1)
 		expect(calls.initialize[0]).toMatchObject({
 			startOnLoad: false,
-			securityLevel: "loose",
+			securityLevel: "strict",
 			theme: "dark",
 			suppressErrorRendering: true,
 			look: "classic",
