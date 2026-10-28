@@ -159,8 +159,19 @@ def _parse_messages(payloads: Iterable[Optional[str]]) -> list[dict]:
             continue
         if isinstance(data, dict):
             parsed.append(data)
-    parsed.sort(key=lambda m: m.get("ts", 0))
+    parsed.sort(key=_sort_ts)
     return parsed
+
+
+def _sort_ts(message: dict) -> float:
+    """The message's time to order by; 0 for a ``ts`` that is no number.
+
+    A message is stored as the client sent it, so ``ts`` may be null or a
+    string: ``m.get("ts", 0)`` handed the sort a None, which cannot be compared
+    with an int, and the task page and its share link answered 500 for good.
+    """
+    ts = message.get("ts")
+    return ts if isinstance(ts, (int, float)) and not isinstance(ts, bool) else 0
 
 
 def _conversation_json(messages: list[dict]) -> Markup:
