@@ -174,20 +174,16 @@ describe("FileSecretStorage", () => {
 		expect(await storage.get("key2")).toBeUndefined()
 	})
 
-	it("should create secrets.json file with restrictive permissions on Unix", async () => {
-		if (process.platform === "win32") {
-			// Skip on Windows
-			return
-		}
-
+	it.skipIf(process.platform === "win32")("keeps secrets.json readable by its owner only", async () => {
+		const secretsPath = path.join(tempDir, "secrets.json")
+		// A file an older version wrote readable by everyone.
+		fs.writeFileSync(secretsPath, "{}")
+		fs.chmodSync(secretsPath, 0o644)
 		const storage = new FileSecretStorage(tempDir)
+
 		await storage.store("key", "value")
 
-		const secretsPath = path.join(tempDir, "secrets.json")
-		const stats = fs.statSync(secretsPath)
-		const mode = stats.mode & 0o777
-
-		// Should be 0600 (owner read/write only)
-		expect(mode).toBe(0o600)
+		expect(fs.statSync(secretsPath).mode & 0o777).toBe(0o600)
+		expect(JSON.parse(fs.readFileSync(secretsPath, "utf-8"))).toEqual({ key: "value" })
 	})
 })

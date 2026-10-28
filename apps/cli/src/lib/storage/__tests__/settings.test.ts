@@ -119,10 +119,11 @@ describe.skipIf(process.platform === "win32")("isSettingsFileReadableByOthers", 
 		await expect(isSettingsFileReadableByOthers()).resolves.toBe(true)
 	})
 
-	it("keeps an owner-only mode when the CLI rewrites the file", async () => {
+	it("creates the file owner-only, and makes a readable one owner-only when it rewrites it", async () => {
 		await saveSettings({ provider: "openai" })
-		fs.chmodSync(getSettingsPath(), 0o600)
+		await expect(isSettingsFileReadableByOthers()).resolves.toBe(false)
 
+		fs.chmodSync(getSettingsPath(), 0o644)
 		await saveSettings({ mode: "architect" })
 
 		await expect(isSettingsFileReadableByOthers()).resolves.toBe(false)
