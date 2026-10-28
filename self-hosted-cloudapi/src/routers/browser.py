@@ -37,6 +37,7 @@ from src.services.auth_service import (
 )
 from src.auth.authentik import exchange_code_for_tokens, get_userinfo
 from src.auth.network_access import client_allowed
+from src.realtime.sio import end_web_session
 from src.services.organizations import sync_organizations
 from src.web.templating import templates
 from config.auth import can_sign_in_on, front_channel
@@ -312,6 +313,10 @@ async def web_logout(
     """
     if user is not None:
         await deactivate_session(db, user["session_id"])
+        # Committed before the open tabs' sockets are closed, so their
+        # reconnect finds the session gone.
+        await db.commit()
+        await end_web_session(user["session_id"])
     response = RedirectResponse(url="/app/signed-out", status_code=303)
     clear_session_cookie(response, secure=cookie_should_be_secure(request))
     return response

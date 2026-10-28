@@ -27,7 +27,7 @@ import socketio
 from src.auth.jwt_issuer import decode_token
 from src.auth.network_access import client_allowed, scope_client
 from src.auth.origins import is_trusted_origin
-from src.auth.web_session import COOKIE_NAME, resolve_web_user
+from src.auth.web_session import COOKIE_NAME, live_session, resolve_web_user
 from src.database import async_session_factory
 from src.services.projects import resolve_project
 from src.services.task_access import task_owner
@@ -204,8 +204,40 @@ async def connect(sid, environ, auth):
     if web_user is None:
         logger.info("[bridge] browser handshake rejected: no valid session")
         return False
-    registry.attach(sid, "browser", web_user["user_id"])
+    registry.attach(
+        sid, "browser", web_user["user_id"], session_id=web_user["session_id"]
+    )
     return True
+
+
+async def end_web_session(session_id: str) -> None:
+    """Close the browser sockets opened with ``session_id`` (sign-out).
+
+    A browser socket is authenticated once, at its handshake; without this a
+    tab left open went on receiving its tasks' live events after the session
+    was signed out or deactivated. The page's reconnect then fails the
+    handshake, as the session is gone. Call it after the deactivation is
+    committed, so that reconnect cannot still find the session active.
+    """
+    for sid in registry.sids_of_session(session_id):
+        logger.info("[bridge] closing a browser socket of a signed-out session")
+        await sio.disconnect(sid)
+        registry.detach(sid)
+
+
+async def _browser_session_live(sid: str) -> bool:
+    """Whether a browser socket's web session is still active (re-checked on
+    every join and command, which also catches a session that expired or was
+    ended by another worker since the handshake). A dead one is closed."""
+    session_id = registry.session_id(sid)
+    if session_id is None:
+        return True
+    async with async_session_factory() as db:
+        alive = await live_session(db, session_id) is not None
+    if not alive:
+        await sio.disconnect(sid)
+        registry.detach(sid)
+    return alive
 
 
 @sio.event
@@ -413,6 +445,8 @@ async def on_task_join(sid, data):
     meta = registry.meta(sid)
     if not meta:
         return {"success": False, "error": "unauthenticated"}
+    if meta["role"] == "browser" and not await _browser_session_live(sid):
+        return {"success": False, "error": "unauthenticated"}
     task_id = (data or {}).get("taskId")
     if not await _user_owns_task(meta["user_id"], task_id):
         return {"success": False, "error": "forbidden"}
@@ -442,6 +476,8 @@ async def on_task_command(sid, data):
         return {"success": False, "error": "not a browser socket"}
     if not isinstance(data, dict):
         return {"success": False, "error": "bad payload"}
+    if not await _browser_session_live(sid):
+        return {"success": False, "error": "unauthenticated"}
     task_id = data.get("taskId")
     if not await _user_owns_task(meta["user_id"], task_id):
         return {"success": False, "error": "forbidden"}
