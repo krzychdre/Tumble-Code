@@ -66,6 +66,17 @@ describe("safeWriteJson", () => {
 		expect(await read()).toBe(expected)
 	})
 
+	it.skipIf(process.platform === "win32")("gives the file the mode asked for", async () => {
+		const fresh = path.join(tempDir, "fresh.json")
+		await fs.chmod(filePath, 0o644)
+
+		await safeWriteJson(fresh, { key: "secret" }, { mode: 0o600 })
+		await safeWriteJson(filePath, { key: "secret" }, { mode: 0o600 })
+
+		expect((await fs.stat(fresh)).mode & 0o777).toBe(0o600)
+		expect((await fs.stat(filePath)).mode & 0o777).toBe(0o600)
+	})
+
 	it("refuses to write while another process holds the lock", async () => {
 		const release = await lockfile.lock(filePath, { realpath: false, retries: 0 })
 

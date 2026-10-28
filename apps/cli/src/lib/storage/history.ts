@@ -1,6 +1,8 @@
 import * as fs from "fs/promises"
 import * as path from "path"
 
+import { writeFileAtomic } from "@tumble-code/core"
+
 import { ensureConfigDir, getConfigDir } from "./config-dir.js"
 
 /** Maximum number of history entries to keep */
@@ -74,7 +76,8 @@ export async function saveHistory(entries: string[]): Promise<void> {
 
 	try {
 		await ensureConfigDir()
-		await fs.writeFile(filePath, JSON.stringify(data, null, "\t"), "utf-8")
+		// What the user typed can include secrets: only the user may read it.
+		await writeFileAtomic(filePath, JSON.stringify(data, null, "\t"), { mode: 0o600 })
 	} catch (err) {
 		const error = err as NodeJS.ErrnoException
 		// Log but don't throw - history persistence is not critical

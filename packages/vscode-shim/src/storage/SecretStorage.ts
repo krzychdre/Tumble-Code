@@ -2,6 +2,7 @@ import * as fs from "fs"
 import * as path from "path"
 import { EventEmitter } from "../classes/EventEmitter.js"
 import { ensureDirectoryExists } from "../utils/paths.js"
+import { writePrivateFileSync } from "../utils/privateFile.js"
 import type { SecretStorage, SecretStorageChangeEvent } from "../types.js"
 
 /**
@@ -13,7 +14,7 @@ import type { SecretStorage, SecretStorageChangeEvent } from "../types.js"
  *
  * **Security Notes:**
  * - Secrets are stored as plain JSON (not encrypted)
- * - File permissions should be set restrictive (0600)
+ * - The file is readable by its owner only (0600), from the moment it is written
  * - For production, consider using environment variables instead
  * - Suitable for development and non-critical secrets
  *
@@ -72,17 +73,7 @@ export class FileSecretStorage implements SecretStorage {
 			const dir = path.dirname(this.filePath)
 			ensureDirectoryExists(dir)
 
-			// Write the file
-			fs.writeFileSync(this.filePath, JSON.stringify(this.secrets, null, 2))
-
-			// Set restrictive permissions (owner read/write only) on Unix-like systems
-			if (process.platform !== "win32") {
-				try {
-					fs.chmodSync(this.filePath, 0o600)
-				} catch {
-					// Ignore chmod errors (might not be supported on some filesystems)
-				}
-			}
+			writePrivateFileSync(this.filePath, JSON.stringify(this.secrets, null, 2))
 		} catch (error) {
 			console.warn(`Failed to save secrets to ${this.filePath}:`, error)
 		}

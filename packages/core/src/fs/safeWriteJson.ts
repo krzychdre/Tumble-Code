@@ -17,6 +17,11 @@ export interface SafeWriteJsonOptions {
 	 * @default false
 	 */
 	prettyPrint?: boolean
+	/**
+	 * Permission bits of the written file, e.g. 0o600 for a file that holds a secret. Without it
+	 * the file keeps the mode of the file it replaces, and a new file gets the default.
+	 */
+	mode?: number
 }
 
 /** An atomic writer bound to one destination for the lifetime of a locked transaction. */
@@ -48,8 +53,10 @@ const LOCK_OPTIONS = {
 } as const
 
 async function writeJsonAtomically(filePath: string, data: unknown, options?: SafeWriteJsonOptions): Promise<void> {
-	await replaceFileAtomically(filePath, (temporaryPath, mode) =>
-		_streamDataToFile(temporaryPath, data, options?.prettyPrint, mode),
+	await replaceFileAtomically(
+		filePath,
+		(temporaryPath, mode) => _streamDataToFile(temporaryPath, data, options?.prettyPrint, mode),
+		{ mode: options?.mode },
 	)
 }
 

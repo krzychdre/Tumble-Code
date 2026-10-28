@@ -61,6 +61,7 @@ export async function saveSettings(settings: CliSettingsUpdate): Promise<void> {
 	}
 
 	if (JSON.stringify(existing) !== JSON.stringify(merged)) {
-		await safeWriteJson(settingsPath, merged, { prettyPrint: true })
+		// The file may hold an API key: only the user may read it.
+		await safeWriteJson(settingsPath, merged, { prettyPrint: true, mode: 0o600 })
 	}
 }

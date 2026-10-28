@@ -1,145 +1,121 @@
-import * as fs from "fs/promises"
+import * as fs from "fs"
+import * as os from "os"
 import * as path from "path"
 
-import { getHistoryFilePath, loadHistory, saveHistory, addToHistory, MAX_HISTORY_ENTRIES } from "../history.js"
+// The config directory is read from the home directory when the module loads,
+// so the home directory is a temporary one before the module is imported.
+const home = fs.mkdtempSync(path.join(os.tmpdir(), "cli-history-test-"))
+vi.stubEnv("HOME", home)
+vi.stubEnv("USERPROFILE", home)
 
-vi.mock("fs/promises")
+const { getHistoryFilePath, loadHistory, saveHistory, addToHistory, MAX_HISTORY_ENTRIES } =
+	await import("../history.js")
 
-vi.mock("os", async (importOriginal) => {
-	const actual = await importOriginal<typeof import("os")>()
-	return {
-		...actual,
-		default: {
-			...actual,
-			homedir: vi.fn(() => "/home/testuser"),
-		},
-		homedir: vi.fn(() => "/home/testuser"),
-	}
-})
+const configDir = path.join(home, ".roo")
+const historyFile = path.join(configDir, "cli-history.json")
+
+const writeHistory = (data: unknown) => {
+	fs.mkdirSync(configDir, { recursive: true })
+	fs.writeFileSync(historyFile, typeof data === "string" ? data : JSON.stringify(data))
+}
+
+const readHistory = () => JSON.parse(fs.readFileSync(historyFile, "utf-8"))
 
 describe("historyStorage", () => {
 	beforeEach(() => {
-		vi.resetAllMocks()
+		fs.rmSync(configDir, { recursive: true, force: true })
+	})
+
+	afterAll(() => {
+		vi.unstubAllEnvs()
+		fs.rmSync(home, { recursive: true, force: true })
 	})
 
 	describe("getHistoryFilePath", () => {
 		it("should return the correct path to cli-history.json", () => {
-			const result = getHistoryFilePath()
-			expect(result).toBe(path.join("/home/testuser", ".roo", "cli-history.json"))
+			expect(getHistoryFilePath()).toBe(historyFile)
 		})
 	})
 
 	describe("loadHistory", () => {
 		it("should return empty array when file does not exist", async () => {
-			const error = new Error("ENOENT") as NodeJS.ErrnoException
-			error.code = "ENOENT"
-			vi.mocked(fs.readFile).mockRejectedValue(error)
-
-			const result = await loadHistory()
-
-			expect(result).toEqual([])
+			expect(await loadHistory()).toEqual([])
 		})
 
 		it("should return entries from valid JSON file", async () => {
-			const mockData = {
-				version: 1,
-				entries: ["first command", "second command", "third command"],
-			}
-			vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockData))
+			writeHistory({ version: 1, entries: ["first command", "second command", "third command"] })
 
-			const result = await loadHistory()
-
-			expect(result).toEqual(["first command", "second command", "third command"])
+			expect(await loadHistory()).toEqual(["first command", "second command", "third command"])
 		})
 
 		it("should return empty array for invalid JSON", async () => {
-			vi.mocked(fs.readFile).mockResolvedValue("not valid json")
-
-			// Suppress console.error for this test
+			writeHistory("not valid json")
 			const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
 
-			const result = await loadHistory()
-
-			expect(result).toEqual([])
+			expect(await loadHistory()).toEqual([])
 			consoleSpy.mockRestore()
 		})
 
 		it("should filter out non-string entries", async () => {
-			const mockData = {
-				version: 1,
-				entries: ["valid", 123, "also valid", null, ""],
-			}
-			vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockData))
+			writeHistory({ version: 1, entries: ["valid", 123, "also valid", null, ""] })
 
-			const result = await loadHistory()
-
-			expect(result).toEqual(["valid", "also valid"])
+			expect(await loadHistory()).toEqual(["valid", "also valid"])
 		})
 
 		it("should return empty array when entries is not an array", async () => {
-			const mockData = {
-				version: 1,
-				entries: "not an array",
-			}
-			vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockData))
+			writeHistory({ version: 1, entries: "not an array" })
 
-			const result = await loadHistory()
-
-			expect(result).toEqual([])
+			expect(await loadHistory()).toEqual([])
 		})
 	})
 
 	describe("saveHistory", () => {
 		it("should create directory and save history", async () => {
-			vi.mocked(fs.mkdir).mockResolvedValue(undefined)
-			vi.mocked(fs.writeFile).mockResolvedValue(undefined)
-
 			await saveHistory(["command1", "command2"])
 
-			expect(fs.mkdir).toHaveBeenCalledWith(path.join("/home/testuser", ".roo"), { recursive: true })
-			expect(fs.writeFile).toHaveBeenCalled()
-
-			// Verify the content written
-			const writeCall = vi.mocked(fs.writeFile).mock.calls[0]
-			const writtenContent = JSON.parse(writeCall?.[1] as string)
-			expect(writtenContent.version).toBe(1)
-			expect(writtenContent.entries).toEqual(["command1", "command2"])
+			expect(readHistory()).toEqual({ version: 1, entries: ["command1", "command2"] })
 		})
 
-		it("should trim entries to MAX_HISTORY_ENTRIES", async () => {
-			vi.mocked(fs.mkdir).mockResolvedValue(undefined)
-			vi.mocked(fs.writeFile).mockResolvedValue(undefined)
+		it.skipIf(process.platform === "win32")(
+			"keeps the history and its directory readable by the user only",
+			async () => {
+				await saveHistory(["export TOKEN=secret"])
+				expect(fs.statSync(configDir).mode & 0o777).toBe(0o700)
+				expect(fs.statSync(historyFile).mode & 0o777).toBe(0o600)
 
-			// Create array larger than MAX_HISTORY_ENTRIES
+				// A file an older version wrote readable by everyone.
+				fs.chmodSync(historyFile, 0o644)
+				await saveHistory(["export TOKEN=secret", "ls"])
+				expect(fs.statSync(historyFile).mode & 0o777).toBe(0o600)
+			},
+		)
+
+		it("should trim entries to MAX_HISTORY_ENTRIES", async () => {
 			const manyEntries = Array.from({ length: MAX_HISTORY_ENTRIES + 100 }, (_, i) => `command${i}`)
 
 			await saveHistory(manyEntries)
 
-			const writeCall = vi.mocked(fs.writeFile).mock.calls[0]
-			const writtenContent = JSON.parse(writeCall?.[1] as string)
-			expect(writtenContent.entries.length).toBe(MAX_HISTORY_ENTRIES)
+			const { entries } = readHistory()
+			expect(entries.length).toBe(MAX_HISTORY_ENTRIES)
 			// Should keep the most recent entries (last 500)
-			expect(writtenContent.entries[0]).toBe(`command100`)
-			expect(writtenContent.entries[MAX_HISTORY_ENTRIES - 1]).toBe(`command${MAX_HISTORY_ENTRIES + 99}`)
+			expect(entries[0]).toBe(`command100`)
+			expect(entries[MAX_HISTORY_ENTRIES - 1]).toBe(`command${MAX_HISTORY_ENTRIES + 99}`)
 		})
 
-		it("should handle directory already exists error", async () => {
-			const error = new Error("EEXIST") as NodeJS.ErrnoException
-			error.code = "EEXIST"
-			vi.mocked(fs.mkdir).mockRejectedValue(error)
-			vi.mocked(fs.writeFile).mockResolvedValue(undefined)
+		it("should save into a directory that already exists", async () => {
+			fs.mkdirSync(configDir, { recursive: true })
 
-			// Should not throw
-			await expect(saveHistory(["command"])).resolves.not.toThrow()
+			await saveHistory(["command"])
+
+			expect(readHistory().entries).toEqual(["command"])
 		})
 
 		it("should log warning on write error but not throw", async () => {
-			vi.mocked(fs.mkdir).mockResolvedValue(undefined)
-			vi.mocked(fs.writeFile).mockRejectedValue(new Error("Permission denied"))
-
+			// A directory where the file should be: the write cannot replace it.
+			fs.mkdirSync(path.join(historyFile, "inside"), { recursive: true })
 			const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
 
-			await expect(saveHistory(["command"])).resolves.not.toThrow()
+			await expect(saveHistory(["command"])).resolves.toBeUndefined()
 			expect(consoleSpy).toHaveBeenCalledWith(
 				expect.stringContaining("Could not save CLI history"),
 				expect.any(String),
@@ -151,84 +127,40 @@ describe("historyStorage", () => {
 
 	describe("addToHistory", () => {
 		it("should add new entry to history", async () => {
-			const mockData = {
-				version: 1,
-				entries: ["existing command"],
-			}
-			vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockData))
-			vi.mocked(fs.mkdir).mockResolvedValue(undefined)
-			vi.mocked(fs.writeFile).mockResolvedValue(undefined)
+			writeHistory({ version: 1, entries: ["existing command"] })
 
-			const result = await addToHistory("new command")
-
-			expect(result).toEqual(["existing command", "new command"])
+			expect(await addToHistory("new command")).toEqual(["existing command", "new command"])
+			expect(readHistory().entries).toEqual(["existing command", "new command"])
 		})
 
-		it("should not add empty strings", async () => {
-			const mockData = {
-				version: 1,
-				entries: ["existing command"],
-			}
-			vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockData))
+		it.each([
+			["empty strings", ""],
+			["whitespace-only strings", "   "],
+		])("should not add %s", async (_label, entry) => {
+			writeHistory({ version: 1, entries: ["existing command"] })
+			const before = fs.statSync(historyFile).mtimeMs
 
-			const result = await addToHistory("")
-
-			expect(result).toEqual(["existing command"])
-			expect(fs.writeFile).not.toHaveBeenCalled()
-		})
-
-		it("should not add whitespace-only strings", async () => {
-			const mockData = {
-				version: 1,
-				entries: ["existing command"],
-			}
-			vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockData))
-
-			const result = await addToHistory("   ")
-
-			expect(result).toEqual(["existing command"])
-			expect(fs.writeFile).not.toHaveBeenCalled()
+			expect(await addToHistory(entry)).toEqual(["existing command"])
+			expect(fs.statSync(historyFile).mtimeMs).toBe(before)
 		})
 
 		it("should not add consecutive duplicates", async () => {
-			const mockData = {
-				version: 1,
-				entries: ["first", "second"],
-			}
-			vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockData))
+			writeHistory({ version: 1, entries: ["first", "second"] })
 
-			const result = await addToHistory("second")
-
-			expect(result).toEqual(["first", "second"])
-			expect(fs.writeFile).not.toHaveBeenCalled()
+			expect(await addToHistory("second")).toEqual(["first", "second"])
+			expect(readHistory().entries).toEqual(["first", "second"])
 		})
 
 		it("should add non-consecutive duplicates", async () => {
-			const mockData = {
-				version: 1,
-				entries: ["first", "second"],
-			}
-			vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockData))
-			vi.mocked(fs.mkdir).mockResolvedValue(undefined)
-			vi.mocked(fs.writeFile).mockResolvedValue(undefined)
+			writeHistory({ version: 1, entries: ["first", "second"] })
 
-			const result = await addToHistory("first")
-
-			expect(result).toEqual(["first", "second", "first"])
+			expect(await addToHistory("first")).toEqual(["first", "second", "first"])
 		})
 
 		it("should trim whitespace from entry before adding", async () => {
-			const mockData = {
-				version: 1,
-				entries: ["existing"],
-			}
-			vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockData))
-			vi.mocked(fs.mkdir).mockResolvedValue(undefined)
-			vi.mocked(fs.writeFile).mockResolvedValue(undefined)
+			writeHistory({ version: 1, entries: ["existing"] })
 
-			const result = await addToHistory("  new command  ")
-
-			expect(result).toEqual(["existing", "new command"])
+			expect(await addToHistory("  new command  ")).toEqual(["existing", "new command"])
 		})
 	})
 

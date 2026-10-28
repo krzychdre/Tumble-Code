@@ -1,6 +1,7 @@
 import * as fs from "fs"
 import * as path from "path"
 import { ensureDirectoryExists } from "../utils/paths.js"
+import { writePrivateFileSync } from "../utils/privateFile.js"
 import type { Memento } from "../types.js"
 
 /**
@@ -61,9 +62,7 @@ export class FileMemento implements Memento {
 			const dir = path.dirname(this.filePath)
 			ensureDirectoryExists(dir)
 			// Only the user may read it: the extension keeps sign-in state here.
-			// chmod too, for a file an older version created readable by all.
-			fs.writeFileSync(this.filePath, JSON.stringify(this.data, null, 2), { mode: 0o600 })
-			fs.chmodSync(this.filePath, 0o600)
+			writePrivateFileSync(this.filePath, JSON.stringify(this.data, null, 2))
 		} catch (error) {
 			console.warn(`Failed to save state to ${this.filePath}:`, error)
 		}
