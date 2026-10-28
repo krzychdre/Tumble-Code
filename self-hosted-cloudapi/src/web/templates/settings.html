@@ -4,6 +4,7 @@
 {% block content %}
 {{ head.settings_head("retention") }}
 
+{% if error %}<div class="notice" role="alert">{{ error }}</div>{% endif %}
 {% if ran %}
 <div class="notice">Retention ran. {{ ran }} task{{ '' if ran == '1' else 's' }} removed.</div>
 {% endif %}

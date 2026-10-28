@@ -3,6 +3,7 @@
 Split out of test_web_and_share.py (CAPI-M5); the sections are unchanged.
 """
 
+import pytest
 from sqlalchemy import select, func
 
 from src.auth.web_session import get_web_user_optional
@@ -533,6 +534,96 @@ async def test_saving_settings_persists_the_values(client, db_session, session_f
     # And the saved values come back on the page rather than only in the DB.
     assert 'value="45"' in page.text
     assert 'value="250"' in page.text
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("max_age_days", "100000000"),
+        ("max_age_days", "3651"),
+        ("telemetry_max_age_days", "100000000"),
+        ("max_tasks", "100001"),
+        ("max_tasks", "99999999999999999999"),
+    ],
+)
+async def test_a_limit_past_the_forms_maximum_is_refused_and_nothing_is_saved(
+    client, db_session, session_factory, field, value
+):
+    from src.services.retention_service import get_policy
+
+    await _seed_user(db_session)
+    await _policy(db_session, max_age_days=30, max_tasks=200)
+    await db_session.commit()
+
+    _override_web_user(client.app)
+    try:
+        resp = client.post(
+            "/app/settings",
+            data={"enabled": "1", "max_age_days": "30", field: value},
+            follow_redirects=False,
+        )
+        page = client.get("/app/settings")
+    finally:
+        client.app.dependency_overrides.pop(get_web_user_optional, None)
+
+    assert resp.status_code == 400
+    assert "nothing was saved" in resp.text
+    assert page.status_code == 200
+    async with session_factory() as s:
+        policy = await get_policy(s, "user_test")
+    assert (policy.enabled, policy.max_age_days, policy.max_tasks) == (False, 30, 200)
+
+
+async def test_the_forms_maximum_itself_is_accepted(
+    client, db_session, session_factory
+):
+    from src.services.retention_service import get_policy
+
+    await _seed_user(db_session)
+    _override_web_user(client.app)
+    try:
+        resp = client.post(
+            "/app/settings",
+            data={"max_age_days": "3650", "max_tasks": "100000"},
+            follow_redirects=False,
+        )
+    finally:
+        client.app.dependency_overrides.pop(get_web_user_optional, None)
+
+    assert resp.status_code == 303
+    async with session_factory() as s:
+        policy = await get_policy(s, "user_test")
+    assert (policy.max_age_days, policy.max_tasks) == (3650, 100000)
+
+
+async def test_a_huge_age_stored_before_the_bound_selects_nothing_and_the_page_opens(
+    client, db_session, session_factory
+):
+    """Saved before the form was bounded: the cutoff fell before year 1 and
+    every preview and sweep raised OverflowError, so /app/settings answered
+    500 for good. Nothing is that old, so the rule now selects nothing."""
+    from src.services.retention_service import apply_sweep, plan_sweep
+
+    await _seed_user(db_session)
+    await _make_task(db_session, "old", age_days=4000)
+    policy = await _policy(
+        db_session,
+        max_age_days=100000000,
+        purge_telemetry=True,
+        telemetry_max_age_days=10**12,
+    )
+    await db_session.commit()
+
+    plan = await plan_sweep(db_session, "user_test", policy)
+    assert plan.task_ids == [] and plan.event_count == 0
+    assert (await apply_sweep(db_session, "user_test", policy)).task_count == 0
+
+    _override_web_user(client.app)
+    try:
+        page = client.get("/app/settings")
+    finally:
+        client.app.dependency_overrides.pop(get_web_user_optional, None)
+    assert page.status_code == 200
 
 
 # --- settings tabs ------------------------------------------------------------

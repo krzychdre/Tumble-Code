@@ -40,6 +40,18 @@ async def settings_page(
     (the "Calculate" link on the page), because summing it reads every
     selected conversation and event and was most of this page's cost.
     """
+    return await _settings_response(request, web, ran=ran, size=size)
+
+
+async def _settings_response(
+    request: Request,
+    web: WebPage,
+    *,
+    ran: str = "",
+    size: str = "",
+    error: Optional[str] = None,
+    status_code: int = 200,
+) -> HTMLResponse:
     db = web["db"]
     # read_policy, not get_policy: a GET must not write, so a user who has
     # never saved a policy sees the unsaved default instead of getting a row.
@@ -48,7 +60,7 @@ async def settings_page(
         db, web["user"]["user_id"], policy, measure_size=size == "1"
     )
 
-    return render_page(
+    response = render_page(
         request,
         web,
         "settings.html",
@@ -61,7 +73,10 @@ async def settings_page(
             "telemetry": SUGGESTED_TELEMETRY_MAX_AGE_DAYS,
         },
         ran=ran,
+        error=error,
     )
+    response.status_code = status_code
+    return response
 
 
 @router.post("/app/settings")
@@ -77,14 +92,22 @@ async def save_settings(
     scheduled sweep.
     """
     form = await request.form()
+    try:
+        max_age_days = _positive_int(form.get("max_age_days"), MAX_DAYS, "days")
+        max_tasks = _positive_int(form.get("max_tasks"), MAX_TASKS, "tasks")
+        telemetry_max_age_days = _positive_int(
+            form.get("telemetry_max_age_days"), MAX_DAYS, "days"
+        )
+    except OutOfRange as exc:
+        # Nothing is saved: the page comes back with the policy as stored.
+        return await _settings_response(request, web, error=str(exc), status_code=400)
     policy = await get_policy(web["db"], web["user"]["user_id"])
-
     policy.enabled = form.get("enabled") == "1"
     policy.keep_shared = form.get("keep_shared") == "1"
     policy.purge_telemetry = form.get("purge_telemetry") == "1"
-    policy.max_age_days = _positive_int(form.get("max_age_days"))
-    policy.max_tasks = _positive_int(form.get("max_tasks"))
-    policy.telemetry_max_age_days = _positive_int(form.get("telemetry_max_age_days"))
+    policy.max_age_days = max_age_days
+    policy.max_tasks = max_tasks
+    policy.telemetry_max_age_days = telemetry_max_age_days
 
     await web["db"].commit()
     return RedirectResponse(url="/app/settings", status_code=303)
@@ -105,15 +128,31 @@ async def run_retention_now(
     return RedirectResponse(url=f"/app/settings?ran={plan.task_count}", status_code=303)
 
 
-def _positive_int(value) -> Optional[int]:
+# The form's own limits (settings.html), enforced here too: a larger number
+# typed past the browser (or posted directly) was stored as is, and an age
+# such as 100000000 days put the cutoff before year 1, so every later
+# GET /app/settings and every sweep raised OverflowError.
+MAX_DAYS = 3650
+MAX_TASKS = 100000
+
+
+class OutOfRange(ValueError):
+    pass
+
+
+def _positive_int(value, maximum: int, unit: str) -> Optional[int]:
     """Parse a form field to a positive int, or None to mean "rule disabled".
 
     Anything unparseable is treated as "off" rather than as zero: a zero limit
     would select every task the user owns, which is the opposite of what a
-    fumbled entry should do.
+    fumbled entry should do. A number above ``maximum`` raises OutOfRange:
+    silently switching the rule off, or capping it, would not be what was
+    asked for either.
     """
     try:
         number = int(str(value).strip())
     except (TypeError, ValueError):
         return None
+    if number > maximum:
+        raise OutOfRange(f"At most {maximum} {unit}; nothing was saved.")
     return number if number > 0 else None
