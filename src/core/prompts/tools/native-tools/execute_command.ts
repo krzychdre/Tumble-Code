@@ -5,7 +5,7 @@ const EXECUTE_COMMAND_DESCRIPTION = `Request to execute a CLI command on the sys
 Rules:
 - Check the exit code on every result; investigate failures before moving on.
 - Read the SYSTEM INFORMATION section first and only use commands that exist on that shell and operating system.
-- To run in another directory, set 'cwd'. You cannot change the agent's own working directory.
+- To run in another directory of the workspace, set 'cwd'; a directory outside the workspace is refused. You cannot change the agent's own working directory.
 - A command can change the terminal's directory, so respect the working directory reported in the result.
 - Check the "Actively Running Terminals" list in environment_details before you start anything; do not start a server that is already running.
 - If the Output section is empty or the exit code is missing, assume the terminal failed to stream output, not that the command failed; continue, and if you truly need the output, ask via ask_followup_question.
@@ -19,7 +19,7 @@ Example: Executing npm run dev
 { "command": "npm run dev", "cwd": null, "timeout": null }
 
 Example: Executing ls in a specific directory if directed
-{ "command": "ls -la", "cwd": "/home/user/projects", "timeout": null }
+{ "command": "ls -la", "cwd": "packages/app", "timeout": null }
 
 Example: Using relative paths
 { "command": "touch ./testdata/example.file", "cwd": null, "timeout": null }
@@ -29,7 +29,7 @@ Example: Running a build with a timeout
 
 const COMMAND_PARAMETER_DESCRIPTION = `Shell command to execute`
 
-const CWD_PARAMETER_DESCRIPTION = `Optional working directory for the command, relative or absolute`
+const CWD_PARAMETER_DESCRIPTION = `Optional working directory for the command inside the workspace, relative or absolute`
 
 const TIMEOUT_PARAMETER_DESCRIPTION = `Timeout in seconds. When exceeded, the command continues running in the background and output collected so far is returned. Use this for long-running processes like dev servers, file watchers, or any command that may not exit on its own`
 

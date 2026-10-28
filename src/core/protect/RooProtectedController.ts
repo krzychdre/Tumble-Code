@@ -122,15 +122,23 @@ export class RooProtectedController {
 	 * the target of an output redirection, or an argument of a command that is
 	 * not a plain reader (`cp`, `tee`, `sed -i`, `python`, ...). Looks into
 	 * every command of a chain, substitution and wrapper (`sh -c`, `sudo`).
-	 * `cat AGENTS.md` is no write; `cat > .roo/mcp.json` is.
+	 * `cat AGENTS.md` is no write; `cat > .roo/mcp.json` is. Relative paths are
+	 * taken from `workingDirectory`, where the command runs (the cwd by default).
 	 */
-	isCommandWriteProtected(command: string, depth = 0): boolean {
+	isCommandWriteProtected(command: string, workingDirectory: string = this.cwd, depth = 0): boolean {
 		if (depth > 8) {
 			return true
 		}
+		// A `cd` earlier in the chain moves where later relative paths point:
+		// `cd .roo && echo x > mcp.json` writes .roo/mcp.json.
+		let directory = path.resolve(this.cwd, workingDirectory)
 		for (const analyzed of analyzeCommand(command).commands) {
 			const [commandWord, ...args] = analyzed.words
 			const name = programName(commandWord?.literal ?? commandWord?.raw ?? "").toLowerCase()
+			if ((name === "cd" || name === "pushd") && args[0]?.literal) {
+				directory = path.resolve(directory, args[0].literal)
+				continue
+			}
 			const inPlace = args.some(
 				(word) => /^-[A-Za-z]*i/.test(word.literal ?? "") || word.literal === "--in-place",
 			)
@@ -145,12 +153,14 @@ export class RooProtectedController {
 				} else if (!readOnly && !value.startsWith("-")) {
 					target = value
 				}
-				if (target && this.isWriteProtected(target.replace(/["']/g, ""))) {
+				if (target && this.isWriteProtected(path.resolve(directory, target.replace(/["']/g, "")))) {
 					return true
 				}
 			}
 			if (
-				unwrapCommand(analyzed.words).commands.some((inner) => this.isCommandWriteProtected(inner, depth + 1))
+				unwrapCommand(analyzed.words).commands.some((inner) =>
+					this.isCommandWriteProtected(inner, directory, depth + 1),
+				)
 			) {
 				return true
 			}

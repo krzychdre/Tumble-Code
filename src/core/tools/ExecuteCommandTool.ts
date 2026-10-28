@@ -36,6 +36,7 @@ import { OutputInterceptor } from "../../integrations/terminal/OutputInterceptor
 import { Package } from "../../shared/package"
 import { t } from "../../i18n"
 import { getTaskDirectoryPath } from "../../utils/storage"
+import { isPathOutsideWorkspace, realPathOf } from "../../utils/pathUtils"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import { logger } from "../../utils/logging"
 
@@ -84,7 +85,23 @@ export class ExecuteCommandTool extends BaseTool<"execute_command"> {
 				return
 			}
 
-			const ignoredFileAttemptedToAccess = task.rooIgnoreController?.validateCommand(command)
+			// The model may pick where the command runs. The user sees only the
+			// command, so a directory outside the workspace is refused: a command
+			// that must run elsewhere says so itself (`cd /elsewhere && ...`),
+			// where the user sees it and the command checks look at it.
+			const workingDir = resolveCommandWorkingDir(task.cwd, customCwd)
+
+			if (customCwd && !isCommandWorkingDirInWorkspace(task.cwd, workingDir)) {
+				task.didToolFailInCurrentTurn = true
+				pushToolResult(
+					formatResponse.toolError(
+						`The working directory '${workingDir}' is outside the workspace. Leave out "cwd" to run the command in the workspace, or start the command with "cd <directory> &&" so the user sees where it runs.`,
+					),
+				)
+				return
+			}
+
+			const ignoredFileAttemptedToAccess = task.rooIgnoreController?.validateCommand(command, workingDir)
 
 			if (ignoredFileAttemptedToAccess) {
 				await task.say("rooignore_error", ignoredFileAttemptedToAccess)
@@ -113,7 +130,8 @@ export class ExecuteCommandTool extends BaseTool<"execute_command"> {
 				return
 			}
 
-			const writesProtectedFile = task.rooProtectedController?.isCommandWriteProtected(command) ?? false
+			const writesProtectedFile =
+				task.rooProtectedController?.isCommandWriteProtected(command, workingDir) ?? false
 			const didApprove = await askApproval("command", command, undefined, writesProtectedFile)
 
 			if (!didApprove) {
@@ -209,6 +227,21 @@ export class ExecuteCommandTool extends BaseTool<"execute_command"> {
 	}
 }
 
+/** Where a command runs: the task's directory, or the `cwd` the model gave, relative to it. */
+export function resolveCommandWorkingDir(taskCwd: string, customCwd: string | undefined): string {
+	return customCwd ? path.resolve(taskCwd, customCwd) : taskCwd
+}
+
+/** True when `workingDir` lies in the task's directory or in a workspace folder, by its real path too. */
+export function isCommandWorkingDirInWorkspace(taskCwd: string, workingDir: string): boolean {
+	const inTaskCwd = (candidate: string) => {
+		const relative = path.relative(realPathOf(path.resolve(taskCwd)), candidate)
+		return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative))
+	}
+	const real = realPathOf(path.resolve(workingDir))
+	return inTaskCwd(real) || !isPathOutsideWorkspace(workingDir)
+}
+
 export type ExecuteCommandOptions = {
 	executionId: string
 	command: string
@@ -231,15 +264,7 @@ export async function executeCommandInTerminal(
 ): Promise<[boolean, ToolResponse]> {
 	// Convert milliseconds back to seconds for display purposes.
 	const commandExecutionTimeoutSeconds = commandExecutionTimeout / 1000
-	let workingDir: string
-
-	if (!customCwd) {
-		workingDir = task.cwd
-	} else if (path.isAbsolute(customCwd)) {
-		workingDir = customCwd
-	} else {
-		workingDir = path.resolve(task.cwd, customCwd)
-	}
+	let workingDir = resolveCommandWorkingDir(task.cwd, customCwd)
 
 	try {
 		await fs.access(workingDir)

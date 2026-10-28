@@ -17,7 +17,7 @@ export class RooIgnoreController {
 		return true
 	}
 
-	validateCommand(_command: string): string | undefined {
+	validateCommand(_command: string, _workingDirectory?: string): string | undefined {
 		// Default implementation: allow all commands
 		return undefined
 	}

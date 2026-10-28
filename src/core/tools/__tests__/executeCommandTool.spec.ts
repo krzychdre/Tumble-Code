@@ -129,7 +129,7 @@ describe("executeCommandTool", () => {
 				pushToolResult: mockPushToolResult as unknown as PushToolResult,
 			})
 
-			expect(mockCline.rooIgnoreController.validateCommand).toHaveBeenCalledWith(command)
+			expect(mockCline.rooIgnoreController.validateCommand).toHaveBeenCalledWith(command, "/test/workspace")
 			expect(mockAskApproval).toHaveBeenCalledWith("command", command, undefined, false)
 			const terminal = await TerminalRegistry.getOrCreateTerminal("/test/workspace", "task", "execa")
 			expect(terminal.runCommand).toHaveBeenCalledWith(command, expect.anything())
@@ -158,26 +158,46 @@ describe("executeCommandTool", () => {
 			expect(result).toContain("Command")
 		})
 
-		it("should pass along custom working directory if provided", async () => {
-			// Setup
-			mockToolUse.params.command = "echo test"
-			mockToolUse.params.cwd = "/custom/path"
-			mockToolUse.nativeArgs = { command: "echo test", cwd: "/custom/path" }
+		it("checks the command where it runs when the cwd is inside the workspace", async () => {
+			mockToolUse.params.cwd = "packages/app"
+			mockToolUse.nativeArgs = { command: "echo test", cwd: "packages/app" }
 
-			// Execute
 			await executeCommandTool.handle(mockCline as unknown as Task, mockToolUse, {
 				askApproval: mockAskApproval as unknown as AskApproval,
 				handleError: mockHandleError as unknown as HandleError,
 				pushToolResult: mockPushToolResult as unknown as PushToolResult,
 			})
 
-			// Verify - confirm the command was approved and result was pushed
-			// The custom path handling is tested in integration tests
+			expect(mockCline.rooIgnoreController.validateCommand).toHaveBeenCalledWith(
+				"echo test",
+				"/test/workspace/packages/app",
+			)
 			expect(mockAskApproval).toHaveBeenCalledWith("command", "echo test", undefined, false)
-			expect(mockPushToolResult).toHaveBeenCalled()
-			const result = mockPushToolResult.mock.calls[0][0]
-			expect(result).toContain("/custom/path")
+			expect(TerminalRegistry.getOrCreateTerminal).toHaveBeenCalledWith(
+				"/test/workspace/packages/app",
+				undefined,
+				expect.anything(),
+			)
 		})
+
+		it.each(["/custom/path", "../elsewhere"])(
+			"refuses a cwd outside the workspace (%s) without asking or running anything",
+			async (cwd) => {
+				mockToolUse.params.cwd = cwd
+				mockToolUse.nativeArgs = { command: "echo test", cwd }
+
+				await executeCommandTool.handle(mockCline as unknown as Task, mockToolUse, {
+					askApproval: mockAskApproval as unknown as AskApproval,
+					handleError: mockHandleError as unknown as HandleError,
+					pushToolResult: mockPushToolResult as unknown as PushToolResult,
+				})
+
+				expect(mockAskApproval).not.toHaveBeenCalled()
+				expect(TerminalRegistry.getOrCreateTerminal).not.toHaveBeenCalled()
+				expect(formatResponse.toolError).toHaveBeenCalledWith(expect.stringContaining("outside the workspace"))
+				expect(mockPushToolResult).toHaveBeenCalledTimes(1)
+			},
+		)
 	})
 
 	describe("Error handling", () => {
@@ -242,7 +262,7 @@ describe("executeCommandTool", () => {
 			})
 
 			// Verify
-			expect(validateCommandMock).toHaveBeenCalledWith("cat .env")
+			expect(validateCommandMock).toHaveBeenCalledWith("cat .env", "/test/workspace")
 			expect(mockCline.say).toHaveBeenCalledWith("rooignore_error", ".env")
 			expect(formatResponse.rooIgnoreError).toHaveBeenCalledWith(".env")
 			expect(mockPushToolResult).toHaveBeenCalledWith(mockRooIgnoreError)

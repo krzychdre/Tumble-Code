@@ -237,6 +237,21 @@ describe("RooProtectedController.isCommandWriteProtected", () => {
 		expect(controller.isCommandWriteProtected(command)).toBe(true)
 	})
 
+	it.each([
+		["a write relative to the directory the command runs in", "echo '{}' > mcp.json", ".roo"],
+		["a write relative to an absolute working directory", "cp evil.json settings.json", "/test/workspace/.vscode"],
+		["a write after a cd in the chain", "cd .roo && echo '{}' > mcp.json", undefined],
+		["a write after a cd inside a wrapper", "sh -c 'cd .vscode && tee settings.json'", undefined],
+		["a write climbing back from a subdirectory", "echo x > ../AGENTS.md", "src"],
+	])("finds %s", (_label, command, workingDirectory) => {
+		expect(controller.isCommandWriteProtected(command, workingDirectory)).toBe(true)
+	})
+
+	it("judges the same file name by where the command runs", () => {
+		expect(controller.isCommandWriteProtected("echo x > mcp.json", "src")).toBe(false)
+		expect(controller.isCommandWriteProtected("cd src && echo x > settings.json")).toBe(false)
+	})
+
 	it.each(["cat AGENTS.md", "grep -n mode .roomodes", "sed -n 1,5p .roo/rules.md", "npm test > out.log", "ls .roo"])(
 		"finds no write in %j",
 		(command) => {
