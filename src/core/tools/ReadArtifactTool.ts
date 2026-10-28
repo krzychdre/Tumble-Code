@@ -2,7 +2,7 @@ import * as fs from "fs/promises"
 import * as path from "path"
 
 import { resolveMaxInlineToolResultBytes } from "@tumble-code/types"
-import { escapeRegExp } from "@tumble-code/core/browser"
+import { compileHistoryQuery } from "./helpers/searchTaskHistoryQuery"
 
 import { Task } from "../task/Task"
 import { formatResponse } from "../prompts/responses"
@@ -345,14 +345,11 @@ export class ReadArtifactTool extends BaseTool<"read_artifact"> {
 	): Promise<{ content: string; matchCount: number }> {
 		const CHUNK_SIZE = 64 * 1024 // 64KB chunks for bounded memory
 
-		// Create case-insensitive regex for search
-		let regex: RegExp
-		try {
-			regex = new RegExp(pattern, "i")
-		} catch {
-			// If invalid regex, treat as literal string
-			regex = new RegExp(escapeRegExp(pattern), "i")
-		}
+		// Case-insensitive, as search_task_history compiles it: an invalid pattern,
+		// or one with nested quantifiers that backtracks exponentially ((a+)+$
+		// on a 30-character line held the extension host for 14 s), is searched
+		// for as literal text.
+		const { regex } = compileHistoryQuery(pattern)
 
 		const fileHandle = await fs.open(artifactPath, "r")
 		const matches: Array<{ lineNumber: number; content: string }> = []
