@@ -228,7 +228,7 @@
           },
           "cwd": {
             "type": "string",
-            "description": "Directory to run in, default the workspace"
+            "description": "Directory in the workspace to run in, default its root"
           }
         },
         "required": [

@@ -269,28 +269,30 @@ export class RooIgnoreController {
 	 * reading it (`rm -rf node_modules`) are not refused.
 	 *
 	 * @param command - Terminal command to validate
+	 * @param workingDirectory - Where the command runs, when not in the cwd
 	 * @returns path of file that is being accessed if it is being accessed, undefined if command is allowed
 	 */
-	validateCommand(command: string): string | undefined {
+	validateCommand(command: string, workingDirectory?: string): string | undefined {
 		// Always allow if no .rooignore exists
 		if (!this.rooIgnoreContent) {
 			return undefined
 		}
-		return this.findIgnoredRead(command, 0)
+		return this.findIgnoredRead(command, 0, workingDirectory ? path.resolve(this.cwd, workingDirectory) : "")
 	}
 
-	private findIgnoredRead(command: string, depth: number): string | undefined {
+	private findIgnoredRead(command: string, depth: number, startDirectory: string): string | undefined {
 		if (depth > 8) {
 			return undefined
 		}
 		// Where a `cd` earlier in the command moved to, relative to cwd: in
 		// `cd secrets && cat key.txt` the file read is secrets/key.txt.
-		let directory = ""
+		let directory = startDirectory
 		for (const analyzed of analyzeCommand(command).commands) {
 			const [commandWord, ...args] = analyzed.words
 			const name = programName(commandWord?.literal ?? commandWord?.raw ?? "").toLowerCase()
 			if ((name === "cd" || name === "pushd") && args[0]?.literal) {
-				directory = path.join(directory, args[0].literal)
+				const target = args[0].literal
+				directory = path.isAbsolute(target) ? target : path.join(directory, target)
 				continue
 			}
 			if (FILE_READING_COMMANDS.has(name.replace(/\.exe$/, ""))) {
@@ -307,7 +309,7 @@ export class RooIgnoreController {
 				}
 			}
 			for (const inner of unwrapCommand(analyzed.words).commands) {
-				const found = this.findIgnoredRead(inner, depth + 1)
+				const found = this.findIgnoredRead(inner, depth + 1, directory)
 				if (found) {
 					return found
 				}

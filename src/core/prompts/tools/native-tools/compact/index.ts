@@ -161,7 +161,7 @@ const compactExecuteCommand = tool(
 	"Run a shell command and return its output and exit code. Use the syntax of the user's shell.",
 	{
 		command: { type: "string", description: "The command" },
-		cwd: { type: "string", description: "Directory to run in, default the workspace" },
+		cwd: { type: "string", description: "Directory in the workspace to run in, default its root" },
 	},
 	["command"],
 )
