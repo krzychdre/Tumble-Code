@@ -60,7 +60,10 @@ export class FileMemento implements Memento {
 			// Ensure directory exists
 			const dir = path.dirname(this.filePath)
 			ensureDirectoryExists(dir)
-			fs.writeFileSync(this.filePath, JSON.stringify(this.data, null, 2))
+			// Only the user may read it: the extension keeps sign-in state here.
+			// chmod too, for a file an older version created readable by all.
+			fs.writeFileSync(this.filePath, JSON.stringify(this.data, null, 2), { mode: 0o600 })
+			fs.chmodSync(this.filePath, 0o600)
 		} catch (error) {
 			console.warn(`Failed to save state to ${this.filePath}:`, error)
 		}

@@ -37,6 +37,21 @@ describe("FileMemento", () => {
 		expect(memento.get<number>("missing", 0)).toBe(0)
 	})
 
+	it.skipIf(process.platform === "win32")("keeps the file readable by its owner only", async () => {
+		// A file an older version wrote readable by everyone.
+		fs.writeFileSync(mementoPath, "{}", { mode: 0o644 })
+		fs.chmodSync(mementoPath, 0o644)
+		const memento = new FileMemento(mementoPath)
+
+		await memento.update("token", "secret")
+		expect(fs.statSync(mementoPath).mode & 0o777).toBe(0o600)
+
+		const fresh = path.join(tempDir, "nested", "fresh.json")
+		await new FileMemento(fresh).update("k", "v")
+		expect(fs.statSync(fresh).mode & 0o777).toBe(0o600)
+		expect(fs.statSync(path.dirname(fresh)).mode & 0o777).toBe(0o700)
+	})
+
 	it("should persist data to file", async () => {
 		const memento1 = new FileMemento(mementoPath)
 		await memento1.update("persisted", "value")

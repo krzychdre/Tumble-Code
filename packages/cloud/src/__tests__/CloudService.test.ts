@@ -168,6 +168,24 @@ describe("CloudService", () => {
 		CloudService.resetInstance()
 	})
 
+	describe("retry queue on logout", () => {
+		it("drops queued requests on logout even when the user info never arrived", async () => {
+			const cloudService = await CloudService.createInstance(mockContext, vi.fn())
+			const [, authStateListener] = mockAuthService.on.mock.calls.find(
+				([event]) => event === "auth-state-changed",
+			)!
+			// Signed in, but the user info (and so the queue's user id) never resolved.
+			mockAuthService.getUserInfo.mockReturnValue(undefined)
+			authStateListener({ state: "active-session", previousState: "attempting-session" })
+			await cloudService.retryQueue!.enqueue("https://cloud.example/api/events", { method: "POST" }, "telemetry")
+			expect(cloudService.retryQueue!.getStats().totalQueued).toBe(1)
+
+			authStateListener({ state: "logged-out", previousState: "active-session" })
+
+			expect(cloudService.retryQueue!.getStats().totalQueued).toBe(0)
+		})
+	})
+
 	describe("createInstance", () => {
 		it("should create and initialize CloudService instance", async () => {
 			const mockLog = vi.fn()
