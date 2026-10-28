@@ -31,6 +31,7 @@ import { disposeLanguageParsers } from "./services/tree-sitter/languageParser"
 import { registerRooDirectoryWatchers } from "./services/roo-config/watcher"
 import { configureLogger, logger, setDebugLogging } from "./utils/logging"
 import { perfCounters } from "./utils/perfCounters"
+import { initialAllowedCommands } from "./core/auto-approval/sanitizeCommandList"
 import { migrateFromRooCline } from "./utils/migrateFromRooCline"
 import { autoImportSettings } from "./utils/autoImportSettings"
 import { API } from "./extension/api"
@@ -211,8 +212,10 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Initialize OpenAI Codex OAuth manager for ChatGPT subscription-based access.
 	openAiCodexOAuthManager.initialize(context)
 
-	// Get default commands from configuration.
-	const defaultCommands = vscode.workspace.getConfiguration(Package.name).get<string[]>("allowedCommands") || []
+	// Get default commands from the user's configuration (never a workspace's).
+	const defaultCommands = initialAllowedCommands(
+		vscode.workspace.getConfiguration(Package.name).inspect<string[]>("allowedCommands"),
+	)
 
 	// Initialize global state if not already set.
 	if (!context.globalState.get("allowedCommands")) {

@@ -22,6 +22,7 @@ vi.mock("vscode", () => ({
 			// String settings (e.g. the self-hosted cloud URL overrides read by syncCloudUrls)
 			// must return undefined rather than [] so callers can safely call .trim().
 			get: vi.fn((key?: string) => (key === "cloudApiUrl" || key === "clerkBaseUrl" ? undefined : [])),
+			inspect: vi.fn(() => undefined),
 		}),
 		onDidChangeConfiguration: vi.fn().mockReturnValue({ dispose: vi.fn() }),
 		createFileSystemWatcher: vi.fn().mockReturnValue({

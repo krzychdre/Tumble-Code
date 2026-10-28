@@ -354,6 +354,7 @@
 			"properties": {
 				"tumble-code.allowedCommands": {
 					"type": "array",
+					"scope": "application",
 					"items": {
 						"type": "string"
 					},
