@@ -28,6 +28,7 @@ from src.database import get_db
 from src.main import app
 from src.models.task import Task, TaskShare
 from src.models.user import Session, User
+from tests.web_helpers import started_here
 
 LAN = "192.168.50.0/24"
 SERVER = "192.168.50.141"
@@ -326,7 +327,8 @@ def test_the_callback_exchanges_the_code_with_the_uri_it_was_issued_for(
     local_stack, client_from, callback_mocks
 ):
     resp = client_from("192.168.50.20").get(
-        "/auth/clerk/callback?code=c&state=s", headers={"host": f"{SERVER}:8085"}
+        "/auth/clerk/callback?code=c&state=s",
+        headers={"host": f"{SERVER}:8085", **started_here("s")},
     )
 
     assert resp.status_code == 303 and resp.headers["location"] == "/app"
@@ -342,7 +344,8 @@ def test_a_web_sign_in_is_refused_outside_the_allowlist_before_the_code_is_spent
 ):
     allowlist(LAN)
     resp = client_from("192.168.51.7").get(
-        "/auth/clerk/callback?code=c&state=s", headers={"host": f"{SERVER}:8085"}
+        "/auth/clerk/callback?code=c&state=s",
+        headers={"host": f"{SERVER}:8085", **started_here("s")},
     )
 
     assert resp.status_code == 403

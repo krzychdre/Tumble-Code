@@ -8,6 +8,7 @@ from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
 
 from src.models.user import User, Session, ClientToken, Ticket
 from src.models.oauth import AuthentikStateStore
@@ -208,8 +209,16 @@ async def store_oauth_state(
     auth_redirect: str,
     code_verifier: str,
     ttl_minutes: int = 10,
-) -> None:
-    """Store OAuth state and PKCE code verifier."""
+) -> bool:
+    """Store OAuth state and PKCE code verifier. False when ``state`` is taken.
+
+    The extension and the CLI choose the state themselves, so a second
+    sign-in with a state already stored (expired or not) is refused instead
+    of failing the request on the primary key. Call it before anything else
+    is written in the request: a lost insert race rolls the session back.
+    """
+    if await db.get(AuthentikStateStore, state) is not None:
+        return False
     state_store = AuthentikStateStore(
         state=state,
         auth_redirect=auth_redirect,
@@ -217,7 +226,12 @@ async def store_oauth_state(
         expires_at=datetime.now(timezone.utc) + timedelta(minutes=ttl_minutes),
     )
     db.add(state_store)
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        return False
+    return True
 
 
 async def get_oauth_state(

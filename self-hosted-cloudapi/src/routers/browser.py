@@ -6,12 +6,14 @@ Implements the browser-based authentication routes:
 - GET /auth/error
 """
 
+import hashlib
 import logging
 import re
 import secrets
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, Request
+from itsdangerous import BadSignature, URLSafeTimedSerializer
 from fastapi.responses import RedirectResponse, HTMLResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -123,6 +125,71 @@ def _refuse_auth_redirect() -> HTMLResponse:
 router = APIRouter(tags=["browser-auth"])
 
 
+# The OAuth state is bound to the browser that started the sign-in. The
+# extension and the CLI choose the state, and the callback used to accept it
+# from whichever browser arrived with it: a sign-in link started by somebody
+# else, or a callback URL (code and state) handed to another browser, ended
+# in that browser. /extension/sign-in and /app/login now set a signed cookie
+# for the state, one per sign-in (named after the state's hash, so two
+# sign-ins started in one browser both finish), sent only to the callback;
+# the callback refuses a state without its cookie before spending it.
+# SameSite=Lax still sends it on the top-level redirect back from Authentik.
+STATE_COOKIE = "tumble_oauth_state"
+STATE_COOKIE_PATH = "/auth/clerk/callback"
+STATE_COOKIE_MAX_AGE = 10 * 60  # the state row's own lifetime
+_state_serializer = URLSafeTimedSerializer(
+    settings.secret_key, salt="tumble-oauth-state-binding"
+)
+
+
+def _state_digest(state: str) -> str:
+    return hashlib.sha256(state.encode("utf-8")).hexdigest()[:32]
+
+
+def state_cookie(state: str) -> tuple[str, str]:
+    """The name and value of the cookie that binds ``state`` to a browser."""
+    digest = _state_digest(state)
+    return f"{STATE_COOKIE}_{digest[:16]}", _state_serializer.dumps(digest)
+
+
+def _bind_state(request: Request, response: Response, state: str) -> Response:
+    name, value = state_cookie(state)
+    response.set_cookie(
+        name,
+        value,
+        max_age=STATE_COOKIE_MAX_AGE,
+        path=STATE_COOKIE_PATH,
+        httponly=True,
+        samesite="lax",
+        secure=cookie_should_be_secure(request),
+    )
+    return response
+
+
+def _state_is_bound(request: Request, state: str) -> bool:
+    name, _ = state_cookie(state)
+    raw = request.cookies.get(name)
+    if not raw:
+        return False
+    try:
+        digest = _state_serializer.loads(raw, max_age=STATE_COOKIE_MAX_AGE)
+    except BadSignature:
+        return False
+    return digest == _state_digest(state)
+
+
+def _release_state(request: Request, response: Response, state: str) -> Response:
+    name, _ = state_cookie(state)
+    response.delete_cookie(
+        name,
+        path=STATE_COOKIE_PATH,
+        httponly=True,
+        samesite="lax",
+        secure=cookie_should_be_secure(request),
+    )
+    return response
+
+
 def _auth_success_html(redirect_url: str) -> str:
     """Render an HTML page that navigates to a vscode:// URI.
 
@@ -156,7 +223,15 @@ async def _start_sign_in(
         return _refuse_auth_redirect()
     code_verifier, code_challenge = generate_pkce_pair()
 
-    await store_oauth_state(db, state, auth_redirect, code_verifier)
+    if not await store_oauth_state(db, state, auth_redirect, code_verifier):
+        logger.warning("Sign-in refused: its state is already in use")
+        return HTMLResponse(
+            content=_auth_error_html(
+                "Invalid sign-in request.",
+                "This sign-in link was already used. Start the sign-in again from the extension or the CLI.",
+            ),
+            status_code=400,
+        )
 
     authorize_url = get_authorize_url(
         state=state,
@@ -164,7 +239,7 @@ async def _start_sign_in(
         auth_redirect=auth_redirect,
         front=front_channel(request.headers.get("host")),
     )
-    return RedirectResponse(url=authorize_url)
+    return _bind_state(request, RedirectResponse(url=authorize_url), state)
 
 
 @router.get("/extension/sign-in")
@@ -208,7 +283,7 @@ async def web_login(
         auth_redirect=WEB_AUTH_REDIRECT,
         front=front_channel(host),
     )
-    return RedirectResponse(url=authorize_url)
+    return _bind_state(request, RedirectResponse(url=authorize_url), state)
 
 
 @router.post("/app/logout")
@@ -269,6 +344,21 @@ async def auth_callback(
     with window.location.assign() and a manual fallback link is the
     standard technique used by OAuth providers (Clerk, Auth0, etc.).
     """
+    # Only the browser that started this sign-in may finish it; checked before
+    # the state is read, so another browser's attempt does not spend it.
+    if not _state_is_bound(request, state):
+        logger.warning(
+            "Auth callback refused: state %s was not started in this browser",
+            state[:8] if state else "empty",
+        )
+        return HTMLResponse(
+            content=_auth_error_html(
+                "This sign-in was started in another browser.",
+                "Finish the sign-in in the browser that opened the sign-in page, or start it again here.",
+            ),
+            status_code=400,
+        )
+
     # Retrieve stored state
     state_store = await get_oauth_state(db, state)
     if state_store is None:
@@ -359,7 +449,9 @@ async def auth_callback(
         # The internal user id, never the e-mail address: logs are read and
         # kept by more people and for longer than the users table.
         logger.info("Web auth callback successful for user %s", user.id)
-        response = RedirectResponse(url="/app", status_code=303)
+        response = _release_state(
+            request, RedirectResponse(url="/app", status_code=303), state
+        )
         set_session_cookie(
             response,
             session_id=session.id,
@@ -381,13 +473,19 @@ async def auth_callback(
         logger.info(
             "Auth callback successful for user %s, redirecting to the CLI", user.id
         )
-        return RedirectResponse(
-            url=vscode_uri, status_code=303, headers={"Cache-Control": "no-store"}
+        return _release_state(
+            request,
+            RedirectResponse(
+                url=vscode_uri, status_code=303, headers={"Cache-Control": "no-store"}
+            ),
+            state,
         )
 
     logger.info("Auth callback successful for user %s, redirecting to VS Code", user.id)
 
-    return HTMLResponse(content=_auth_success_html(vscode_uri))
+    return _release_state(
+        request, HTMLResponse(content=_auth_success_html(vscode_uri)), state
+    )
 
 
 @router.get("/auth/error")

@@ -23,6 +23,7 @@ from urllib.parse import parse_qs, urlsplit
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from tests.web_helpers import started_here
 
 # The value the extension sends today (publisher QUB-IT, name tumble-code in
 # src/package.json, uriScheme "vscode" in VS Code).
@@ -225,7 +226,11 @@ def test_callback_refuses_a_stored_foreign_redirect(client, stored):
         create_session.return_value = MagicMock(id="sess-1")
         create_ticket.return_value = "ticket-1"
 
-        resp = client.get("/auth/clerk/callback", params={"code": "c", "state": "s"})
+        resp = client.get(
+            "/auth/clerk/callback",
+            params={"code": "c", "state": "s"},
+            headers=started_here("s"),
+        )
 
     assert resp.status_code == 400
     assert "evil" not in resp.text
@@ -258,6 +263,7 @@ def test_callback_redirects_a_loopback_redirect_with_303(client, redirect):
         resp = client.get(
             "/auth/clerk/callback",
             params={"code": "c", "state": "st&ate"},
+            headers=started_here("st&ate"),
             follow_redirects=False,
         )
 
@@ -291,6 +297,7 @@ def test_editor_redirect_still_gets_the_success_page(client):
         resp = client.get(
             "/auth/clerk/callback",
             params={"code": "c", "state": "s"},
+            headers=started_here("s"),
             follow_redirects=False,
         )
 
