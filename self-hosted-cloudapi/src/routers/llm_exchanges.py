@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from config.settings import settings
 from src.database import get_db
 from src.dependencies import get_current_user
-from src.middleware.rate_limit import limiter
+from src.middleware.rate_limit import not_rate_limited
 from src.routers.events import capped_request
 from src.schemas.llm_exchange import LlmExchangeOutcomeRequest, LlmExchangeRequest
 from src.services.exchange_ingest import (
@@ -41,17 +41,6 @@ MAX_BODY_BYTES = 32 * 1024 * 1024
 # Largest body after decompression: a full snapshot of a long conversation is
 # megabytes of text; this stops a small gzip bomb from becoming gigabytes.
 MAX_INFLATED_BYTES = 128 * 1024 * 1024
-
-
-def _not_rate_limited(endpoint):
-    """Leave the endpoint out of the global per-IP limit (60 requests a minute by default).
-
-    A fast model finishes a turn every few seconds and each turn sends an
-    exchange and its outcome, on top of the telemetry events; a refused upload
-    makes the extension restart its chain with a full snapshot, which is the
-    largest request it ever sends. The Bearer token still guards the endpoint.
-    """
-    return limiter.exempt(endpoint) if limiter is not None else endpoint
 
 
 def _inflate(body: bytes, encoding: str) -> bytes:
@@ -101,8 +90,13 @@ async def _recording(db: AsyncSession, user_id: str) -> bool:
     return settings.telemetry_enabled and await recording_enabled(db, user_id)
 
 
+# The three endpoints are outside the per-IP limit: a fast model finishes a
+# turn every few seconds and each turn sends an exchange and its outcome, on
+# top of the telemetry events; a refused upload makes the extension restart
+# its chain with a full snapshot, which is the largest request it ever sends.
+# The Bearer token still guards them.
 @router.get("/llm-exchanges/config")
-@_not_rate_limited
+@not_rate_limited
 async def llm_exchange_config_endpoint(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -112,7 +106,7 @@ async def llm_exchange_config_endpoint(
 
 
 @router.post("/llm-exchanges")
-@_not_rate_limited
+@not_rate_limited
 async def record_llm_exchange_endpoint(
     request: Request,
     current_user: dict = Depends(get_current_user),
@@ -144,7 +138,7 @@ async def record_llm_exchange_endpoint(
 
 
 @router.post("/llm-exchanges/outcome")
-@_not_rate_limited
+@not_rate_limited
 async def record_llm_exchange_outcome_endpoint(
     request: Request,
     current_user: dict = Depends(get_current_user),

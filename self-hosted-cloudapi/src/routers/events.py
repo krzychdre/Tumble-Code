@@ -14,6 +14,7 @@ from starlette.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db
+from src.middleware.rate_limit import not_rate_limited
 from src.dependencies import get_current_user
 from src.schemas.telemetry import TelemetryEventRequest
 from src.services.client_kind import client_kind_from
@@ -108,7 +109,11 @@ def _parse_backfill_upload(content: bytes) -> list:
         return []
 
 
+# Outside the per-IP limit: the extension sends one event per chat message,
+# streamed partial messages included, so a running task alone sends far more
+# than the limit. The Bearer token and the size cap guard it.
 @router.post("/events")
+@not_rate_limited
 async def record_event_endpoint(
     body: TelemetryEventRequest,
     current_user: dict = Depends(get_current_user),
