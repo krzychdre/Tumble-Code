@@ -55,12 +55,14 @@ function setup({
 	settings = { cloudApiUrl: "http://cloud.test/" },
 	env = {},
 	input = Object.assign(new PassThrough(), { isTTY: false }),
+	signInUrl = SIGN_IN_URL,
 }: {
 	api?: CliCloudAuthApi
 	listener?: LoopbackListener
 	settings?: Record<string, unknown>
 	env?: NodeJS.ProcessEnv
 	input?: PassThrough & { isTTY?: boolean }
+	signInUrl?: string
 } = {}) {
 	let out = ""
 	let err = ""
@@ -68,7 +70,7 @@ function setup({
 		const login = api.login
 		api.login = vi.fn(async (authRedirect: string) => {
 			await login(authRedirect)
-			await openExternal(SIGN_IN_URL)
+			await openExternal(signInUrl)
 		})
 		return api
 	})
@@ -92,6 +94,20 @@ function setup({
 }
 
 describe("tumble auth cloud login", () => {
+	it("refuses to wait for a callback when the sign-in address carries no state", async () => {
+		const { api, listener, dependencies } = setup({
+			signInUrl: "http://cloud.test/extension/sign-in?auth_redirect=http%3A%2F%2F127.0.0.1%3A53682",
+		})
+
+		await expect(loginToCloud(dependencies)).resolves.toEqual({
+			success: false,
+			error: "the cloud sign-in address carries no state",
+		})
+		expect(listener.expectState).not.toHaveBeenCalled()
+		expect(api.handleAuthCallback).not.toHaveBeenCalled()
+		expect(listener.close).toHaveBeenCalled()
+	})
+
 	it("signs in through the loopback listener and reports the account", async () => {
 		const { api, listener, dependencies, createCloudAuth, openExternal, output } = setup()
 

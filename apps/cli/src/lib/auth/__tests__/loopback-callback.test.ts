@@ -63,6 +63,7 @@ describe("startLoopbackListener", () => {
 
 	it("passes code and state through and holds the browser until the result is known", async () => {
 		listener = await startLoopbackListener()
+		listener.expectState("state-1")
 		const browser = get(listener, "/auth/clerk/callback?code=ticket-1&state=state-1")
 
 		const callback = await listener.callback
@@ -77,6 +78,7 @@ describe("startLoopbackListener", () => {
 
 	it("shows a failed sign-in on the page, escaped", async () => {
 		listener = await startLoopbackListener()
+		listener.expectState("s")
 		const browser = get(listener, "/auth/clerk/callback?code=t&state=s")
 
 		;(await listener.callback).reply({ ok: false, error: "HTTP 400 <bad ticket>" })
@@ -88,6 +90,7 @@ describe("startLoopbackListener", () => {
 
 	it("answers a neutral page when the result takes too long", async () => {
 		listener = await startLoopbackListener({ replyTimeoutMs: 20 })
+		listener.expectState("s")
 		const browser = get(listener, "/auth/clerk/callback?code=t&state=s")
 		await listener.callback
 
@@ -98,6 +101,7 @@ describe("startLoopbackListener", () => {
 
 	it("answers 404 for any other path and 405 for other methods, and keeps waiting", async () => {
 		listener = await startLoopbackListener()
+		listener.expectState("s")
 
 		expect((await get(listener, "/")).status).toBe(404)
 		expect((await get(listener, "/favicon.ico")).status).toBe(404)
@@ -123,8 +127,23 @@ describe("startLoopbackListener", () => {
 		expect((await browser).status).toBe(200)
 	})
 
+	it("refuses every callback until the sign-in it belongs to has started", async () => {
+		listener = await startLoopbackListener()
+
+		const early = await get(listener, "/auth/clerk/callback?code=t&state=s")
+		expect(early.status).toBe(400)
+		expect(early.body).toContain("does not belong to the sign-in started in the terminal")
+
+		listener.expectState("s")
+		const browser = get(listener, "/auth/clerk/callback?code=t2&state=s")
+		expect((await listener.callback).code).toBe("t2")
+		;(await listener.callback).reply({ ok: true })
+		expect((await browser).status).toBe(200)
+	})
+
 	it("accepts only the first callback", async () => {
 		listener = await startLoopbackListener({ replyTimeoutMs: 20 })
+		listener.expectState("s")
 		const first = get(listener, "/auth/clerk/callback?code=t&state=s")
 		await listener.callback
 
