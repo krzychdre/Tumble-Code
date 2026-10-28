@@ -1,6 +1,7 @@
 """services/anonymizer: what an exported dataset must not carry, and what it must keep intact."""
 
 import json
+import re
 
 import pytest
 
@@ -210,3 +211,90 @@ def test_tool_names_and_keys_are_never_renamed():
     assert cleaned[0]["function"]["description"] == "Reads a acme1 from acme2"
     assert list(cleaned[0]["function"]["parameters"]["properties"]) == ["acme_id"]
     assert a.arguments('{"acme_id": "acme"}') == '{"acme_id":"acme2"}'
+
+
+# --- the secret patterns run in linear time ---------------------------------------
+
+# The patterns as they were, kept as the reference the linear ones must agree with.
+_OLD_PRIVATE_KEY_RE = re.compile(
+    r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z0-9 ]*PRIVATE KEY-----"
+)
+_OLD_ENV_LINE_RE = re.compile(
+    r"""(?m)^(\s*(?:export\s+)?[A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|PASSWD|API_?KEY|PRIVATE_KEY|ACCESS_KEY|CREDENTIALS?)"""
+    r"""[A-Z0-9_]*\s*=\s*)(["']?)([^\s"'#()\[\]{}$]+)(\2)(?=\s|$)"""
+)
+
+_KEY = "-----BEGIN RSA PRIVATE KEY-----\nMIIabc\n-----END RSA PRIVATE KEY-----"
+_KEY_CORPUS = [
+    "",
+    "no key here",
+    _KEY,
+    f"before {_KEY} after",
+    f"{_KEY}\n\n{_KEY.replace('RSA ', 'EC ')}",
+    "-----BEGIN PRIVATE KEY-----\nMIIx\n-----END PRIVATE KEY-----",
+    "-----BEGIN OPENSSH PRIVATE KEY-----\nb3Bl\n-----END OPENSSH PRIVATE KEY-----",
+    # A truncated key, then a whole one: both go, as one block.
+    f"-----BEGIN PRIVATE KEY-----\nAAA\n{_KEY}",
+    # A key with no END line, before and after a whole one.
+    f"{_KEY}\n-----BEGIN PRIVATE KEY-----\nAAA",
+    "-----BEGIN PRIVATE KEY-----\nAAA",
+    "-----BEGIN CERTIFICATE-----\nAAA\n-----END CERTIFICATE-----",
+    "-----BEGIN PRIVATE KEY----------END PRIVATE KEY-----",
+    "-----END PRIVATE KEY----- -----BEGIN PRIVATE KEY----- x",
+    "-----BEGIN A1 PRIVATE KEY-----x-----END B2 PRIVATE KEY-----y-----END PRIVATE KEY-----",
+]
+
+_ENV_CORPUS = [
+    "export OPENAI_API_KEY=sk-proj-abcdefghijklmnop1234567890",
+    "DB_PASSWORD='hunter2hunter2'",
+    '  GITHUB_TOKEN="ghp_x1234567"  # comment',
+    "\n\n   \n  AWS_SECRET_ACCESS_KEY=abc123\nOTHER=1\nMY_CREDENTIAL=x",
+    "API_KEY=$(cat key)",
+    "NOT_A_KEY=value\nPASSWDFILE=/etc/x",
+    "export\nSECRET=abc",
+    "SECRET_SECRET_TOKEN = value",
+    "lower_token=abc",
+    "TOKEN=",
+]
+
+
+@pytest.mark.parametrize("text", _KEY_CORPUS)
+def test_private_keys_are_found_exactly_as_before(text):
+    from src.services.anonymizer import _replace_private_keys
+
+    assert _replace_private_keys(text, lambda key: f"<{len(key)}>") == (
+        _OLD_PRIVATE_KEY_RE.sub(lambda m: f"<{len(m.group(0))}>", text)
+    )
+
+
+@pytest.mark.parametrize("text", _ENV_CORPUS)
+def test_env_lines_are_found_exactly_as_before(text):
+    from src.services.anonymizer import _ENV_LINE_RE
+
+    def mark(m):
+        return f"{m.group(1)}{m.group(2)}<{m.group(3)}>{m.group(4)}"
+
+    assert _ENV_LINE_RE.sub(mark, text) == _OLD_ENV_LINE_RE.sub(mark, text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # Many BEGIN lines and no END: each one scanned to the end of the text.
+        "-----BEGIN RSA PRIVATE KEY-----\n" * 4000,
+        # A long run of blank lines: indentation matched across all of them.
+        "\n" * 16000,
+        # A long name made of the keyword: two greedy runs around it.
+        "SECRET" * 8000,
+    ],
+    ids=["begin-lines", "blank-lines", "long-name"],
+)
+def test_redacting_secrets_takes_linear_time(text):
+    """Each of these took seconds before (quadratic); milliseconds now."""
+    import time
+
+    from src.services.anonymizer import redact_secrets
+
+    started = time.perf_counter()
+    redact_secrets(text)
+    assert time.perf_counter() - started < 0.5

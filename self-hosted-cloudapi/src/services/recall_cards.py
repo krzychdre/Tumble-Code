@@ -17,6 +17,8 @@ import json
 import logging
 import re
 from dataclasses import dataclass
+
+import anyio
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import (
@@ -137,8 +139,6 @@ async def rebuild_card(db: AsyncSession, task_id: str) -> None:
             .order_by(TaskMessage.message_ts)
         )
     ).all()
-    results = [_text(data) for kind, data in messages if kind == KIND_COMPLETION]
-    replies = [_text(data) for kind, data in messages if kind == KIND_COMPLETION_REPLY]
     paths = (
         (
             await db.execute(
@@ -155,13 +155,14 @@ async def rebuild_card(db: AsyncSession, task_id: str) -> None:
         .all()
     )
 
-    title = redact_secrets(task.title or task.prompt_excerpt or "(untitled)")
-    sections = card_sections(
-        title,
+    # Parsing every result and redacting the card is CPU work on text of any
+    # size: off the event loop, which the bridge and every page share.
+    title, sections = await anyio.to_thread.run_sync(
+        _card_text,
+        task.title or task.prompt_excerpt or "(untitled)",
         task.prompt_excerpt or "",
-        results,
-        replies,
-        [path.split(":", 1)[-1] for path in paths],
+        list(messages),
+        list(paths),
     )
     values = {
         "task_id": task.id,
@@ -177,6 +178,23 @@ async def rebuild_card(db: AsyncSession, task_id: str) -> None:
         "built_at": datetime.now(timezone.utc),
     }
     await db.execute(core_insert(SessionCard).values(**values))
+
+
+def _card_text(
+    raw_title: str, prompt: str, messages: list, paths: list[str]
+) -> tuple[str, "CardSections"]:
+    """The card's redacted title and sections from its stored rows (pure)."""
+    results = [_text(data) for kind, data in messages if kind == KIND_COMPLETION]
+    replies = [_text(data) for kind, data in messages if kind == KIND_COMPLETION_REPLY]
+    title = redact_secrets(raw_title)
+    sections = card_sections(
+        title,
+        prompt,
+        results,
+        replies,
+        [path.split(":", 1)[-1] for path in paths],
+    )
+    return title, sections
 
 
 @dataclass(frozen=True)
