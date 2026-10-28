@@ -13,7 +13,7 @@ from starlette.datastructures import QueryParams
 
 from config.settings import settings
 from src.auth.web_session import cookie_should_be_secure
-from src.models.task import Task
+from src.models.task import Task, TaskShare
 from src.routers.web_page import (
     WebPage,
     not_found_page,
@@ -23,8 +23,12 @@ from src.routers.web_page import (
 from src.routers.task_images import image_response
 from src.services.client_kind import CLIENT_LABELS
 from src.services.recall_cards import rebuild_card
-from src.services.share_service import delete_shared_task, delete_tasks
-from src.services.task_access import task_owner
+from src.services.share_service import (
+    delete_shared_task,
+    delete_tasks,
+    unshare_task,
+)
+from src.services.task_access import share_expired, task_owner
 from src.services.task_images import load_task_image
 from src.services.task_summary import derive_title
 from src.services.task_tree import ancestors, subtree_size, subtrees
@@ -158,6 +162,7 @@ async def task_detail(
     # subtask that delegated further is otherwise a dead end until opened.
     tree = await subtrees(db, [task_id], user["user_id"])
     spend = _spend_summary(task, tree)
+    share = await db.scalar(select(TaskShare).where(TaskShare.task_id == task_id))
     live_config = {"taskId": task_id, "bridgePath": settings.bridge_path}
     if spend["subtasks"]:
         rest = spend["subtasks"]
@@ -188,6 +193,9 @@ async def task_detail(
         messages_json=await conversation_json(messages),
         **await _model_context(db, task_id, task.user_id, messages),
         share_url=None,
+        # The owner's view of the task's link: what it is, until when, and
+        # the button that revokes it.
+        owner_share=_owner_share(share),
         live=live,
         can_delete=True,
         # A conversation is prose, so the page switches to the reading
@@ -197,6 +205,20 @@ async def task_detail(
         # Where render.js asks for the images the messages point to by path.
         image_base=f"/app/tasks/{task_id}/images",
     )
+
+
+def _owner_share(share: TaskShare | None) -> dict | None:
+    if share is None:
+        return None
+    expires_at = share.expires_at
+    return {
+        "url": share.share_url,
+        "public": share.visibility == "public",
+        "expired": share_expired(share),
+        "expires_at": expires_at.strftime("%Y-%m-%d %H:%M UTC")
+        if expires_at is not None
+        else None,
+    }
 
 
 @router.get("/app/tasks/{task_id}/images", response_class=Response)
@@ -230,6 +252,21 @@ async def delete_task(
     """
     await delete_shared_task(web["db"], task_id, web["user"]["user_id"])
     return RedirectResponse(url="/app", status_code=303)
+
+
+@router.post("/app/tasks/{task_id}/unshare")
+async def unshare_task_page(
+    task_id: str,
+    web: WebPage = Depends(require_web_page),
+):
+    """Revoke the share link of a task the user owns (the "Stop sharing" button).
+
+    Owner-only; anything else is a silent no-op (see ``unshare_task``). Like
+    the panel's other forms it is covered by the cross-site check
+    (middleware/csrf.py). Redirects back to the task page.
+    """
+    await unshare_task(web["db"], task_id, web["user"]["user_id"])
+    return RedirectResponse(url=f"/app/tasks/{task_id}", status_code=303)
 
 
 @router.post("/app/tasks/{task_id}/recall")

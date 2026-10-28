@@ -1,5 +1,8 @@
 """Task sharing service."""
 
+from datetime import datetime, timedelta, timezone
+from typing import Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
 
@@ -44,6 +47,8 @@ async def share_task(
     base = settings.api_base_url.rstrip("/")
     share_url = f"{base}/shared/{task_id}"
     manage_url = f"{base}/app/tasks/{task_id}"
+    # Sharing again starts the organization's period afresh.
+    expires_at = share_expiry(policy.expiration_days)
 
     # Race-proof creation, not select-then-insert. Two concurrent share
     # requests (a double click, two tabs) used to both pass the "no share
@@ -62,6 +67,7 @@ async def share_task(
             visibility=visibility,
             share_url=share_url,
             manage_url=manage_url,
+            expires_at=expires_at,
         )
         .on_conflict_do_nothing(index_elements=["task_id"])
     )
@@ -75,7 +81,12 @@ async def share_task(
         await db.execute(
             update(TaskShare)
             .where(TaskShare.task_id == task_id)
-            .values(visibility=visibility, share_url=share_url, manage_url=manage_url)
+            .values(
+                visibility=visibility,
+                share_url=share_url,
+                manage_url=manage_url,
+                expires_at=expires_at,
+            )
         )
     await db.flush()
 
@@ -85,6 +96,29 @@ async def share_task(
         is_new_share=created,
         manage_url=manage_url,
     )
+
+
+def share_expiry(
+    days: Optional[int], now: Optional[datetime] = None
+) -> Optional[datetime]:
+    """When a link shared now with a policy of ``days`` stops working."""
+    if not days:
+        return None
+    # Bounded: an organization row can hold any integer, and a date past
+    # year 9999 would raise instead of meaning "practically never".
+    days = min(days, 36500)
+    return (now or datetime.now(timezone.utc)) + timedelta(days=days)
+
+
+async def unshare_task(db: AsyncSession, task_id: str, user_id: str) -> bool:
+    """Revoke the share link of a task ``user_id`` owns. True when one was removed;
+    an unknown task, another user's task or a task never shared is a no-op."""
+    owner = await db.scalar(select(Task.user_id).where(Task.id == task_id))
+    if owner is None or owner != user_id:
+        return False
+    result = await db.execute(delete(TaskShare).where(TaskShare.task_id == task_id))
+    await db.flush()
+    return result.rowcount > 0
 
 
 async def delete_shared_task(

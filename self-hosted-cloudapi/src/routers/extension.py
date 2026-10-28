@@ -2,6 +2,7 @@
 
 Implements endpoints under /api/extension:
 - POST /api/extension/share
+- DELETE /api/extension/share/{task_id}
 - GET /api/extension/bridge/config
 """
 
@@ -11,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.database import get_db
 from src.dependencies import get_current_user
 from src.schemas.share import ShareTaskRequest, ShareResponse
-from src.services.share_service import share_task
+from src.services.share_service import share_task, unshare_task
 from src.services.bridge_service import get_bridge_config
 from config.settings import settings
 
@@ -61,6 +62,21 @@ async def share_task_endpoint(
                 detail=result.error,
             )
     return result
+
+
+@router.delete("/share/{task_id}")
+async def unshare_task_endpoint(
+    task_id: str,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Revoke a task's share link; the link answers not found from now on.
+
+    Owner only. Another user's task, an unknown one and a task never shared
+    all answer ``revoked: false``, so the answer discloses nothing.
+    """
+    revoked = await unshare_task(db, task_id, current_user["user_id"])
+    return {"success": True, "revoked": revoked}
 
 
 @router.get("/bridge/config")
