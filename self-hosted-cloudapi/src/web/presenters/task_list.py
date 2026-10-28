@@ -24,7 +24,7 @@ from typing import Callable, Optional
 from urllib.parse import quote, urlencode
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import and_, exists, func, literal, not_, or_, select
+from sqlalchemy import and_, exists, func, not_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -80,58 +80,26 @@ GROUP_ROWS = 5
 
 @dataclass(frozen=True)
 class Grouping:
-    """One way to group the list: what a task's key is, and how to match it."""
+    """One way to group the list: the column that is a task's key."""
 
     label: str
     unit: str
     # What the group of tasks without a key is called.
     empty: str
-    # The key of a row of the grouped query, None when the task has none.
-    key: Callable[[object], Optional[str]]
-    # The column a missing key is NULL in.
+    # The key, NULL when the task has none.
     column: object
-    # SQL that keeps exactly the tasks whose key is the given one.
-    match: Callable[[str], object]
     # What a group header calls a key the page has no name for.
     name: Callable[[str], str] = str
-
-
-def _primary_model(row) -> Optional[str]:
-    # The stored label lists the models most-used first.
-    names = split_models_label(row.models) if row.models else []
-    return names[0] if names else None
 
 
 GROUPINGS = {
     # By id: two projects may share a name. A project the reader cannot see
     # (an organization they left) is named by its bare id.
-    "project": Grouping(
-        "Project",
-        "project",
-        "No project",
-        lambda row: row.project_id,
-        Task.project_id,
-        lambda key: Task.project_id == key,
-    ),
-    "model": Grouping(
-        "Model",
-        "model",
-        "No model",
-        _primary_model,
-        Task.models,
-        lambda key: or_(
-            Task.models == key, Task.models.startswith(key + ", ", autoescape=True)
-        ),
-    ),
+    "project": Grouping("Project", "project", "No project", Task.project_id),
+    # The model that did most of the run's work, the first of its label.
+    "model": Grouping("Model", "model", "No model", Task.primary_model),
     # The list holds the reader's own tasks only, so this is one group today.
-    "user": Grouping(
-        "User",
-        "user",
-        "No user",
-        lambda row: row.user_id,
-        Task.user_id,
-        lambda key: Task.user_id == key,
-    ),
+    "user": Grouping("User", "user", "No user", Task.user_id),
 }
 DEFAULT_GROUP = "project"
 NO_GROUP = "none"
@@ -381,14 +349,10 @@ class ListView:
         if self.scope == "roots":
             out.append(Task.parent_task_id.is_(None))
         if self.only:
-            grouping = GROUPINGS[self.group]
-            out.append(
-                grouping.column.is_(None)
-                if self.only == NO_KEY
-                else grouping.match(self.only)
-            )
+            column = GROUPINGS[self.group].column
+            out.append(column.is_(None) if self.only == NO_KEY else column == self.only)
         if self.project:
-            out.append(GROUPINGS["project"].match(self.project))
+            out.append(Task.project_id == self.project)
         if self.model:
             out.append(Task.models.icontains(self.model, autoescape=True))
         if self.client:
@@ -412,28 +376,23 @@ class ListView:
             )
         return out
 
-    def order_by(self, user_id: str, rollup=None):
-        """(ORDER BY clauses, an outer join to apply first or None).
-
-        ``rollup`` is a ``_run_totals`` the caller joins anyway, reused here.
+    def order_by(self) -> list:
+        """The ORDER BY clauses of this view.
 
         Cost and tokens sort by what the row shows: a row that delegated shows
         its whole run (itself plus every subtask beneath it, services/
-        task_tree.subtree_spend), so that sum is what the column is ordered by.
+        task_tree.subtree_spend), so the run totals are what the column is
+        ordered by.
         """
-        descending = self.dir == "desc"
-        if self.sort == "updated":
-            key = Task.updated_at
-        elif self.sort == "messages":
-            key = Task.message_count
-        else:
-            if rollup is None:
-                rollup = _run_totals(user_id)
-            column = rollup.c.cost if self.sort == "cost" else rollup.c.tokens
-            key = func.coalesce(column, 0)
-        primary = key.desc() if descending else key.asc()
+        key = {
+            "updated": Task.updated_at,
+            "messages": Task.message_count,
+            "cost": Task.run_cost,
+            "tokens": Task.run_tokens,
+        }[self.sort]
+        primary = key.desc() if self.dir == "desc" else key.asc()
         # Ties keep the newest first, then a fixed order, so paging is stable.
-        return [primary, Task.updated_at.desc(), Task.id], rollup
+        return [primary, Task.updated_at.desc(), Task.id]
 
 
 def _grade_condition(grade: str):
@@ -452,44 +411,6 @@ def _grade_condition(grade: str):
     if grade == GRADE_CLEAN:
         return and_(completed, smooth)
     return and_(completed, not_(smooth))
-
-
-def _run_totals(user_id: str):
-    """Cost, tokens and duration of every task of the user plus everything beneath it.
-
-    A recursive CTE of (run, member) pairs, with UNION rather than UNION ALL:
-    duplicates are discarded, so a cycle in the client-supplied parent links
-    ends the recursion instead of looping, and every member is counted once
-    per run. Runs on SQLite and Postgres alike. Only built when the list is
-    grouped or sorted by cost or tokens.
-    """
-    members = (
-        select(Task.id.label("run_id"), Task.id.label("member_id"))
-        .where(Task.user_id == user_id)
-        .cte("run_members", recursive=True)
-    )
-    child = aliased(Task)
-    members = members.union(
-        select(members.c.run_id, child.id).join(
-            members,
-            and_(
-                child.parent_task_id == members.c.member_id,
-                child.user_id == literal(user_id),
-            ),
-        )
-    )
-    member = aliased(Task)
-    return (
-        select(
-            members.c.run_id,
-            func.sum(member.cost).label("cost"),
-            func.sum(member.tokens_in + member.tokens_out).label("tokens"),
-            func.sum(member.duration_ms).label("duration_ms"),
-        )
-        .join(member, member.id == members.c.member_id)
-        .group_by(members.c.run_id)
-        .subquery("run_totals")
-    )
 
 
 async def list_page(
@@ -535,12 +456,12 @@ async def list_page(
     total = await db.scalar(select(func.count(Task.id)).where(*filters))
     pager = paginate(total, page, PAGE_SIZE)
 
-    order, rollup = view.order_by(user_id)
-    query = select(Task).where(*filters)
-    if rollup is not None:
-        query = query.outerjoin(rollup, rollup.c.run_id == Task.id)
     result = await db.execute(
-        query.order_by(*order).limit(PAGE_SIZE).offset(pager["offset"])
+        select(Task)
+        .where(*filters)
+        .order_by(*view.order_by())
+        .limit(PAGE_SIZE)
+        .offset(pager["offset"])
     )
 
     page_tasks = list(result.scalars().all())
@@ -569,76 +490,76 @@ async def _group_page(
 ) -> dict:
     """One page of groups: their totals, and the first GROUP_ROWS tasks of each.
 
-    The keys and figures of every task the view matches are read in one narrow
-    query and summed here, because a model key is the first name of a joined
-    label, which SQL would have to split per dialect. Groups are ordered by the
-    sorted column summed over the group (newest activity for "updated"), and a
-    group lists its tasks in the view's order.
+    The totals are one GROUP BY, a row per group however many tasks match.
+    Groups are ordered by the sorted column summed over the group (newest
+    activity for "updated"), and a group lists its tasks in the view's order.
 
     The group sums what its rows show. Under "Runs" a run's duration, tokens
     and cost include its subtasks; under "All" every task is a row of its own and the
     group sums own figures, so no subtask is counted twice.
     """
     grouping = GROUPINGS[view.group]
-    rollup = _run_totals(user_id)
-    order, _ = view.order_by(user_id, rollup)
     runs = view.scope == "roots"
-    result = await db.execute(
+    sums = await db.execute(
         select(
-            Task.id,
-            Task.project_id,
-            Task.models,
-            Task.user_id,
-            Task.updated_at,
+            grouping.column.label("key"),
+            func.count().label("count"),
             # A row shows its own messages and its run's duration, tokens and cost.
-            Task.message_count.label("messages"),
-            (
-                func.coalesce(rollup.c.duration_ms, 0) if runs else Task.duration_ms
-            ).label("duration_ms"),
-            (
-                func.coalesce(rollup.c.tokens, 0)
-                if runs
-                else Task.tokens_in + Task.tokens_out
+            func.sum(Task.message_count).label("messages"),
+            func.sum(Task.run_duration_ms if runs else Task.duration_ms).label(
+                "duration_ms"
+            ),
+            func.sum(
+                Task.run_tokens if runs else Task.tokens_in + Task.tokens_out
             ).label("tokens"),
-            (func.coalesce(rollup.c.cost, 0) if runs else Task.cost).label("cost"),
+            func.sum(Task.run_cost if runs else Task.cost).label("cost"),
+            func.max(Task.updated_at).label("updated"),
         )
         .where(*filters)
-        .outerjoin(rollup, rollup.c.run_id == Task.id)
-        .order_by(*order)
+        .group_by(grouping.column)
     )
-    groups: dict[Optional[str], dict] = {}
-    total = 0
-    for row in result.all():
-        total += 1
-        key = grouping.key(row)
-        group = groups.setdefault(
-            key,
-            {
-                "key": key,
-                "ids": [],
-                "messages": 0,
-                "duration_ms": 0,
-                "tokens": 0,
-                "cost": 0.0,
-                "updated": row.updated_at,
-            },
-        )
-        group["ids"].append(row.id)
-        group["messages"] += row.messages
-        group["duration_ms"] += row.duration_ms
-        group["tokens"] += row.tokens
-        group["cost"] += row.cost
-        group["updated"] = max(group["updated"], row.updated_at)
+    groups = [row._asdict() for row in sums.all()]
 
+    # The key last: two projects may share a name.
     ordered = sorted(
-        groups.values(), key=lambda g: _group_label(grouping, g["key"], names).lower()
+        groups,
+        key=lambda g: (
+            _group_label(grouping, g["key"], names).lower(),
+            g["key"] or "",
+        ),
     )
     ordered.sort(key=lambda g: g[view.sort], reverse=view.dir == "desc")
 
     pager = paginate(len(ordered), page, PAGE_SIZE)
     shown = ordered[pager["offset"] : pager["offset"] + PAGE_SIZE]
 
-    ids = [task_id for g in shown for task_id in g["ids"][:GROUP_ROWS]]
+    keys = [g["key"] for g in shown]
+    in_shown = grouping.column.in_([key for key in keys if key is not None])
+    if None in keys:
+        in_shown = or_(in_shown, grouping.column.is_(None))
+    ranked = (
+        select(
+            Task.id,
+            grouping.column.label("key"),
+            func.row_number()
+            .over(partition_by=grouping.column, order_by=view.order_by())
+            .label("position"),
+        )
+        .where(*filters, in_shown)
+        .subquery()
+    )
+    # The rows are loaded by id in a second query: joined to the ranking,
+    # Postgres misjudged how few rows pass and scanned every task to join them
+    # (240 ms for "All" on the bench).
+    first = await db.execute(
+        select(ranked.c.id, ranked.c.key)
+        .where(ranked.c.position <= GROUP_ROWS)
+        .order_by(ranked.c.position)
+    )
+    rows: dict[Optional[str], list[str]] = {}
+    for task_id, key in first.all():
+        rows.setdefault(key, []).append(task_id)
+    ids = [task_id for group_ids in rows.values() for task_id in group_ids]
     loaded = await db.scalars(select(Task).where(Task.id.in_(ids)))
     tasks = {task.id: task for task in loaded.all()}
     tree = await subtrees(db, ids, user_id)
@@ -651,7 +572,7 @@ async def _group_page(
                 "key": f"{view.group}:{g['key'] or NO_KEY}",
                 "label": _group_label(grouping, g["key"], names),
                 "sub": subs.get(g["key"]),
-                "count": len(g["ids"]),
+                "count": g["count"],
                 "messages": fmt_int(g["messages"]),
                 "duration": fmt_duration(g["duration_ms"])
                 if g["duration_ms"]
@@ -659,12 +580,13 @@ async def _group_page(
                 "tokens": fmt_tokens(g["tokens"]) if g["tokens"] else None,
                 "cost": fmt_cost(g["cost"]) if g["cost"] > 0 else None,
                 "updated": g["updated"],
+                # A write between the sums and the ranking can empty a group.
                 "rows": [
                     _list_row(tasks[task_id], tree, runs)
-                    for task_id in g["ids"][:GROUP_ROWS]
+                    for task_id in rows.get(g["key"], [])
                 ],
                 "more_url": replace(view, only=g["key"] or NO_KEY).url()
-                if len(g["ids"]) > GROUP_ROWS
+                if g["count"] > GROUP_ROWS
                 else None,
             }
             for g in shown
@@ -673,7 +595,7 @@ async def _group_page(
         group_unit=grouping.unit,
         tree_view=runs,
         **pager,
-        total=total,
+        total=sum(g["count"] for g in groups),
     )
 
 

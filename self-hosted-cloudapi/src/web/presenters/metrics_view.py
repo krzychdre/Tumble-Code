@@ -20,7 +20,6 @@ from src.models.project import Project
 from src.models.task import Task
 from src.models.user import User
 from src.services.metrics_service import GroupBy
-from src.web.presenters.task_list import GROUPINGS as TASK_GROUPINGS
 from src.web.presenters.task_list import NO_GROUP, NO_KEY
 
 # How many groups the table shows before "Show all".
@@ -87,8 +86,8 @@ GROUPINGS = {
         "No model",
         TelemetryEvent.model_id,
         TelemetryEvent.model_id,
-        TASK_GROUPINGS["model"].column,
-        TASK_GROUPINGS["model"].match,
+        Task.primary_model,
+        lambda key: Task.primary_model == key,
         per_task=False,
     ),
     # Who ran the event: the task's owner. Every event has one.

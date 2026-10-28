@@ -57,6 +57,11 @@ from src.utils.format import fmt_tokens, num
 # every model in full.
 MODELS_SHOWN = 1
 
+# The longest ``tasks.models`` label, in UTF-8 bytes. ix_tasks_user_models
+# indexes it, and Postgres refuses a btree entry over 2704 bytes; a label up
+# to here leaves room for the user id beside it.
+LABEL_MAX_BYTES = 2000
+
 
 @dataclass(frozen=True)
 class Completion:
@@ -249,14 +254,34 @@ def models_label(completions: list[Completion]) -> Optional[str]:
 
     ``None`` when nothing is known, so a refresh never overwrites a stored value
     with an empty one just because telemetry has not arrived yet.
+
+    At most ``LABEL_MAX_BYTES``: the least-used names that do not fit are
+    left out. A name is at most 256 bytes (telemetry_vocab.clean_name), so a
+    task keeps at least its seven most-used models; one that ran through
+    hundreds keeps writing instead of failing on the index.
     """
-    names = [row["name"] for row in models_summary(completions)]
-    return ", ".join(names) if names else None
+    label = None
+    for row in models_summary(completions):
+        longer = row["name"] if label is None else f"{label}, {row['name']}"
+        if len(longer.encode()) > LABEL_MAX_BYTES:
+            break
+        label = longer
+    return label
 
 
 def split_models_label(label: str) -> list[str]:
     """The model names in a stored ``tasks.models`` label."""
     return [part.strip() for part in label.split(",") if part.strip()]
+
+
+def primary_model(label: str) -> Optional[str]:
+    """The model that did most of the work: the first name of a label, None
+    when it names none (a model id of spaces).
+
+    Stored as ``tasks.primary_model``, the key of the task list's model groups.
+    """
+    names = split_models_label(label)
+    return names[0] if names else None
 
 
 # How each non-conversation kind reads on the page: the one map in
@@ -324,7 +349,8 @@ def models_badge(label: Optional[str]) -> Optional[dict]:
 
 
 async def refresh_task_models(db: AsyncSession, task_id: str) -> None:
-    """Recompute and store ``tasks.models`` from the task's completion events.
+    """Recompute and store ``tasks.models`` (and ``primary_model``) from the
+    task's completion events.
 
     Called from both write paths — message writes (``task_summary``) and
     telemetry ingest — because the two arrive in either order: a task can be
@@ -334,7 +360,11 @@ async def refresh_task_models(db: AsyncSession, task_id: str) -> None:
     label = models_label(await completions_for_task(db, task_id, owner))
     if label is None:
         return
-    await db.execute(update(Task).where(Task.id == task_id).values(models=label))
+    await db.execute(
+        update(Task)
+        .where(Task.id == task_id)
+        .values(models=label, primary_model=primary_model(label))
+    )
 
 
 async def note_completion_model(db: AsyncSession, task_id: str, model: str) -> None:

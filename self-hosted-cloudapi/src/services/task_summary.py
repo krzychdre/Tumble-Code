@@ -56,8 +56,14 @@ from src.services.session_quality import (
     KIND_RETRY,
     KIND_TOOL,
 )
+from src.services.task_tree import refresh_run_totals
 from src.services.telemetry_vocab import API_REQ_STARTED, api_req_started_payload
-from src.utils.format import num
+from src.utils.format import (
+    MAX_REQUEST_COST,
+    MAX_REQUEST_MS,
+    MAX_REQUEST_TOKENS,
+    figure,
+)
 
 # Titles are a single line; anything longer is truncated with an ellipsis.
 TITLE_MAX = 100
@@ -189,7 +195,9 @@ def message_metrics(msg: dict) -> MessageMetrics:
     Returns all-zero rather than None for a non-contributing message so callers
     can write the columns unconditionally; a partial ``api_req_started`` (whose
     ``text`` is not yet valid JSON, or has no figures yet) is naturally zero and
-    is corrected when its final revision overwrites the row.
+    is corrected when its final revision overwrites the row. A figure is read
+    with the bounds of one request (``utils/format.figure``), as telemetry is:
+    the client writes these messages, and the run totals sum them across tasks.
     """
     if not isinstance(msg, dict) or msg.get("type") != "say":
         return _ZERO
@@ -201,20 +209,20 @@ def message_metrics(msg: dict) -> MessageMetrics:
         if obj is None:
             return _ZERO
         return MessageMetrics(
-            tokens_in=int(num(obj.get("tokensIn"))),
-            tokens_out=int(num(obj.get("tokensOut"))),
-            cache_reads=int(num(obj.get("cacheReads"))),
-            cache_writes=int(num(obj.get("cacheWrites"))),
-            cost=float(num(obj.get("cost"))),
-            duration_ms=int(num(obj.get("durationMs"))),
+            tokens_in=int(figure(obj.get("tokensIn"), MAX_REQUEST_TOKENS)),
+            tokens_out=int(figure(obj.get("tokensOut"), MAX_REQUEST_TOKENS)),
+            cache_reads=int(figure(obj.get("cacheReads"), MAX_REQUEST_TOKENS)),
+            cache_writes=int(figure(obj.get("cacheWrites"), MAX_REQUEST_TOKENS)),
+            cost=float(figure(obj.get("cost"), MAX_REQUEST_COST)),
+            duration_ms=int(figure(obj.get("durationMs"), MAX_REQUEST_MS)),
         )
 
     if say == "condense_context":
         condense = msg.get("contextCondense")
         if isinstance(condense, dict):
             return MessageMetrics(
-                cost=float(num(condense.get("cost"))),
-                duration_ms=int(num(condense.get("durationMs"))),
+                cost=float(figure(condense.get("cost"), MAX_REQUEST_COST)),
+                duration_ms=int(figure(condense.get("durationMs"), MAX_REQUEST_MS)),
             )
 
     return _ZERO
@@ -341,6 +349,8 @@ async def refresh_task_summary(
             values["prompt_excerpt"] = prompt or None
 
     await db.execute(update(Task).where(Task.id == task_id).values(**values))
+    # The run this task belongs to shows its figures too.
+    await refresh_run_totals(db, [task_id])
 
     # Which model answered is the one thing the messages cannot say, so it is
     # rolled up from the task's completion telemetry instead. Done here as well

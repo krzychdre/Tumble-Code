@@ -57,12 +57,11 @@ class Task(Base, TimestampMixin):
     # a lookup per row. ON DELETE SET NULL: deleting a parent orphans its
     # children rather than cascading their conversations away. Named like
     # migration a7b8c9d0e1f2 names it, so its downgrade finds the key on a
-    # create_all database too.
+    # create_all database too. Indexed with user_id below.
     parent_task_id = Column(
         String,
         ForeignKey("tasks.id", ondelete="SET NULL", name="fk_tasks_parent_task_id"),
         nullable=True,
-        index=True,
     )
 
     # The project the task's folder is bound to (models/project), stamped when
@@ -107,6 +106,16 @@ class Task(Base, TimestampMixin):
     # model). Derived from LLM Completion telemetry; see
     # services/model_attribution. NULL when no completion event is known.
     models = Column(String, nullable=True)
+    # The first name of ``models``, the task list's model group; written with it.
+    primary_model = Column(String, nullable=True)
+
+    # --- run totals ----------------------------------------------------------
+    # The task plus every task beneath it of the same owner: what a run row of
+    # the list shows, sorts and groups by. Recomputed by services/task_tree.
+    # refresh_run_totals whenever an own figure or a parent link changes.
+    run_cost = Column(Float, nullable=False, default=0.0, server_default="0")
+    run_tokens = Column(BigInteger, nullable=False, default=0, server_default="0")
+    run_duration_ms = Column(BigInteger, nullable=False, default=0, server_default="0")
 
     # --- session quality ---------------------------------------------------
     # Counts of deterministic markers in the conversation (services/
@@ -136,10 +145,17 @@ class Task(Base, TimestampMixin):
         "TaskShare", back_populates="task", cascade="all, delete-orphan"
     )
 
-    # The list is always "this user's tasks, newest first" — a composite index
-    # makes that an index-ordered scan of just the page being shown, instead of
-    # sorting every row the user owns on each request.
-    __table_args__ = (Index("ix_tasks_user_updated", "user_id", "updated_at"),)
+    __table_args__ = (
+        # The list is always "this user's tasks, newest first": a composite index
+        # makes that an index-ordered scan of just the page being shown, instead of
+        # sorting every row the user owns on each request.
+        Index("ix_tasks_user_updated", "user_id", "updated_at"),
+        # A task's children of one owner, the step of every walk down a tree
+        # (services/task_tree). With parent_task_id alone Postgres' generic plan
+        # could AND ix_tasks_user_id into each step: 3.9 s instead of 92 ms for
+        # 4,818 subtasks on the bench.
+        Index("ix_tasks_parent_user", "parent_task_id", "user_id"),
+    )
 
 
 class TaskMessage(Base):
