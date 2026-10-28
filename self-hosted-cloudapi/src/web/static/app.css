@@ -2672,6 +2672,12 @@ pre {
 	white-space: pre-wrap;
 	overflow-wrap: anywhere;
 }
+/* A row too costly to format (render.js md) is shown as written: wrapped, so
+   the text reads like the answer it is rather than one sideways scroll. */
+.msg-body pre.plain-text {
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
 /* A Markdown table keeps its words whole and scrolls in its own box, rather
    than breaking every header mid-word to fit the column. */
 .msg-body table {

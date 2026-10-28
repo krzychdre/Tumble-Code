@@ -38,6 +38,10 @@ _MIN_CHECKS = {
     "render_checks.html": 37,
     # Inline/display math, dollar amounts, code, tables, KaTeX trust off.
     "math_checks.html": 12,
+    # Formula and wrapper openers without a closer, emphasis and raw-HTML bombs,
+    # thousands of formulas: the page stays responsive and still formats
+    # ordinary answers.
+    "hostile_text_checks.html": 11,
     # Diagram image, labels, size, cache across a live update, invalid source kept.
     "mermaid_checks.html": 11,
     # Copy per row (Markdown as written, fences, no fold), the .md/.json download.
