@@ -3953,6 +3953,8 @@ table.diag-table th.diag-num {
 .field-hint {
 	max-width: 80ch;
 	margin: 0;
+	/* A hint can name the space, whose name may be one unbroken word. */
+	overflow-wrap: anywhere;
 	font-size: var(--t-micro);
 	color: var(--text-faint);
 }
