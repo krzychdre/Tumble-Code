@@ -150,3 +150,44 @@ async def test_the_service_finds_no_share_for_an_unknown_task(db_session):
     access = await shared_view_access(db_session, "nope", _viewer("owner"))
     assert access.verdict is ShareVerdict.NOT_FOUND
     assert (access.share, access.task, access.is_owner) == (None, None, False)
+
+
+# --- the server's ENABLE_TASK_SHARING / ALLOW_PUBLIC_TASK_SHARING ------------------------------------------------
+# They are the policy /api/extension-settings advertises, and they hold for
+# tasks without an organization too: an operator who switches public sharing
+# off closes the public links already handed out.
+
+# (switched off, visibility, viewer) -> status
+SERVER_POLICY_CASES = [
+    ("allow_public_task_sharing", "public", None, 303),
+    ("allow_public_task_sharing", "public", "stranger", 404),
+    ("allow_public_task_sharing", "public", "colleague", 200),
+    ("allow_public_task_sharing", "public", "owner", 200),
+    ("enable_task_sharing", "public", None, 404),
+    ("enable_task_sharing", "public", "stranger", 404),
+    ("enable_task_sharing", "organization", "colleague", 404),
+    ("enable_task_sharing", "public", "owner", 200),
+]
+
+
+@pytest.mark.parametrize("switch,visibility,viewer,status", SERVER_POLICY_CASES)
+async def test_share_view_follows_the_server_policy(
+    client, db_session, session_factory, monkeypatch, switch, visibility, viewer, status
+):
+    from config.settings import settings
+
+    monkeypatch.setattr(settings, switch, False)
+    await _seed(session_factory, db_session, visibility, "org-a")
+
+    from src.main import app
+
+    if viewer:
+        _override_web_user(app, user_id=viewer, email=f"{viewer}@example.com")
+    try:
+        resp = client.get("/shared/t-share", follow_redirects=False)
+    finally:
+        app.dependency_overrides.pop(get_web_user_optional, None)
+
+    assert resp.status_code == status
+    if status != 200:
+        assert "Build me a feature" not in resp.text

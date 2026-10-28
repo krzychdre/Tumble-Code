@@ -3,6 +3,10 @@
 One policy, decided in one place:
 
 * no share for the task: not found, for everybody;
+* sharing switched off for the task (server or organization policy,
+  src/services/share_policy.py): not found for everybody but the owner;
+* a public share while public sharing is switched off: treated as an
+  organization share;
 * a public share: anybody, signed in or not;
 * any other share viewed anonymously: sign in first;
 * any other share viewed signed in: the task's owner, or a member of the
@@ -24,6 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.auth.web_session import WebUser
 from src.models.organization import Membership
 from src.models.task import Task, TaskShare
+from src.services.share_policy import sharing_policy
 
 
 async def task_owner(db: AsyncSession, task_id: str) -> Optional[str]:
@@ -55,22 +60,26 @@ async def shared_view_access(
     if share is None:
         return ShareAccess(ShareVerdict.NOT_FOUND)
 
-    if share.visibility != "public" and user is None:
-        # Organization/private share viewed anonymously: require login.
-        return ShareAccess(ShareVerdict.LOGIN_REQUIRED, share=share)
-
     # The share link is live (remote-controllable) only for the task's owner, so a
     # freshly-shared task is drivable straight from its share URL. Anonymous and
     # non-owner viewers stay strictly read-only. The backend independently enforces
     # the same owner-only rule (task:join DB ownership check + per-user command relay).
-    task_result = await db.execute(select(Task).where(Task.id == task_id))
-    task = task_result.scalar_one_or_none()
+    task = await db.scalar(select(Task).where(Task.id == task_id))
     is_owner = user is not None and task is not None and task.user_id == user["user_id"]
+
+    policy = await sharing_policy(db, task) if task is not None else None
+    if policy is not None and not policy.enabled and not is_owner:
+        return ShareAccess(ShareVerdict.NOT_FOUND, share=share, task=task)
+    public = share.visibility == "public" and (policy is None or policy.public_allowed)
+
+    if not public and user is None:
+        # Organization/private share viewed anonymously: require login.
+        return ShareAccess(ShareVerdict.LOGIN_REQUIRED, share=share)
 
     # For non-public shares, enforce org membership: the viewer must be the task
     # owner or share an organization with the task owner. This prevents a logged-in
     # user from a different org reading another org's private conversation.
-    if share.visibility != "public" and not is_owner:
+    if not public and not is_owner:
         allowed = False
         if task is not None and task.organization_id is not None and user is not None:
             member_result = await db.execute(

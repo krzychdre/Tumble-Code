@@ -8,8 +8,8 @@ from src.database import dialect_insert
 from src.models.error_report import ErrorReport
 from src.models.llm_exchange import LlmBlob, LlmExchange
 from src.models.task import Task, TaskImage, TaskMessage, TaskShare
-from src.models.settings import OrganizationSettings
 from src.schemas.share import ShareResponse
+from src.services.share_policy import sharing_policy
 from src.services.task_tree import (
     descendant_ids,
     lock_for_delete,
@@ -31,37 +31,13 @@ async def share_task(
     if task is None or task.user_id != user_id:
         return ShareResponse(success=False, error="Task not found")
 
-    # Enforce org task-sharing policy server-side.
-    #
-    # The extension checks canSharePublicly() client-side, but a direct API
-    # call can bypass that. We re-check here using the org's settings.
-    #
-    # Permissive default: when the task has no organization_id, or when no
-    # OrganizationSettings row exists for the org (which happens for existing
-    # self-hosted deployments that never configured org settings), we allow
-    # all sharing. Enforcement applies ONLY when an OrganizationSettings row
-    # has been explicitly created for the org — the model defaults
-    # (enable_task_sharing=True, allow_public_task_sharing=True) are
-    # permissive, so a freshly-created row also allows sharing; only an
-    # explicit False on the relevant flag triggers rejection.
-    if task.organization_id:
-        result = await db.execute(
-            select(OrganizationSettings).where(
-                OrganizationSettings.organization_id == task.organization_id
-            )
-        )
-        org_settings = result.scalar_one_or_none()
-        if org_settings is not None:
-            if not org_settings.enable_task_sharing:
-                return ShareResponse(
-                    success=False,
-                    error="Task sharing is disabled for this organization",
-                )
-            if visibility == "public" and not org_settings.allow_public_task_sharing:
-                return ShareResponse(
-                    success=False,
-                    error="Public task sharing is disabled for this organization",
-                )
+    # Enforce the sharing policy server-side: the extension checks
+    # canSharePublicly() client-side, but a direct API call can bypass that.
+    policy = await sharing_policy(db, task)
+    if not policy.enabled:
+        return ShareResponse(success=False, error=policy.disabled_reason)
+    if visibility == "public" and not policy.public_allowed:
+        return ShareResponse(success=False, error=policy.public_disabled_reason)
 
     # Absolute URLs so the link the extension copies to the clipboard is
     # directly openable in a browser.
