@@ -14,11 +14,82 @@
 
 	function md(text) {
 		if (!text) return ""
+		if (String(text).length > MAX_MARKDOWN_CHARS) return plainText(text)
 		const math = extractMath(String(text))
+		// Counted with the formulas taken out: TeX is all backslashes.
+		if (inlineMarksExceed(math.text, MAX_INLINE_MARKS)) return plainText(text)
 		const html = marked.parse(math.text).replace(MATH_PLACEHOLDER_RE, function (_, i) {
 			return mathHtml(math.formulas[Number(i)])
 		})
+		// Raw HTML in a message passes through marked; thousands of unclosed tags
+		// nest that deep, and sanitizing such a tree takes the page seconds per
+		// row. No real answer nests like that: show it as the text it is.
+		if (htmlNestsDeeperThan(html, MAX_HTML_DEPTH)) return plainText(text)
 		return DOMPurify.sanitize(html).replace(MERMAID_BLOCK_RE, mermaidHtml)
+	}
+
+	// A row marked would take seconds to format is shown as the text it is.
+	// marked's emphasis, escape and raw-HTML handling cost grows with the
+	// square of the marks in one run of inline text ("*a " 8 000 times in one
+	// paragraph: 5 s), so the marks of each paragraph, table row and list item
+	// are counted first; real answers stay far below the limit.
+	const MAX_MARKDOWN_CHARS = 512 * 1024
+	const MAX_INLINE_MARKS = 200
+	const INLINE_MARK_RE = /[*_\\]|<(?=[A-Za-z/!])/g
+	const BLOCK_START_RE = /^\s*(?:$|\||[-*+] |\d+[.)] |#)/
+	const FENCE_RE = /^ {0,3}(```|~~~)/
+
+	function inlineMarksExceed(text, limit) {
+		let fence = null
+		let marks = 0
+		for (const line of text.split("\n")) {
+			const opened = FENCE_RE.exec(line)
+			if (opened) {
+				fence = fence === null ? opened[1] : fence === opened[1] ? null : fence
+				marks = 0
+				continue
+			}
+			if (fence !== null) continue
+			if (BLOCK_START_RE.test(line)) marks = 0
+			const found = line.match(INLINE_MARK_RE)
+			if (found && (marks += found.length) > limit) return true
+		}
+		return false
+	}
+
+	function plainText(text) {
+		return '<pre class="plain-text"><code>' + escapeHtml(text) + "</code></pre>"
+	}
+
+	const MAX_HTML_DEPTH = 256
+	const HTML_TAG_RE = /<(\/?)([a-zA-Z][\w:-]*)[^<>]*?(\/?)>/g
+	const VOID_ELEMENTS = new Set([
+		"area",
+		"base",
+		"br",
+		"col",
+		"embed",
+		"hr",
+		"img",
+		"input",
+		"link",
+		"meta",
+		"source",
+		"track",
+		"wbr",
+	])
+
+	// Whether the elements of html, counted as the browser would open them,
+	// nest deeper than limit. One pass over the tags.
+	function htmlNestsDeeperThan(html, limit) {
+		let depth = 0
+		HTML_TAG_RE.lastIndex = 0
+		let m
+		while ((m = HTML_TAG_RE.exec(html)) !== null) {
+			if (m[1]) depth = Math.max(0, depth - 1)
+			else if (!m[3] && !VOID_ELEMENTS.has(m[2].toLowerCase()) && ++depth > limit) return true
+		}
+		return false
 	}
 
 	// Mermaid (plan: 2026-10-12 cloud web mermaid). A ```mermaid fence is drawn
@@ -227,9 +298,16 @@
 	// formula is swapped for a placeholder before marked runs, so marked never
 	// eats its _ * \ or |, and rendered by KaTeX afterwards; DOMPurify still
 	// sees the result.
+	//
+	// A formula's body cannot contain its own opener: otherwise every opener
+	// without a closer ("\\[" written 80 000 times) scans to the end of the
+	// text, and one message holds the page for seconds or minutes.
 	const MATH_RE =
-		/(```[\s\S]*?(?:```|$)|~~~[\s\S]*?(?:~~~|$)|`[^`\n]+`)|\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)|\$(?=[^\s$])((?:\\.|[^$\\\n`])+?)(?<=\S)\$(?!\d)/g
+		/(```[\s\S]*?(?:```|$)|~~~[\s\S]*?(?:~~~|$)|`[^`\n]+`)|\$\$((?:(?!\$\$)[\s\S])+?)\$\$|\\\[((?:(?!\\\[)[\s\S])+?)\\\]|\\\(((?:(?!\\\()[\s\S])+?)\\\)|\$(?=[^\s$])((?:\\.|[^$\\\n`])+?)(?<=\S)\$(?!\d)/g
 	const MATH_PLACEHOLDER_RE = /TUMBLEMATH(\d+)X/g
+	// KaTeX takes a fraction of a millisecond per formula; past this many in
+	// one row the rest stay as written.
+	const MAX_FORMULAS = 2000
 	// "\[1\]" is an escaped "[1]", not math: the bracket forms need TeX inside.
 	const LOOKS_LIKE_TEX = /\\[a-zA-Z]+|[\^_=<>+]/
 
@@ -237,19 +315,25 @@
 		const formulas = []
 		if (typeof katex === "undefined") return { text: text, formulas: formulas }
 		const out = text.replace(MATH_RE, function (whole, code, dollars, brackets, parens, dollar, offset) {
-			if (code !== undefined) return whole
+			if (code !== undefined || formulas.length >= MAX_FORMULAS) return whole
 			const tex = dollars ?? brackets ?? parens ?? dollar
 			if ((brackets !== undefined || parens !== undefined) && !LOOKS_LIKE_TEX.test(tex)) return whole
-			const before = text.slice(0, offset)
-			const after = text.slice(offset + whole.length)
 			const display =
 				(dollars !== undefined || brackets !== undefined) &&
-				/(^|\n)[ \t]*$/.test(before) &&
-				/^[ \t]*(\n|$)/.test(after)
+				blankUntilLineEdge(text, offset - 1, -1) &&
+				blankUntilLineEdge(text, offset + whole.length, 1)
 			formulas.push({ tex: tex, display: display, source: whole })
 			return "TUMBLEMATH" + (formulas.length - 1) + "X"
 		})
 		return { text: out, formulas: formulas }
+	}
+
+	// Whether only spaces and tabs lie between index i and the line's edge in
+	// direction step (-1: back to the line start, 1: on to its end). Walks the
+	// characters instead of slicing the text, which cost the whole text per formula.
+	function blankUntilLineEdge(text, i, step) {
+		while (i >= 0 && i < text.length && (text[i] === " " || text[i] === "\t")) i += step
+		return i < 0 || i >= text.length || text[i] === "\n"
 	}
 
 	function mathHtml(formula) {
@@ -279,8 +363,8 @@
 			env = envMatch[1].trim()
 			body = body.slice(0, envMatch.index) + body.slice(envMatch.index + envMatch[0].length)
 		}
-		const wrap = body.match(/<(user_message|task|feedback)>([\s\S]*?)<\/\1>/)
-		if (wrap) body = wrap[2]
+		const wrapped = firstWrapped(body)
+		if (wrapped !== null) body = wrapped
 		let html = md(body.trim())
 		if (env) {
 			html +=
@@ -290,6 +374,22 @@
 				"</code></pre></details>"
 		}
 		return html
+	}
+
+	// The text inside the first <user_message>, <task> or <feedback> that is
+	// closed, or null. Done with indexOf rather than one lazy regex, which
+	// rescans to the end of the text for each opener without a closer.
+	function firstWrapped(text) {
+		const opener = /<(user_message|task|feedback)>/g
+		const lastClose = {}
+		let m
+		while ((m = opener.exec(text)) !== null) {
+			const tag = m[1]
+			if (lastClose[tag] === undefined) lastClose[tag] = text.lastIndexOf("</" + tag + ">")
+			const start = m.index + m[0].length
+			if (lastClose[tag] >= start) return text.slice(start, text.indexOf("</" + tag + ">", start))
+		}
+		return null
 	}
 
 	function escapeHtml(s) {
@@ -511,8 +611,8 @@
 	function userMarkdown(text) {
 		let body = String(text || "")
 		body = body.replace(/<environment_details>[\s\S]*?(?:<\/environment_details>|$)/, "")
-		const wrap = body.match(/<(user_message|task|feedback)>([\s\S]*?)<\/\1>/)
-		return (wrap ? wrap[2] : body).trim()
+		const wrapped = firstWrapped(body)
+		return (wrapped !== null ? wrapped : body).trim()
 	}
 
 	// A fence longer than any backtick run inside, so the content cannot close it.

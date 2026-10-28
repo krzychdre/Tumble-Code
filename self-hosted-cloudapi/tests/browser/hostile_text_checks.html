@@ -1,0 +1,53 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>
+<div id="page"><div id="conversation"></div></div>
+<!-- Text a client controls must not hold the page: formula and wrapper openers
+     without a closer used to make each one rescan the rest of the text. -->
+<script id="messages-data" type="application/json">[]</script>
+<script>
+  var N = 100000
+  document.getElementById("messages-data").textContent = JSON.stringify([
+    { ts: 1, type: "say", say: "text", text: "Render this" },
+    { ts: 2, type: "say", say: "text", text: "\\[".repeat(N) },
+    { ts: 3, type: "say", say: "text", text: "\\(".repeat(N) },
+    { ts: 4, type: "say", say: "text", text: "$$".repeat(N) + "a" },
+    { ts: 5, type: "say", say: "user_feedback", text: "<task>".repeat(N) },
+    { ts: 6, type: "say", say: "text", text: "$a$ ".repeat(N / 4) },
+    { ts: 7, type: "say", say: "user_feedback", text: "<task>keep <task>this</task> only</task> tail" },
+    { ts: 8, type: "say", say: "text", text: "*a ".repeat(8000) },
+    { ts: 9, type: "say", say: "text", text: ("**b** _c_ \\*d ".repeat(60) + "\n\n").repeat(200) },
+    { ts: 10, type: "say", say: "text", text: "<div>\n\n".repeat(2000) + "end" },
+    { ts: 11, type: "say", say: "text", text: "A **bold** answer with `code`, $x^2$ and\n\n" + "| a | b |\n|---|---|\n" + "| **x** | _y_ |\n".repeat(300) },
+  ])
+  window.__renderStart = Date.now()
+</script>
+<script src="../../src/web/static/vendor/marked.min.js"></script>
+<script src="../../src/web/static/vendor/purify.min.js"></script>
+<script src="../../src/web/static/vendor/katex/katex.min.js"></script>
+<script src="../../src/web/static/format.js"></script>
+<script src="../../src/web/static/render.js"></script>
+<script>
+window.addEventListener("load", function () {
+  var renderMs = Date.now() - window.__renderStart
+  var out = [], fail = 0
+  function check(name, cond) { out.push((cond ? "PASS " : "FAIL ") + name); if (!cond) fail++ }
+  function row(ts) { return document.querySelector('#conversation .msg[data-ts="' + ts + '"] .msg-body') }
+
+  check("the page rendered the hostile rows in under 3 s (" + renderMs + " ms)", renderMs < 3000)
+  check("unclosed \\[ stays text", row(2) && !row(2).querySelector(".katex") && row(2).textContent.length > 1000)
+  check("unclosed \\( stays text", row(3) && !row(3).querySelector(".katex"))
+  check("a run of $$ is drawn", !!row(4))
+  check("a row of unclosed <task> openers is drawn", !!row(5))
+  check("many small formulas: the first 2000 are drawn, the rest stay text", row(6) && row(6).querySelectorAll(".katex").length === 2000 && /\$a\$/.test(row(6).textContent))
+  check("an emphasis bomb is shown as plain text", row(8) && !!row(8).querySelector("pre.plain-text") && !row(8).querySelector("em"))
+  check("many paragraphs of marks are shown as plain text", row(9) && !!row(9).querySelector("pre.plain-text"))
+  check("deeply nested raw HTML is shown as plain text", row(10) && !!row(10).querySelector("pre.plain-text"))
+  check("an ordinary long answer with a long table is still formatted", row(11) && !row(11).querySelector("pre.plain-text") && row(11).querySelectorAll("td strong").length === 300 && !!row(11).querySelector(".katex"))
+  check("the first closed wrapper is unwrapped as before", row(7) && /keep\s*this/.test(row(7).textContent) && !/only|tail/.test(row(7).textContent))
+
+  var pre = document.createElement("pre")
+  pre.id = "results"
+  pre.textContent = out.join("\n") + "\nTOTAL_FAILURES=" + fail
+  document.body.appendChild(pre)
+})
+</script>
+</body></html>
