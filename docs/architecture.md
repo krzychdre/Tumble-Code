@@ -184,4 +184,4 @@ named tests in place. This list is now the authoritative copy (the plan it was t
 - Whole areas: `packages/vscode-shim`, `src/core/memory`, `apps/vscode-nightly`, `scripts/agent-bench`.
 - Cloud API (`self-hosted-cloudapi/`): the monotonic `ON CONFLICT` upsert, `response_model_exclude_none=True`,
   share returning 404 for unknown tasks, the `/bridge` socket path, the database bootstrap classification, SQLite
-  as the test database, the denormalized summary columns.
+  as the test database (only the recall search also runs on Postgres, `tests/test_recall_pg.py`), the denormalized summary columns.

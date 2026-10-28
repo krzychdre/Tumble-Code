@@ -6,7 +6,8 @@ chain (it evolves every existing deployment). Nothing checked that they end in
 the same place, so a model change shipped without its migration only showed up
 on a production database.
 
-These tests run on SQLite only (no Postgres in CI, owner decision 23):
+These tests run on SQLite only (the suite runs on SQLite, owner decision 23;
+only tests/test_recall_pg.py has a Postgres lane):
 
 * ``classify_and_seed`` in its three states, called directly.
 * ``db-migrate.sh`` end to end in each state, with a ``uv`` shim that runs the

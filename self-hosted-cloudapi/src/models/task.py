@@ -70,6 +70,8 @@ class Task(Base, TimestampMixin):
         nullable=True,
         index=True,
     )
+    # The author keeps the task out of recall: no session card is built.
+    recall_excluded = Column(Boolean, nullable=False, default=False, server_default="0")
     # --- denormalized display summary -------------------------------------
     # Maintained by services/task_summary.refresh_task_summary() on every write
     # so the task list renders from one indexed query instead of re-parsing the

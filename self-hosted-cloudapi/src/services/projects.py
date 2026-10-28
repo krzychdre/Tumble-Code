@@ -42,6 +42,7 @@ from src.models.project import (
 )
 from src.models.task import Task
 from src.models.user import User
+from src.services.recall_cards import drop_project_cards, mark_dirty, queue_project
 from src.services.organizations import ROLE_ADMIN
 from src.services.user_service import get_user_memberships
 
@@ -245,17 +246,29 @@ async def _bind_folder(
         )
     )
     bound = await _bound_project_id(db, user_id, tenant, workspace_path)
+    claimed = (
+        (
+            await db.execute(
+                select(Task.id).where(
+                    Task.user_id == user_id,
+                    Task.workspace_path == workspace_path,
+                    Task.project_id.is_(None),
+                    _task_in_tenant(org_id),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
     await db.execute(
         update(Task)
-        .where(
-            Task.user_id == user_id,
-            Task.workspace_path == workspace_path,
-            Task.project_id.is_(None),
-            _task_in_tenant(org_id),
-        )
+        .where(Task.id.in_(claimed))
         .values(project_id=bound)
         .execution_options(synchronize_session=False)
     )
+    if claimed and (await db.get(Project, bound)).recall_scope != SCOPE_NONE:
+        for task_id in claimed:
+            await mark_dirty(db, task_id)
     return bound
 
 
@@ -412,9 +425,14 @@ async def update_project(
         raise ProjectError("bad_name")
     if scope not in scopes_for(project):
         raise ProjectError("bad_scope")
+    was_off = project.recall_scope == SCOPE_NONE
     project.name = name
     project.recall_scope = scope
     await db.flush()
+    if scope == SCOPE_NONE:
+        await drop_project_cards(db, project.id)
+    elif was_off:
+        await queue_project(db, project.id)
 
 
 async def merge_project(db: AsyncSession, source: Project, target: Project) -> None:
@@ -433,5 +451,9 @@ async def merge_project(db: AsyncSession, source: Project, target: Project) -> N
         .values(project_id=target.id)
         .execution_options(synchronize_session=False)
     )
+    # The source's cards go with it (ON DELETE CASCADE); the target's scope now
+    # decides about the moved tasks.
     await db.execute(delete(Project).where(Project.id == source.id))
     await db.flush()
+    if target.recall_scope != SCOPE_NONE:
+        await queue_project(db, target.id)

@@ -22,6 +22,7 @@ from src.routers.web_page import (
 )
 from src.routers.task_images import image_response
 from src.services.client_kind import CLIENT_LABELS
+from src.services.recall_cards import rebuild_card
 from src.services.share_service import delete_shared_task, delete_tasks
 from src.services.task_access import task_owner
 from src.services.task_images import load_task_image
@@ -229,6 +230,25 @@ async def delete_task(
     """
     await delete_shared_task(web["db"], task_id, web["user"]["user_id"])
     return RedirectResponse(url="/app", status_code=303)
+
+
+@router.post("/app/tasks/{task_id}/recall")
+async def toggle_task_recall(
+    task_id: str,
+    request: Request,
+    web: WebPage = Depends(require_web_page),
+):
+    """Keep the user's task out of recall, or let it back in. The card goes (or
+    comes) at once rather than on the next rebuild tick."""
+    db = web["db"]
+    task = await db.get(Task, task_id)
+    if task is None or task.user_id != web["user"]["user_id"]:
+        return not_found_page(request, web["user"])
+    task.recall_excluded = not task.recall_excluded
+    await db.flush()
+    await rebuild_card(db, task_id)
+    await db.commit()
+    return RedirectResponse(url=f"/app/tasks/{task_id}", status_code=303)
 
 
 @router.post("/app/tasks/bulk-delete")

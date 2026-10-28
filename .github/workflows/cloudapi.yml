@@ -36,6 +36,24 @@ jobs:
                 # 3.13 is what the Docker image and local development run; 3.12 is
                 # the floor pyproject.toml still declares (requires-python).
                 python: ["3.12", "3.13"]
+        # A real Postgres for tests/test_recall_pg.py (full-text search, its
+        # index and the statement timeout cannot be checked on SQLite). The
+        # same version as docker-compose.yml.
+        services:
+            postgres:
+                image: postgres:16.15-alpine
+                env:
+                    POSTGRES_PASSWORD: test
+                    POSTGRES_DB: recall
+                ports:
+                    - 5432:5432
+                options: >-
+                    --health-cmd pg_isready
+                    --health-interval 5s
+                    --health-timeout 5s
+                    --health-retries 12
+        env:
+            RECALL_PG_URL: postgresql+asyncpg://postgres:test@localhost:5432/recall
         steps:
             - name: Checkout code
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

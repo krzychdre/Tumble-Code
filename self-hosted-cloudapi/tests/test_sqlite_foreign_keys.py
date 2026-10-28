@@ -1,8 +1,8 @@
 """The test database enforces foreign keys the way Postgres does.
 
 Production runs on Postgres, which rejects a child row whose parent does not
-exist and applies every ``ON DELETE`` rule. The suite runs on SQLite only (owner
-decision 23: no Postgres in CI), and SQLite ignores FOREIGN KEY clauses unless
+exist and applies every ``ON DELETE`` rule. The suite runs on SQLite (owner
+decision 23; only the recall search has a Postgres lane), and SQLite ignores FOREIGN KEY clauses unless
 each connection switches them on. Without that, a write Postgres refuses passes
 every test here and fails only in production (DEF-C47 was exactly that).
 

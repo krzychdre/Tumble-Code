@@ -154,27 +154,36 @@ Storage at scale: about 4 KB of text plus vector per card, so about 8 GB for two
 Endpoint `GET /api/recall/search` (contract in section 7):
 
 1. One query resolves U, the tenant, C and `scope(C)`; `none` answers 404 (the tools should not exist).
-2. The query text is normalized as above; all remaining words must match (AND), the last word as a prefix when it
-   is at least four characters long.
-3. The match runs on one GIN index (an inverted index: for every word the list of rows containing it) built with
-   the `btree_gin` extension over (`tenant_id`, `project_id`, `author_id`, `search_vector`). The tenant and project
-   conditions are therefore resolved inside the same index scan as the words, so a query reads only rows of its
-   own tenant and, for `this_project`, of its own project.
-4. For the cross-project case the allowed projects are the tenant's `organization`-scoped projects (a short list
-   from the small `projects` table), joined after the index scan.
-5. Ranking: `ts_rank` times a recency factor that halves every 90 days; the 10 best rows are returned.
-   Snippets are cut in Python from the 10 returned cards only (no `ts_headline` over candidates).
+2. The query text is normalized as above; all remaining words must match (AND), as whole words. There is no prefix
+   match: a prefix makes Postgres read the whole posting list of every word it covers into a bitmap, which cost
+   up to 100 ms per search at two million cards.
+3. Candidates: the newest 100 visible cards that match. Two indexes give them, and the planner picks by the
+   estimated number of matches: a btree on (`project_id`, `last_ts`) or (`tenant_id`, `last_ts`) read from the
+   newest end when the words are common (the first 100 matches come quickly), and a GIN index (an inverted index:
+   for every word the list of rows containing it) on (`project_id`, `search_vector`), through the `btree_gin`
+   extension, when they are rare. With the project in the GIN index, a search within one project starts from that
+   project's short list instead of a common word's long one. A tenant or author column in the GIN index selected
+   almost nothing and made it slower.
+4. For the cross-project case the allowed projects are the tenant's `organization`-scoped projects, named by a
+   subquery. Joined instead, the planner drove even a one-project search from the projects table into the word
+   index.
+5. Ranking: the candidates by `ts_rank` times a recency factor that halves every 90 days, times 0.5 for a
+   subtask (`session_cards.is_subtask`); the 10 best are returned. A subtask's title and prompt are the long brief a
+   delegating agent wrote, and on the live data such briefs filled most hits. Ranking every match instead read most of a tenant for a common word. Snippets are cut in Python from
+   the returned cards only (no `ts_headline`).
 6. Guard rails: a per-statement timeout (300 ms) that answers "too broad, add a more specific word" instead of
-   failing; a per-user rate limit (30 searches per minute); query length and response size caps.
+   failing; the server's global rate limit; query length and response size caps. The search also sets
+   `plan_cache_mode = force_custom_plan`: asyncpg prepares statements, and the generic plan Postgres keeps after
+   five runs cannot see the project or how common a word is.
 
 The extension does no indexing and no prefetch. A search costs one HTTP request and at most about 1500 tokens.
 
 **Benchmark gate (part of phase 3).** A script fills a local Postgres with two million synthetic cards in one
 tenant (300 authors, 2000 projects, a realistic Polish and English vocabulary with identifiers) and measures the
 p50 and p95 of: one common word, two words, one identifier, a cross-project query, a same-project query. Target:
-p95 under 50 ms on the server. If Postgres full-text search misses the target, the search module (one function
-with one caller) is swapped for a BM25 engine (ParadeDB `pg_search` inside the same Postgres, or a separate
-engine such as Meilisearch) without touching the policy or the cards. Embeddings (meaning-based search through
+p95 under 50 ms on the server. Postgres full-text search meets it (results in the progress notes); had it not, the
+search module (one function with one caller) would be swapped for a BM25 engine (ParadeDB `pg_search` inside the
+same Postgres, or a separate engine such as Meilisearch) without touching the policy or the cards. Embeddings (meaning-based search through
 vectors) stay out until the search log shows that keyword search misses what users ask for.
 
 ### 6. The interface for the agent: native tools, gated
@@ -252,7 +261,7 @@ completion results in order, never tool output.
 
 Errors: 401 not signed in or token expired; 404 for a folder whose project has scope `none`, and for a session the
 reader may not see (the same answer as for an unknown one); 400 for an empty or over-long query (200 characters);
-429 rate limited (30 searches per minute per user).
+429 rate limited (the server's global per-client limit, 60 requests per minute).
 
 ## Phases (one branch each, stacked; only the last is pushed)
 
@@ -321,3 +330,51 @@ reader may not see (the same answer as for an unknown one); 400 for an empty or 
 - Tests: `test_projects.py` (14). Mutations checked red: the binding taking precedence (no orphan project), the
   tenant condition when claiming earlier tasks, stamping on backfill, the admin check, the personal scope list,
   the same-tenant merge rule, case folding of the key, binding on register.
+
+### Phase 5 of the stack: cards and search (`feat/recall-search`)
+
+- `models/recall.py`: `session_cards` (GIN `ix_session_cards_search` over the project and the `tsvector` through
+  `btree_gin`, whose extension a `before_create` DDL creates on Postgres; btrees `ix_session_cards_recent` on
+  tenant and `last_ts` and `ix_session_cards_project_recent` on project and `last_ts`), `recall_dirty`,
+  `recall_log`; `tasks.recall_excluded`.
+  Migration `c2d3e4f5a6b7`. On SQLite the vector column is plain text and nothing searches it.
+- `services/recall_text.py` normalizes cards and queries alike. `services/recall_cards.py` queues a task on its
+  first message, a completion, a reply to one and a backfill, and `run_recall_loop` (every 60 s, started in the
+  app lifespan) rebuilds tasks idle for 10 minutes, 100 at a time. Turning a project's scope on queues its tasks;
+  turning it off deletes its cards; a merge requeues the target; a folder bound later queues the tasks it
+  claims when the project is on. The owner's "Keep it out of recall" on the task page rebuilds at once.
+- `services/recall_search.py`: `visible()` is the one written rule; the search is the two steps of section 5.
+  The timeout and the plan mode are `SET LOCAL` inside a savepoint, so a cancelled search still writes its log
+  row.
+- Postgres needs the text search configuration and the weights inside the SQL (`'simple'::regconfig`,
+  `'A'`): bound as parameters they arrive as varchar and `setweight` has no such signature. Only the Postgres
+  lane could see it.
+- No per-user rate limit: the server's global limit answers 429 the same way.
+- CI: `cloudapi.yml` runs `postgres:16.15-alpine` as a service container and sets `RECALL_PG_URL`;
+  `tests/test_recall_pg.py` skips without it. The suite stays on SQLite otherwise.
+- Tests: `test_recall.py` (19, SQLite: words, card layout and redaction, queueing, the visibility table, the
+  API errors, paging, the exclusion toggle) and `test_recall_pg.py` (4, Postgres: match, weights and age in the
+  ranking, whole words only, exclusion of the asking task, cross-project only between organization scopes, the GIN index,
+  the timeout). Mutations checked red: each condition of `visible`, the scope and exclusion checks of the
+  builder, the queueing triggers, dropping cards on `none`, redaction of results and prompt, the 404 and the 400
+  of the API, each card weight, the age decay, the timeout handler, excluding the asking task. Two survivors at
+  first exposed weak tests: the Postgres sessions were stamped 1970, so the age decay zeroed every score and
+  the order was arbitrary, and the redaction case had no secret in its results.
+- Benchmark (`scripts/recall_benchmark.py`, 2 000 000 cards in one tenant, 2000 projects, 300 authors, Postgres
+  16.15 in Docker with default settings on the owner's 12-core machine; table and indexes 4.7 GB; 40 runs each):
+
+    | Search                     | p50 ms | p95 ms |
+    | -------------------------- | -----: | -----: |
+    | one common word            |    9.6 |   12.9 |
+    | two words                  |   23.8 |   30.6 |
+    | identifier                 |    5.3 |    9.0 |
+    | cross-project, common word |   12.9 |   19.2 |
+    | cross-project, two words   |   13.5 |   17.2 |
+    | cross-project, identifier  |   14.9 |   44.8 |
+    | same project, `members`    |   15.0 |   19.0 |
+
+    Getting there took four measured changes, each kept only because the numbers moved: ranking only the newest
+    candidates (a common word across projects: 300 ms with timeouts, then 13 ms), the per-project recency index
+    with the projects as a subquery (a common word in one project: 150 ms, then 11 ms), the custom plan mode (the
+    generic plan read the word index every time), and the GIN index on project and words without prefix matching
+    (two words in one project: 100 to 150 ms, then 24 ms).

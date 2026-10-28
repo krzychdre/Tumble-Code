@@ -12,6 +12,7 @@ from src.models.task import Task, TaskMessage
 from src.services.client_kind import CLIENT_CLI, CLIENT_VSCODE, client_kind_from
 from src.services.model_attribution import note_completion_model
 from src.services.projects import project_id_for_folder
+from src.services.recall_cards import CARD_KINDS, mark_dirty
 from src.services.session_quality import (
     KIND_COMPLETION,
     KIND_COMPLETION_REPLY,
@@ -379,6 +380,7 @@ async def backfill_messages(
     _stamp_workspace_path(task, workspace_path)
     if created:
         await _stamp_project(db, task)
+    await mark_dirty(db, task_id)
     if not created and client_kind:
         await stamp_task_client(db, task_id, user_id, client_kind)
     await _link_task_tree(db, task_id)
@@ -471,6 +473,9 @@ async def upsert_task_message(
     # Stamp the project/worktree root on first sight (set on create, and fill a
     # legacy NULL the first time the bridge reports a path). Never overwrites.
     _stamp_workspace_path(task, workspace_path)
+    if created or quality["q_kind"] in CARD_KINDS:
+        # The writes that change the task's session card (services/recall_cards).
+        await mark_dirty(db, task_id)
     if created:
         await _stamp_project(db, task)
         # Wire the new row into the subtask tree, once. A chunk carries no
