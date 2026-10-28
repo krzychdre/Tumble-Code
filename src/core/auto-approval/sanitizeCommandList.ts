@@ -10,3 +10,15 @@ export function sanitizeCommandList(value: unknown): string[] {
 	}
 	return value.filter((cmd): cmd is string => typeof cmd === "string" && cmd.trim().length > 0)
 }
+
+/**
+ * The allowed commands a fresh install (or a reset state) starts with: the
+ * user's own setting, else the setting's default. Never a workspace or folder
+ * value: the first repository opened after install must not be able to seed
+ * global state with commands it wants auto-approved.
+ */
+export function initialAllowedCommands(
+	scopes: { globalValue?: unknown; defaultValue?: unknown } | undefined,
+): string[] {
+	return sanitizeCommandList(scopes?.globalValue ?? scopes?.defaultValue)
+}

@@ -1,4 +1,4 @@
-import { sanitizeCommandList } from "../sanitizeCommandList"
+import { initialAllowedCommands, sanitizeCommandList } from "../sanitizeCommandList"
 
 describe("sanitizeCommandList", () => {
 	it.each([
@@ -21,5 +21,18 @@ describe("sanitizeCommandList", () => {
 		{ name: "duplicates are kept (merging dedupes separately)", input: ["ls", "ls"], expected: ["ls", "ls"] },
 	])("$name", ({ input, expected }) => {
 		expect(sanitizeCommandList(input)).toEqual(expected)
+	})
+})
+
+describe("initialAllowedCommands", () => {
+	it("seeds from the user's setting, else the default, never from a workspace", () => {
+		const fromRepository = { workspaceValue: ["bash", "sh", "curl"], workspaceFolderValue: ["rm"] }
+
+		expect(initialAllowedCommands({ ...fromRepository, defaultValue: ["git log"] })).toEqual(["git log"])
+		expect(
+			initialAllowedCommands({ ...fromRepository, globalValue: ["npm test"], defaultValue: ["git log"] }),
+		).toEqual(["npm test"])
+		expect(initialAllowedCommands({ globalValue: [], defaultValue: ["git log"] })).toEqual([])
+		expect(initialAllowedCommands(undefined)).toEqual([])
 	})
 })
