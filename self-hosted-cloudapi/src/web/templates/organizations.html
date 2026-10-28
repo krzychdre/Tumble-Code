@@ -1,46 +1,43 @@
 {% extends "base.html" %}
 {% block title %}Organizations · Tumble Code{% endblock %}
 {% import "_settings_head.html" as head %}
+{% import "_pager.html" as pager %}
 {% block content %}
 {{ head.settings_head("organizations") }}
 
-{% if error %}<div class="notice" role="alert">{{ error }}</div>{% endif %}
+<p class="settings-lead">
+  An organization is a space you share with colleagues: a task belongs to the organization selected in Tumble Code
+  when it starts. Organizations and their members are managed in <a href="{{ authentik_groups_url }}">Authentik's groups</a>.
+</p>
 
-<section class="panel settings-panel" aria-labelledby="orgs-mine">
-  <h2 class="chart-title" id="orgs-mine">Your organizations</h2>
-  {% if memberships %}
-  <div class="diag-table-wrap">
-    <table class="breakdown diag-table" id="table-organizations">
-      <caption class="sr-only">Organizations you are a member of</caption>
-      <thead><tr><th scope="col">Name</th><th scope="col">Your role</th><th scope="col" class="diag-num">Members</th></tr></thead>
-      <tbody>
-        {% for m in memberships %}
-        <tr>
-          <td class="diag-cell"><a href="/app/organizations/{{ m.organization_id }}">{{ m.organization.name }}</a></td>
-          <td class="diag-cell">{{ role_labels[m.role] }}</td>
-          <td class="bd-num">{{ counts[m.organization_id] }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% else %}
-  <p class="settings-lead">You are not a member of any organization. Your tasks belong to your personal space.</p>
-  {% endif %}
-  <p class="field-hint">The organization switcher in Tumble Code decides which space a new task belongs to.</p>
-</section>
+{% if rows or q %}
+<form class="list-filter" method="get" action="/app/organizations" role="search" aria-label="Filter organizations">
+  <label class="diag-field diag-field-q"><span class="field-label">Search</span>
+    <input type="search" name="q" value="{{ q }}" placeholder="Name"></label>
+  <button type="submit" class="btn ghost filter-apply">Apply</button>
+</form>
+{% endif %}
 
-<section class="panel settings-panel" aria-labelledby="orgs-new">
-  <h2 class="chart-title" id="orgs-new">New organization</h2>
-  <form method="post" action="/app/organizations" class="settings-form">
-    <label class="field">
-      <span class="field-label">Name</span>
-      <span class="field-input"><input type="text" name="name" required maxlength="{{ name_max }}"></span>
-    </label>
-    <div class="settings-actions">
-      <button class="btn" type="submit">Create</button>
-      <span class="settings-meta">You become its admin.</span>
-    </div>
-  </form>
-</section>
+{% if rows %}
+<div class="diag-table-wrap">
+  <table class="breakdown diag-table" id="table-organizations">
+    <caption class="sr-only">Organizations you are a member of{% if page_count > 1 %}, page {{ page }} of {{ page_count }}{% endif %}</caption>
+    <thead><tr><th scope="col">Name</th><th scope="col">Your role</th><th scope="col" class="diag-num">Members</th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td class="diag-cell"><a href="/app/organizations/{{ r.organization.id }}">{{ r.organization.name }}</a></td>
+        <td class="diag-cell">{{ role_labels[r.role] }}</td>
+        <td class="bd-num">{{ r.member_count }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if page_count > 1 %}{{ pager.pager(page, page_count, pages, page_url, "Organizations", prev_label="← Previous", next_label="Next →") }}{% endif %}
+{% elif q %}
+<p class="settings-lead">No organization matches this filter. <a href="/app/organizations">Clear the filter</a>.</p>
+{% else %}
+<p class="settings-lead">You are not a member of any organization. Your tasks belong to your personal space.</p>
+{% endif %}
 {% endblock %}

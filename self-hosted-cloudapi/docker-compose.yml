@@ -37,6 +37,9 @@ services:
       # auth_server environment below uses the same fallbacks).
       AUTHENTIK_CLIENT_ID: ${AUTHENTIK_CLIENT_ID:-tumble-code}
       AUTHENTIK_REDIRECT_URI: ${AUTHENTIK_REDIRECT_URI:-http://localhost:8085/auth/clerk/callback}
+      # The organization sync reads Authentik's groups with this key; the
+      # blueprint gives it to a service account (auth_server environment below).
+      AUTHENTIK_API_TOKEN: ${AUTHENTIK_API_TOKEN:?set AUTHENTIK_API_TOKEN in .env (see .env.example)}
       # Passed through only when set; settings.py holds the defaults.
       PORT:
       LOG_LEVEL:
@@ -141,6 +144,8 @@ services:
       AUTHENTIK_CLIENT_ID: ${AUTHENTIK_CLIENT_ID:-tumble-code}
       AUTHENTIK_CLIENT_SECRET: ${AUTHENTIK_CLIENT_SECRET:-}
       AUTHENTIK_REDIRECT_URI: ${AUTHENTIK_REDIRECT_URI:-http://localhost:8085/auth/clerk/callback}
+      # Key of the api's service-account token (blueprint entry 5).
+      AUTHENTIK_API_TOKEN: ${AUTHENTIK_API_TOKEN:?set AUTHENTIK_API_TOKEN in .env (see .env.example)}
       # When set, the blueprint registers <WEB_PUBLIC_URL>/auth/clerk/callback as
       # a second redirect URI, so a browser on another machine can sign in.
       WEB_PUBLIC_URL: ${WEB_PUBLIC_URL:-}

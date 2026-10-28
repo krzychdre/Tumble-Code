@@ -35,6 +35,7 @@ from src.services.auth_service import (
 )
 from src.auth.authentik import exchange_code_for_tokens, get_userinfo
 from src.auth.network_access import client_allowed
+from src.services.organizations import sync_organizations
 from src.web.templating import templates
 from config.auth import can_sign_in_on, front_channel
 from config.settings import settings
@@ -343,6 +344,8 @@ async def auth_callback(
         )
 
     user = await get_or_create_user(db, userinfo)
+    # Commits the user, so a first sign-in gets its memberships right away.
+    await sync_organizations(db)
 
     # Create only the session here. The client token is minted later, at
     # POST /v1/client/sign_ins, so the raw token can be handed back to the
