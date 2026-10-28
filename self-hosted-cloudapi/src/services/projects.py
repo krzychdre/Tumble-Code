@@ -20,14 +20,17 @@ organization's.
 """
 
 import hashlib
+import json
 import posixpath
 from dataclasses import dataclass
 from typing import Optional
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import and_, delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import dialect_insert
+from src.models.event import TelemetryEvent
+from src.models.llm_exchange import LlmExchange
 from src.models.organization import Membership
 from src.models.project import (
     SCOPE_MEMBERS,
@@ -97,6 +100,18 @@ def _default_name(repository_url: str, workspace_path: str) -> str:
     return posixpath.basename(workspace_path.replace("\\", "/").rstrip("/"))
 
 
+def new_project_identity(
+    user_id: str, workspace_path: str, repository_url: str
+) -> tuple[str, str]:
+    """The key and default name of the project an unbound folder becomes."""
+    key = (
+        repository_key(repository_url)
+        if repository_url
+        else folder_key(user_id, workspace_path)
+    )
+    return key, _default_name(repository_url, workspace_path)[:NAME_MAX]
+
+
 async def resolve_project(
     db: AsyncSession,
     user_id: str,
@@ -107,38 +122,123 @@ async def resolve_project(
     """The project of the user's folder in the tenant, created and bound if new."""
     tenant = tenant_of(user_id, org_id)
     bound = await _bound_project_id(db, user_id, tenant, workspace_path)
-    if bound is not None:
-        return await db.get(Project, bound)
+    if bound is None:
+        project_id = await _project_for_folder(
+            db, user_id, org_id, workspace_path, repository_url
+        )
+        bound = await _bind_folder(db, user_id, org_id, workspace_path, project_id)
+    return await db.get(Project, bound)
 
-    key = (
-        repository_key(repository_url)
-        if repository_url
-        else folder_key(user_id, workspace_path)
+
+async def bind_recorded_folder(
+    db: AsyncSession,
+    user_id: str,
+    org_id: Optional[str],
+    workspace_path: str,
+    task_id: str,
+    parent_task_id: Optional[str],
+) -> None:
+    """Bind the folder of a recorded exchange when no window ever reported it.
+
+    An agent's worktree runs tasks without a window of its own. Its project
+    is the git remote the task's telemetry reported; without one, the project
+    of the parent task's folder (a worktree of the parent's repository);
+    without that, a folder project.
+    """
+    tenant = tenant_of(user_id, org_id)
+    if await _bound_project_id(db, user_id, tenant, workspace_path) is not None:
+        return
+    # One round trip: the task's latest event naming its remote, and the
+    # project of the parent task's folder (none without a parent).
+    properties, parent_project = (
+        await db.execute(
+            select(
+                select(TelemetryEvent.properties)
+                .where(
+                    TelemetryEvent.task_id == task_id,
+                    TelemetryEvent.user_id == user_id,
+                    TelemetryEvent.properties.contains('"repositoryUrl"'),
+                )
+                .order_by(TelemetryEvent.created_at.desc())
+                .limit(1)
+                .scalar_subquery(),
+                select(ProjectBinding.project_id)
+                .join(LlmExchange, exchange_binding())
+                .where(
+                    LlmExchange.user_id == user_id,
+                    LlmExchange.task_id == parent_task_id,
+                    ProjectBinding.tenant_id == tenant,
+                )
+                .limit(1)
+                .scalar_subquery(),
+            )
+        )
+    ).one()
+    repository_url = json.loads(properties)["repositoryUrl"] if properties else ""
+    if repository_url or parent_project is None:
+        project_id = await _project_for_folder(
+            db, user_id, org_id, workspace_path, repository_url
+        )
+    else:
+        project_id = parent_project
+    await _bind_folder(db, user_id, org_id, workspace_path, project_id)
+
+
+def exchange_binding():
+    """The one rule that maps a recorded exchange to its project: the binding
+    of its user's folder in its tenant (a join condition)."""
+    return and_(
+        ProjectBinding.user_id == LlmExchange.user_id,
+        ProjectBinding.tenant_id
+        == func.coalesce(LlmExchange.organization_id, LlmExchange.user_id),
+        ProjectBinding.workspace_path == LlmExchange.workspace_path,
     )
-    insert = dialect_insert(db)
+
+
+async def _project_for_folder(
+    db: AsyncSession,
+    user_id: str,
+    org_id: Optional[str],
+    workspace_path: str,
+    repository_url: str,
+) -> str:
+    """The id of the tenant's project an unbound folder becomes, created on first sight."""
+    tenant = tenant_of(user_id, org_id)
+    key, name = new_project_identity(user_id, workspace_path, repository_url)
     await db.execute(
-        insert(Project)
+        dialect_insert(db)(Project)
         .values(
             tenant_id=tenant,
             organization_id=org_id,
             user_id=user_id,
             key=key,
-            name=_default_name(repository_url, workspace_path)[:NAME_MAX],
+            name=name,
         )
         .on_conflict_do_nothing(index_elements=["tenant_id", "key"])
     )
-    project = await db.scalar(
-        select(Project).where(Project.tenant_id == tenant, Project.key == key)
+    return await db.scalar(
+        select(Project.id).where(Project.tenant_id == tenant, Project.key == key)
     )
+
+
+async def _bind_folder(
+    db: AsyncSession,
+    user_id: str,
+    org_id: Optional[str],
+    workspace_path: str,
+    project_id: str,
+) -> str:
+    """Bind the folder and claim its earlier tasks; returns the project it is bound to."""
+    tenant = tenant_of(user_id, org_id)
     # Concurrent reports of one folder (register and context at once) bind it
     # once; whichever binding won is the answer.
     await db.execute(
-        insert(ProjectBinding)
+        dialect_insert(db)(ProjectBinding)
         .values(
             user_id=user_id,
             tenant_id=tenant,
             workspace_path=workspace_path,
-            project_id=project.id,
+            project_id=project_id,
         )
         .on_conflict_do_nothing(
             index_elements=["user_id", "tenant_id", "workspace_path"]
@@ -156,7 +256,7 @@ async def resolve_project(
         .values(project_id=bound)
         .execution_options(synchronize_session=False)
     )
-    return await db.get(Project, bound)
+    return bound
 
 
 async def project_id_for_folder(

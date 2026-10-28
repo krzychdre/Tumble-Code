@@ -17,9 +17,11 @@ from sqlalchemy import Integer, cast, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.llm_exchange import LlmBlob, LlmExchange
+from src.models.project import Project, ProjectBinding
 from src.models.task import Task
 from src.services.exchange_quality import ISSUE_LABELS, is_clean, split_issues
 from src.services.metrics_service import period_start
+from src.services.projects import exchange_binding
 from src.utils.clientzone import UTC
 
 RECENT_TASKS = 20
@@ -108,15 +110,18 @@ async def dataset_overview(
         )
         or 0
     )
-    workspace_rows = (
+    project_rows = (
         await db.execute(
             select(
-                LlmExchange.workspace_path,
+                Project.id,
+                Project.name,
                 func.count(),
                 func.count(func.distinct(LlmExchange.task_id)),
             )
+            .join(ProjectBinding, exchange_binding())
+            .join(Project, Project.id == ProjectBinding.project_id)
             .where(*scope)
-            .group_by(LlmExchange.workspace_path)
+            .group_by(Project.id, Project.name)
             .order_by(func.count().desc())
         )
     ).all()
@@ -130,10 +135,9 @@ async def dataset_overview(
             {"key": key, "label": ISSUE_LABELS.get(key, key), "count": count}
             for key, count in issues.most_common()
         ],
-        "workspaces": [
-            {"path": path, "exchanges": count, "tasks": tasks}
-            for path, count, tasks in workspace_rows
-            if path
+        "projects": [
+            {"id": project_id, "name": name, "exchanges": count, "tasks": tasks}
+            for project_id, name, count, tasks in project_rows
         ],
         "recent": await recent_tasks(db, user_id, since, client),
     }

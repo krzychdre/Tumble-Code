@@ -135,11 +135,11 @@
       {% endfor %}
     </fieldset>
     {% endif %}
-    {% if o.workspaces %}
+    {% if o.projects %}
     <fieldset class="dataset-fieldset">
       <legend class="field-label">Leave out projects (a client's code stays out)</legend>
-      {% for w in o.workspaces %}
-      <label class="switch-row"><input type="checkbox" name="exclude_workspace" value="{{ w.path }}"><span class="dataset-path">{{ w.path }} <span class="switch-hint">{{ w.tasks|fmt_int }} tasks, {{ w.exchanges|fmt_int }} exchanges</span></span></label>
+      {% for p in o.projects %}
+      <label class="switch-row"><input type="checkbox" name="exclude_project" value="{{ p.id }}"><span class="dataset-path">{{ p.name }} <span class="switch-hint">{{ p.tasks|fmt_int }} tasks, {{ p.exchanges|fmt_int }} exchanges</span></span></label>
       {% endfor %}
     </fieldset>
     {% endif %}

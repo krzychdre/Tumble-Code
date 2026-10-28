@@ -1,19 +1,28 @@
 """Projects: which project a folder is, task stamping, the context API, the page."""
 
+import json
+from datetime import datetime
 from unittest.mock import AsyncMock
 
 import pytest
 from sqlalchemy import select
 
 from src.auth.jwt_issuer import issue_session_token
+from src.models.event import TelemetryEvent
+from src.models.llm_exchange import LlmExchange
 from src.models.organization import Membership, Organization
 from src.models.project import Project, ProjectBinding
 from src.models.task import Task
 from src.realtime import sio as sio_module
 from src.realtime.hub import registry
 from src.realtime.sio import EVT_MESSAGE
+from src.services.dataset_overview import dataset_overview
 from src.services.organizations import ROLE_ADMIN, ROLE_MEMBER
-from src.services.projects import repository_key, resolve_project
+from src.services.projects import (
+    bind_recorded_folder,
+    repository_key,
+    resolve_project,
+)
 from tests.web_helpers import (
     _backfill_files,
     _override_current_user,
@@ -25,6 +34,7 @@ ORG = "org_acme"
 ADMIN = "user_admin"
 MEMBER = "user_member"
 REPO = "https://github.com/QUB-IT/Roo-Code"
+OTHER_REPO = "https://github.com/QUB-IT/elsewhere"
 
 
 @pytest.fixture(autouse=True)
@@ -193,6 +203,112 @@ async def test_context_resolves_the_folder_in_the_tokens_tenant(
     assert project.tenant_id == ORG
 
     assert client.get("/api/recall/context").status_code == 422
+
+
+# --- folders that only recordings report ------------------------------------
+
+
+async def _bind_recorded(session_factory, org_id, path, task_id, parent=None):
+    async with session_factory() as s:
+        await bind_recorded_folder(s, ADMIN, org_id, path, task_id, parent)
+        await s.commit()
+        return await s.scalar(
+            select(Project)
+            .join(ProjectBinding, ProjectBinding.project_id == Project.id)
+            .where(ProjectBinding.workspace_path == path)
+        )
+
+
+def _exchange_row(task_id, path):
+    return LlmExchange(
+        id=f"ex-{task_id}",
+        user_id=ADMIN,
+        organization_id=ORG,
+        task_id=task_id,
+        occurred_at=datetime(2026, 10, 1),
+        workspace_path=path,
+        status="completed",
+        payload="{}",
+    )
+
+
+def _event(user_id, task_id, created_at, **properties):
+    return TelemetryEvent(
+        user_id=user_id,
+        event_type="Task Message",
+        task_id=task_id,
+        properties=json.dumps({"taskId": task_id, **properties}),
+        created_at=created_at,
+    )
+
+
+async def test_a_recorded_folder_takes_the_remote_the_tasks_telemetry_named_last(
+    org, db_session, session_factory
+):
+    path = "/home/a/.roo/worktrees/Roo-Code-1"
+    db_session.add_all(
+        [
+            Task(id="t1", user_id=ADMIN, organization_id=ORG, workspace_path=path),
+            _event(ADMIN, "t1", datetime(2026, 10, 1), repositoryUrl=OTHER_REPO),
+            _event(ADMIN, "t1", datetime(2026, 10, 2), repositoryUrl=REPO),
+            _event(MEMBER, "t1", datetime(2026, 10, 4), repositoryUrl=OTHER_REPO),
+        ]
+    )
+    await db_session.commit()
+
+    project = await _bind_recorded(session_factory, ORG, path, "t1")
+
+    assert (project.key, project.tenant_id) == ("github.com/qub-it/roo-code", ORG)
+    assert await _task_project(session_factory, "t1") == project.id
+
+
+@pytest.mark.parametrize("child_org", [ORG, None], ids=["same-tenant", "other"])
+async def test_a_worktree_without_a_remote_joins_its_parents_project_in_its_tenant(
+    org, db_session, session_factory, child_org
+):
+    parent_path = "/home/a/Roo-Code"
+    parent_project = await _resolve(session_factory, ADMIN, ORG, parent_path, REPO)
+    # The same folder in the personal space is another project.
+    await _resolve(session_factory, ADMIN, None, parent_path, OTHER_REPO)
+    db_session.add(_exchange_row("parent", parent_path))
+    await db_session.commit()
+
+    project = await _bind_recorded(
+        session_factory, child_org, "/home/a/.roo/worktrees/x-1", "child", "parent"
+    )
+
+    if child_org == ORG:
+        assert project.id == parent_project
+    else:
+        assert project.key.startswith("folder:")
+
+
+async def test_the_dataset_overview_counts_an_exchange_in_its_users_project(
+    org, db_session, session_factory
+):
+    """Colleagues can have the same path: the exchange is the project of its
+    own user's folder, in its own tenant."""
+    path = "/srv/checkout"
+    mine = await _resolve(session_factory, ADMIN, ORG, path, REPO)
+    await _resolve(session_factory, MEMBER, ORG, path, OTHER_REPO)
+    await _resolve(session_factory, ADMIN, None, path, OTHER_REPO)
+    db_session.add(_exchange_row("t1", path))
+    await db_session.commit()
+
+    async with session_factory() as s:
+        overview = await dataset_overview(s, ADMIN, "all")
+
+    assert [(p["id"], p["exchanges"]) for p in overview["projects"]] == [(mine, 1)]
+
+
+async def test_a_folder_bound_already_stays_as_it_is(org, db_session, session_factory):
+    first = await _resolve(session_factory, ADMIN, ORG, "/home/a/x")
+    db_session.add(_event(ADMIN, "t1", datetime(2026, 10, 1), repositoryUrl=REPO))
+    await db_session.commit()
+
+    assert (await _bind_recorded(session_factory, ORG, "/home/a/x", "t1")).id == first
+    async with session_factory() as s:
+        assert (await s.execute(select(Project.id))).scalars().all() == [first]
 
 
 # --- the page -----------------------------------------------------------------

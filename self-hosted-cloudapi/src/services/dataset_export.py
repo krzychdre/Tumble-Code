@@ -26,16 +26,18 @@ from typing import Any, AsyncIterator, Optional
 from zoneinfo import ZoneInfo
 
 import anyio
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.llm_exchange import DatasetSettings, LlmExchange
+from src.models.project import ProjectBinding
 from src.models.user import User
 from src.services.anonymizer import Anonymizer
 from src.services.exchange_quality import is_clean
 from src.services.exchange_reconstruction import Exchange, js_json, load_task
 from src.services.client_kind import parse_client
 from src.services.metrics_service import PERIODS, period_start
+from src.services.projects import exchange_binding
 from src.utils.clientzone import UTC, as_utc
 from src.services.openai_messages import convert_message, response_message
 
@@ -46,8 +48,8 @@ FORMATS = ("turns", "trajectories")
 class ExportOptions:
     period: str = "all"
     models: list[str] = field(default_factory=list)
-    # Workspaces whose exchanges never go into the dataset (a client's code).
-    exclude_workspaces: list[str] = field(default_factory=list)
+    # Projects whose tasks never go into the dataset (a client's code).
+    exclude_projects: list[str] = field(default_factory=list)
     # "vscode" or "cli" (services/client_kind): only the tasks that client
     # recorded; "" for both. A task is recorded by one client only, so this
     # picks tasks (task_ids), not single exchanges.
@@ -77,7 +79,7 @@ class ExportOptions:
         return cls(
             period=params.get("period") if params.get("period") in PERIODS else "all",
             models=[m for m in params.getlist("model") if m],
-            exclude_workspaces=[w for w in params.getlist("exclude_workspace") if w],
+            exclude_projects=[p for p in params.getlist("exclude_project") if p],
             client=parse_client(params.get("client")) or "",
             format=params.get("format") if params.get("format") in FORMATS else "turns",
             strict=flag("strict", False),
@@ -114,11 +116,17 @@ async def task_ids(db: AsyncSession, user_id: str, options: ExportOptions) -> li
         query = query.where(LlmExchange.model_id.in_(options.models))
     if options.client:
         query = query.where(LlmExchange.client_kind == options.client)
-    if options.exclude_workspaces:
+    if options.exclude_projects:
+        # The whole task: an exchange left out could still reach a sample as
+        # an earlier turn of the conversation.
         query = query.where(
-            or_(
-                LlmExchange.workspace_path.is_(None),
-                LlmExchange.workspace_path.notin_(options.exclude_workspaces),
+            LlmExchange.task_id.notin_(
+                select(LlmExchange.task_id)
+                .join(ProjectBinding, exchange_binding())
+                .where(
+                    LlmExchange.user_id == user_id,
+                    ProjectBinding.project_id.in_(options.exclude_projects),
+                )
             )
         )
     query = query.group_by(LlmExchange.task_id).order_by(
@@ -151,7 +159,7 @@ class _TaskRenderer:
         return self.anonymizer.arguments(raw) if self.anonymizer else raw
 
     def selected(self, exchange: Exchange) -> bool:
-        """A target the filters ask for: clean, of a chosen model, in the period and workspaces."""
+        """A target the filters ask for: clean, of a chosen model, in the period."""
         options = self.options
         if (
             exchange.status != "completed"
@@ -162,11 +170,6 @@ class _TaskRenderer:
         if not is_clean(exchange.issues, options.strict):
             return False
         if options.models and exchange.model_id not in options.models:
-            return False
-        if (
-            exchange.workspace_path
-            and exchange.workspace_path in options.exclude_workspaces
-        ):
             return False
         return self.since is None or as_utc(exchange.occurred_at) >= self.since
 

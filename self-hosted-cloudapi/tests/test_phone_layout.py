@@ -319,12 +319,17 @@ async def _seed_a_phone_sized_problem(session_factory):
 
 
 async def _seed_a_phone_sized_recording(session_factory):
-    """A recorded exchange whose model, workspace and task id are as long as they get."""
+    """A recorded exchange whose model, project name and task id are as long as they get."""
     from datetime import datetime, timezone
 
     from src.models.llm_exchange import LlmExchange
 
+    workspace = "/home/someone/Projekty/a-client-with-a-very-long-name/monorepo-with-many-packages/apps/web"
     async with session_factory() as s:
+        project = await resolve_project(s, "user_test", None, workspace, "")
+        project.name = (
+            "a-client-with-a-very-long-name_monorepo-with-many-packages_apps-web"
+        )
         s.add(
             LlmExchange(
                 id="phone-exchange",
@@ -336,7 +341,7 @@ async def _seed_a_phone_sized_recording(session_factory):
                 model_id="hf.co/unsloth/GLM-5.3-Flash-NVFP4-A8-with-an-even-longer-local-quantization-suffix:latest",
                 provider="openai",
                 issues="missing_parameter,tool_call_in_text",
-                workspace_path="/home/someone/Projekty/a-client-with-a-very-long-name/monorepo-with-many-packages/apps/web",
+                workspace_path=workspace,
                 payload="{}",
             )
         )
