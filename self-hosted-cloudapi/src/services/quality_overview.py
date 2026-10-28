@@ -41,6 +41,7 @@ async def quality_overview(
     period: str,
     client: str | None = None,
     zone: ZoneInfo = UTC,
+    narrow=None,
 ) -> dict:
     """How the user's runs went over the period, in aggregate.
 
@@ -51,7 +52,9 @@ async def quality_overview(
 
     The period bound is on ``updated_at`` (when the task was last written),
     which is the only time the task row itself carries. ``client`` ("vscode"
-    or "cli") keeps the runs of that client only, as on the rest of the page.
+    or "cli") keeps the runs of that client only, as on the rest of the page,
+    and ``narrow`` (a condition on ``tasks``) the runs of the group the page is
+    narrowed to.
     """
     filters = [Task.user_id == user_id, Task.parent_task_id.is_(None)]
     start = period_start(period, zone=zone)
@@ -59,6 +62,8 @@ async def quality_overview(
         filters.append(Task.updated_at >= start)
     if client is not None:
         filters.append(Task.client_kind == client)
+    if narrow is not None:
+        filters.append(narrow)
 
     # Only what quality_of() and the "roughest" list read, not the whole row
     # (prompt excerpt, workspace path, token totals, models...).

@@ -85,6 +85,7 @@
 					"cost": 0.75
 				}
 			],
+			"groups": [],
 			"has_data": true
 		},
 		"7d": {
@@ -281,6 +282,7 @@
 					"cost": 0.75
 				}
 			],
+			"groups": [],
 			"has_data": true
 		},
 		"30d": {
@@ -516,6 +518,7 @@
 					"cost": 0.75
 				}
 			],
+			"groups": [],
 			"has_data": true
 		},
 		"90d": {
@@ -751,6 +754,7 @@
 					"cost": 0.75
 				}
 			],
+			"groups": [],
 			"has_data": true
 		},
 		"all": {
@@ -1003,6 +1007,7 @@
 					"cost": 0.75
 				}
 			],
+			"groups": [],
 			"has_data": true
 		}
 	},

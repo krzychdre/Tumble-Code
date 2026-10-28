@@ -381,7 +381,7 @@ def _selected_columns(statement: str, table: str) -> set[str]:
 async def test_metrics_read_only_the_columns_they_use(seeded, captured_sql):
     """No full TelemetryEvent entity: the id, user, organization, type and
     task columns are dead weight for the aggregation. client_kind feeds the
-    "By client" breakdown."""
+    "By client" breakdown, the project's id and name the "By project" one."""
     await compute_user_metrics(seeded, USER, period="all", now=NOW)
 
     reads = [s for s in captured_sql if "FROM telemetry_events" in s]
@@ -391,6 +391,8 @@ async def test_metrics_read_only_the_columns_they_use(seeded, captured_sql):
         "properties",
         "created_at",
         "client_kind",
+        "projects.id",
+        "projects.name",
     }
     assert _selected_columns(embeddings, "telemetry_events") == {"properties"}
 

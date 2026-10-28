@@ -424,17 +424,22 @@ async def test_metrics_page_client_filter_keeps_itself_on_every_link(
     # The filter picks the CLI's figures and marks its option.
     assert "cli-model" in body and "code-model" not in body
     assert (
-        'period-opt active" href="/app/metrics?period=30d&amp;client=cli">CLI<' in body
+        'period-opt active" href="/app/metrics?period=30d&amp;client=cli'
+        '&amp;group=project">CLI<' in body
     )
     # The period links carry the client; the client links carry the period.
-    assert 'href="/app/metrics?period=7d&amp;client=cli"' in body
-    assert 'href="/app/metrics?period=30d&amp;client=vscode">VS Code<' in body
-    assert 'href="/app/metrics?period=30d">All clients<' in body
+    assert 'href="/app/metrics?period=7d&amp;client=cli&amp;group=project"' in body
+    assert (
+        'href="/app/metrics?period=30d&amp;client=vscode&amp;group=project">VS Code<'
+        in body
+    )
+    assert 'href="/app/metrics?period=30d&amp;group=project">All clients<' in body
     # The breakdown names the clients the way the filter does.
     assert "By client" in everything
     assert ">VS Code</td>" in everything and ">CLI</td>" in everything
     # No filter: both, with "All clients" active; an unknown value is no filter.
     assert (
-        'period-opt active" href="/app/metrics?period=30d">All clients<' in everything
+        'period-opt active" href="/app/metrics?period=30d&amp;group=project">'
+        "All clients<" in everything
     )
     assert "cli-model" in bogus and "code-model" in bogus

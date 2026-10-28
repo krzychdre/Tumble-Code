@@ -172,8 +172,9 @@ async def test_metrics_page_remembers_the_picked_period(client, db_session):
     from src.main import app
 
     def active(body):
-        return body.split('period-opt active" href="/app/metrics?period=')[1].split(
-            '"'
+        periods = body.split('aria-label="Time period"')[1]
+        return periods.split('period-opt active" href="/app/metrics?period=')[1].split(
+            "&"
         )[0]
 
     _override_web_user(app)

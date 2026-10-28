@@ -1,0 +1,127 @@
+"""The metrics page's view state: period, client, grouping, and the URLs that carry them.
+
+Like the task list (web/presenters/task_list.py), the page can be summed per
+project (the default) or per model (``group``), and narrowed to one group
+(``only``): then every figure on the page is that group's. Every link of the
+page is built by ``MetricsView.url``, so none of them drops a choice the reader
+made.
+
+There is no grouping by user: the page shows the reader's own usage only.
+"""
+
+from dataclasses import dataclass, replace
+from typing import Callable, Optional
+from urllib.parse import quote, urlencode
+
+from src.models.task import Task
+from src.web.presenters.task_list import GROUPINGS as TASK_GROUPINGS
+from src.web.presenters.task_list import NO_GROUP, NO_KEY
+
+# How many groups the table shows before "Show all".
+GROUP_ROWS = 8
+
+
+@dataclass(frozen=True)
+class Grouping:
+    """One way to group the page: an event's group, and the runs of a group."""
+
+    label: str
+    # What the group of events without a key is called.
+    empty: str
+    # (key, name) of an event from its payload and its task's project id and
+    # name; key None when it has none.
+    of_event: Callable[
+        [dict, Optional[str], Optional[str]], tuple[Optional[str], Optional[str]]
+    ]
+    # The tasks column a missing key is NULL in, and SQL that keeps the tasks
+    # of one key: what narrows the session-quality panel.
+    column: object
+    match: Callable[[str], object]
+
+    def event_key(
+        self, props: dict, project_id: Optional[str], project_name: Optional[str]
+    ) -> tuple[str, str]:
+        key, name = self.of_event(props, project_id, project_name)
+        return (NO_KEY, self.empty) if key is None else (key, name)
+
+
+def _event_model(props, project_id, project_name):
+    model = str(props.get("modelId") or "") or None
+    return model, model
+
+
+GROUPINGS = {
+    # The project of the event's task (models/project), by id: two projects
+    # may share a name.
+    "project": Grouping(
+        "Project",
+        "No project",
+        lambda props, project_id, project_name: (project_id, project_name),
+        Task.project_id,
+        lambda key: Task.project_id == key,
+    ),
+    # The event's own model. A run's quality counts under its main model.
+    "model": Grouping(
+        "Model",
+        "No model",
+        _event_model,
+        TASK_GROUPINGS["model"].column,
+        TASK_GROUPINGS["model"].match,
+    ),
+}
+DEFAULT_GROUP = "project"
+# The "Group" selector.
+GROUP_OPTIONS = [(key, g.label) for key, g in GROUPINGS.items()] + [(NO_GROUP, "None")]
+
+
+@dataclass(frozen=True)
+class MetricsView:
+    period: str
+    # "vscode" or "cli" (services/client_kind), None for both.
+    client: Optional[str]
+    # A key of GROUPINGS, or NO_GROUP.
+    group: str
+    # The key of the one group the page is narrowed to, or NO_KEY; "" when
+    # the page is not narrowed.
+    only: str
+
+    @property
+    def grouping(self) -> Optional[Grouping]:
+        return GROUPINGS.get(self.group)
+
+    @property
+    def grouped(self) -> bool:
+        """Whether the page shows the table of groups."""
+        return self.grouping is not None and not self.only
+
+    def url(self, **changes) -> str:
+        """This view's URL with ``changes`` applied. The period and the group
+        are always spelled out: a URL without them opens on the remembered
+        ones."""
+        view = replace(self, **changes)
+        params = [("period", view.period)]
+        if view.client:
+            params.append(("client", view.client))
+        params.append(("group", view.group))
+        if view.only:
+            params.append(("only", view.only))
+        return "/app/metrics?" + urlencode(params, quote_via=quote)
+
+    def group_url(self, group: str) -> str:
+        """The same view grouped another way; a narrowed group does not carry over."""
+        return self.url(group=group, only="")
+
+    def tasks_condition(self):
+        """What keeps the runs of the narrowed group, or None."""
+        if not self.only:
+            return None
+        if self.only == NO_KEY:
+            return self.grouping.column.is_(None)
+        return self.grouping.match(self.only)
+
+    def only_label(self, groups: list[dict]) -> str:
+        """What the chip of the narrowed group says. A group with no usage in
+        the period is named by its key."""
+        if groups:
+            return groups[0]["name"]
+        return self.grouping.empty if self.only == NO_KEY else self.only
