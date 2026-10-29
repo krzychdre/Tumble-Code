@@ -27,7 +27,9 @@ interface Token {
 // 30 000 times on one line, or `[a](` repeated, made each opener rescan the
 // rest of the line and held the terminal for seconds per render. A link target
 // may hold one level of balanced parentheses (Wikipedia's `Foo_(bar)`).
-const INLINE_MATH = String.raw`\$\$[^$]+\$\$|\\\((?:(?!\\\().)+?\\\)|\\\[(?:(?!\\\[).)+?\\\]|\$(?=[^\s$])(?:\\.|[^$\\])+?(?<=\S)\$(?!\d)`
+// For the same reason a `$` escaped by an odd run of backslashes opens no
+// math: every `\$` of `a\$` repeated rescanned the rest of the line.
+const INLINE_MATH = String.raw`\$\$[^$]+\$\$|\\\((?:(?!\\\().)+?\\\)|\\\[(?:(?!\\\[).)+?\\\]|(?<!(?<!\\)(?:\\\\)*\\)\$(?=[^\s$])(?:\\.|[^$\\])+?(?<=\S)\$(?!\d)`
 const LINK = String.raw`\[[^\][]*\]\([^()\s]*(?:\([^()\s]*\)[^()\s]*)*\)`
 const INLINE_MARKER_RE = new RegExp(
 	String.raw`(\x60[^\x60]+\x60|${INLINE_MATH}|\*\*[^*]+\*\*|\*[^*]+\*|(?<![\w])_[^_]+_(?![\w])|~~[^~]+~~|${LINK})`,
