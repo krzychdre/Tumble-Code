@@ -562,9 +562,9 @@ function describeMode(mode: HistoryQueryMode): string {
 			return "The query was used as a regular expression."
 		case "unsafe":
 			return (
-				"The query looks like a regular expression that can take exponential time (a repeated group inside " +
-				"another repeat, such as (a+)+), so it was searched for as plain text instead. Rewrite it without the " +
-				"nested repeat if you meant it as a pattern."
+				"The query looks like a regular expression that can take exponential time (a repeat or a choice inside " +
+				"a repeated group, such as (a+)+ or (a|b)+), so it was searched for as plain text instead. Rewrite it " +
+				"without that if you meant it as a pattern."
 			)
 		default:
 			return "The query was used as literal text, because it is not a valid regular expression."

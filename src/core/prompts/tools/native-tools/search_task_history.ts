@@ -17,7 +17,7 @@ Rules:
 - Prefer this over asking the user again. If it was said in this task, search for it first; only ask the user when the search finds nothing.
 - The query is used as a regular expression when it is a valid one, and as plain text when it is not. Either way the search ignores upper/lower case. You never have to escape anything: if your pattern does not compile, it is searched for literally instead of failing.
 - You may write the pattern as /pattern/ or /pattern/i, with the slashes; they are removed for you. The extra flags m, s and u are accepted.
-- Avoid a repeat inside another repeat, such as (a+)+ or (.*)*. Such a pattern is searched for as plain text instead, because it can take minutes to run. Very long lines are matched on their first 2000 characters only.
+- Avoid a repeat or a choice inside a repeated group, such as (a+)+, (.*)* or (a|b)+. Such a pattern is searched for as plain text instead, because it can take minutes to run. Very long lines are matched on their first 2000 characters only.
 - This searches the conversation only. To search the project's files use search_files, and to read one saved output use read_artifact.
 - Your own earlier searches are never found again, so repeating a search does not pile up its own results.
 
