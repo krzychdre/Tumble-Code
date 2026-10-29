@@ -142,25 +142,32 @@ describe("Markdown", () => {
 			["*weight $\\alpha_i$* and ~~$\\beta$~~", "weight αᵢ and β"],
 			["[the $\\pi$ page](https://x.y)", "the π page (https://x.y)"],
 			["**costs $5 and $10**", "costs $5 and $10"],
+			// An escaped backslash does not escape the dollar after it.
+			["path \\\\$x^2$ here", "path \\\\x² here"],
 		])("renders %j as %j", (markdown, text) => {
 			const { lastFrame } = render(<Markdown>{markdown}</Markdown>)
 
 			expect(lastFrame()).toContain(text)
 		})
 
-		it.each(["It costs $5 and $10 today.", "between $ 5 and $ 10", "See \\[1\\] here", "Prices: 5$ and 10$."])(
-			"leaves %j as written",
-			(markdown) => {
-				const { lastFrame } = render(<Markdown>{markdown}</Markdown>)
+		it.each([
+			"It costs $5 and $10 today.",
+			"between $ 5 and $ 10",
+			"See \\[1\\] here",
+			"Prices: 5$ and 10$.",
+			// An escaped dollar opens no math.
+			"echo \\$HOME$PATH",
+		])("leaves %j as written", (markdown) => {
+			const { lastFrame } = render(<Markdown>{markdown}</Markdown>)
 
-				expect(lastFrame()).toContain(markdown)
-			},
-		)
+			expect(lastFrame()).toContain(markdown)
+		})
 	})
 
 	it.each([
 		["unclosed \\[", "\\[".repeat(80000)],
 		["unclosed \\(", "\\(".repeat(80000)],
+		["escaped dollars", "a\\$".repeat(30000)],
 		["unclosed link brackets", "[".repeat(160000)],
 		["unclosed link targets", "[a](".repeat(40000)],
 	])("renders a line of %s at once", (_label, line) => {
