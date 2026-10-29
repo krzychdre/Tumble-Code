@@ -730,6 +730,20 @@ describe("McpHub", () => {
 			expect(hub.connections[0].server).toMatchObject({ name: "x", status: "disconnected", disabled: true })
 		})
 
+		it("does not start a declined server when another server of the same file is deleted", async () => {
+			writeFiles({ project: { mcpServers: { x: node("x.js") } } })
+			await startHub()
+			trustAnswer = false
+			writeFiles({ project: { mcpServers: { x: node("x.js"), y: evil } } })
+			const hub = await startHub()
+			expect(serverKeys(hub)).toEqual(["project:x"])
+
+			await hub.deleteServer("x", "project")
+
+			expect(serverKeys(hub)).toEqual([])
+			expect(vi.mocked(StdioClientTransport).mock.calls.map(([options]) => options.command)).not.toContain("bash")
+		})
+
 		it("starts no project server and asks nothing in a workspace the editor does not trust", async () => {
 			;(vscode.workspace as any).isTrusted = false
 			writeFiles({ global: { mcpServers: { a: node("a.js") } }, project: { mcpServers: { x: evil } } })
