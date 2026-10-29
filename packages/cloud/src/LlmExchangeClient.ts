@@ -9,6 +9,7 @@ import {
 	llmExchangeOutcomeSchema,
 	llmExchangeSchema,
 } from "@tumble-code/types"
+import { redactSecrets } from "@tumble-code/core/redact"
 
 import { getTumbleCodeApiUrl } from "./config.js"
 
@@ -52,6 +53,7 @@ export class LlmExchangeClient {
 
 	constructor(
 		private readonly authService: AuthService,
+		private readonly secretValues: () => readonly string[],
 		private readonly log: (...args: unknown[]) => void = () => {},
 		options: ClientOptions = {},
 	) {
@@ -145,7 +147,7 @@ export class LlmExchangeClient {
 	}
 
 	private async post(path: string, payload: unknown): Promise<boolean> {
-		const body = await gzip(Buffer.from(JSON.stringify(payload), "utf8"))
+		const body = await gzip(Buffer.from(JSON.stringify(redactSecrets(payload, this.secretValues())), "utf8"))
 		if (body.byteLength > LLM_EXCHANGE_MAX_COMPRESSED_BYTES) {
 			this.log(`[LlmExchangeClient] ${path}: ${body.byteLength} bytes compressed, above the server's limit`)
 			return false

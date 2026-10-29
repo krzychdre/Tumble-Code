@@ -7,6 +7,7 @@ import {
 	ERROR_REPORT_MAX_SUMMARY_CHARS,
 	ERROR_REPORT_MAX_TEXT_CHARS,
 } from "@tumble-code/types"
+import { redactSecrets } from "@tumble-code/core/redact"
 
 import { getApiErrorStatus } from "../../api/apiErrors"
 import { checkContextWindowExceededError } from "../context/context-management/context-error-handling"
@@ -136,40 +137,6 @@ export function apiErrorBody(error: unknown): string | undefined {
 	return body ? truncateText(body, ERROR_REPORT_MAX_TEXT_CHARS) : undefined
 }
 
-/**
- * Removes the obvious secrets from a text: bearer tokens, `api_key: ...`-style pairs,
- * key/token query parameters in URLs and the common provider key shapes. Conversation
- * content goes through it too, so a key the user pasted into a chat is not sent either.
- */
-export function scrubSecrets(text: string): string {
-	return text
-		.replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/g, "Bearer [redacted]")
-		.replace(
-			/(["']?(?:authorization|x-api-key|api[-_]?key|access[-_]?token|secret[-_]?key|client[-_]?secret|password)["']?\s*[:=]\s*["']?)([^\s"',}&]{4,})/gi,
-			"$1[redacted]",
-		)
-		.replace(/([?&](?:key|api[-_]?key|token|access_token|auth|sig|signature)=)[^&\s"'#]+/gi, "$1[redacted]")
-		.replace(/\bsk-(?:ant-|proj-|or-)?[A-Za-z0-9_-]{16,}/g, "[redacted-key]")
-		.replace(/\bAIza[0-9A-Za-z_-]{30,}/g, "[redacted-key]")
-		.replace(/\b(?:ghp|gho|ghu|ghs|github_pat)_[A-Za-z0-9_]{20,}/g, "[redacted-key]")
-		.replace(/\bxox[abposr]-[A-Za-z0-9-]{10,}/g, "[redacted-key]")
-		.replace(/\bAKIA[0-9A-Z]{16}\b/g, "[redacted-key]")
-}
-
-/** Every string in a JSON-like value passed through `scrubSecrets`. */
-function scrubDeep<T>(value: T): T {
-	if (typeof value === "string") {
-		return scrubSecrets(value) as T
-	}
-	if (Array.isArray(value)) {
-		return value.map((item) => scrubDeep(item)) as T
-	}
-	if (value && typeof value === "object") {
-		return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, scrubDeep(item)])) as T
-	}
-	return value
-}
-
 /** A conversation message as the API saw it: a role and a string or block content. */
 export interface SentMessage {
 	role: string
@@ -265,13 +232,15 @@ export function capErrorReport(report: ErrorReport, maxBytes: number = ERROR_REP
 }
 
 /**
- * The last step before sending: field limits of the wire contract, secrets scrubbed from
- * every string, then the size cap.
+ * The last step before sending: secrets redacted from every string (`secretValues` are the
+ * stored ones, `CloudService.secretValues`), field limits of the wire contract, then the
+ * size cap.
  */
-export function finalizeErrorReport(report: ErrorReport): ErrorReport {
-	// Scrub first: a replacement can be longer than the secret it replaces, and the limits
-	// below must hold for what is actually sent.
-	const scrubbed = scrubDeep(report)
+export function finalizeErrorReport(report: ErrorReport, secretValues: readonly string[]): ErrorReport {
+	// Redact first: a replacement can be longer than the secret it replaces, and the limits
+	// below must hold for what is actually sent (the send path redacts again, which then
+	// changes nothing).
+	const scrubbed = redactSecrets(report, secretValues)
 	const limited: ErrorReport = withoutUndefined({
 		...scrubbed,
 		summary: summaryLine(scrubbed.summary),

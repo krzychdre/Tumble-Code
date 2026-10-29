@@ -10,7 +10,8 @@
 		"./cli": "./src/cli.ts",
 		"./browser": "./src/browser.ts",
 		"./fs": "./src/fs/index.ts",
-		"./path": "./src/path/index.ts"
+		"./path": "./src/path/index.ts",
+		"./redact": "./src/redact.ts"
 	},
 	"scripts": {
 		"lint": "eslint src --ext=ts --max-warnings=0",

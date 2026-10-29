@@ -13,13 +13,19 @@ const cloud = vi.hoisted(() => {
 	const state = { authenticated: true }
 	const instance = {
 		cloudAPI: { bridgeConfig: vi.fn() },
+		secretValues: () => ["stored-key-value"],
 		isAuthenticated: () => state.authenticated,
 		on: (event: string, cb: () => void) => listeners.set(event, [...(listeners.get(event) ?? []), cb]),
 		off: vi.fn(),
 	}
 	const starts: Array<() => Promise<void>> = []
 	const stops = { count: 0 }
-	type Options = { onStatusChange?: (status: string) => void; workspacePath?: string; repositoryUrl?: string }
+	type Options = {
+		onStatusChange?: (status: string) => void
+		workspacePath?: string
+		repositoryUrl?: string
+		secretValues?: () => readonly string[]
+	}
 	const created: Array<Options> = []
 	class BridgeOrchestrator {
 		constructor(options: Options) {
@@ -184,6 +190,13 @@ describe("setupRemoteControlBridge status", () => {
 		options.onStatusChange?.("connected")
 		expect(getRemoteControlStatus()).toBe("connected")
 		expect(postState).toHaveBeenCalled()
+	})
+
+	it("gives the orchestrator the cloud's stored secret values to redact", async () => {
+		setup()
+		await vi.advanceTimersByTimeAsync(0)
+
+		expect(cloud.created[0]!.secretValues).toBe(cloud.instance.secretValues)
 	})
 
 	it("is offline while a failed start waits for its retry", async () => {

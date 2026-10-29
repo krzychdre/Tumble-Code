@@ -31,7 +31,7 @@ describe("CloudTelemetryClient", () => {
 	let provider: TelemetryPropertiesProvider
 
 	const makeClient = (providerOverride: Partial<TelemetryPropertiesProvider> | null = {}) => {
-		const client = new TelemetryClient(authService, settingsService)
+		const client = new TelemetryClient(authService, settingsService, () => [])
 		if (providerOverride) {
 			provider = {
 				getTelemetryProperties: vi.fn().mockResolvedValue(PROVIDER_PROPERTIES),

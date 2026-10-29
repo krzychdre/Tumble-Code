@@ -397,6 +397,7 @@ function dispatch(task: ErrorReportTask, state: CaptureState, fields: ReportFiel
 					}),
 				}).filter(([, item]) => item !== undefined),
 			) as ErrorReport,
+			CloudService.instance.secretValues(),
 		)
 		if (!isErrorReportingActive()) {
 			// Signed out between the failure and now: send nothing.

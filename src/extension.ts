@@ -17,6 +17,7 @@ import { initializeNetworkProxy } from "./utils/networkProxy"
 import { Package } from "./shared/package"
 import { syncCloudUrls, registerCloudUrlsSubscription } from "./activate/cloud-urls"
 import { ContextProxy } from "./core/config/ContextProxy"
+import { CloudSecretValues } from "./core/config/CloudSecretValues"
 import { initMemoryPaths } from "./core/memory/paths"
 import { ClineProvider } from "./core/webview/ClineProvider"
 import { panelRegistry } from "./core/webview/panelRegistry"
@@ -280,6 +281,10 @@ export async function activate(context: vscode.ExtensionContext) {
 	// the old value.
 	const postStateListener = () => panelRegistry.postStateToAllWebviewsWithoutClineMessages()
 
+	// Every payload for the cloud is redacted with these values (provider keys of all profiles).
+	const cloudSecretValues = new CloudSecretValues(contextProxy, provider.providerSettingsManager)
+	context.subscriptions.push(context.secrets.onDidChange(() => void cloudSecretValues.refresh()))
+
 	authStateChangedHandler = async () => {
 		postStateListener()
 	}
@@ -301,7 +306,8 @@ export async function activate(context: vscode.ExtensionContext) {
 	const cloudStart = startCloudInBackground(
 		async () => {
 			try {
-				cloudService = await CloudService.createInstance(context, cloudLogger, {
+				await cloudSecretValues.refresh()
+				cloudService = await CloudService.createInstance(context, cloudSecretValues.get, cloudLogger, {
 					"auth-state-changed": authStateChangedHandler,
 					"settings-updated": settingsUpdatedHandler,
 					"user-info": userInfoHandler,

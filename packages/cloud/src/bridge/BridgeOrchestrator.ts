@@ -12,6 +12,7 @@ import {
 } from "@tumble-code/types"
 
 import { backoffDelayMs } from "@tumble-code/core/backoff"
+import { redactSecrets } from "@tumble-code/core/redact"
 import { dispatchBridgeCommand } from "./commandHandlers.js"
 import type { BridgeConfig, BridgeProvider, InstanceStatePayload } from "./types.js"
 
@@ -49,6 +50,8 @@ export interface BridgeOrchestratorOptions {
 	repositoryUrl?: string
 	/** Build the live header/control snapshot for the active task. */
 	snapshot: (taskId: string) => Promise<InstanceStatePayload | null>
+	/** The stored secret values (`CloudService.secretValues`), redacted from every task event. */
+	secretValues: () => readonly string[]
 	log?: Logger
 	/** Injectable for tests; defaults to the real socket.io-client. */
 	ioFactory?: typeof io
@@ -311,7 +314,7 @@ export class BridgeOrchestrator {
 	private subscribeToBus() {
 		const onMessage: BusListener = (...args) => {
 			const payload = args[0] as { taskId: string; action?: string; message: unknown }
-			this.socket?.emit(TaskSocketEvents.EVENT, {
+			this.emitTaskEvent({
 				type: TaskBridgeEventName.Message,
 				taskId: payload.taskId,
 				action: payload.action ?? "",
@@ -354,7 +357,7 @@ export class BridgeOrchestrator {
 		try {
 			const state = await this.options.snapshot(taskId)
 			if (!state) return
-			this.socket.emit(TaskSocketEvents.EVENT, {
+			this.emitTaskEvent({
 				type: TaskBridgeEventName.InstanceState,
 				taskId,
 				...state,
@@ -362,6 +365,10 @@ export class BridgeOrchestrator {
 		} catch (error) {
 			this.log("snapshot failed", error)
 		}
+	}
+
+	private emitTaskEvent(event: Record<string, unknown>) {
+		this.socket?.emit(TaskSocketEvents.EVENT, redactSecrets(event, this.options.secretValues()))
 	}
 
 	// --- server → extension -------------------------------------------------

@@ -188,7 +188,7 @@ const mockInstance = vi.hoisted(() => ({
 	postStateToWebviewWithoutClineMessages: vi.fn(),
 	getState: vi.fn().mockResolvedValue({}),
 	initializeCloudProfileSyncWhenReady: vi.fn().mockResolvedValue(undefined),
-	providerSettingsManager: {},
+	providerSettingsManager: { listProfileSettings: vi.fn().mockResolvedValue([]) },
 	contextProxy: { getGlobalState: vi.fn() },
 	customModesManager: {},
 	upsertProviderProfile: vi.fn().mockResolvedValue(undefined),
@@ -245,6 +245,7 @@ describe("extension.ts", () => {
 			},
 			globalStorageUri: { fsPath: "/test/storage" },
 			storageUri: { fsPath: "/test/storage" },
+			secrets: { onDidChange: vi.fn().mockReturnValue({ dispose: vi.fn() }) },
 			subscriptions: [],
 		} as unknown as vscode.ExtensionContext
 
@@ -367,6 +368,28 @@ describe("extension.ts", () => {
 				expect(mockCloudServiceInstance.on).toHaveBeenCalledWith("auth-state-changed", expect.any(Function))
 			})
 		})
+	})
+
+	test("starts the cloud with the stored secret values of every profile, read again when a secret changes", async () => {
+		vi.resetModules()
+		vi.clearAllMocks()
+
+		const cloud = await import("@tumble-code/cloud")
+		const { activate } = await import("../extension")
+		mockInstance.providerSettingsManager.listProfileSettings.mockResolvedValue([
+			{ openAiApiKey: "free-form-key-7f3a9c" },
+		])
+
+		await activate(mockContext)
+		await vi.waitFor(() => expect(cloud.CloudService.createInstance).toHaveBeenCalledTimes(1))
+		const secretValues = vi.mocked(cloud.CloudService.createInstance).mock.calls[0]![1]
+		expect(secretValues()).toEqual(["free-form-key-7f3a9c"])
+
+		mockInstance.providerSettingsManager.listProfileSettings.mockResolvedValue([{ apiKey: "sk-TEST-LEAK-123" }])
+		for (const [listener] of vi.mocked(mockContext.secrets.onDidChange).mock.calls) {
+			listener({ key: "roo_cline_config_api_config" })
+		}
+		await vi.waitFor(() => expect(secretValues()).toEqual(["sk-TEST-LEAK-123"]))
 	})
 
 	// `tumble auth cloud` activates with ROO_CLI_CLOUD_AUTH_ONLY=1: the cloud

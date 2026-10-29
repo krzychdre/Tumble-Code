@@ -97,10 +97,21 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements Di
 		return this._isCloudAgent
 	}
 
-	private constructor(context: ExtensionContext, log?: (...args: unknown[]) => void) {
+	/**
+	 * The stored secret values (provider keys, custom header values, code-index keys of every
+	 * profile), read on each send: every payload for the cloud passes `redactSecrets` with them.
+	 */
+	public readonly secretValues: () => readonly string[]
+
+	private constructor(
+		context: ExtensionContext,
+		secretValues: () => readonly string[],
+		log?: (...args: unknown[]) => void,
+	) {
 		super()
 
 		this.context = context
+		this.secretValues = secretValues
 		this.log = log || console.log
 
 		this.authStateListener = (data: AuthStateChangedPayload) => {
@@ -167,11 +178,16 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements Di
 				},
 			)
 
-			this._telemetryClient = new TelemetryClient(this._authService, this._settingsService, this._retryQueue)
+			this._telemetryClient = new TelemetryClient(
+				this._authService,
+				this._settingsService,
+				this.secretValues,
+				this._retryQueue,
+			)
 
 			this._shareService = new CloudShareService(this._cloudAPI, this._settingsService, this.log)
 
-			this._llmExchangeClient = new LlmExchangeClient(this._authService, this.log)
+			this._llmExchangeClient = new LlmExchangeClient(this._authService, this.secretValues, this.log)
 
 			this.isInitialized = true
 		} catch (error) {
@@ -440,6 +456,7 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements Di
 
 	static async createInstance(
 		context: ExtensionContext,
+		secretValues: () => readonly string[],
 		log?: (...args: unknown[]) => void,
 		eventHandlers?: Partial<{
 			[K in keyof CloudServiceEvents]: (...args: CloudServiceEvents[K]) => void
@@ -449,7 +466,7 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements Di
 			throw new Error("CloudService instance already created")
 		}
 
-		this._instance = new CloudService(context, log)
+		this._instance = new CloudService(context, secretValues, log)
 
 		await this._instance.initialize()
 

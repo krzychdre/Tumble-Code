@@ -420,6 +420,15 @@ export class ProviderSettingsManager {
 		}
 	}
 
+	/** Every stored profile as flat settings with its secrets. */
+	public async listProfileSettings(): Promise<ProviderSettingsWithId[]> {
+		return await this.lock(async () =>
+			Promise.all(
+				Object.values((await this.load()).apiConfigs).map((profile) => this.toProviderSettings(profile)),
+			),
+		)
+	}
+
 	/** The stored profiles as they are (no secrets); unlike `export()`, nothing is filtered out. */
 	public async readProfiles(): Promise<ProviderProfilesData> {
 		try {
