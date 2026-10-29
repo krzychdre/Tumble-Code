@@ -735,7 +735,10 @@ _PATH = re.compile(
     r"(?:(?<![\w.~@+\-\[\]])|(?=[A-Za-z]:))"
     r"(?:[A-Za-z]:)?(?:[\w.~@+\-\[\]]*+[/\\])+[\w.~@+\-]*"
 )
-_FILE = re.compile(r"\b[\w\-]+\.[A-Za-z][A-Za-z0-9]{0,4}\b")
+# A file name: a run of name characters, a dot, an extension. The run is
+# matched whole even when no extension follows (and then left as it is), so
+# a long run without a dot is scanned once, not once from each of its words.
+_FILE = re.compile(r"\b[\w\-]+(\.[A-Za-z][A-Za-z0-9]{0,4}\b)?")
 _DIGITS = re.compile(r"\d+")
 _SPACE = re.compile(r"\s+")
 _TAG_ONLY = re.compile(r"^</?[\w\-]+>$")
@@ -748,6 +751,10 @@ def _blank_quoted(match: re.Match) -> str:
     if len(inner) > 40 or re.search(r"[/\\.\d]", inner):
         return f"{quote}<q>{quote}"
     return match.group(0)
+
+
+def _blank_file(match: re.Match) -> str:
+    return "<path>" if match.group(1) else match.group(0)
 
 
 def headline(text: Optional[str]) -> str:
@@ -783,7 +790,7 @@ def normalize_message(text: Optional[str]) -> str:
     line = _UUID.sub("<id>", line)
     line = _QUOTED.sub(_blank_quoted, line)
     line = _PATH.sub("<path>", line)
-    line = _FILE.sub("<path>", line)
+    line = _FILE.sub(_blank_file, line)
     line = _HEX.sub("<id>", line)
     line = _DIGITS.sub("#", line)
     return _SPACE.sub(" ", line).strip()
