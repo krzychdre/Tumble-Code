@@ -668,7 +668,8 @@ describe("McpHub", () => {
 			])
 			expect(serverKeys(hub)).toEqual(["global:a"])
 			expect(StdioClientTransport).toHaveBeenCalledTimes(1)
-			expect(vi.mocked(StdioClientTransport).mock.calls[0][0]).toMatchObject({ command: "node", args: ["a.js"] })
+			// Windows launches it as `cmd.exe /c node a.js`.
+			expect(vi.mocked(StdioClientTransport).mock.calls[0][0].args).toContain("a.js")
 		})
 
 		it("starts the servers on yes and does not ask again for the same launch settings", async () => {
