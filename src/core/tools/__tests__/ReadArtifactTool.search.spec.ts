@@ -6,6 +6,7 @@ import * as os from "os"
 import * as path from "path"
 
 import { artifactCandidatePaths } from "../../artifacts/ArtifactStore"
+import { HISTORY_SEARCH_DEFAULTS } from "../helpers/searchTaskHistory"
 import { ReadArtifactTool } from "../ReadArtifactTool"
 
 describe("read_artifact search", () => {
@@ -52,6 +53,15 @@ describe("read_artifact search", () => {
 		expect(result).toContain("literal (a+)+$ here")
 		expect(result).not.toContain("a".repeat(100))
 	})
+
+	it("stops a pattern that backtracks past the time budget and says so", async () => {
+		// a*a*a*b is no repeated group, so it compiles; on the 5 000 a's it would run for minutes.
+		const started = Date.now()
+		const result = await search("a*a*a*b") // codeql[js/redos] - deliberate fixture: the scan must be interrupted
+
+		expect(Date.now() - started).toBeLessThan(HISTORY_SEARCH_DEFAULTS.MAX_SEARCH_MILLIS + 1_000)
+		expect(result).toContain("The search was stopped after 2 s")
+	}, 10_000)
 
 	it("still runs an ordinary regular expression", async () => {
 		expect(await search("lit\\w+")).toContain("literal (a+)+$ here")

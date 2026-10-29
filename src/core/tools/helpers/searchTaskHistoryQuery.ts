@@ -1,3 +1,5 @@
+import * as vm from "vm"
+
 import { escapeRegExp } from "@tumble-code/core/browser"
 
 /*
@@ -29,10 +31,8 @@ const ALLOWED_SLASH_FLAGS = "imsu"
  * 2. A pattern whose shape can backtrack exponentially (a repeated group whose
  *    body can match the same text in more than one way, the classic `(a+)+b`
  *    or `(a|a)*b`) is REFUSED
- *    as a regular expression and searched for literally. There is no way to
- *    interrupt a running `RegExp.test`, so the only safe move is not to start
- *    one; the wall-clock budget in {@link searchHistorySources} is the second
- *    line of defence, not the first.
+ *    as a regular expression and searched for literally. Polynomial shapes
+ *    (`a*a*a*b`) pass this check; {@link matchingLineIndexes} bounds those.
  * 3. Anything that does not compile is escaped and searched for literally, so a
  *    stray bracket costs no turn.
  *
@@ -51,6 +51,43 @@ export function compileHistoryQuery(query: string): { regex: RegExp; usedRegex: 
 		return { regex: new RegExp(source, flags), usedRegex: true, mode: "regex" }
 	} catch {
 		return { regex: new RegExp(escapeRegExp(query), "i"), usedRegex: false, mode: "literal" }
+	}
+}
+
+const scanContext = vm.createContext({})
+const scanScript = new vm.Script(`(() => {
+	const found = []
+	for (let i = 0; i < lines.length && found.length < limit; i++) {
+		if (regex.test(lines[i])) found.push(i)
+	}
+	return found
+})()`)
+
+/**
+ * The indexes of the `lines` that `regex` matches, at most `limit` of them, or
+ * `undefined` when the scan did not finish within `millis`. The scan runs in a
+ * `vm` context because only its timeout can interrupt a `RegExp.test` that
+ * backtracks for minutes (`a*a*a*b` on a 2 000-character line).
+ */
+export function matchingLineIndexes(
+	regex: RegExp,
+	lines: string[],
+	millis: number,
+	limit = Infinity,
+): number[] | undefined {
+	if (millis < 1) {
+		return undefined
+	}
+	Object.assign(scanContext, { regex, lines, limit })
+	try {
+		return Array.from(scanScript.runInContext(scanContext, { timeout: Math.ceil(millis) }) as number[])
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code === "ERR_SCRIPT_EXECUTION_TIMEOUT") {
+			return undefined
+		}
+		throw error
+	} finally {
+		Object.assign(scanContext, { regex: undefined, lines: undefined })
 	}
 }
 

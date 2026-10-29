@@ -428,7 +428,7 @@ describe("cost control", () => {
 			return calls <= 1 ? 0 : HISTORY_SEARCH_DEFAULTS.MAX_SEARCH_MILLIS + 1
 		}
 
-		const lines = Array.from({ length: HISTORY_SEARCH_DEFAULTS.BUDGET_CHECK_INTERVAL * 3 }, () => "needle")
+		const lines = Array.from({ length: 10 }, () => "needle")
 		const outcome = searchHistorySources(
 			[{ label: "artifact prune-1000.txt", text: lines.join("\n"), timestamp: 1_000, order: 0 }],
 			"needle",
@@ -443,6 +443,22 @@ describe("cost control", () => {
 		expect(text).toContain("too expensive")
 		expect(text).toContain("simplify the pattern")
 	})
+
+	it("interrupts a single line that backtracks past the budget", () => {
+		// a*a*a*b passes the shape check (no repeated group) yet takes minutes on
+		// 2 000 a's: only the interruptible scan bounds it.
+		const started = Date.now()
+		const outcome = searchHistorySources(
+			[{ label: "artifact prune-1000.txt", text: "a".repeat(2_000), timestamp: 1_000, order: 0 }],
+			"a*a*a*b", // codeql[js/redos] - deliberate fixture: the query must be interrupted, not completed
+			10,
+			// A clock that never moves: only the interrupted scan can report the timeout.
+			{ messageCount: 0, artifactCount: 1, now: () => 0 },
+		)
+
+		expect(outcome.timedOut).toBe(true)
+		expect(Date.now() - started).toBeLessThan(HISTORY_SEARCH_DEFAULTS.MAX_SEARCH_MILLIS + 1_000)
+	}, 10_000)
 
 	it("finishes a pathological pattern immediately instead of hanging", () => {
 		// Reviewer repro: (a+)+b over a corpus of long runs of a's. Compiled as a
@@ -491,27 +507,6 @@ describe("cost control", () => {
 		expect(outcome.timedOut).toBe(true)
 		expect(outcome.hits).toHaveLength(0)
 		expect(outcome.totalMatches).toBe(HISTORY_SEARCH_DEFAULTS.MAX_COLLECTED_MATCHES)
-	})
-
-	it("reports a breach that lands after the last interval check", () => {
-		// Fewer lines than one check interval: the scan loop never looks at the
-		// clock, so only the post-scan check can catch the breach.
-		let calls = 0
-		const now = () => {
-			calls++
-			return calls <= 1 ? 0 : HISTORY_SEARCH_DEFAULTS.MAX_SEARCH_MILLIS + 1
-		}
-
-		const lines = Array.from({ length: 10 }, () => "needle")
-		const outcome = searchHistorySources(
-			[{ label: "artifact prune-1000.txt", text: lines.join("\n"), timestamp: 1_000, order: 0 }],
-			"needle",
-			10,
-			{ messageCount: 0, artifactCount: 1, now },
-		)
-
-		expect(outcome.timedOut).toBe(true)
-		expect(outcome.hits).toHaveLength(0)
 	})
 })
 
