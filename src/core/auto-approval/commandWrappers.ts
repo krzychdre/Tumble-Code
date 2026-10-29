@@ -630,7 +630,11 @@ export function unwrapCommand(words: ShellWord[]): UnwrappedCommand {
 	if (!name) {
 		return { ...NOTHING, code: [] }
 	}
-	const code = AWKS.has(name) ? awkProgram(args) : name in CODE_OPTIONS ? codeOptions(args, CODE_OPTIONS[name]) : []
+	const code = AWKS.has(name)
+		? awkProgram(args)
+		: Object.hasOwn(CODE_OPTIONS, name)
+			? codeOptions(args, CODE_OPTIONS[name])
+			: []
 	return { ...unwrapWrapper(name, args), code }
 }
 
@@ -648,7 +652,7 @@ function unwrapWrapper(name: string, args: ShellWord[]): Omit<UnwrappedCommand, 
 			["-c", "-command", "-encodedcommand", "-e", "-ec"].includes((word.literal ?? "-c").toLowerCase()),
 		)
 		unwrapped = { commands: [], opaque: runsText }
-	} else if (name in RUNNER_SUBCOMMANDS) {
+	} else if (Object.hasOwn(RUNNER_SUBCOMMANDS, name)) {
 		const sub = afterOptions(args, [])
 		const subcommand = sub === null ? null : args[sub]?.literal
 		unwrapped =
@@ -656,10 +660,10 @@ function unwrapWrapper(name: string, args: ShellWord[]): Omit<UnwrappedCommand, 
 				? unwrapPackageRunner(args.slice(sub + 1))
 				: undefined
 		exact = false
-	} else if (name in UNWRAPPERS) {
+	} else if (Object.hasOwn(UNWRAPPERS, name)) {
 		unwrapped = UNWRAPPERS[name](args)
 		exact = EXACT_UNWRAPPERS.has(name)
-	} else if (name in SIMPLE_WRAPPERS) {
+	} else if (Object.hasOwn(SIMPLE_WRAPPERS, name)) {
 		unwrapped = runs(args, afterOptions(args, SIMPLE_WRAPPERS[name]))
 		exact = false
 	}

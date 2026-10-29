@@ -158,6 +158,13 @@ describe("getCommandDecision - commands that run other commands", () => {
 		expect(getCommandDecision(command, allow, [])).toBe("auto_approve")
 	})
 
+	it.each(["constructor -x a", "toString a", "valueOf -n 1 a", "hasOwnProperty -- rm a"])(
+		"%j is an ordinary program, not a table entry",
+		(command) => {
+			expect(getCommandDecision(command, ["*"], ["rm"])).toBe("auto_approve")
+		},
+	)
+
 	it("stops following wrappers past a depth and asks", () => {
 		const deep = `${"env ".repeat(12)}npm test`
 		expect(getCommandDecision(deep, ["env", "npm test"], [])).toBe("ask_user")
