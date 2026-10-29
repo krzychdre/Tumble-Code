@@ -1,9 +1,10 @@
+import os from "os"
 import path from "path"
 import ignore, { Ignore } from "ignore"
-import { analyzeCommand } from "@tumble-code/core/browser"
+import { analyzeCommand, type ShellWord } from "@tumble-code/core/browser"
 import { logger } from "../../utils/logging"
 import { realPathOf } from "../../utils/pathUtils"
-import { programName, unwrapCommand } from "../auto-approval/commandWrappers"
+import { expandedPath, programName, unwrapCommand } from "../auto-approval/commandWrappers"
 
 export const SHIELD_SYMBOL = "\u{1F6E1}"
 
@@ -21,6 +22,10 @@ export interface ProtectionScope {
 
 /** Commands that only read the files they name: a protected path among their arguments is no write. */
 const READ_ONLY_COMMANDS = new Set([
+	"echo",
+	"printf",
+	"test",
+	"[",
 	"cat",
 	"less",
 	"more",
@@ -59,6 +64,8 @@ export class RooProtectedController {
 	private ignoreInstance: Ignore
 	private roots: string[]
 	private protectedDirectories: string[]
+	/** Text that names a protected location inside interpreter code (`open('.roo/mcp.json', 'w')`). */
+	private protectedMarkers: string[]
 
 	// Predefined list of protected Roo configuration patterns
 	private static readonly PROTECTED_PATTERNS = [
@@ -81,6 +88,15 @@ export class RooProtectedController {
 		this.ignoreInstance.add(RooProtectedController.PROTECTED_PATTERNS)
 		this.roots = [...new Set([cwd, ...(scope.roots ?? [])].map((root) => path.resolve(root)))]
 		this.protectedDirectories = (scope.protectedDirectories ?? []).map((dir) => path.resolve(dir))
+		const home = os.homedir()
+		this.protectedMarkers = [
+			...RooProtectedController.PROTECTED_PATTERNS.map((pattern) => pattern.replace(/\/?\*+/g, "")),
+			"mcp_settings.json",
+			...this.protectedDirectories.flatMap((dir) => [
+				dir,
+				...(isWithin(dir, home) ? [path.relative(home, dir)] : []),
+			]),
+		]
 	}
 
 	/**
@@ -120,23 +136,31 @@ export class RooProtectedController {
 	/**
 	 * Whether a shell command may write a protected file: a protected path is
 	 * the target of an output redirection, or an argument of a command that is
-	 * not a plain reader (`cp`, `tee`, `sed -i`, `python`, ...). Looks into
+	 * not a plain reader (`cp`, `tee`, `sed -i`, `python`, ...), or interpreter
+	 * code (`python3 -c`, `node -e`) names a protected location. Looks into
 	 * every command of a chain, substitution and wrapper (`sh -c`, `sudo`).
 	 * `cat AGENTS.md` is no write; `cat > .roo/mcp.json` is. Relative paths are
-	 * taken from `workingDirectory`, where the command runs (the cwd by default).
+	 * taken from `workingDirectory`, where the command runs (the cwd by
+	 * default); `~` and `$HOME` are the home directory. A target only known
+	 * when the command runs (`> "$OUT"`) may be protected.
 	 */
-	isCommandWriteProtected(command: string, workingDirectory: string = this.cwd, depth = 0): boolean {
+	isCommandWriteProtected(command: string, workingDirectory: string = this.cwd): boolean {
+		return this.findProtectedWrite(command, path.resolve(this.cwd, workingDirectory), os.homedir(), 0)
+	}
+
+	/** `directory` is null after a `cd` to a place only known when the command runs. */
+	private findProtectedWrite(command: string, startDirectory: string | null, home: string, depth: number): boolean {
 		if (depth > 8) {
 			return true
 		}
 		// A `cd` earlier in the chain moves where later relative paths point:
 		// `cd .roo && echo x > mcp.json` writes .roo/mcp.json.
-		let directory = path.resolve(this.cwd, workingDirectory)
+		let directory = startDirectory
 		for (const analyzed of analyzeCommand(command).commands) {
 			const [commandWord, ...args] = analyzed.words
 			const name = programName(commandWord?.literal ?? commandWord?.raw ?? "").toLowerCase()
-			if ((name === "cd" || name === "pushd") && args[0]?.literal) {
-				directory = path.resolve(directory, args[0].literal)
+			if ((name === "cd" || name === "pushd") && args[0]) {
+				directory = resolveIn(directory, expandedPath(args[0], home))
 				continue
 			}
 			const inPlace = args.some(
@@ -147,21 +171,32 @@ export class RooProtectedController {
 			for (let i = 0; i < args.length; i++) {
 				const value = args[i].literal ?? args[i].raw.replace(/["']/g, "")
 				const redirection = OUTPUT_REDIRECTION.exec(value)
-				let target: string | undefined
+				let target: ShellWord | undefined
 				if (redirection) {
-					target = value.length > redirection[0].length ? value.slice(redirection[0].length) : args[++i]?.raw
+					const length = redirection[0].length
+					target =
+						value.length > length
+							? { raw: args[i].raw.slice(length), literal: args[i].literal?.slice(length) ?? null }
+							: args[++i]
 				} else if (!readOnly && !value.startsWith("-")) {
-					target = value
+					target = args[i]
 				}
-				if (target && this.isWriteProtected(path.resolve(directory, target.replace(/["']/g, "")))) {
-					return true
+				if (target) {
+					const file = resolveIn(directory, expandedPath(target, home))
+					if (file === null || this.isWriteProtected(file)) {
+						return true
+					}
 				}
 			}
+			const unwrapped = unwrapCommand(analyzed.words)
 			if (
-				unwrapCommand(analyzed.words).commands.some((inner) =>
-					this.isCommandWriteProtected(inner, directory, depth + 1),
+				unwrapped.code.some(
+					(code) => code === null || this.protectedMarkers.some((marker) => code.includes(marker)),
 				)
 			) {
+				return true
+			}
+			if (unwrapped.commands.some((inner) => this.findProtectedWrite(inner, directory, home, depth + 1))) {
 				return true
 			}
 		}
@@ -219,6 +254,14 @@ export class RooProtectedController {
 	static getProtectedPatterns(): readonly string[] {
 		return RooProtectedController.PROTECTED_PATTERNS
 	}
+}
+
+/** `target` resolved in `directory`; null when either is only known when the command runs. */
+function resolveIn(directory: string | null, target: string | null): string | null {
+	if (target === null || (directory === null && !path.isAbsolute(target))) {
+		return null
+	}
+	return directory === null ? target : path.resolve(directory, target)
 }
 
 function isWithin(filePath: string, directory: string): boolean {
