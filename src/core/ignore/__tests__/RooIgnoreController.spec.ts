@@ -22,6 +22,22 @@ vi.mock("vscode", () => ({
 const TEST_CWD = "/test/path"
 const PATTERNS = "node_modules\n.git\nsecrets/**\n*.log"
 
+/** A file tree under TEST_CWD for readdirSync: entries by directory relative to cwd, a trailing "/" marks a directory. */
+function mockTree(tree: Record<string, string[]>) {
+	vi.mocked(fsSync.readdirSync).mockImplementation(((directory: fsSync.PathLike) =>
+		(tree[path.relative(TEST_CWD, directory.toString())] ?? []).map((entry) => ({
+			name: entry.replace(/\/$/, ""),
+			isDirectory: () => entry.endsWith("/"),
+		}))) as unknown as typeof fsSync.readdirSync)
+}
+
+const TREE = {
+	"": ["src/", "secrets/", ".rooignore", "README.md"],
+	src: ["app.ts", "util/"],
+	"src/util": ["x.ts"],
+	secrets: ["key.txt"],
+}
+
 const mockFileExists = vi.mocked(fileExistsAtPath)
 const mockReadFile = vi.mocked(fs.readFile)
 
@@ -52,6 +68,7 @@ describe("RooIgnoreController", () => {
 		}
 		vi.mocked(vscode.workspace.createFileSystemWatcher).mockReturnValue(mockWatcher as any)
 		vi.mocked(fsSync.realpathSync).mockImplementation((filePath) => filePath.toString())
+		vi.mocked(fsSync.readdirSync).mockReturnValue([])
 		controller = new RooIgnoreController(TEST_CWD)
 	})
 
@@ -175,7 +192,10 @@ describe("RooIgnoreController", () => {
 	})
 
 	describe("validateCommand", () => {
-		beforeEach(() => loadWith(PATTERNS))
+		beforeEach(async () => {
+			await loadWith(PATTERNS)
+			mockTree(TREE)
+		})
 
 		it.each([
 			["cat node_modules/package.json", "node_modules/package.json"],
@@ -206,6 +226,11 @@ describe("RooIgnoreController", () => {
 			// PowerShell: a path given as -Path:value, and a stream of the file.
 			["Get-Content -Path:secrets/keys.json", "secrets/keys.json"],
 			["Get-Content secrets/keys.json:Zone.Identifier", "secrets/keys.json:Zone.Identifier"],
+			// Readers with their own syntax, and a glob as the shell expands it.
+			["dd if=secrets/key.txt of=/tmp/out", "secrets/key.txt"],
+			["git show HEAD:secrets/key.txt", "secrets/key.txt"],
+			["git cat-file -p HEAD:secrets/key.txt", "secrets/key.txt"],
+			["cat sec*/key.txt", "secrets/key.txt"],
 		])("blocks %j", (command, blockedPath) => {
 			expect(controller.validateCommand(command)).toBe(blockedPath)
 		})
@@ -217,8 +242,62 @@ describe("RooIgnoreController", () => {
 			["a Windows switch", "type /? app.txt"],
 			["removing an ignored directory", "rm -rf node_modules && npm install"],
 			["reading allowed files after cd", "cd src && cat app.ts"],
+			["dd writing into an ignored directory", "dd if=src/app.ts of=secrets/copy"],
+			["git show of an allowed file", "git show HEAD:src/app.ts"],
+			["a glob matching allowed files only", "cat src/*.ts"],
 		])("allows %s", (_label, command) => {
 			expect(controller.validateCommand(command)).toBeUndefined()
+		})
+	})
+
+	describe("commandMayReadIgnored", () => {
+		beforeEach(async () => {
+			await loadWith(PATTERNS)
+			mockTree(TREE)
+		})
+
+		it.each([
+			["a recursive grep of the cwd", "grep -r password ."],
+			["a recursive grep with no path", "grep -rn token"],
+			["ripgrep", "rg token"],
+			["a recursive grep of a directory above the cwd", "grep -r token .."],
+			["a recursive grep inside a wrapper", "sh -c 'grep -R token .'"],
+			["a tar of an ignored directory", "tar cf - secrets"],
+			["a recursive copy", "cp -r secrets /tmp/x"],
+			["a zip of the cwd", "zip -r out.zip ."],
+			["find running a reader", "find secrets -exec cat {} +"],
+			["a reader of a variable", 'cat "$FILE"'],
+			["a reader of a substitution", "head $(ls | head -1)"],
+			["interpreter code", "python3 -c 'print(1)'"],
+		])("asks for %s: %j", (_label, command) => {
+			expect(controller.commandMayReadIgnored(command)).toBe(true)
+		})
+
+		it.each([
+			["a recursive grep of a clean directory", "grep -r token src"],
+			["a grep of named files", "grep -rl token README.md"],
+			["a recursive copy of a clean directory", "cp -r src /tmp/x"],
+			["find running a reader in a clean directory", "find src -exec cat {} +"],
+			["find without a reader", "find . -name '*.ts'"],
+			["a command that does not read files", "ls -R ."],
+			["a reader of named allowed files", "cat src/app.ts"],
+		])("does not ask for %s: %j", (_label, command) => {
+			expect(controller.commandMayReadIgnored(command)).toBe(false)
+		})
+
+		it("does not count the .rooignore itself", () => {
+			mockTree({ "": ["src/", ".rooignore"], src: ["app.ts"] })
+			expect(controller.commandMayReadIgnored("grep -r token .")).toBe(false)
+		})
+
+		it("asks when a directory is too large to look through", () => {
+			mockTree({ "": Array.from({ length: 20_001 }, (_, index) => `f${index}.txt`) })
+			expect(controller.commandMayReadIgnored("grep -r token .")).toBe(true)
+		})
+
+		it("never asks without a .rooignore", async () => {
+			await loadWith(undefined)
+			expect(controller.commandMayReadIgnored("grep -r password .")).toBe(false)
 		})
 	})
 

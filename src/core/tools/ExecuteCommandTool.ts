@@ -130,9 +130,12 @@ export class ExecuteCommandTool extends BaseTool<"execute_command"> {
 				return
 			}
 
-			const writesProtectedFile =
-				task.rooProtectedController?.isCommandWriteProtected(command, workingDir) ?? false
-			const didApprove = await askApproval("command", command, undefined, writesProtectedFile)
+			// A command that may write a protected file, or read a .rooignore'd one
+			// its text does not name, is not approved automatically.
+			const needsConsent =
+				(task.rooProtectedController?.isCommandWriteProtected(command, workingDir) ?? false) ||
+				(task.rooIgnoreController?.commandMayReadIgnored(command, workingDir) ?? false)
+			const didApprove = await askApproval("command", command, undefined, needsConsent)
 
 			if (!didApprove) {
 				return

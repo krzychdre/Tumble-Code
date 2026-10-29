@@ -528,7 +528,7 @@
 		},
 		"rooignore": {
 			"label": "Hiển thị tệp .rooignore trong danh sách và tìm kiếm",
-			"description": "Khi được bật, các tệp khớp với mẫu trong .rooignore sẽ được hiển thị trong danh sách với biểu tượng khóa. Khi bị tắt, các tệp này sẽ hoàn toàn bị ẩn khỏi danh sách tệp và tìm kiếm."
+			"description": "Khi được bật, các tệp khớp với mẫu trong .rooignore sẽ được hiển thị trong danh sách với biểu tượng khóa. Khi bị tắt, các tệp này sẽ hoàn toàn bị ẩn khỏi danh sách tệp và tìm kiếm. Với lệnh shell, quy tắc này được áp dụng ở mức tốt nhất có thể: các lệnh đọc tệp đã biết bị chặn, còn các lệnh không kiểm tra được sẽ yêu cầu bạn phê duyệt."
 		},
 		"diagnostics": {
 			"includeMessages": {

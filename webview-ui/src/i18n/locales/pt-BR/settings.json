@@ -528,7 +528,7 @@
 		},
 		"rooignore": {
 			"label": "Mostrar arquivos .rooignore em listas e pesquisas",
-			"description": "Quando ativado, os arquivos que correspondem aos padrões em .rooignore serão mostrados em listas com um símbolo de cadeado. Quando desativado, esses arquivos serão completamente ocultos das listas de arquivos e pesquisas."
+			"description": "Quando ativado, os arquivos que correspondem aos padrões em .rooignore serão mostrados em listas com um símbolo de cadeado. Quando desativado, esses arquivos serão completamente ocultos das listas de arquivos e pesquisas. Em comandos de terminal, isso é aplicado na medida do possível: leitores de arquivos conhecidos são bloqueados e comandos que não podem ser verificados pedem sua aprovação."
 		},
 		"diagnostics": {
 			"includeMessages": {

@@ -528,7 +528,7 @@
 		},
 		"rooignore": {
 			"label": "Mostrar archivos .rooignore en listas y búsquedas",
-			"description": "Cuando está habilitado, los archivos que coinciden con los patrones en .rooignore se mostrarán en listas con un símbolo de candado. Cuando está deshabilitado, estos archivos se ocultarán completamente de las listas de archivos y búsquedas."
+			"description": "Cuando está habilitado, los archivos que coinciden con los patrones en .rooignore se mostrarán en listas con un símbolo de candado. Cuando está deshabilitado, estos archivos se ocultarán completamente de las listas de archivos y búsquedas. En los comandos de terminal se aplica en la medida de lo posible: los lectores de archivos conocidos se bloquean y los comandos que no puede comprobar piden tu aprobación."
 		},
 		"maxImageFileSize": {
 			"label": "Tamaño máximo de archivo de imagen",

@@ -528,7 +528,7 @@
 		},
 		"rooignore": {
 			"label": "在列表和搜索中显示 .rooignore 文件",
-			"description": "启用后，与 .rooignore 中模式匹配的文件将在列表中显示锁定符号。禁用时，这些文件将从文件列表和搜索中完全隐藏。"
+			"description": "启用后，与 .rooignore 中模式匹配的文件将在列表中显示锁定符号。禁用时，这些文件将从文件列表和搜索中完全隐藏。对于 shell 命令，仅尽力执行：已知的文件读取命令会被阻止，无法检查的命令会请求你的批准。"
 		},
 		"diagnostics": {
 			"includeMessages": {
