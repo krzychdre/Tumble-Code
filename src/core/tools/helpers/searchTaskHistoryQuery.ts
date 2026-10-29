@@ -26,8 +26,9 @@ const ALLOWED_SLASH_FLAGS = "imsu"
  * 1. `/pattern/flags` is unwrapped first. Weak models write a slash-delimited
  *    literal far more often than they read the parameter description, and
  *    treating the slashes as content makes such a call silently find nothing.
- * 2. A pattern whose shape can backtrack exponentially (a quantified group that
- *    itself contains an unbounded quantifier, the classic `(a+)+b`) is REFUSED
+ * 2. A pattern whose shape can backtrack exponentially (a repeated group whose
+ *    body can match the same text in more than one way, the classic `(a+)+b`
+ *    or `(a|a)*b`) is REFUSED
  *    as a regular expression and searched for literally. There is no way to
  *    interrupt a running `RegExp.test`, so the only safe move is not to start
  *    one; the wall-clock budget in {@link searchHistorySources} is the second
@@ -88,26 +89,32 @@ function parseSlashDelimited(query: string): { pattern: string; flags: string } 
 }
 
 /**
- * True when the pattern contains a quantified group whose body already carries
- * an unbounded quantifier, which is the shape that backtracks exponentially.
+ * True when the pattern contains a repeated group (`*`, `+` or any `{...}`
+ * count) whose body can match the same text in more than one way: the body
+ * holds a variable quantifier (`*`, `+`, `?`, `{n,}`, `{n,m}`) or an
+ * alternation (`|`). Each repetition then has several ways to split the text,
+ * and a failing match tries them all: `(a+)+b`, `(a|a)*b` and `(a{1,5})+b`
+ * take seconds to minutes on a line of 30 to 40 `a`s.
  *
  * Deliberately syntactic and conservative: it walks the pattern once, tracking
  * escapes and character classes, and only reports the nesting it can actually
- * see. `(foo|bar)+` is fine; `(a+)+`, `(a*)*`, `(?:\d+)*` and `(x|y+)*` are not.
+ * see. `(ab)+`, `(\d{4}-)+` and an unrepeated `(foo|bar)` are fine.
  *
- * Two deliberate over-approximations, both paid for with a literal fallback
- * rather than an error:
+ * Deliberate over-approximations, all paid for with a literal fallback rather
+ * than an error:
  *
- * - A body's quantifier survives group nesting even when the inner group is
+ * - Any alternation counts, also one whose branches can never match the same
+ *   text, so `(foo|bar)+` is refused like `(a|a)+`.
+ * - A body's marker survives group nesting even when the inner group is
  *   itself unquantified, so `((a+))+` is refused like `(a+)+`. This also
  *   refuses safe shapes such as `((a+)b)+`.
- * - `?` in a body counts as a quantifier, because a nullable body under an
- *   unbounded group quantifier (`(a?)+`, `(?:\d?)*`) is the classic blow-up.
- *   The `?` that is group syntax (`(?:`, `(?=`, `(?!`, `(?<`) does not count,
- *   so `(?:foo)+` stays a live regex.
+ * - `?` in a body counts as a quantifier, because a nullable body under a
+ *   repeated group (`(a?)+`, `(?:\d?)*`) is the classic blow-up. The `?` that
+ *   is group syntax (`(?:`, `(?=`, `(?!`, `(?<`) does not count, so `(?:foo)+`
+ *   stays a live regex.
  */
 function isCatastrophicPattern(pattern: string): boolean {
-	/** For each open group, whether its body carries an unbounded quantifier. */
+	/** For each open group, whether its body can match the same text in more than one way. */
 	const groupBodyQuantified: boolean[] = []
 	let inCharClass = false
 	let escaped = false
@@ -152,22 +159,21 @@ function isCatastrophicPattern(pattern: string): boolean {
 				break
 			case ")": {
 				const bodyQuantified = groupBodyQuantified.pop() ?? false
-				const quantified = isUnboundedQuantifierAt(pattern, i + 1)
 
-				if (bodyQuantified && quantified) {
+				if (bodyQuantified && isRepeatAt(pattern, i + 1)) {
 					return true
 				}
-				if (bodyQuantified || quantified) {
-					// A quantified group is itself an unbounded quantifier as far
-					// as any enclosing group is concerned, and a quantifier in the
-					// body survives the nesting: `((a+))` still carries the `+`,
-					// so `((a+))+` must be refused like `(a+)+`.
+				if (bodyQuantified) {
+					// The marker survives the nesting: `((a+))` still carries the
+					// `+`, so `((a+))+` must be refused like `(a+)+`. A quantifier
+					// on this group marks the enclosing one when it is read next.
 					markCurrentGroup()
 				}
 				break
 			}
 			case "*":
 			case "+":
+			case "|":
 				markCurrentGroup()
 				break
 			case "?":
@@ -179,7 +185,8 @@ function isCatastrophicPattern(pattern: string): boolean {
 				}
 				break
 			case "{":
-				if (isUnboundedQuantifierAt(pattern, i)) {
+				// `{n}` repeats a fixed count and splits text one way only.
+				if (countAt(pattern, i)?.[1] !== undefined) {
 					markCurrentGroup()
 				}
 				break
@@ -191,23 +198,18 @@ function isCatastrophicPattern(pattern: string): boolean {
 	return false
 }
 
-/** True when position `index` starts `*`, `+` or an open-ended `{n,}`. */
-function isUnboundedQuantifierAt(pattern: string, index: number): boolean {
+/** True when position `index` starts `*`, `+` or a `{n}`, `{n,}` or `{n,m}` count. */
+function isRepeatAt(pattern: string, index: number): boolean {
 	const char = pattern[index]
 
-	if (char === "*" || char === "+") {
-		return true
-	}
+	return char === "*" || char === "+" || countAt(pattern, index) !== null
+}
 
-	if (char !== "{") {
-		return false
-	}
+/** Sticky, so a count is read where it starts without copying the rest of the pattern. */
+const COUNT = /\{\d+(,\d*)?\}/y
 
-	const close = pattern.indexOf("}", index)
-	if (close < 0) {
-		return false
-	}
-
-	// `{n,}` is unbounded; `{n}` and `{n,m}` are not.
-	return /^\d+,$/.test(pattern.slice(index + 1, close))
+/** The `{n}`, `{n,}` or `{n,m}` count at `index`; group 1 is the comma part of a variable count. */
+function countAt(pattern: string, index: number): RegExpExecArray | null {
+	COUNT.lastIndex = index
+	return COUNT.exec(pattern)
 }

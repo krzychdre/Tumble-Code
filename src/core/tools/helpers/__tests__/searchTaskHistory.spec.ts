@@ -97,9 +97,20 @@ describe("compileHistoryQuery", () => {
 		// A nullable body under an unbounded group quantifier.
 		["(a?)+", "unsafe"],
 		["(?:\\d?)*", "unsafe"],
-		["(foo|bar)+", "regex"],
+		// An alternation under a repeat, also inside a nested group.
+		["(a|a)*b", "unsafe"],
+		["(?:a|aa)+$", "unsafe"],
+		["((a|b)c)*d", "unsafe"],
+		["(foo|bar)+", "unsafe"],
+		// A counted repeat of an ambiguous body, and a variable count in a body.
+		["(a|a){30}b", "unsafe"],
+		["(a+){20}b", "unsafe"],
+		["(a{1,5})+b", "unsafe"],
+		["(foo|bar)", "regex"],
+		["(foo|bar)?", "regex"],
+		["(\\d{4}-)+", "regex"],
 		["(a+)", "regex"],
-		// A bounded quantifier on the group is at worst polynomial.
+		// An optional group is not repeated.
 		["(a+)?", "regex"],
 		["(\\d+)?x", "regex"],
 		// `?` that is group syntax or sits on a plain atom is not a marker.
