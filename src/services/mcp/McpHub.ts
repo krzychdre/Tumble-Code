@@ -678,8 +678,10 @@ export class McpHub {
 				// Write the entire config back
 				await this.configStore.write(configPath, { mcpServers: config.mcpServers })
 
-				// Update server connections with the correct source
-				await this.updateServerConnections(config.mcpServers, serverSource)
+				await this.updateServerConnections(
+					await this.startable(config.mcpServers, serverSource, configPath),
+					serverSource,
+				)
 
 				vscode.window.showInformationMessage(t("mcp:info.server_deleted", { serverName }))
 			} else {
