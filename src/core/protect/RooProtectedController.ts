@@ -92,10 +92,12 @@ export class RooProtectedController {
 		this.protectedMarkers = [
 			...RooProtectedController.PROTECTED_PATTERNS.map((pattern) => pattern.replace(/\/?\*+/g, "")),
 			"mcp_settings.json",
-			...this.protectedDirectories.flatMap((dir) => [
-				dir,
-				...(isWithin(dir, home) ? [path.relative(home, dir)] : []),
-			]),
+			// Code writes a Windows path with `/` as often as with `\`.
+			...this.protectedDirectories.flatMap((dir) =>
+				[dir, ...(isWithin(dir, home) ? [path.relative(home, dir)] : [])].flatMap((marker) => [
+					...new Set([marker, marker.toPosix()]),
+				]),
+			),
 		]
 	}
 
