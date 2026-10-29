@@ -528,7 +528,7 @@
 		},
 		"rooignore": {
 			"label": "Listelerde ve aramalarda .rooignore dosyalarını göster",
-			"description": "Etkinleştirildiğinde, .rooignore'daki desenlerle eşleşen dosyalar kilit sembolü ile listelerde gösterilecektir. Devre dışı bırakıldığında, bu dosyalar dosya listelerinden ve aramalardan tamamen gizlenecektir."
+			"description": "Etkinleştirildiğinde, .rooignore'daki desenlerle eşleşen dosyalar kilit sembolü ile listelerde gösterilecektir. Devre dışı bırakıldığında, bu dosyalar dosya listelerinden ve aramalardan tamamen gizlenecektir. Kabuk komutlarında bu, mümkün olduğunca uygulanır: bilinen dosya okuyucular engellenir, denetlenemeyen komutlar onayını ister."
 		},
 		"diagnostics": {
 			"includeMessages": {

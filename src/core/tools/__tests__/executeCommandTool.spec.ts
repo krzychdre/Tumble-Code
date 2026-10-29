@@ -68,6 +68,7 @@ describe("executeCommandTool", () => {
 			didRejectTool: false,
 			rooIgnoreController: {
 				validateCommand: vitest.fn().mockReturnValue(null),
+				commandMayReadIgnored: vitest.fn().mockReturnValue(false),
 			},
 			recordToolUsage: vitest.fn().mockReturnValue({} as ToolUsage),
 			recordToolError: vitest.fn(),
@@ -134,6 +135,24 @@ describe("executeCommandTool", () => {
 			const terminal = await TerminalRegistry.getOrCreateTerminal("/test/workspace", "task", "execa")
 			expect(terminal.runCommand).toHaveBeenCalledWith(command, expect.anything())
 		})
+	})
+
+	it("asks for consent when the command may read a .rooignore'd file it does not name", async () => {
+		mockToolUse.params.command = "grep -r token ."
+		mockToolUse.nativeArgs = { command: "grep -r token ." }
+		mockCline.rooIgnoreController.commandMayReadIgnored.mockReturnValue(true)
+
+		await executeCommandTool.handle(mockCline as unknown as Task, mockToolUse, {
+			askApproval: mockAskApproval as unknown as AskApproval,
+			handleError: mockHandleError as unknown as HandleError,
+			pushToolResult: mockPushToolResult as unknown as PushToolResult,
+		})
+
+		expect(mockCline.rooIgnoreController.commandMayReadIgnored).toHaveBeenCalledWith(
+			"grep -r token .",
+			"/test/workspace",
+		)
+		expect(mockAskApproval).toHaveBeenCalledWith("command", "grep -r token .", undefined, true)
 	})
 
 	// Now we can run these tests

@@ -528,7 +528,7 @@
 		},
 		"rooignore": {
 			"label": "Afficher les fichiers .rooignore dans les listes et recherches",
-			"description": "Lorsque cette option est activée, les fichiers correspondant aux modèles dans .rooignore seront affichés dans les listes avec un symbole de cadenas. Lorsqu'elle est désactivée, ces fichiers seront complètement masqués des listes de fichiers et des recherches."
+			"description": "Lorsque cette option est activée, les fichiers correspondant aux modèles dans .rooignore seront affichés dans les listes avec un symbole de cadenas. Lorsqu'elle est désactivée, ces fichiers seront complètement masqués des listes de fichiers et des recherches. Pour les commandes shell, il est appliqué au mieux : les lecteurs de fichiers connus sont bloqués et les commandes qu'il ne peut pas vérifier demandent ton approbation."
 		},
 		"maxImageFileSize": {
 			"label": "Taille maximale des fichiers d'image",

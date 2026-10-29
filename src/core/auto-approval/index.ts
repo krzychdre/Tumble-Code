@@ -199,7 +199,8 @@ export async function checkAutoApproval({
 
 			if (decision === "auto_approve") {
 				// A command that may write a protected file (`.roo/mcp.json`,
-				// `.vscode/settings.json`) needs the same consent as a write tool.
+				// `.vscode/settings.json`) needs the same consent as a write tool;
+				// so does one that may read a .rooignore'd file its text does not name.
 				if (isProtected && state.alwaysAllowWriteProtected !== true) {
 					return { decision: "ask" }
 				}

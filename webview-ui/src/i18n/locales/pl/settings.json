@@ -528,7 +528,7 @@
 		},
 		"rooignore": {
 			"label": "Pokaż pliki .rooignore na listach i w wyszukiwaniach",
-			"description": "Gdy włączone, pliki pasujące do wzorców w .rooignore będą pokazywane na listach z symbolem kłódki. Gdy wyłączone, te pliki będą całkowicie ukryte z list plików i wyszukiwań."
+			"description": "Gdy włączone, pliki pasujące do wzorców w .rooignore będą pokazywane na listach z symbolem kłódki. Gdy wyłączone, te pliki będą całkowicie ukryte z list plików i wyszukiwań. W poleceniach powłoki działa to w miarę możliwości: znane polecenia czytające pliki są blokowane, a polecenia, których nie da się sprawdzić, proszą o Twoją zgodę."
 		},
 		"diagnostics": {
 			"includeMessages": {

@@ -552,7 +552,7 @@
 		},
 		"rooignore": {
 			"label": "Tampilkan file .rooignore'd dalam daftar dan pencarian",
-			"description": "Ketika diaktifkan, file yang cocok dengan pola di .rooignore akan ditampilkan dalam daftar dengan simbol kunci. Ketika dinonaktifkan, file ini akan sepenuhnya disembunyikan dari daftar file dan pencarian."
+			"description": "Ketika diaktifkan, file yang cocok dengan pola di .rooignore akan ditampilkan dalam daftar dengan simbol kunci. Ketika dinonaktifkan, file ini akan sepenuhnya disembunyikan dari daftar file dan pencarian. Untuk perintah shell, ini diterapkan sebisa mungkin: pembaca file yang dikenal diblokir, dan perintah yang tidak bisa diperiksa meminta persetujuanmu."
 		},
 		"maxImageFileSize": {
 			"label": "Ukuran file gambar maksimum",

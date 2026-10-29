@@ -528,7 +528,7 @@
 		},
 		"rooignore": {
 			"label": "Mostra file .rooignore negli elenchi e nelle ricerche",
-			"description": "Quando abilitato, i file che corrispondono ai pattern in .rooignore verranno mostrati negli elenchi con un simbolo di blocco. Quando disabilitato, questi file saranno completamente nascosti dagli elenchi di file e dalle ricerche."
+			"description": "Quando abilitato, i file che corrispondono ai pattern in .rooignore verranno mostrati negli elenchi con un simbolo di blocco. Quando disabilitato, questi file saranno completamente nascosti dagli elenchi di file e dalle ricerche. Per i comandi della shell viene applicato al meglio: i lettori di file noti vengono bloccati e i comandi che non può verificare chiedono la tua approvazione."
 		},
 		"diagnostics": {
 			"includeMessages": {

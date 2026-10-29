@@ -528,7 +528,7 @@
 		},
 		"rooignore": {
 			"label": ".rooignore-bestanden tonen in lijsten en zoekopdrachten",
-			"description": "Indien ingeschakeld, worden bestanden die overeenkomen met patronen in .rooignore getoond in lijsten met een slotje. Indien uitgeschakeld, worden deze bestanden volledig verborgen in lijsten en zoekopdrachten."
+			"description": "Indien ingeschakeld, worden bestanden die overeenkomen met patronen in .rooignore getoond in lijsten met een slotje. Indien uitgeschakeld, worden deze bestanden volledig verborgen in lijsten en zoekopdrachten. Voor shellopdrachten geldt dit naar beste vermogen: bekende bestandslezers worden geblokkeerd en opdrachten die niet gecontroleerd kunnen worden vragen om je goedkeuring."
 		},
 		"maxImageFileSize": {
 			"label": "Maximum afbeeldingsbestandsgrootte",

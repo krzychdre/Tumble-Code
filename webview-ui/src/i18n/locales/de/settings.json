@@ -528,7 +528,7 @@
 		},
 		"rooignore": {
 			"label": ".rooignore-Dateien in Listen und Suchen anzeigen",
-			"description": "Wenn aktiviert, werden Dateien, die mit Mustern in .rooignore übereinstimmen, in Listen mit einem Schlosssymbol angezeigt. Wenn deaktiviert, werden diese Dateien vollständig aus Dateilisten und Suchen ausgeblendet."
+			"description": "Wenn aktiviert, werden Dateien, die mit Mustern in .rooignore übereinstimmen, in Listen mit einem Schlosssymbol angezeigt. Wenn deaktiviert, werden diese Dateien vollständig aus Dateilisten und Suchen ausgeblendet. Bei Shell-Befehlen gilt das nur nach bestem Bemühen: Bekannte Befehle zum Lesen von Dateien werden blockiert, und Befehle, die nicht geprüft werden können, fragen nach deiner Zustimmung."
 		},
 		"diagnostics": {
 			"includeMessages": {

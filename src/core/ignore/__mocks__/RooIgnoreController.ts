@@ -22,6 +22,10 @@ export class RooIgnoreController {
 		return undefined
 	}
 
+	commandMayReadIgnored(_command: string, _workingDirectory?: string): boolean {
+		return false
+	}
+
 	filterPaths(paths: string[]): string[] {
 		// Default implementation: allow all paths
 		return paths

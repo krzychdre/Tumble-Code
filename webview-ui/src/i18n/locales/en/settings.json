@@ -653,7 +653,7 @@
 		},
 		"rooignore": {
 			"label": "Show .rooignore'd files in lists and searches",
-			"description": "When enabled, files matching patterns in .rooignore will be shown in lists with a lock symbol. When disabled, these files will be completely hidden from file lists and searches."
+			"description": "When enabled, files matching patterns in .rooignore will be shown in lists with a lock symbol. When disabled, these files will be completely hidden from file lists and searches. For shell commands, .rooignore is enforced on a best-effort basis: known file readers are blocked, and commands it cannot check ask for your approval."
 		},
 		"maxImageFileSize": {
 			"label": "Max image file size",
