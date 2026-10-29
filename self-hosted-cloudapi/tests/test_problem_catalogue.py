@@ -262,12 +262,22 @@ def test_the_signature_is_category_tool_and_headline_and_bounded():
         "a." * 4000,
         "C:" * 4000,
         "x/" * 4000,
+        # A long run of words without a dot: quadratic in the old _FILE.
+        "a-" * 4000,
     ],
-    ids=["hex-run-then-letter", "hex-run", "word", "dots", "drive-letters", "slashes"],
+    ids=[
+        "hex-run-then-letter",
+        "hex-run",
+        "word",
+        "dots",
+        "drive-letters",
+        "slashes",
+        "dashed-words",
+    ],
 )
 def test_a_long_headline_is_normalized_in_linear_time(text):
-    """A report's text is the client's; its signature is computed on the event
-    loop, so no headline may take more than a moment (the old patterns: 2 s
+    """A report's text is the client's and its signature is computed for every
+    report, so no headline may take more than a moment (the old patterns: 2 s
     at 1 000 characters, minutes at 8 000)."""
     started = time.perf_counter()
     problem_signature("tool_error", None, text)
@@ -275,7 +285,7 @@ def test_a_long_headline_is_normalized_in_linear_time(text):
     assert time.perf_counter() - started < 1.0
 
 
-def test_hex_ids_and_paths_are_still_blanked_as_before():
+def test_hex_ids_paths_and_file_names_are_still_blanked_as_before():
     assert normalize_message("blob 3f9a15e256a28cec4571 missing") == "blob <id> missing"
     assert (
         normalize_message("deadbeef and cafe stay words")
@@ -286,6 +296,7 @@ def test_hex_ids_and_paths_are_still_blanked_as_before():
         "open <path> and <path> failed"
     )
     assert normalize_message("x-y/z and v[1]/w") == "<path> and <path>"
+    assert normalize_message("my-app.tsx and my-app fail") == "<path> and my-app fail"
 
 
 # --- the brief's fields: task, code hints, acceptance --------------------------

@@ -13,6 +13,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Optional
 
+import anyio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -75,7 +76,8 @@ async def record_error_report(
     A report whose id is already stored (a retried upload, whoever sent it) is
     left alone and False comes back.
     """
-    values = report_row(user_id, org_id, report)
+    # The signature runs regular expressions over client text: off the loop.
+    values = await anyio.to_thread.run_sync(report_row, user_id, org_id, report)
     upsert_insert = dialect_insert(db)
     if upsert_insert is None:
         # No portable ON CONFLICT: look first, then insert.

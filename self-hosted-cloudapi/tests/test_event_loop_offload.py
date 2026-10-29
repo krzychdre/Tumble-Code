@@ -148,3 +148,21 @@ async def test_backfill_rows_are_built_off_the_loop(client, db_session, monkeypa
     assert resp.status_code == 200
     assert len(calls) == 1
     assert calls[0]["on_loop"] is False
+
+
+async def test_an_error_report_row_is_built_off_the_loop(
+    client, db_session, monkeypatch
+):
+    """The row's signature runs regular expressions over the client's text."""
+    from src.services import error_report_service
+
+    calls = _spy(monkeypatch, error_report_service, "report_row")
+    await _seed_user(db_session)
+    _override_current_user(client.app)
+    report = {"id": "r-offload", "occurredAt": 1, "category": "x", "summary": "Boom"}
+
+    resp = client.post("/api/error-reports", json=report)
+
+    assert resp.status_code == 200
+    assert len(calls) == 1
+    assert calls[0]["on_loop"] is False
