@@ -101,11 +101,6 @@ export function mayLoadProjectTools(toolDir: string, deps: ProjectToolTrustDeps)
 	return run
 }
 
-/** Forgets the refusals of this window (tests). */
-export function resetProjectToolRefusals(): void {
-	declined.clear()
-}
-
 async function confirmInDialog(toolDir: string, files: string[]): Promise<boolean> {
 	const run = t("tools:customTools.trust.run")
 	const answer = await vscode.window.showWarningMessage(

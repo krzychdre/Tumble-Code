@@ -5,7 +5,7 @@ import * as fs from "fs/promises"
 import * as os from "os"
 import * as path from "path"
 
-import { mayLoadProjectTools, resetProjectToolRefusals, TRUSTED_PROJECT_TOOLS_KEY } from "../projectToolTrust"
+import { mayLoadProjectTools, TRUSTED_PROJECT_TOOLS_KEY } from "../projectToolTrust"
 
 function memoryStore() {
 	const values = new Map<string, unknown>()
@@ -42,7 +42,6 @@ describe("project custom tools need consent", () => {
 		asked = []
 		answer = true
 		workspaceTrusted = true
-		resetProjectToolRefusals()
 	})
 
 	afterEach(async () => {
@@ -53,7 +52,6 @@ describe("project custom tools need consent", () => {
 		expect(await mayLoad()).toBe(true)
 		expect(asked).toEqual([["deploy.ts"]])
 
-		resetProjectToolRefusals()
 		expect(await mayLoad()).toBe(true)
 		expect(asked).toHaveLength(1)
 		expect(store.values.get(TRUSTED_PROJECT_TOOLS_KEY)).toHaveLength(1)
