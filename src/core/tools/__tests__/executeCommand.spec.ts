@@ -208,7 +208,11 @@ describe("executeCommand", () => {
 
 			// Verify
 			expect(rejected).toBe(false)
-			expect(TerminalRegistry.getOrCreateTerminal).toHaveBeenCalledWith(customCwd, mockTask.taskId, "vscode")
+			expect(TerminalRegistry.getOrCreateTerminal).toHaveBeenCalledWith(
+				path.resolve(customCwd),
+				mockTask.taskId,
+				"vscode",
+			)
 			expect(result).toContain(`within working directory '${customCwd}'`)
 		})
 
@@ -259,7 +263,7 @@ describe("executeCommand", () => {
 
 			// Verify
 			expect(rejected).toBe(false)
-			expect(result).toBe(`Working directory '${nonExistentCwd}' does not exist.`)
+			expect(result).toBe(`Working directory '${path.resolve(nonExistentCwd)}' does not exist.`)
 			expect(TerminalRegistry.getOrCreateTerminal).not.toHaveBeenCalled()
 		})
 	})

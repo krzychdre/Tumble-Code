@@ -1,6 +1,7 @@
 // npx vitest run src/core/tools/__tests__/executeCommandTool.spec.ts
 
 import type { ToolUsage } from "@tumble-code/types"
+import * as path from "path"
 import * as vscode from "vscode"
 
 import { Task } from "../../task/Task"
@@ -187,16 +188,10 @@ describe("executeCommandTool", () => {
 				pushToolResult: mockPushToolResult as unknown as PushToolResult,
 			})
 
-			expect(mockCline.rooIgnoreController.validateCommand).toHaveBeenCalledWith(
-				"echo test",
-				"/test/workspace/packages/app",
-			)
+			const workingDir = path.resolve("/test/workspace/packages/app")
+			expect(mockCline.rooIgnoreController.validateCommand).toHaveBeenCalledWith("echo test", workingDir)
 			expect(mockAskApproval).toHaveBeenCalledWith("command", "echo test", undefined, false)
-			expect(TerminalRegistry.getOrCreateTerminal).toHaveBeenCalledWith(
-				"/test/workspace/packages/app",
-				undefined,
-				expect.anything(),
-			)
+			expect(TerminalRegistry.getOrCreateTerminal).toHaveBeenCalledWith(workingDir, undefined, expect.anything())
 		})
 
 		it.each(["/custom/path", "../elsewhere"])(

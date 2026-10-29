@@ -29,7 +29,7 @@ describe("ShellIntegrationManager.zshInitTmpDir", () => {
 		expect(path.basename(dir)).toMatch(/^roo-zdotdir-.{6}$/)
 		const zshrc = fs.readFileSync(path.join(dir, ".zshrc"), "utf8")
 		expect(zshrc).toContain("ZDOTDIR=${ROO_ZDOTDIR:-$HOME}")
-		expect(zshrc).toContain('source "/opt/vscode/resources/app/')
+		expect(zshrc).toContain(`source "${path.join("/opt/vscode/resources/app", "out")}`)
 		if (process.platform !== "win32") {
 			expect(fs.statSync(dir).mode & 0o777).toBe(0o700)
 			expect(fs.statSync(path.join(dir, ".zshrc")).mode & 0o777).toBe(0o600)

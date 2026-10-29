@@ -230,7 +230,7 @@ describe("RooIgnoreController", () => {
 			["dd if=secrets/key.txt of=/tmp/out", "secrets/key.txt"],
 			["git show HEAD:secrets/key.txt", "secrets/key.txt"],
 			["git cat-file -p HEAD:secrets/key.txt", "secrets/key.txt"],
-			["cat sec*/key.txt", "secrets/key.txt"],
+			["cat sec*/key.txt", path.join("secrets", "key.txt")],
 		])("blocks %j", (command, blockedPath) => {
 			expect(controller.validateCommand(command)).toBe(blockedPath)
 		})
