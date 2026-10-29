@@ -247,7 +247,8 @@ function decideCommand(
  * A command that runs another (`env rm`, `sh -c '...'`, `find -exec`, see
  * commandWrappers) is decided together with what it runs: a denied inner
  * command denies the whole, and the whole is approved only when the inner
- * commands are approved too.
+ * commands are approved too. Inline code in another language is never
+ * approved automatically while the deny list has entries.
  */
 function getAnalyzedCommandDecision(
 	cmd: AnalyzedCommand,
@@ -276,7 +277,9 @@ function getAnalyzedCommandDecision(
 	const own: CommandDecision = longestAllowedMatch ? "auto_approve" : "ask_user"
 
 	const unwrapped = unwrapCommand(cmd.words)
-	if (unwrapped.commands.length === 0 && !unwrapped.opaque && unwrapped.tails.length === 0) {
+	// Code in another language (`python3 -c`, `awk 'BEGIN{system(...)}'`) may run any program, a denied one too.
+	const codeMayRunDenied = unwrapped.code.length > 0 && Boolean(deniedCommands?.length)
+	if (unwrapped.commands.length === 0 && !unwrapped.opaque && unwrapped.tails.length === 0 && !codeMayRunDenied) {
 		return own
 	}
 	if (depth >= MAX_WRAPPER_DEPTH) {
@@ -290,7 +293,7 @@ function getAnalyzedCommandDecision(
 	if (inner.includes("auto_deny")) {
 		return "auto_deny"
 	}
-	if (unwrapped.opaque || longestMatchOf(unwrapped.tails, deniedCommands)) {
+	if (unwrapped.opaque || codeMayRunDenied || longestMatchOf(unwrapped.tails, deniedCommands)) {
 		return "ask_user"
 	}
 	return own === "auto_approve" && inner.every((decision) => decision === "auto_approve")

@@ -9,7 +9,8 @@ import type { ShellWord } from "@tumble-code/core/browser"
  *
  * `unwrapCommand` returns the commands a wrapper runs, as command text to be
  * checked like any other command, and says when it runs something the text
- * does not show (an expanded payload, a git config value naming a program).
+ * does not show (an expanded payload, a git config value naming a program)
+ * or code in another language (`python3 -c`, `gdb -ex`, an awk program).
  */
 export interface UnwrappedCommand {
 	/** The commands the wrapper runs, each as shell text. */
@@ -23,9 +24,19 @@ export interface UnwrappedCommand {
 	 * option parsing below guessed wrong about an option's value.
 	 */
 	tails: string[]
+	/**
+	 * Program text in another language that the command runs (`python3 -c
+	 * CODE`, `node -e CODE`, `gdb -ex CMD`, `vim -c CMD`, an awk program that
+	 * can run a program or open a file): whatever it runs or touches cannot be
+	 * read from the text. Null for code only known after expansion.
+	 */
+	code: (string | null)[]
 }
 
-const NOTHING: UnwrappedCommand = { commands: [], opaque: false, tails: [] }
+/** What a wrapper runs, before the tails and code are added. */
+type Runs = Pick<UnwrappedCommand, "commands" | "opaque">
+
+const NOTHING: Omit<UnwrappedCommand, "code"> = { commands: [], opaque: false, tails: [] }
 
 /** The program a command word names, without its directory: `/usr/bin/env` is `env`. */
 export function programName(word: string): string {
@@ -64,7 +75,7 @@ function afterOptions(args: ShellWord[], valued: readonly string[], start = 0): 
 }
 
 /** The command in `args` from `start` on, as text; nothing when none is left. */
-function runs(args: ShellWord[], start: number | null): Omit<UnwrappedCommand, "tails"> {
+function runs(args: ShellWord[], start: number | null): Runs {
 	if (start === null) {
 		return { commands: [], opaque: true }
 	}
@@ -73,7 +84,7 @@ function runs(args: ShellWord[], start: number | null): Omit<UnwrappedCommand, "
 }
 
 /** A payload a program hands to a shell: `sh -c PAYLOAD`, `git submodule foreach PAYLOAD`. */
-function payload(words: ShellWord[]): Omit<UnwrappedCommand, "tails"> {
+function payload(words: ShellWord[]): Runs {
 	if (words.length === 0) {
 		return { commands: [], opaque: false }
 	}
@@ -85,7 +96,7 @@ const SHELLS = new Set(["sh", "bash", "zsh", "dash", "ksh", "ash", "mksh", "fish
 const SHELL_VALUED = ["-o", "+o", "-O", "+O", "--rcfile", "--init-file", "-C", "--init-command"]
 
 /** `bash -c 'cmd'`, `sh -ec 'cmd'`, `fish --command='cmd'`; a script file is a program like any other. */
-function unwrapShell(args: ShellWord[]): Omit<UnwrappedCommand, "tails"> {
+function unwrapShell(args: ShellWord[]): Runs {
 	for (let index = 0; index < args.length; index++) {
 		const arg = args[index].literal
 		if (arg === null) {
@@ -112,7 +123,7 @@ function unwrapShell(args: ShellWord[]): Omit<UnwrappedCommand, "tails"> {
 }
 
 /** `env [-i] [-u NAME] [NAME=VALUE...] cmd`, and `env -S 'cmd args'`. */
-function unwrapEnv(args: ShellWord[]): Omit<UnwrappedCommand, "tails"> {
+function unwrapEnv(args: ShellWord[]): Runs {
 	let index = 0
 	while (index < args.length) {
 		const arg = args[index].literal
@@ -145,7 +156,7 @@ function unwrapEnv(args: ShellWord[]): Omit<UnwrappedCommand, "tails"> {
 }
 
 /** `find ... -exec cmd {} ;` and `-execdir`, `-ok`, `-okdir`, as many as there are. */
-function unwrapFind(args: ShellWord[]): Omit<UnwrappedCommand, "tails"> {
+function unwrapFind(args: ShellWord[]): Runs {
 	const commands: string[] = []
 	for (let index = 0; index < args.length; index++) {
 		if (!["-exec", "-execdir", "-ok", "-okdir"].includes(args[index].literal ?? "")) {
@@ -161,7 +172,137 @@ function unwrapFind(args: ShellWord[]): Omit<UnwrappedCommand, "tails"> {
 		}
 		index = end
 	}
+	if (args.some((word) => word.literal === "-delete")) {
+		commands.push("rm")
+	}
 	return { commands, opaque: false }
+}
+
+/** The payload of `-c CMD`, also written `-qc CMD`, `--command CMD` or `--command=CMD` (`su`, `script`). */
+function commandOption(args: ShellWord[], long: readonly string[]): Runs {
+	for (let index = 0; index < args.length; index++) {
+		const arg = args[index].literal
+		if (arg === null) {
+			return { commands: [], opaque: true }
+		}
+		const attached = long.find((name) => arg.startsWith(`${name}=`))
+		if (attached) {
+			return { commands: [arg.slice(attached.length + 1)], opaque: false }
+		}
+		if (long.includes(arg) || /^-[A-Za-z]*c$/.test(arg)) {
+			return payload(args.slice(index + 1, index + 2))
+		}
+	}
+	return { commands: [], opaque: false }
+}
+
+/** `taskset MASK cmd`, `chrt PRIORITY cmd`; with `-p` they act on a running process and run nothing. */
+function afterOneValue(args: ShellWord[], valued: readonly string[]): Runs {
+	if (args.some((word) => word.literal === "-p" || word.literal === "--pid")) {
+		return { commands: [], opaque: false }
+	}
+	const value = afterOptions(args, valued)
+	return runs(args, value === null ? null : value + 1)
+}
+
+const PARALLEL_VALUED = [
+	"-j",
+	"--jobs",
+	"-S",
+	"--sshlogin",
+	"-a",
+	"--arg-file",
+	"-d",
+	"--delimiter",
+	"-E",
+	"-I",
+	"-n",
+	"--max-args",
+	"-N",
+	"-L",
+	"--max-lines",
+	"--colsep",
+	"--delay",
+	"--timeout",
+	"--joblog",
+	"--results",
+	"--tmpdir",
+	"--workdir",
+	"--env",
+	"--halt",
+]
+
+/**
+ * `parallel [options] cmd ::: args`. Without a command, each argument after
+ * `:::` is a command, and with no `:::` either the commands come from stdin.
+ */
+function unwrapParallel(args: ShellWord[]): Runs {
+	const start = afterOptions(args, PARALLEL_VALUED)
+	if (start === null) {
+		return { commands: [], opaque: true }
+	}
+	const marker = args.findIndex((word, index) => index >= start && /^::::?\+?$/.test(word.literal ?? ""))
+	const end = marker === -1 ? args.length : marker
+	if (end > start) {
+		return { commands: [raw(args.slice(start, end))], opaque: false }
+	}
+	if (marker === -1) {
+		return { commands: [], opaque: true }
+	}
+	const inputs = args.slice(marker + 1).filter((word) => !/^::::?\+?$/.test(word.literal ?? ""))
+	if (inputs.some((word) => word.literal === null)) {
+		return { commands: [], opaque: true }
+	}
+	return { commands: inputs.map((word) => word.literal as string), opaque: false }
+}
+
+const SSH_VALUED = [
+	"-b",
+	"-c",
+	"-D",
+	"-E",
+	"-e",
+	"-F",
+	"-I",
+	"-i",
+	"-J",
+	"-L",
+	"-l",
+	"-m",
+	"-O",
+	"-o",
+	"-p",
+	"-Q",
+	"-R",
+	"-S",
+	"-W",
+	"-w",
+	"-B",
+]
+
+/**
+ * `ssh host cmd args` runs `cmd args` in the remote shell. An `-o` option
+ * naming a command (`ProxyCommand`, `LocalCommand`) or another config file
+ * (`-F`) can run a local program, so it is never approved automatically.
+ */
+function unwrapSsh(args: ShellWord[]): Runs {
+	const host = afterOptions(args, SSH_VALUED)
+	if (host === null) {
+		return { commands: [], opaque: true }
+	}
+	const options = args.slice(0, host).map((word, index, all) => {
+		const option = word.literal ?? ""
+		return option === "-o" ? `-o${all[index + 1]?.literal ?? ""}` : option
+	})
+	const opaque = options.some((option) => /^-F/.test(option) || /^-o.*command/i.test(option))
+	const command = payload(args.slice(host + 1))
+	return { commands: command.commands, opaque: opaque || command.opaque }
+}
+
+/** `gdb [options] --args program args` debugs (runs) the program. */
+function unwrapGdb(args: ShellWord[]): Runs {
+	const program = args.findIndex((word) => word.literal === "--args")
+	return program === -1 ? { commands: [], opaque: false } : runs(args, program + 1)
 }
 
 const GIT_VALUED = ["-C", "-c", "--git-dir", "--work-tree", "--namespace", "--config-env", "--super-prefix"]
@@ -173,7 +314,7 @@ const GIT_VALUED = ["-C", "-c", "--git-dir", "--work-tree", "--namespace", "--co
  * they are given (`submodule foreach`, `rebase --exec`, `bisect run`), whose
  * command is checked too.
  */
-function unwrapGit(args: ShellWord[]): Omit<UnwrappedCommand, "tails"> {
+function unwrapGit(args: ShellWord[]): Runs {
 	const start = afterOptions(args, GIT_VALUED)
 	if (start === null) {
 		return { commands: [], opaque: true }
@@ -192,7 +333,7 @@ function unwrapGit(args: ShellWord[]): Omit<UnwrappedCommand, "tails"> {
 
 	const subcommand = rest[0]?.literal
 	const subArgs = rest.slice(1)
-	let nested: Omit<UnwrappedCommand, "tails"> = { commands: [], opaque: false }
+	let nested: Runs = { commands: [], opaque: false }
 	if (subcommand === "submodule") {
 		const foreach = subArgs.findIndex((word) => word.literal === "foreach")
 		if (foreach !== -1) {
@@ -225,7 +366,7 @@ function unwrapGit(args: ShellWord[]): Omit<UnwrappedCommand, "tails"> {
 }
 
 /** `npx [-y] [-p pkg] cmd`, `npx -c 'cmd'`, and the same after `npm exec`, `pnpm dlx` and the like. */
-function unwrapPackageRunner(args: ShellWord[]): Omit<UnwrappedCommand, "tails"> {
+function unwrapPackageRunner(args: ShellWord[]): Runs {
 	for (let index = 0; index < args.length; index++) {
 		const arg = args[index].literal
 		if (arg === "-c" || arg === "--call") {
@@ -246,7 +387,7 @@ const RUNNER_SUBCOMMANDS: Record<string, string[]> = {
 	bun: ["x", "exec"],
 }
 
-type Unwrapper = (args: ShellWord[]) => Omit<UnwrappedCommand, "tails">
+type Unwrapper = (args: ShellWord[]) => Runs
 
 /** Each wrapper with the options that take a value; its command follows the options. */
 const SIMPLE_WRAPPERS: Record<string, readonly string[]> = {
@@ -259,6 +400,30 @@ const SIMPLE_WRAPPERS: Record<string, readonly string[]> = {
 	time: ["-f", "--format", "-o", "--output"],
 	stdbuf: ["-i", "-o", "-e", "--input", "--output", "--error"],
 	ionice: ["-c", "--class", "-n", "--classdata"],
+	busybox: [],
+	firejail: [],
+	fakeroot: ["-l", "--lib", "--faked", "-s", "-i", "-b"],
+	strace: ["-e", "-o", "-p", "-s", "-u", "-E", "-a", "-b", "-I", "-O", "-S", "-P", "-X"],
+	ltrace: ["-e", "-o", "-p", "-s", "-u", "-a", "-n", "-l", "-x", "-A", "-D", "-F"],
+	cpulimit: ["-l", "--limit", "-p", "--pid", "-e", "--exe", "-P", "--path", "-c", "--cpu", "-s", "--signal"],
+	"systemd-run": [
+		"-p",
+		"--property",
+		"-u",
+		"--unit",
+		"-E",
+		"--setenv",
+		"-M",
+		"--machine",
+		"-H",
+		"--host",
+		"--description",
+		"--slice",
+		"--uid",
+		"--gid",
+		"--nice",
+		"--working-directory",
+	],
 	doas: ["-u", "-C"],
 	sudo: [
 		"-u",
@@ -304,13 +469,13 @@ const UNWRAPPERS: Record<string, Unwrapper> = {
 		const root = afterOptions(args, ["--userspec", "--groups"])
 		return runs(args, root === null ? null : root + 1)
 	},
-	taskset: (args) => {
-		if (args.some((word) => word.literal === "-p" || word.literal === "--pid")) {
-			return { commands: [], opaque: false }
-		}
-		const mask = afterOptions(args, [])
-		return runs(args, mask === null ? null : mask + 1)
-	},
+	taskset: (args) => afterOneValue(args, []),
+	chrt: (args) => afterOneValue(args, ["-T", "--sched-runtime", "-P", "--sched-period", "-D", "--sched-deadline"]),
+	su: (args) => commandOption(args, ["--command", "--session-command"]),
+	script: (args) => commandOption(args, ["--command"]),
+	parallel: unwrapParallel,
+	ssh: unwrapSsh,
+	gdb: unwrapGdb,
 	xargs: (args) => {
 		const start = afterOptions(args, [
 			"-a",
@@ -342,17 +507,117 @@ const UNWRAPPERS: Record<string, Unwrapper> = {
 }
 
 /** The unwrappers that read their payload exactly (see `tails`). */
-const EXACT_UNWRAPPERS = new Set(["find", "git", "eval", "command"])
+const EXACT_UNWRAPPERS = new Set(["find", "git", "eval", "command", "su", "script", "gdb"])
+
+/** Interpreters and the options that hand them program text; `+` is vim's `+CMD`. */
+const CODE_OPTIONS: Record<string, readonly string[]> = {
+	python: ["-c"],
+	python2: ["-c"],
+	python3: ["-c"],
+	pypy: ["-c"],
+	pypy3: ["-c"],
+	node: ["-e", "--eval", "-p", "--print"],
+	nodejs: ["-e", "--eval", "-p", "--print"],
+	perl: ["-e", "-E"],
+	ruby: ["-e"],
+	php: ["-r"],
+	lua: ["-e"],
+	luajit: ["-e"],
+	Rscript: ["-e"],
+	osascript: ["-e"],
+	gdb: [
+		"-ex",
+		"--ex",
+		"-iex",
+		"--iex",
+		"-eval-command",
+		"--eval-command",
+		"-init-eval-command",
+		"--init-eval-command",
+	],
+	vi: ["-c", "--cmd", "+"],
+	vim: ["-c", "--cmd", "+"],
+	nvim: ["-c", "--cmd", "+"],
+	ex: ["-c", "--cmd", "+"],
+	view: ["-c", "--cmd", "+"],
+}
+
+/**
+ * The code words of an interpreter: the word after an option (`-c CODE`, a
+ * short-option cluster ending in it such as perl's `-ne CODE`), or attached
+ * (`--eval=CODE`, `-eCODE`, vim's `+CMD`; a bare line number `+10` is no code).
+ */
+function codeOptions(args: ShellWord[], options: readonly string[]): (string | null)[] {
+	const code: (string | null)[] = []
+	for (let index = 0; index < args.length; index++) {
+		const arg = args[index].literal
+		if (arg === null) {
+			continue
+		}
+		for (const option of options) {
+			const letter = /^-[A-Za-z]$/.test(option) ? option[1] : null
+			if (arg === option || (letter && new RegExp(`^-[A-Za-z0-9]*${letter}$`).test(arg))) {
+				code.push(args[index + 1]?.literal ?? null)
+				index++
+				break
+			}
+			if (arg.startsWith(`${option}=`)) {
+				code.push(arg.slice(option.length + 1))
+				break
+			}
+			if ((letter || option === "+") && arg.startsWith(option) && arg.length > option.length) {
+				if (option !== "+" || !/^\+\d*$/.test(arg)) {
+					code.push(arg.slice(option.length))
+				}
+				break
+			}
+		}
+	}
+	return code
+}
+
+const AWKS = new Set(["awk", "gawk", "mawk", "nawk"])
+/** What lets an awk program run a program (`system()`, `| "cmd"`) or open a file (`getline <`, `print >`). */
+const AWK_REACH = /system|getline|[|>]/
+
+/** The program text of `awk [-F sep] [-v var=value] 'program' files`, when it can reach beyond its input. */
+function awkProgram(args: ShellWord[]): (string | null)[] {
+	const code: (string | null)[] = []
+	let fromFile = false
+	let index = 0
+	while (index < args.length) {
+		const arg = args[index].literal
+		if (arg === "-f" || arg === "--file") {
+			fromFile = true
+		} else if (arg === "-e" || arg === "--source") {
+			code.push(args[index + 1]?.literal ?? null)
+		} else if (arg === "--") {
+			index++
+			break
+		} else if (arg === null || !arg.startsWith("-") || arg === "-") {
+			break
+		}
+		index += ["-f", "--file", "-e", "--source", "-v", "-F"].includes(arg) ? 2 : 1
+	}
+	if (!fromFile && code.length === 0 && index < args.length) {
+		code.push(args[index].literal)
+	}
+	return code.filter((text) => text === null || AWK_REACH.test(text))
+}
 
 /** What the command `words` (its command word first) runs besides itself. */
 export function unwrapCommand(words: ShellWord[]): UnwrappedCommand {
 	const [commandWord, ...args] = words
 	const name = commandWord?.literal === null || !commandWord ? undefined : programName(commandWord.literal)
 	if (!name) {
-		return NOTHING
+		return { ...NOTHING, code: [] }
 	}
+	const code = AWKS.has(name) ? awkProgram(args) : name in CODE_OPTIONS ? codeOptions(args, CODE_OPTIONS[name]) : []
+	return { ...unwrapWrapper(name, args), code }
+}
 
-	let unwrapped: Omit<UnwrappedCommand, "tails"> | undefined
+function unwrapWrapper(name: string, args: ShellWord[]): Omit<UnwrappedCommand, "code"> {
+	let unwrapped: Runs | undefined
 	// Wrappers whose payload is one argument or a marked span (a shell's -c,
 	// find's -exec, git's subcommands) are read exactly; their other arguments
 	// are data, so no tails.
