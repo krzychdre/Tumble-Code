@@ -45,6 +45,24 @@ export function programName(word: string): string {
 
 const raw = (words: ShellWord[]) => words.map((word) => word.raw).join(" ")
 
+/**
+ * The path a shell word names once the shell has expanded a leading `~`,
+ * `~/`, `$HOME` or `${HOME}`, quotes removed. Null when the word holds another
+ * expansion (`$DIR`, `$(...)`, backticks, `~user`): the path is only known
+ * when the command runs. A glob (`sec*`) stays as written.
+ */
+export function expandedPath(word: ShellWord, home: string): string | null {
+	if (word.literal !== null && !word.raw.startsWith("~")) {
+		return word.literal
+	}
+	const prefix = /^(?:~(?=\/|$)|"?\$(?:\{HOME\}|HOME(?![A-Za-z0-9_])))/.exec(word.raw)?.[0] ?? ""
+	const rest = word.raw.slice(prefix.length)
+	if (/[$`]/.test(rest) || rest.startsWith("~")) {
+		return null
+	}
+	return (prefix ? home : "") + rest.replace(/["']/g, "")
+}
+
 /** The words' values joined by spaces, or null when one is only known after expansion. */
 function literalText(words: ShellWord[]): string | null {
 	const values = words.map((word) => word.literal)

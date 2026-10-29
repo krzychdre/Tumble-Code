@@ -1,3 +1,4 @@
+import os from "os"
 import path from "path"
 import { RooProtectedController } from "../RooProtectedController"
 
@@ -258,4 +259,44 @@ describe("RooProtectedController.isCommandWriteProtected", () => {
 			expect(controller.isCommandWriteProtected(command)).toBe(false)
 		},
 	)
+})
+
+describe("RooProtectedController.isCommandWriteProtected in the home directory and in code", () => {
+	const home = os.homedir()
+	const controller = new RooProtectedController("/test/workspace", {
+		roots: [home],
+		protectedDirectories: [path.join(home, ".config/Code/User")],
+	})
+
+	it.each([
+		["a redirect to ~/", "cat > ~/.roo/mcp.json <<'X'\n{}\nX"],
+		["a redirect to $HOME", 'echo x > "$HOME/.roo/mcp.json"'],
+		["a writer argument under ${HOME}", "cp evil.json ${HOME}/.roo/mcp.json"],
+		["the global MCP settings under ~", "tee ~/.config/Code/User/globalStorage/x.y/settings/mcp_settings.json"],
+		["a write after a cd to ~/", "cd ~/.roo && cat > mcp.json"],
+		["a redirect to a variable", 'echo x > "$OUT"'],
+		["a writer argument from a substitution", "cp evil.json $(dirname x)/mcp.json"],
+		["a write after a cd to a variable", 'cd "$DIR" && echo x > mcp.json'],
+		["python code naming .roo", "python3 -c \"open('.roo/mcp.json', 'w').write('{}')\""],
+		[
+			"node code naming VS Code's user settings",
+			"node -e \"require('fs').writeFileSync(require('os').homedir() + '/.config/Code/User/settings.json', '{}')\"",
+		],
+		["an awk program writing into .roo", "awk 'BEGIN { print 1 > \".roo/mcp.json\" }'"],
+		["an awk program only known when it runs", 'awk "$PROG" data.txt'],
+	])("finds %s: %j", (_label, command) => {
+		expect(controller.isCommandWriteProtected(command)).toBe(true)
+	})
+
+	it.each([
+		"echo $PATH",
+		'printf "%s\\n" "$HOME"',
+		'[ -f "$F" ]',
+		"cat ~/.roo/mcp.json",
+		"echo x > ~/notes.txt",
+		"python3 -c 'print(1)'",
+		"node -e \"console.log(require('os').homedir())\"",
+	])("finds no write in %j", (command) => {
+		expect(controller.isCommandWriteProtected(command)).toBe(false)
+	})
 })
