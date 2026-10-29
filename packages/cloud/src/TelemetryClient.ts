@@ -15,6 +15,8 @@ import {
 import { readFile } from "node:fs/promises"
 import path from "node:path"
 
+import { redactSecrets } from "@tumble-code/core/redact"
+
 import { getTumbleCodeApiUrl } from "./config.js"
 import type { RetryQueue } from "./retry-queue/index.js"
 import { findLocalImageReferences, locateTaskImage } from "./taskImages.js"
@@ -128,6 +130,7 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 	constructor(
 		private authService: AuthService,
 		private settingsService: SettingsService,
+		private secretValues: () => readonly string[],
 		retryQueue?: RetryQueue,
 	) {
 		super({
@@ -137,7 +140,8 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 		this.retryQueue = retryQueue || null
 	}
 
-	private async fetch(path: string, options: RequestInit, allowQueueing = true) {
+	/** POSTs `payload` as JSON, redacted (`redactSecrets`) before it is serialized. */
+	private async post(path: string, payload: unknown, allowQueueing = true) {
 		if (!this.authService.isAuthenticated()) {
 			return
 		}
@@ -145,13 +149,14 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 		const token = this.authService.getSessionToken()
 
 		if (!token) {
-			console.error(`[TelemetryClient#fetch] Unauthorized: No session token available.`)
+			console.error(`[TelemetryClient#post] Unauthorized: No session token available.`)
 			return
 		}
 
 		const url = `${getTumbleCodeApiUrl()}/api/${path}`
 		const fetchOptions: RequestInit = {
-			...options,
+			method: "POST",
+			body: JSON.stringify(redactSecrets(payload, this.secretValues())),
 			headers: {
 				Authorization: `Bearer ${token}`,
 				"Content-Type": "application/json",
@@ -165,9 +170,7 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 			})
 
 			if (!response.ok) {
-				console.error(
-					`[TelemetryClient#fetch] ${options.method} ${path} -> ${response.status} ${response.statusText}`,
-				)
+				console.error(`[TelemetryClient#post] POST ${path} -> ${response.status} ${response.statusText}`)
 
 				// Queue for retry on server errors (5xx) or rate limiting (429)
 				// Do NOT retry on client errors (4xx) except 429 - they won't succeed
@@ -178,7 +181,7 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 
 			return response
 		} catch (error) {
-			console.error(`[TelemetryClient#fetch] Network error for ${options.method} ${path}: ${error}`)
+			console.error(`[TelemetryClient#post] Network error for POST ${path}: ${error}`)
 
 			// Queue for retry on network failures (typically TypeError with "fetch failed" message)
 			// These are transient network issues that may succeed on retry
@@ -226,13 +229,10 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 		let response: Response | undefined
 
 		try {
-			response = await this.fetch(`events`, {
-				method: "POST",
-				body: JSON.stringify(result.data),
-			})
+			response = await this.post(`events`, result.data)
 		} catch (error) {
 			console.error(`[TelemetryClient#capture] Error sending telemetry event: ${error}`)
-			// Error is already queued for retry in the fetch method
+			// Error is already queued for retry in the post method
 		}
 
 		const data = result.data
@@ -273,13 +273,10 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 		}
 
 		try {
-			await this.fetch(`error-reports`, {
-				method: "POST",
-				body: JSON.stringify(result.data),
-			})
+			await this.post(`error-reports`, result.data)
 		} catch (error) {
 			console.error(`[TelemetryClient#sendErrorReport] Error sending error report: ${error}`)
-			// A network failure is already queued for retry in the fetch method.
+			// A network failure is already queued for retry in the post method.
 		}
 	}
 
@@ -307,10 +304,11 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 				event: TelemetryEventName.TASK_MESSAGE,
 				properties: { taskId },
 			})
+			const secretValues = this.secretValues()
 
 			const formData = new FormData()
 			formData.append("taskId", taskId)
-			formData.append("properties", JSON.stringify(mergedProperties))
+			formData.append("properties", JSON.stringify(redactSecrets(mergedProperties, secretValues)))
 
 			// Worktree root, sent explicitly so the cloud web view can attribute
 			// this (possibly offline) task to its project. Kept out of `properties`
@@ -322,7 +320,7 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 
 			formData.append(
 				"file",
-				new File([JSON.stringify(messages)], "task.json", {
+				new File([JSON.stringify(redactSecrets(messages, secretValues))], "task.json", {
 					type: "application/json",
 				}),
 			)

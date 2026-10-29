@@ -15,6 +15,7 @@ vi.mock("@tumble-code/cloud", () => ({
 			return {
 				isErrorReportingEnabled: cloud.isErrorReportingEnabled,
 				sendErrorReport: cloud.sendErrorReport,
+				secretValues: () => ["my-local-key-7f3a"],
 			}
 		},
 	},
@@ -137,7 +138,11 @@ describe("signed in", () => {
 		}))
 		const error = Object.assign(new Error("This model's maximum context length is 131072 tokens."), {
 			status: 400,
-			error: { message: "maximum context length", authorization: "Bearer abcdefghijklmnop" },
+			error: {
+				message: "maximum context length",
+				authorization: "Bearer abcdefghijklmnop",
+				detail: "sent with my-local-key-7f3a",
+			},
 		})
 
 		reportApiError(task, error, 2)
@@ -165,6 +170,7 @@ describe("signed in", () => {
 		expect(report.request!.systemPromptSha256).toMatch(/^[0-9a-f]{64}$/)
 		expect(report.request!.messages).toHaveLength(2)
 		expect(report.response!.errorBody).not.toContain("abcdefghijklmnop")
+		expect(report.response!.errorBody).not.toContain("my-local-key-7f3a")
 	})
 
 	it("reports one error object once, even from two layers", async () => {

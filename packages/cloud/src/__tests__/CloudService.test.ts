@@ -10,6 +10,7 @@ import { WebAuthService } from "../WebAuthService.js"
 import { CloudSettingsService } from "../CloudSettingsService.js"
 import { CloudShareService } from "../CloudShareService.js"
 import { CloudTelemetryClient as TelemetryClient } from "../TelemetryClient.js"
+import { LlmExchangeClient } from "../LlmExchangeClient.js"
 
 vi.mock("vscode", () => ({
 	ExtensionContext: vi.fn(),
@@ -32,6 +33,8 @@ vi.mock("../CloudSettingsService")
 vi.mock("../CloudShareService")
 
 vi.mock("../TelemetryClient")
+
+vi.mock("../LlmExchangeClient")
 
 describe("CloudService", () => {
 	let mockContext: vscode.ExtensionContext
@@ -170,7 +173,7 @@ describe("CloudService", () => {
 
 	describe("retry queue on logout", () => {
 		it("drops queued requests on logout even when the user info never arrived", async () => {
-			const cloudService = await CloudService.createInstance(mockContext, vi.fn())
+			const cloudService = await CloudService.createInstance(mockContext, () => [], vi.fn())
 			const [, authStateListener] = mockAuthService.on.mock.calls.find(
 				([event]) => event === "auth-state-changed",
 			)!
@@ -189,26 +192,36 @@ describe("CloudService", () => {
 	describe("createInstance", () => {
 		it("should create and initialize CloudService instance", async () => {
 			const mockLog = vi.fn()
+			const secretValues = () => ["stored-key-value"]
 
-			const cloudService = await CloudService.createInstance(mockContext, mockLog)
+			const cloudService = await CloudService.createInstance(mockContext, secretValues, mockLog)
 
 			expect(cloudService).toBeInstanceOf(CloudService)
 			expect(WebAuthService).toHaveBeenCalledWith(mockContext, expect.any(Function))
 			expect(CloudSettingsService).toHaveBeenCalledWith(mockContext, mockAuthService, expect.any(Function))
+			// Every client that sends to the cloud redacts with the extension's stored secrets.
+			expect(TelemetryClient).toHaveBeenCalledWith(
+				mockAuthService,
+				mockSettingsService,
+				secretValues,
+				cloudService.retryQueue,
+			)
+			expect(LlmExchangeClient).toHaveBeenCalledWith(mockAuthService, secretValues, mockLog)
+			expect(cloudService.secretValues).toBe(secretValues)
 		})
 
 		it("should set up event listeners for CloudSettingsService", async () => {
 			const mockLog = vi.fn()
 
-			await CloudService.createInstance(mockContext, mockLog)
+			await CloudService.createInstance(mockContext, () => [], mockLog)
 
 			expect(mockSettingsService.on).toHaveBeenCalledWith("settings-updated", expect.any(Function))
 		})
 
 		it("should throw error if instance already exists", async () => {
-			await CloudService.createInstance(mockContext)
+			await CloudService.createInstance(mockContext, () => [])
 
-			await expect(CloudService.createInstance(mockContext)).rejects.toThrow(
+			await expect(CloudService.createInstance(mockContext, () => [])).rejects.toThrow(
 				"CloudService instance already created",
 			)
 		})
@@ -218,7 +231,7 @@ describe("CloudService", () => {
 		let cloudService: CloudService
 
 		beforeEach(async () => {
-			cloudService = await CloudService.createInstance(mockContext)
+			cloudService = await CloudService.createInstance(mockContext, () => [])
 		})
 
 		it("should delegate login to AuthService", async () => {
@@ -354,7 +367,7 @@ describe("CloudService", () => {
 		let cloudService: CloudService
 
 		beforeEach(async () => {
-			cloudService = await CloudService.createInstance(mockContext)
+			cloudService = await CloudService.createInstance(mockContext, () => [])
 		})
 
 		it("should delegate getAllowList to SettingsService", () => {
@@ -385,7 +398,7 @@ describe("CloudService", () => {
 		})
 
 		it("should return true when instance exists and is initialized", async () => {
-			await CloudService.createInstance(mockContext)
+			await CloudService.createInstance(mockContext, () => [])
 			expect(CloudService.hasInstance()).toBe(true)
 		})
 	})
@@ -404,7 +417,7 @@ describe("CloudService", () => {
 			)
 			mockAuthService.isAuthenticated.mockReturnValue(true)
 
-			const creating = CloudService.createInstance(mockContext)
+			const creating = CloudService.createInstance(mockContext, () => [])
 
 			expect(CloudService.hasInstance()).toBe(false)
 			expect(() => CloudService.isEnabled()).not.toThrow()
@@ -419,7 +432,7 @@ describe("CloudService", () => {
 
 	describe("dispose", () => {
 		it("should dispose of all services and clean up", async () => {
-			const cloudService = await CloudService.createInstance(mockContext)
+			const cloudService = await CloudService.createInstance(mockContext, () => [])
 			cloudService.dispose()
 
 			expect(mockSettingsService.dispose).toHaveBeenCalled()
@@ -442,7 +455,7 @@ describe("CloudService", () => {
 				return mockCloudSettingsService
 			})
 
-			const cloudService = await CloudService.createInstance(mockContext)
+			const cloudService = await CloudService.createInstance(mockContext, () => [])
 
 			// Verify the listener was added
 			expect(mockCloudSettingsService.on).toHaveBeenCalledWith("settings-updated", expect.any(Function))
@@ -478,7 +491,7 @@ describe("CloudService", () => {
 			})
 
 			// This should not throw even though the service doesn't pass instanceof check
-			const _cloudService = await CloudService.createInstance(mockContext)
+			const _cloudService = await CloudService.createInstance(mockContext, () => [])
 
 			// Should not throw when disposing
 			expect(() => _cloudService.dispose()).not.toThrow()
@@ -494,7 +507,7 @@ describe("CloudService", () => {
 		let _cloudService: CloudService
 
 		beforeEach(async () => {
-			_cloudService = await CloudService.createInstance(mockContext)
+			_cloudService = await CloudService.createInstance(mockContext, () => [])
 		})
 
 		it("should emit settings-updated event when settings are updated", async () => {
@@ -540,7 +553,7 @@ describe("CloudService", () => {
 			mockAuthService.hasOrIsAcquiringActiveSession.mockReturnValue(true)
 			mockAuthService.getState.mockReturnValue("active")
 
-			cloudService = await CloudService.createInstance(mockContext)
+			cloudService = await CloudService.createInstance(mockContext, () => [])
 		})
 
 		it("should backfill the full local history up front, then share once", async () => {

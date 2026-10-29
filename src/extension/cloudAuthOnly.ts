@@ -52,7 +52,8 @@ export async function activateCloudAuthOnly(
 	context: vscode.ExtensionContext,
 	log: (...args: unknown[]) => void,
 	{
-		createCloudService = (ctx, cloudLog) => CloudService.createInstance(ctx, cloudLog),
+		// Signing in sends no payload to the cloud, so there is nothing to redact.
+		createCloudService = (ctx, cloudLog) => CloudService.createInstance(ctx, () => [], cloudLog),
 		disposeCloudService = () => CloudService.resetInstance(),
 		getCloudApiUrl = getTumbleCodeApiUrl,
 	}: CloudAuthOnlyDependencies = {},

@@ -149,6 +149,7 @@ export function setupRemoteControlBridge(opts: {
 			workspacePath,
 			repositoryUrl,
 			snapshot,
+			secretValues: CloudService.instance.secretValues,
 			// Re-arm the connector after socket.io gives up reconnecting (R11).
 			// Read at every start so the setting applies without a reload.
 			reconnectRearmDelayMs: getBridgeRetryDelayMs(),

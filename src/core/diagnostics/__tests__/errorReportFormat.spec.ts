@@ -14,7 +14,6 @@ import {
 	capErrorReport,
 	finalizeErrorReport,
 	isContextOverflowError,
-	scrubSecrets,
 	summaryLine,
 	toReportMessages,
 	truncateText,
@@ -88,25 +87,6 @@ describe("apiErrorBody", () => {
 	})
 })
 
-describe("scrubSecrets", () => {
-	it.each([
-		["Authorization: Bearer abcdefghijklmnop", "[redacted]"],
-		['{"api_key":"0123456789abcdef"}', '{"api_key":"[redacted]"}'],
-		["https://x.example/v1?key=AIzaSecret123&alt=sse", "https://x.example/v1?key=[redacted]&alt=sse"],
-		["key sk-proj-abcdefghijklmnopqrstuvwx used", "key [redacted-key] used"],
-		["x-api-key=supersecretvalue", "x-api-key=[redacted]"],
-	])("removes the secret from %s", (input, expected) => {
-		const output = scrubSecrets(input)
-		expect(output).toContain(expected)
-		expect(output).not.toMatch(/abcdefghijklmnop|0123456789abcdef|AIzaSecret123|supersecretvalue/)
-	})
-
-	it("leaves ordinary text alone", () => {
-		const text = "Error reading file src/app.ts: ENOENT: no such file or directory"
-		expect(scrubSecrets(text)).toBe(text)
-	})
-})
-
 describe("truncation", () => {
 	it("marks a cut text and keeps the limit", () => {
 		const cut = truncateText("x".repeat(100), 50)
@@ -176,19 +156,23 @@ describe("capErrorReport", () => {
 })
 
 describe("finalizeErrorReport", () => {
-	it("produces a body the wire schema accepts, scrubbed and within the limits", () => {
-		const report = finalizeErrorReport({
-			id: "id-2",
-			occurredAt: 2,
-			category: "tool_error",
-			summary: `Bearer abcdefghijklmnopqrstuvwxyz ${"s".repeat(600)}`,
-			errorMessage: "x".repeat(20_000),
-			toolResult: "y".repeat(20_000),
-			response: { errorBody: '{"api_key":"0123456789abcdef"}' },
-		})
+	it("produces a body the wire schema accepts, redacted and within the limits", () => {
+		const report = finalizeErrorReport(
+			{
+				id: "id-2",
+				occurredAt: 2,
+				category: "tool_error",
+				summary: `Bearer abcdefghijklmnopqrstuvwxyz ${"s".repeat(600)}`,
+				errorMessage: `${"my-local-key-7f3a ".repeat(500)}${"x".repeat(20_000)}`,
+				toolResult: "y".repeat(20_000),
+				response: { errorBody: '{"api_key":"0123456789abcdef"}' },
+			},
+			["my-local-key-7f3a"],
+		)
 		expect(errorReportSchema.safeParse(report).success).toBe(true)
 		expect(report.summary.length).toBeLessThanOrEqual(ERROR_REPORT_MAX_SUMMARY_CHARS)
 		expect(report.summary).not.toContain("abcdefghijklmnopqrstuvwxyz")
+		expect(report.errorMessage).not.toContain("my-local-key-7f3a")
 		expect(report.response!.errorBody).toBe('{"api_key":"[redacted]"}')
 		expect(report.errorMessage!.length).toBe(8_000)
 		expect(JSON.stringify(report)).not.toContain("null")

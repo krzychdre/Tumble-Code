@@ -70,7 +70,7 @@ describe("TelemetryClient: task images", () => {
 
 		mockFetch.mockResolvedValue({ ok: true, status: 200, statusText: "OK" })
 
-		client = new TelemetryClient(authService, settingsService)
+		client = new TelemetryClient(authService, settingsService, () => [])
 		provider = {
 			getTelemetryProperties: vi.fn().mockResolvedValue(PROVIDER_PROPERTIES),
 			getTelemetryWorkspacePath: vi.fn().mockReturnValue(workspace),

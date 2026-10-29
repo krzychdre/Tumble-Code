@@ -51,7 +51,12 @@ describe("LlmExchangeClient", () => {
 			isAuthenticated: vi.fn().mockReturnValue(true),
 		}
 		mockFetch.mockResolvedValue(ok())
-		client = new LlmExchangeClient(authService, () => {}, { sleep, now: () => now })
+		client = new LlmExchangeClient(
+			authService,
+			() => [],
+			() => {},
+			{ sleep, now: () => now },
+		)
 	})
 
 	describe("the recording switch", () => {

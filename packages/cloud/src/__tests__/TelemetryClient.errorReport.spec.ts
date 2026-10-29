@@ -41,7 +41,7 @@ describe("CloudTelemetryClient.sendErrorReport", () => {
 		retryQueue = { enqueue: vi.fn().mockResolvedValue(undefined) }
 		mockFetch.mockResolvedValue({ ok: true, status: 202, statusText: "Accepted" })
 
-		client = new TelemetryClient(authService, { isTaskSyncEnabled: () => true } as any, retryQueue)
+		client = new TelemetryClient(authService, { isTaskSyncEnabled: () => true } as any, () => [], retryQueue)
 	})
 
 	afterEach(() => {

@@ -109,6 +109,7 @@ describe("BridgeOrchestrator", () => {
 			workspacePath: "/work",
 			repositoryUrl: "https://github.com/acme/tool.git",
 			snapshot: vi.fn(async () => ({ mode: "code", isRunning: true })),
+			secretValues: () => [],
 			ioFactory: ioFactory as any,
 			// Deterministic jitter: the top of the equal-jitter band, so the
 			// hand-reconnect delays below stay exactly 1 s, 2 s, ... (R11).
@@ -196,6 +197,7 @@ describe("BridgeOrchestrator", () => {
 			events: bus as unknown as BridgeEventSource,
 			workspacePath: "/work",
 			snapshot: vi.fn(async () => ({ mode: "code", isRunning: true })),
+			secretValues: () => [],
 			ioFactory: ioFactory as any,
 			log: (...args: unknown[]) => logs.push(args.join(" ")),
 		})
@@ -221,6 +223,7 @@ describe("BridgeOrchestrator", () => {
 			events: bus as unknown as BridgeEventSource,
 			workspacePath: "/work",
 			snapshot: vi.fn(async () => ({ mode: "code", isRunning: true })),
+			secretValues: () => [],
 			ioFactory: ioFactory as any,
 			log: (...args: unknown[]) => logs.push(args.join(" ")),
 		})
@@ -251,6 +254,7 @@ describe("BridgeOrchestrator", () => {
 			events: bus as unknown as BridgeEventSource,
 			workspacePath: "/work",
 			snapshot: vi.fn(async () => ({ mode: "code", isRunning: true })),
+			secretValues: () => [],
 			ioFactory: ioFactory as any,
 			log: (...args: unknown[]) => logs.push(args.join(" ")),
 		})
@@ -280,6 +284,7 @@ describe("BridgeOrchestrator", () => {
 			events: bus as unknown as BridgeEventSource,
 			workspacePath: "/work",
 			snapshot: vi.fn(async () => ({ mode: "code", isRunning: true })),
+			secretValues: () => [],
 			ioFactory: ioFactory as any,
 			log: (...args: unknown[]) => logs.push(args.join(" ")),
 		})

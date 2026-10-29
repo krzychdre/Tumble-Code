@@ -98,6 +98,7 @@ describe("BridgeOrchestrator reconnect re-arm (R11)", () => {
 			events: bus as unknown as any,
 			workspacePath: "/work",
 			snapshot: vi.fn(async () => ({ mode: "code", isRunning: true })),
+			secretValues: () => [],
 			ioFactory: ioFactory as any,
 			log: (...args: unknown[]) => logs.push(args.join(" ")),
 			...opts,
@@ -237,6 +238,7 @@ describe("BridgeOrchestrator connection status", () => {
 			events: new FakeEmitter() as unknown as any,
 			workspacePath: "/work",
 			snapshot: vi.fn(async () => null),
+			secretValues: () => [],
 			ioFactory: vi.fn(() => socket) as any,
 			onStatusChange: (status) => statuses.push(status),
 		})

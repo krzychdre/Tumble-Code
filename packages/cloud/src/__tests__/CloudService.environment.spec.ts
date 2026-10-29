@@ -70,7 +70,7 @@ describe("CloudService environment resolution (characterization)", () => {
 	})
 
 	it("uses web auth and cloud settings when neither variable is set", async () => {
-		const service = await CloudService.createInstance(context, log)
+		const service = await CloudService.createInstance(context, () => [], log)
 
 		expect(WebAuthService).toHaveBeenCalledWith(context, log)
 		expect(StaticTokenAuthService).not.toHaveBeenCalled()
@@ -83,7 +83,7 @@ describe("CloudService environment resolution (characterization)", () => {
 		vi.stubEnv("TUMBLE_CODE_CLOUD_TOKEN", "")
 		vi.stubEnv("TUMBLE_CODE_CLOUD_ORG_SETTINGS", "")
 
-		const service = await CloudService.createInstance(context, log)
+		const service = await CloudService.createInstance(context, () => [], log)
 
 		expect(WebAuthService).toHaveBeenCalledTimes(1)
 		expect(StaticTokenAuthService).not.toHaveBeenCalled()
@@ -95,7 +95,7 @@ describe("CloudService environment resolution (characterization)", () => {
 	it("uses the static token auth and marks a cloud agent when TUMBLE_CODE_CLOUD_TOKEN is set", async () => {
 		vi.stubEnv("TUMBLE_CODE_CLOUD_TOKEN", "job-token")
 
-		const service = await CloudService.createInstance(context, log)
+		const service = await CloudService.createInstance(context, () => [], log)
 
 		expect(StaticTokenAuthService).toHaveBeenCalledWith(context, "job-token", log)
 		expect(WebAuthService).not.toHaveBeenCalled()
@@ -105,14 +105,14 @@ describe("CloudService environment resolution (characterization)", () => {
 	it("uses static settings when TUMBLE_CODE_CLOUD_ORG_SETTINGS is set", async () => {
 		vi.stubEnv("TUMBLE_CODE_CLOUD_ORG_SETTINGS", "eyJ2ZXJzaW9uIjoxfQ==")
 
-		await CloudService.createInstance(context, log)
+		await CloudService.createInstance(context, () => [], log)
 
 		expect(StaticSettingsService).toHaveBeenCalledWith("eyJ2ZXJzaW9uIjoxfQ==", log)
 		expect(CloudSettingsService).not.toHaveBeenCalled()
 	})
 
 	it("persists its retry queue in the workspace state under roo.retryQueue", async () => {
-		const service = await CloudService.createInstance(context, log)
+		const service = await CloudService.createInstance(context, () => [], log)
 
 		expect(workspaceState.get).toHaveBeenCalledWith("roo.retryQueue")
 
