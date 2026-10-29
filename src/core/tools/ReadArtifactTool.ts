@@ -2,7 +2,8 @@ import * as fs from "fs/promises"
 import * as path from "path"
 
 import { resolveMaxInlineToolResultBytes } from "@tumble-code/types"
-import { compileHistoryQuery } from "./helpers/searchTaskHistoryQuery"
+import { HISTORY_SEARCH_DEFAULTS } from "./helpers/searchTaskHistory"
+import { compileHistoryQuery, matchingLineIndexes } from "./helpers/searchTaskHistoryQuery"
 
 import { Task } from "../task/Task"
 import { formatResponse } from "../prompts/responses"
@@ -352,15 +353,37 @@ export class ReadArtifactTool extends BaseTool<"read_artifact"> {
 		const { regex } = compileHistoryQuery(pattern)
 
 		const fileHandle = await fs.open(artifactPath, "r")
+		const deadline = Date.now() + HISTORY_SEARCH_DEFAULTS.MAX_SEARCH_MILLIS
 		const matches: Array<{ lineNumber: number; content: string }> = []
 		let totalMatchBytes = 0
 		let lineNumber = 0
 		let partialLine = "" // Holds incomplete line from previous chunk
 		let bytesRead = 0
 		let hitLimit = false
+		let timedOut = false
+
+		// Collects the matching lines of `lines`, which start after `lineNumber`.
+		const scan = (lines: string[]) => {
+			const found = matchingLineIndexes(regex, lines, deadline - Date.now())
+			if (found === undefined) {
+				timedOut = true
+				return
+			}
+			for (const index of found) {
+				const lineBytes = Buffer.byteLength(lines[index], "utf8")
+				// Stop if we've exceeded the byte limit
+				if (totalMatchBytes + lineBytes > limit) {
+					hitLimit = true
+					break
+				}
+				matches.push({ lineNumber: lineNumber + index + 1, content: lines[index] })
+				totalMatchBytes += lineBytes
+			}
+			lineNumber += lines.length
+		}
 
 		try {
-			while (bytesRead < totalSize && !hitLimit) {
+			while (bytesRead < totalSize && !hitLimit && !timedOut) {
 				const chunkSize = Math.min(CHUNK_SIZE, totalSize - bytesRead)
 				const buffer = Buffer.alloc(chunkSize)
 				const result = await fileHandle.read(buffer, 0, chunkSize, bytesRead)
@@ -379,40 +402,28 @@ export class ReadArtifactTool extends BaseTool<"read_artifact"> {
 				// Last element may be incomplete (no trailing newline), save for next iteration
 				partialLine = lines.pop() ?? ""
 
-				// Process complete lines
-				for (const line of lines) {
-					lineNumber++
-
-					if (regex.test(line)) {
-						const lineBytes = Buffer.byteLength(line, "utf8")
-
-						// Stop if we've exceeded the byte limit
-						if (totalMatchBytes + lineBytes > limit) {
-							hitLimit = true
-							break
-						}
-
-						matches.push({ lineNumber, content: line })
-						totalMatchBytes += lineBytes
-					}
-				}
+				scan(lines)
 			}
 
 			// Process any remaining partial line at end of file
-			if (!hitLimit && partialLine.length > 0) {
-				lineNumber++
-				if (regex.test(partialLine)) {
-					const lineBytes = Buffer.byteLength(partialLine, "utf8")
-					if (totalMatchBytes + lineBytes <= limit) {
-						matches.push({ lineNumber, content: partialLine })
-					}
-				}
+			if (!hitLimit && !timedOut && partialLine.length > 0) {
+				scan([partialLine])
 			}
 		} finally {
 			await fileHandle.close()
 		}
 
 		const artifactId = path.basename(artifactPath)
+
+		if (timedOut) {
+			const content = [
+				`[Artifact: ${artifactId}] (search: "${pattern}")`,
+				`Total size: ${this.formatBytes(totalSize)}`,
+				"",
+				`The search was stopped after ${HISTORY_SEARCH_DEFAULTS.MAX_SEARCH_MILLIS / 1000} s: this pattern is too slow on this output. Search for a plain word or a simpler pattern.`,
+			].join("\n")
+			return { content, matchCount: 0 }
+		}
 
 		if (matches.length === 0) {
 			const content = [

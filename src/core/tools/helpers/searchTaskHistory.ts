@@ -6,7 +6,7 @@ import type { Anthropic } from "@anthropic-ai/sdk"
 import { ARTIFACT_DIRECTORIES, isValidArtifactId } from "../../artifacts/ArtifactStore"
 import type { ApiMessage } from "../../task-persistence/apiMessages"
 
-import { compileHistoryQuery, type HistoryQueryMode } from "./searchTaskHistoryQuery"
+import { compileHistoryQuery, type HistoryQueryMode, matchingLineIndexes } from "./searchTaskHistoryQuery"
 
 /**
  * Search over a task's OWN stored history.
@@ -56,17 +56,8 @@ export const HISTORY_SEARCH_DEFAULTS = {
 	 * human wrote and is stated in the tool description.
 	 */
 	MAX_TESTED_LINE_CHARS: 2_000,
-	/**
-	 * Wall-clock budget for the whole scan, in milliseconds.
-	 *
-	 * A JavaScript regular expression cannot be interrupted once `test` is
-	 * running, so this is checked BETWEEN lines. It bounds the aggregate, while
-	 * {@link isCatastrophicPattern} bounds the single worst line by refusing the
-	 * shape that makes one line take exponential time.
-	 */
+	/** Wall-clock budget for the whole scan, in milliseconds (enforced by {@link matchingLineIndexes}). */
 	MAX_SEARCH_MILLIS: 2_000,
-	/** How many lines are scanned between two clock checks. */
-	BUDGET_CHECK_INTERVAL: 256,
 	/**
 	 * Hard cap on collected matches.
 	 *
@@ -369,8 +360,8 @@ function formatTimestamp(value: number): string {
  *
  * ## Cost control
  *
- * Each line is tested only up to `MAX_TESTED_LINE_CHARS`, and the clock is
- * checked every `BUDGET_CHECK_INTERVAL` lines. On expiry the scan stops and
+ * Each line is tested only up to `MAX_TESTED_LINE_CHARS`, and the scan is
+ * interrupted after `MAX_SEARCH_MILLIS`. On expiry the scan stops and
  * `timedOut` is set; the caller turns that into a corrective tool error rather
  * than a partial result the model would read as complete.
  */
@@ -386,11 +377,10 @@ export function searchHistorySources(
 	const deadline = now() + HISTORY_SEARCH_DEFAULTS.MAX_SEARCH_MILLIS
 
 	const lineCache = new Map<number, string[]>()
-	const matches: Array<{ sourceIndex: number; lineIndex: number; line: string }> = []
-	let timedOut = false
-	let scanned = 0
+	const tested: string[] = []
+	const owners: Array<{ sourceIndex: number; lineIndex: number }> = []
 
-	for (let sourceIndex = 0; sourceIndex < sources.length && !timedOut; sourceIndex++) {
+	for (let sourceIndex = 0; sourceIndex < sources.length; sourceIndex++) {
 		// `\r?\n` so a CRLF corpus (Windows line endings in logs and command
 		// output) does not leave a trailing `\r` that silently defeats every
 		// `$`-anchored query. The cache feeds display too, so hit blocks stay
@@ -399,36 +389,22 @@ export function searchHistorySources(
 		lineCache.set(sourceIndex, lines)
 
 		for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-			scanned++
-			if (scanned % HISTORY_SEARCH_DEFAULTS.BUDGET_CHECK_INTERVAL === 0 && now() > deadline) {
-				timedOut = true
-				break
-			}
-
 			const line = lines[lineIndex]
-			const tested =
-				line.length > HISTORY_SEARCH_DEFAULTS.MAX_TESTED_LINE_CHARS
-					? line.slice(0, HISTORY_SEARCH_DEFAULTS.MAX_TESTED_LINE_CHARS)
-					: line
-
-			if (regex.test(tested)) {
-				matches.push({ sourceIndex, lineIndex, line })
-
-				// The clock cannot bound the post-scan sort/dedup, so the match
-				// count has to: see MAX_COLLECTED_MATCHES.
-				if (matches.length >= HISTORY_SEARCH_DEFAULTS.MAX_COLLECTED_MATCHES) {
-					timedOut = true
-					break
-				}
-			}
+			tested.push(line.slice(0, HISTORY_SEARCH_DEFAULTS.MAX_TESTED_LINE_CHARS))
+			owners.push({ sourceIndex, lineIndex })
 		}
 	}
 
-	// The interval check above can miss a breach on the last stretch of lines;
-	// nothing below is worth starting once the budget is spent.
-	if (!timedOut && now() > deadline) {
-		timedOut = true
-	}
+	// The clock cannot bound the post-scan sort/dedup, so the match count has
+	// to: see MAX_COLLECTED_MATCHES.
+	const found = matchingLineIndexes(regex, tested, deadline - now(), HISTORY_SEARCH_DEFAULTS.MAX_COLLECTED_MATCHES)
+	const matches = (found ?? []).map((index) => {
+		const { sourceIndex, lineIndex } = owners[index]
+		return { sourceIndex, lineIndex, line: lineCache.get(sourceIndex)![lineIndex] }
+	})
+	// Nothing below is worth starting once the budget is spent.
+	const timedOut =
+		found === undefined || matches.length >= HISTORY_SEARCH_DEFAULTS.MAX_COLLECTED_MATCHES || now() > deadline
 
 	const messageCount = options.messageCount ?? 0
 	const artifactCount = options.artifactCount ?? 0
