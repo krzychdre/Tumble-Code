@@ -389,10 +389,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 */
 	apiFailureMessage?: string
 	/**
-	 * Set when a background task is stopped as stuck (see
-	 * {@link stopStuckBackgroundTask}): one line saying what it kept doing.
+	 * Set when a background task is stopped (see {@link stopBackgroundTask}):
+	 * one line saying what it kept doing.
 	 */
-	stuckMessage?: string
+	stopMessage?: string
 	isInitialized = false
 	isPaused: boolean = false
 
@@ -1512,16 +1512,18 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 
 	/**
-	 * End a background task (parallel subagent) that is stuck: it kept failing
-	 * tool calls, or kept repeating one call, after a hint to change course.
-	 * A background task has nobody to ask, so this is what stops it; it runs
-	 * for as many turns as its work needs otherwise. `message` says what it
-	 * kept doing and reaches the fan-out parent through awaitTaskCompletion.
+	 * End a background task (parallel subagent) that is stuck (`stuck`: it kept
+	 * failing tool calls, or kept repeating one call, after a hint to change
+	 * course) or that went on past its mode's request budget after a reminder
+	 * (`budget`, ModeConfig.maxRequests). A background task has nobody to ask,
+	 * so this is what stops it; it runs for as many turns as its work needs
+	 * otherwise. `message` says what it kept doing and reaches the fan-out
+	 * parent through awaitTaskCompletion.
 	 */
-	public async stopStuckBackgroundTask(message: string): Promise<void> {
-		this.stuckMessage = message
-		logger.warn(`[Task#${this.taskId}.${this.instanceId}] Background task stopped as stuck: ${message}`)
-		this.abortReason = "stuck"
+	public async stopBackgroundTask(reason: "stuck" | "budget", message: string): Promise<void> {
+		this.stopMessage = message
+		logger.warn(`[Task#${this.taskId}.${this.instanceId}] Background task stopped (${reason}): ${message}`)
+		this.abortReason = reason
 		await this.abortTask()
 	}
 

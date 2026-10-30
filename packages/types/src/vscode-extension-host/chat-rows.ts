@@ -127,5 +127,7 @@ export interface ClineApiReqInfo {
 /**
  * Why a task's request loop ended early. `stuck`: a background task (parallel
  * subagent) kept failing tool calls, or repeated one call, after a hint.
+ * `budget`: the task went on past its mode's request budget
+ * (ModeConfig.maxRequests) after a reminder to finish.
  */
-export type ClineApiReqCancelReason = "streaming_failed" | "user_cancelled" | "stuck"
+export type ClineApiReqCancelReason = "streaming_failed" | "user_cancelled" | "stuck" | "budget"

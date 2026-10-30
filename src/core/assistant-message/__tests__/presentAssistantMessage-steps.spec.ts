@@ -250,7 +250,7 @@ describe("tool_use steps", () => {
 		const handle = vi.fn()
 		vi.mocked(getToolHandler).mockReturnValue({ handle } as any)
 		task.isBackground = true
-		task.stopStuckBackgroundTask = vi.fn()
+		task.stopBackgroundTask = vi.fn()
 		task.toolRepetitionDetector.check.mockReturnValue({
 			allowExecution: false,
 			askUser: { messageKey: "mistake_limit_reached", messageDetail: "Repeated {toolName}" },
@@ -261,7 +261,7 @@ describe("tool_use steps", () => {
 		await presentAssistantMessage(task)
 
 		expect(task.askSay.ask).not.toHaveBeenCalled()
-		expect(task.stopStuckBackgroundTask).not.toHaveBeenCalled()
+		expect(task.stopBackgroundTask).not.toHaveBeenCalled()
 		expect(task.pushToolResultToUserContent).toHaveBeenCalledWith(
 			expect.objectContaining({ content: expect.stringContaining("will stop this task") }),
 			{ toolName: "write_to_file" },
@@ -273,7 +273,7 @@ describe("tool_use steps", () => {
 		const handle = vi.fn()
 		vi.mocked(getToolHandler).mockReturnValue({ handle } as any)
 		task.isBackground = true
-		task.stopStuckBackgroundTask = vi.fn()
+		task.stopBackgroundTask = vi.fn()
 		task.toolRepetitionDetector.check.mockReturnValue({
 			allowExecution: false,
 			askUser: { messageKey: "mistake_limit_reached", messageDetail: "Repeated {toolName}" },
@@ -284,7 +284,8 @@ describe("tool_use steps", () => {
 		await presentAssistantMessage(task)
 
 		expect(task.askSay.ask).not.toHaveBeenCalled()
-		expect(task.stopStuckBackgroundTask).toHaveBeenCalledWith(
+		expect(task.stopBackgroundTask).toHaveBeenCalledWith(
+			"stuck",
 			"It kept calling write_to_file with the same arguments, even after a hint to try something else.",
 		)
 		expect(handle).not.toHaveBeenCalled()

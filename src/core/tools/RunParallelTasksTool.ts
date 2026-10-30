@@ -449,11 +449,19 @@ async function runOneSubtask({
 /**
  * The parent's view of a child that ended without completing, with what to
  * do next so a weak parent model does not just start the same subtask again.
- * A child stopped as stuck says what it kept doing; one that hit 401, 403 or
- * 404, or kept failing until the background retry cap, says why (TaskApiLoop).
+ * A child stopped as stuck says what it kept doing; one stopped at its mode's
+ * request budget hands back its last message as a partial report; one that
+ * hit 401, 403 or 404, or kept failing until the background retry cap, says
+ * why (TaskApiLoop).
  */
 export function describeSubtaskFailure(outcome: { abortReason?: string; failureMessage?: string }): string {
 	const { abortReason, failureMessage } = outcome
+	if (abortReason === "budget") {
+		return (
+			`Stopped at its request budget: ${failureMessage} Its last message is a partial report: use it ` +
+			"as it is and do not start the same subtask again."
+		)
+	}
 	if (abortReason === "stuck") {
 		return (
 			`Stopped as stuck: ${failureMessage ?? "it kept making mistakes."} Its partial work is in its ` +
