@@ -42,6 +42,12 @@
 					"planApprovalRequired": {
 						"type": "boolean"
 					},
+					"maxRequests": {
+						"type": "integer",
+						"minimum": 1,
+						"maximum": 9007199254740991,
+						"description": "Optional request budget: how many model requests a task makes in this mode before it is told to finish. It is stopped two requests later."
+					},
 					"groups": {
 						"type": "array",
 						"items": {

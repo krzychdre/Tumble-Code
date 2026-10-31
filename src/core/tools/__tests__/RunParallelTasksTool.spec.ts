@@ -493,6 +493,17 @@ describe("RunParallelTasksTool helpers", () => {
 			expect(text).not.toContain("Retrying will not help")
 		})
 
+		it("a subagent over its request budget: its last message is the partial report, no restart", () => {
+			const text = describeSubtaskFailure({
+				abortReason: "budget",
+				failureMessage: "It used its budget of 15 requests in konsylium-odkrywca mode.",
+			})
+			expect(text).toMatch(/^Stopped at its request budget: It used its budget of 15 requests/)
+			expect(text).toContain("partial report")
+			expect(text).toContain("do not start the same subtask again")
+			expect(text).not.toContain("Stopped as stuck")
+		})
+
 		it("an API failure: tells the parent that retrying will not help", () => {
 			const text = describeSubtaskFailure({ abortReason: "streaming_failed", failureMessage: "API error 401." })
 			expect(text).toMatch(/^API error 401\. Retrying will not help/)

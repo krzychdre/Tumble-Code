@@ -257,7 +257,8 @@ export async function stopRepeatedToolCall(
 	// is a hint (the error below); stopping the same call again ends the task.
 	if (task.isBackground) {
 		if (repetitionCheck.repeatedTrip) {
-			await task.stopStuckBackgroundTask(
+			await task.stopBackgroundTask(
+				"stuck",
 				`It kept calling ${block.name} with the same arguments, even after a hint to try something else.`,
 			)
 			return true

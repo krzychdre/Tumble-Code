@@ -132,6 +132,14 @@ export const modeConfigSchema = z.object({
 	// When true, switch_mode and new_task asks from this mode always require
 	// manual user approval unless the alwaysApprovePlan setting is enabled.
 	planApprovalRequired: z.boolean().optional(),
+	maxRequests: z
+		.number()
+		.int()
+		.min(1)
+		.describe(
+			"Optional request budget: how many model requests a task makes in this mode before it is told to finish. It is stopped two requests later.",
+		)
+		.optional(),
 })
 
 export type ModeConfig = z.infer<typeof modeConfigSchema>

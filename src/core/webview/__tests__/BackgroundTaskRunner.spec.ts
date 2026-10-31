@@ -39,7 +39,7 @@ type FakeTask = EventEmitter & {
 	clineMessages: Array<{ type: string; say?: string; text?: string; partial?: boolean }>
 	abortReason?: string
 	apiFailureMessage?: string
-	stuckMessage?: string
+	stopMessage?: string
 	start: ReturnType<typeof vi.fn>
 	setTaskApiConfigName: ReturnType<typeof vi.fn>
 	abortTask: ReturnType<typeof vi.fn>
@@ -429,7 +429,7 @@ describe("BackgroundTaskRunner.awaitTaskCompletion ordering", () => {
 			{ type: "say", say: "text", text: "half a sent", partial: true },
 		)
 		task.abortReason = "stuck"
-		task.stuckMessage = "It made 6 mistakes in a row, even after a hint to change course."
+		task.stopMessage = "It made 6 mistakes in a row, even after a hint to change course."
 		task.emit(TumbleCodeEventName.TaskAborted)
 
 		await expect(pending).resolves.toMatchObject({

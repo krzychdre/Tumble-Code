@@ -61,7 +61,7 @@ export interface BackgroundTaskOutcome {
 	/**
 	 * Why the task stopped, in one line: its API request failed for good
 	 * (Task#apiFailureMessage: status, reason, provider and model), or it was
-	 * stopped as stuck (Task#stuckMessage, `abortReason` "stuck").
+	 * stopped as stuck or over its request budget (Task#stopMessage, `abortReason` "stuck" or "budget").
 	 */
 	failureMessage?: string
 }
@@ -137,8 +137,8 @@ export class BackgroundTaskRunner {
 	 *   webview stay bound to the foreground task;
 	 * - runs autonomously via `autoApprovalOverride` (interactive asks never block
 	 *   it: the task isn't the current task, so no webview response would arrive);
-	 * - runs until it completes, is cancelled, or is stopped as stuck (see
-	 *   Task#stopStuckBackgroundTask) or by an API failure;
+	 * - runs until it completes, is cancelled, is stopped as stuck or over its
+	 *   request budget (see Task#stopBackgroundTask) or by an API failure;
 	 * - can run in its own `workspacePath` (a git worktree) and `taskMode`
 	 *   (e.g. a write-sandboxed mode).
 	 *
@@ -359,7 +359,7 @@ export class BackgroundTaskRunner {
 			// records why: pass that on too. Its last words tell the parent how
 			// far the work got.
 			const onAborted = () => {
-				const failureMessage = task.stuckMessage ?? task.apiFailureMessage
+				const failureMessage = task.stopMessage ?? task.apiFailureMessage
 				const lastText = [...task.clineMessages]
 					.reverse()
 					.find((m) => m.type === "say" && m.say === "text" && !m.partial && m.text?.trim())

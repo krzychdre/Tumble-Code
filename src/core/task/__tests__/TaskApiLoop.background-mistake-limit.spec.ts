@@ -33,7 +33,7 @@ describe("TaskApiLoop background mistake limit", () => {
 			apiConfiguration: { apiProvider: "openai" },
 			lastToolErrorName: "apply_diff",
 			askSay: { ask: vi.fn(), say: vi.fn() },
-			stopStuckBackgroundTask: vi.fn().mockResolvedValue(undefined),
+			stopBackgroundTask: vi.fn().mockResolvedValue(undefined),
 		}
 		loop = new TaskApiLoop(access)
 	})
@@ -47,7 +47,7 @@ describe("TaskApiLoop background mistake limit", () => {
 
 		expect(await check(content)).toBe(false)
 		expect(content).toEqual([])
-		expect(access.stopStuckBackgroundTask).not.toHaveBeenCalled()
+		expect(access.stopBackgroundTask).not.toHaveBeenCalled()
 	})
 
 	it("at the limit: one hint, never the user ask, the count is kept", async () => {
@@ -74,7 +74,8 @@ describe("TaskApiLoop background mistake limit", () => {
 		access.consecutiveMistakeCount = 6
 
 		expect(await check()).toBe(true)
-		expect(access.stopStuckBackgroundTask).toHaveBeenCalledWith(
+		expect(access.stopBackgroundTask).toHaveBeenCalledWith(
+			"stuck",
 			"It made 6 mistakes in a row (last failing tool: apply_diff), even after a hint to change course.",
 		)
 	})
@@ -89,6 +90,6 @@ describe("TaskApiLoop background mistake limit", () => {
 
 		expect(await check(content)).toBe(false)
 		expect(content).toHaveLength(1)
-		expect(access.stopStuckBackgroundTask).not.toHaveBeenCalled()
+		expect(access.stopBackgroundTask).not.toHaveBeenCalled()
 	})
 })

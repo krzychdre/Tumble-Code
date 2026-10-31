@@ -75,6 +75,9 @@ import { runWithWireCapture } from "../../api/providers/utils/wire-capture"
 /** Thrown when the user stops at the auto-approval limit; a decision, not an API failure. */
 const AUTO_APPROVAL_LIMIT_MESSAGE = "Auto-approval limit reached and user did not approve continuation"
 
+/** Requests a task may make past its mode's budget (the first carries the reminder) before it is stopped. */
+const MODE_BUDGET_GRACE_REQUESTS = 2
+
 /**
  * Interface for Task access needed by TaskApiLoop.
  * This is a narrow interface to minimize coupling between modules.
@@ -159,8 +162,8 @@ export interface TaskApiLoopAccess
 	apiLoopIteration?: number
 	// isBackground (TaskBackgroundFlagAccess): background tasks must not
 	// receive delegation tools (no nested fan-outs).
-	/** Ends a stuck background task, see Task#stopStuckBackgroundTask. */
-	stopStuckBackgroundTask(message: string): Promise<void>
+	/** Ends a stuck or over-budget background task, see Task#stopBackgroundTask. */
+	stopBackgroundTask(reason: "stuck" | "budget", message: string): Promise<void>
 
 	// Methods needed
 	emit: (event: any, ...args: any[]) => boolean
@@ -284,6 +287,11 @@ export class TaskApiLoop {
 	// A background task got the "change course" hint for its current run of
 	// mistakes (see handleBackgroundMistakeLimit). Cleared once the run ends.
 	private backgroundMistakeHintSent = false
+	// The mode's request budget (ModeConfig.maxRequests) is counted from when
+	// the task entered its current mode; see handleModeRequestBudget.
+	private budgetMode: string | undefined
+	private requestsInMode = 0
+	private budgetReminderSent = false
 
 	/**
 	 * The access object IS the owning Task (Task.ts constructs this class with
@@ -524,7 +532,8 @@ export class TaskApiLoop {
 		}
 		const failedToolName = this.access.lastToolErrorName
 		if (count >= limit * 2 && this.backgroundMistakeHintSent) {
-			await this.access.stopStuckBackgroundTask(
+			await this.access.stopBackgroundTask(
+				"stuck",
 				`It made ${count} mistakes in a row` +
 					(failedToolName ? ` (last failing tool: ${failedToolName})` : "") +
 					", even after a hint to change course.",
@@ -542,6 +551,57 @@ export class TaskApiLoop {
 						"and say what is done and what is left. More mistakes in a row will stop this task.",
 					failedToolName,
 				),
+			})
+		}
+		return false
+	}
+
+	/**
+	 * The request budget of the task's mode (ModeConfig.maxRequests). The
+	 * request after the budget carries one reminder to finish; a task still
+	 * going MODE_BUDGET_GRACE_REQUESTS requests later is stopped. A background
+	 * task returns to its fan-out parent with abortReason "budget"; a
+	 * foreground task shows the reason and is aborted. Retries of a failed
+	 * request are not counted. Returns true when the task was stopped.
+	 */
+	private async handleModeRequestBudget(
+		state: ProviderState | undefined,
+		currentItem: StackItem,
+		currentUserContent: Anthropic.Messages.ContentBlockParam[],
+	): Promise<boolean> {
+		if ((currentItem.retryAttempt ?? 0) > 0) {
+			return false
+		}
+		const mode = await this.access.getTaskMode()
+		if (mode !== this.budgetMode) {
+			this.budgetMode = mode
+			this.requestsInMode = 0
+			this.budgetReminderSent = false
+		}
+		this.requestsInMode++
+		const budget = getModeBySlug(mode, state?.customModes)?.maxRequests
+		if (budget === undefined || this.requestsInMode <= budget) {
+			return false
+		}
+		if (this.requestsInMode > budget + MODE_BUDGET_GRACE_REQUESTS) {
+			const message = `It used its budget of ${budget} requests in ${mode} mode and went on after a reminder to finish.`
+			if (this.access.isBackground) {
+				await this.access.stopBackgroundTask("budget", message)
+			} else {
+				await this.access.askSay.say("error", `Task stopped: ${message}`)
+				this.access.abortReason = "budget"
+				await this.access.abortTask()
+			}
+			return true
+		}
+		if (!this.budgetReminderSent) {
+			this.budgetReminderSent = true
+			currentUserContent.push({
+				type: "text",
+				text:
+					`You have used your budget of ${budget} requests in this mode. Finish now: call ` +
+					"attempt_completion with what you have and say what is left unchecked. " +
+					`This task stops after ${MODE_BUDGET_GRACE_REQUESTS} more requests.`,
 			})
 		}
 		return false
@@ -613,6 +673,10 @@ export class TaskApiLoop {
 		// slash-command mode switch in prepareUserContent).
 		const provider = this.access.providerRef.deref()
 		let cycleState = provider ? await provider.getState() : undefined
+
+		if (await this.handleModeRequestBudget(cycleState, currentItem, currentUserContent)) {
+			return "return_true"
+		}
 
 		// Respect provider rate limiting. The wait only reads
 		// `rateLimitSeconds` — cycle-stable — so it takes the snapshot.
