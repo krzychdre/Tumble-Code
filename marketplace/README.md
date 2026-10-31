@@ -36,7 +36,7 @@ See [`modes/docs-writer.yaml`](modes/docs-writer.yaml) for a complete example.
 
 ### A set of modes
 
-When modes only work together (a mode that hands work to helper modes of its own), make `content` a YAML list of modes instead of a single mode. They are installed and removed as one item. The first mode's `slug` equals `id`: the Marketplace shows the item as installed when that mode is present. See [`modes/konsylium.yaml`](modes/konsylium.yaml).
+When modes only work together (a mode that hands work to helper modes of its own), make `content` a YAML list of modes instead of a single mode. They are installed and removed as one item. The first mode's `slug` equals `id`: the Marketplace shows the item as installed when that mode is present. See [`modes/council.yaml`](modes/council.yaml).
 
 ## Contributing a mode
 

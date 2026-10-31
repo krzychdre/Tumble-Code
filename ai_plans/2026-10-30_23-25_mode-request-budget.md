@@ -2,7 +2,7 @@
 
 **Status:** done on `feat/mode-request-budget`
 **Related:** `project_subagents_no_cap_transcript_stack` (the global 50-turn subagent cap removed on 2026-10-18);
-the "konsylium" council modes in the owner's global `custom_modes.yaml`
+the council modes in the owner's global `custom_modes.yaml`
 **Touched:** `packages/types/src/mode.ts`, `packages/types/src/vscode-extension-host/chat-rows.ts`,
 `schemas/roomodes.json`, `src/core/task/TaskApiLoop.ts`, `src/core/task/Task.ts`,
 `src/core/assistant-message/steps/toolUseGuards.ts`, `src/core/tools/RunParallelTasksTool.ts`,

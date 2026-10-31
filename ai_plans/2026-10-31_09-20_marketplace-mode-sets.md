@@ -1,14 +1,14 @@
-# A Marketplace item that installs a set of modes (Konsylium)
+# A Marketplace item that installs a set of modes (Council)
 
 **Status:** done on `feat/marketplace-mode-sets`
 **Related:** `ai_plans/2026-10-30_23-25_mode-request-budget.md` (the `maxRequests` budgets the council modes use)
 **Touched:** `src/services/marketplace/SimpleInstaller.ts`, its spec, `marketplace-files.spec.ts`,
-`marketplace/README.md`, new `marketplace/modes/konsylium.yaml`
+`marketplace/README.md`, new `marketplace/modes/council.yaml`
 
 ## Goal
 
-Konsylium is three modes that only work together: the chair `konsylium` runs `konsylium-odkrywca` (explorer) and
-`konsylium-weryfikator` (verifier) with `run_parallel_tasks`. Installing the chair alone gives a mode that calls modes
+Council is three modes that only work together: the chair `council` runs `council-explorer` (explorer) and
+`council-verifier` (verifier) with `run_parallel_tasks`. Installing the chair alone gives a mode that calls modes
 which do not exist, so the Marketplace has to install and remove all three as one item.
 
 ## Change
@@ -17,8 +17,8 @@ which do not exist, so the Marketplace has to install and remove all three as on
   both into a list; install imports the whole list in one `importModeWithRules` call and opens the file at the first
   mode's slug; remove checks every slug first, then deletes each mode.
 - The installed check is unchanged: it looks for a mode whose slug equals the item id, so the first mode of a set
-  carries the item id (`konsylium`).
-- `marketplace/modes/konsylium.yaml` holds the three modes as they are in the owner's global `custom_modes.yaml`
+  carries the item id (`council`).
+- `marketplace/modes/council.yaml` holds the three modes as they are in the owner's global `custom_modes.yaml`
   (without `source`). Its prerequisites name the parallel-subagents setting, the two different models and the
   release that knows `maxRequests` and sets.
 
