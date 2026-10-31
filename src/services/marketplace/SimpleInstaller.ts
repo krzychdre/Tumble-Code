@@ -19,6 +19,15 @@ export interface InstallOptions extends InstallMarketplaceItemOptions {
 	selectedIndex?: number // Which installation method to use (for array content)
 }
 
+/**
+ * The modes in a mode item's YAML: one mode, or a list of modes that only work together
+ * and are installed and removed as one item.
+ */
+function parseModeContent(content: string): { slug?: string }[] {
+	const parsed = yaml.parse(content)
+	return Array.isArray(parsed) ? parsed : [parsed]
+}
+
 export class SimpleInstaller {
 	/**
 	 * Reads and writes the MCP settings files. It is not McpHub's store on purpose: the hub's
@@ -72,8 +81,8 @@ export class SimpleInstaller {
 		}
 
 		// Transform marketplace content to import format (wrap in customModes array)
-		const modeData = yaml.parse(item.content)
-		const importYaml = yaml.stringify({ customModes: [modeData] })
+		const modes = parseModeContent(item.content)
+		const importYaml = yaml.stringify({ customModes: modes })
 
 		const result = await this.customModesManager.importModeWithRules(importYaml, target)
 
@@ -90,10 +99,11 @@ export class SimpleInstaller {
 			const fileContent = await fs.readFile(filePath, "utf-8")
 			const lines = fileContent.split("\n")
 
-			// Find the line containing the slug of the added mode
-			if (modeData?.slug) {
+			// Find the line containing the slug of the added mode (the first one of a bundle)
+			const slug = modes[0]?.slug
+			if (slug) {
 				const slugLineIndex = lines.findIndex(
-					(l) => l.includes(`slug: ${modeData.slug}`) || l.includes(`slug: "${modeData.slug}"`),
+					(l) => l.includes(`slug: ${slug}`) || l.includes(`slug: "${slug}"`),
 				)
 				if (slugLineIndex >= 0) {
 					line = slugLineIndex + 1 // Convert to 1-based line number
@@ -235,25 +245,22 @@ export class SimpleInstaller {
 			content = item.content || ""
 		}
 
-		let modeSlug: string
+		let modes: { slug?: string }[]
 		try {
-			const modeData = yaml.parse(content)
-			modeSlug = modeData.slug
+			modes = parseModeContent(content)
 		} catch (error) {
 			throw new Error("Invalid mode content: unable to parse YAML")
 		}
 
-		if (!modeSlug) {
+		if (modes.some((mode) => !mode?.slug)) {
 			throw new Error("Mode missing slug identifier")
 		}
 
-		// Get the current modes to determine the source
-		const modes = await this.customModesManager.getCustomModes()
-		const mode = modes.find((m) => m.slug === modeSlug)
-
 		// Use CustomModesManager to delete the mode configuration
 		// This also handles rules folder deletion
-		await this.customModesManager.deleteCustomMode(modeSlug, true)
+		for (const mode of modes) {
+			await this.customModesManager.deleteCustomMode(mode.slug!, true)
+		}
 	}
 
 	private async removeMcp(item: MarketplaceItem, target: "project" | "global"): Promise<void> {

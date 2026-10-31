@@ -34,6 +34,10 @@ Each file in `modes/` describes one marketplace item. The fields are validated b
 
 See [`modes/docs-writer.yaml`](modes/docs-writer.yaml) for a complete example.
 
+### A set of modes
+
+When modes only work together (a mode that hands work to helper modes of its own), make `content` a YAML list of modes instead of a single mode. They are installed and removed as one item. The first mode's `slug` equals `id`: the Marketplace shows the item as installed when that mode is present. See [`modes/konsylium.yaml`](modes/konsylium.yaml).
+
 ## Contributing a mode
 
 1. Copy `modes/docs-writer.yaml` to `modes/<your-id>.yaml` and edit it.
