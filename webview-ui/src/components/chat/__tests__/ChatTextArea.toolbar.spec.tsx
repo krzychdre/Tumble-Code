@@ -76,6 +76,7 @@ const baseState = {
 	pinnedApiConfigs: { "id-default": true },
 	togglePinnedApiConfig,
 	lockApiConfigAcrossModes: true,
+	lockedApiConfigModes: { architect: true },
 	modeApiConfigs: { code: "id-fast" },
 	customModes: [
 		{ slug: "reviewer", name: "Reviewer", roleDefinition: "Reviews", groups: ["read"], source: "global" },
@@ -146,6 +147,8 @@ describe("ChatTextArea selector row", () => {
 		expect(p.pinnedApiConfigs).toBe(baseState.pinnedApiConfigs)
 		expect(p.togglePinnedApiConfig).toBe(togglePinnedApiConfig)
 		expect(p.lockApiConfigAcrossModes).toBe(true)
+		expect(p.mode).toBe(defaultModeSlug)
+		expect(p.lockedApiConfigModes).toBe(baseState.lockedApiConfigModes)
 		expect(p.modeApiConfigs).toBe(baseState.modeApiConfigs)
 		expect(p.availableModes).toContainEqual({ slug: "code", name: expect.any(String) })
 		expect(p.availableModes).toContainEqual({ slug: "reviewer", name: "Reviewer" })
@@ -174,6 +177,21 @@ describe("ChatTextArea selector row", () => {
 
 		act(() => probes.apiConfig.onToggleLockApiConfig())
 		expect(mockPostMessage).toHaveBeenCalledWith({ type: "lockApiConfigAcrossModes", bool: false })
+	})
+
+	it.each([
+		["code", true],
+		["architect", false],
+	])("the mode lock of %s posts lockModeApiConfig with bool=%s and the current config id", (mode, bool) => {
+		render(<ChatTextArea {...defaultProps} mode={mode} />)
+
+		act(() => probes.apiConfig.onToggleModeLock())
+		expect(mockPostMessage).toHaveBeenCalledWith({
+			type: "lockModeApiConfig",
+			text: mode,
+			bool,
+			values: { configId: "id-fast" },
+		})
 	})
 
 	it("shows the indexing badge outside edit mode and the cloud switcher only when signed in", () => {

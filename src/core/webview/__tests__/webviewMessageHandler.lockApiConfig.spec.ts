@@ -18,6 +18,10 @@ describe("webviewMessageHandler - lockApiConfigAcrossModes", () => {
 		}
 		postMessageToWebview: ReturnType<typeof vi.fn>
 		getCurrentTask: ReturnType<typeof vi.fn>
+		contextProxy: {
+			getValue: ReturnType<typeof vi.fn>
+			setValue: ReturnType<typeof vi.fn>
+		}
 	}
 
 	beforeEach(() => {
@@ -41,6 +45,10 @@ describe("webviewMessageHandler - lockApiConfigAcrossModes", () => {
 			},
 			postMessageToWebview: vi.fn(),
 			getCurrentTask: vi.fn(),
+			contextProxy: {
+				getValue: vi.fn().mockReturnValue({ ask: true }),
+				setValue: vi.fn().mockResolvedValue(undefined),
+			},
 		}
 	})
 
@@ -53,5 +61,33 @@ describe("webviewMessageHandler - lockApiConfigAcrossModes", () => {
 		expect(mockProvider.context.workspaceState.update).toHaveBeenCalledWith("lockApiConfigAcrossModes", bool)
 		expect(mockProvider.providerSettingsManager.setModeConfig).not.toHaveBeenCalled()
 		expect(mockProvider.postStateToWebview).toHaveBeenCalled()
+	})
+
+	it("locking a mode binds the shown profile to it before recording the lock", async () => {
+		await webviewMessageHandler(mockProvider as unknown as ClineProvider, {
+			type: "lockModeApiConfig",
+			text: "code",
+			bool: true,
+			values: { configId: "config-123" },
+		})
+
+		expect(mockProvider.providerSettingsManager.setModeConfig).toHaveBeenCalledWith("code", "config-123")
+		expect(mockProvider.contextProxy.setValue).toHaveBeenCalledWith("lockedApiConfigModes", {
+			ask: true,
+			code: true,
+		})
+		expect(mockProvider.postStateToWebview).toHaveBeenCalled()
+	})
+
+	it("unlocking a mode drops only its lock and keeps its binding", async () => {
+		await webviewMessageHandler(mockProvider as unknown as ClineProvider, {
+			type: "lockModeApiConfig",
+			text: "ask",
+			bool: false,
+			values: { configId: "config-123" },
+		})
+
+		expect(mockProvider.providerSettingsManager.setModeConfig).not.toHaveBeenCalled()
+		expect(mockProvider.contextProxy.setValue).toHaveBeenCalledWith("lockedApiConfigModes", {})
 	})
 })

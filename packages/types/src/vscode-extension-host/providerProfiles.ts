@@ -10,6 +10,7 @@ import type { ProviderSettings } from "../provider-settings.js"
 export type ProviderProfilesWebviewMessageType =
 	| "requestProviderModels"
 	| "lockApiConfigAcrossModes"
+	| "lockModeApiConfig"
 	| "cliModeProviderSettings"
 	| "assignCurrentApiConfigToModes"
 	| "toggleApiConfigPin"

@@ -40,6 +40,7 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 		customModePrompts,
 		listApiConfigMeta,
 		currentApiConfigName,
+		lockedApiConfigModes,
 		mode,
 		customInstructions,
 		setCustomInstructions,
@@ -214,7 +215,10 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 							{t("prompts:apiConfiguration.select")}
 						</div>
 						<div>
-							<Select value={currentApiConfigName} onValueChange={onSelectApiConfiguration}>
+							<Select
+								value={currentApiConfigName}
+								onValueChange={onSelectApiConfiguration}
+								disabled={!!lockedApiConfigModes?.[mode]}>
 								<SelectTrigger className="w-full">
 									<SelectValue placeholder={t("settings:common.select")} />
 								</SelectTrigger>

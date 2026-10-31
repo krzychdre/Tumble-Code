@@ -116,6 +116,8 @@
 	"selectApiConfig": "Sélectionner la configuration de l'API",
 	"lockApiConfigAcrossModes": "Verrouiller la configuration API pour tous les modes dans cet espace de travail",
 	"unlockApiConfigAcrossModes": "La configuration API est verrouillée pour tous les modes dans cet espace de travail (cliquer pour déverrouiller)",
+	"lockModeApiConfig": "Verrouiller {{mode}} sur cette configuration",
+	"unlockModeApiConfig": "{{mode}} est verrouillé sur cette configuration (cliquer pour déverrouiller)",
 	"applyConfigToModes": {
 		"button": "Appliquer cette configuration à d'autres modes",
 		"description": "Choisissez les modes qui doivent utiliser « {{config}} ».",
@@ -126,7 +128,8 @@
 		"apply": "Appliquer",
 		"confirm": "Confirmer",
 		"confirmPrompt": "Appliquer à {{count}} modes ?",
-		"modeList": "Modes"
+		"modeList": "Modes",
+		"locked": "Verrouillé sur sa propre configuration"
 	},
 	"enhancePrompt": "Améliorer la requête avec un contexte supplémentaire",
 	"addImages": "Ajouter des images au message",

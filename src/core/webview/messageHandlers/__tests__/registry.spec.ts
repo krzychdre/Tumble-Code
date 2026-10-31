@@ -19,9 +19,9 @@ describe("message handler registry", () => {
 		expect(claimedTwice).toEqual([])
 	})
 
-	it("routes the 132 message types the old switch handled (137 minus showMdmAuthRequiredNotification, #709, telemetrySetting, consent setting removed, and the custom command file messages openCommandFile, deleteCommand and createCommand), plus resyncClineMessages (#472), openDiff and reloadWindow (#791), setTaskPinned (#891) and startOpenRouterSignIn, each to a function", () => {
+	it("routes the 132 message types the old switch handled (137 minus showMdmAuthRequiredNotification, #709, telemetrySetting, consent setting removed, and the custom command file messages openCommandFile, deleteCommand and createCommand), plus resyncClineMessages (#472), openDiff and reloadWindow (#791), setTaskPinned (#891), startOpenRouterSignIn and lockModeApiConfig, each to a function", () => {
 		const entries = Object.entries(messageHandlers)
-		expect(entries).toHaveLength(137)
+		expect(entries).toHaveLength(138)
 		for (const [, handler] of entries) {
 			expect(typeof handler).toBe("function")
 		}

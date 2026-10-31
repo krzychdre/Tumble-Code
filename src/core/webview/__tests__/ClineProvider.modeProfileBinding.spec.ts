@@ -609,6 +609,30 @@ describe("ClineProvider - mode to profile binding (characterization)", () => {
 
 	// The task on screen keeps the mode and the profile it was switched to, in memory at once
 	// and in its history item once it has one.
+	describe("a mode locked to its profile (lockedApiConfigModes)", () => {
+		it("activates its bound profile on a mode switch even while lockApiConfigAcrossModes is on", async () => {
+			await mockContext.workspaceState.update("lockApiConfigAcrossModes", true)
+			await provider.contextProxy.setValue("lockedApiConfigModes", { architect: true })
+
+			await provider.handleModeSwitch("architect")
+
+			expect(currentProfileName()).toBe("architect-profile")
+		})
+
+		it("is not rebound by a profile switch or a profile save in that mode", async () => {
+			await provider.contextProxy.setValue("lockedApiConfigModes", { code: true })
+			const boundBefore = await manager().getModeConfigId("code")
+			const setModeConfig = vi.spyOn(manager(), "setModeConfig")
+
+			await provider.activateProviderProfile({ name: "architect-profile" })
+			await provider.upsertProviderProfile("new-profile", { apiProvider: "openai", openAiModelId: "new-model" })
+
+			expect(setModeConfig).not.toHaveBeenCalled()
+			expect(await manager().getModeConfigId("code")).toBe(boundBefore)
+			expect(currentProfileName()).toBe("new-profile")
+		})
+	})
+
 	describe("the current task keeps its own mode and profile", () => {
 		const openTask = async (stored: boolean) => {
 			const task = {

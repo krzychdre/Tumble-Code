@@ -2846,6 +2846,7 @@ exports[`generated provider settings schemas > keeps the global state keys in or
   "currentApiConfigName",
   "listApiConfigMeta",
   "pinnedApiConfigs",
+  "lockedApiConfigModes",
   "lastShownAnnouncementId",
   "customInstructions",
   "dismissedUpsells",

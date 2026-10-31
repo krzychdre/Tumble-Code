@@ -32,6 +32,7 @@ export type ExtensionState = Pick<
 	| "currentApiConfigName"
 	| "listApiConfigMeta"
 	| "pinnedApiConfigs"
+	| "lockedApiConfigModes"
 	| "customInstructions"
 	| "dismissedUpsells"
 	| "autoApprovalEnabled"

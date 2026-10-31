@@ -114,6 +114,8 @@
 	"selectApiConfig": "API構成を選択",
 	"lockApiConfigAcrossModes": "このワークスペースのすべてのモードでAPI構成をロック",
 	"unlockApiConfigAcrossModes": "このワークスペースのすべてのモードでAPI構成がロックされています（クリックで解除）",
+	"lockModeApiConfig": "{{mode}} をこの構成にロック",
+	"unlockModeApiConfig": "{{mode}} はこの構成にロックされています（クリックで解除）",
 	"applyConfigToModes": {
 		"button": "この構成を他のモードに適用",
 		"description": "「{{config}}」を使用するモードを選択してください。",
@@ -124,7 +126,8 @@
 		"apply": "適用",
 		"confirm": "確認",
 		"confirmPrompt": "{{count}} 個のモードに適用しますか？",
-		"modeList": "モード"
+		"modeList": "モード",
+		"locked": "独自の構成にロック済み"
 	},
 	"enhancePrompt": "追加コンテキストでプロンプトを強化",
 	"addImages": "メッセージに画像を追加",

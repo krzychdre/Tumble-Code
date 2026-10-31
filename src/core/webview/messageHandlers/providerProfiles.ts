@@ -52,6 +52,24 @@ export const providerProfilesHandlers: DomainHandlerMap<"providerProfiles"> = {
 		await provider.postStateToWebview()
 	},
 
+	// Locking binds the shown profile to the mode first: with the workspace
+	// lock on, the mode's stored binding may differ from the current profile.
+	lockModeApiConfig: async (ctx, message) => {
+		const { provider, getGlobalState, updateGlobalState } = ctx
+		const mode = message.text as string
+		const lockedModes = { ...getGlobalState("lockedApiConfigModes") }
+
+		if (message.bool) {
+			await provider.providerSettingsManager.setModeConfig(mode, message.values?.configId as string)
+			lockedModes[mode] = true
+		} else {
+			delete lockedModes[mode]
+		}
+
+		await updateGlobalState("lockedApiConfigModes", lockedModes)
+		await provider.postStateToWebview()
+	},
+
 	cliModeProviderSettings: async (ctx, message) => {
 		const { provider } = ctx
 		provider.setCliModeProviderSettings(message.cliModeProviderSettings)

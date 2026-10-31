@@ -114,6 +114,8 @@
 	"selectApiConfig": "API-Konfiguration auswählen",
 	"lockApiConfigAcrossModes": "API-Konfiguration für alle Modi in diesem Arbeitsbereich sperren",
 	"unlockApiConfigAcrossModes": "API-Konfiguration ist für alle Modi in diesem Arbeitsbereich gesperrt (klicke zum Entsperren)",
+	"lockModeApiConfig": "{{mode}} auf diese Konfiguration sperren",
+	"unlockModeApiConfig": "{{mode}} ist auf diese Konfiguration gesperrt (klicke zum Entsperren)",
 	"applyConfigToModes": {
 		"button": "Diese Konfiguration auf andere Modi anwenden",
 		"description": "Wähle aus, welche Modi \"{{config}}\" verwenden sollen.",
@@ -124,7 +126,8 @@
 		"apply": "Anwenden",
 		"confirm": "Bestätigen",
 		"confirmPrompt": "Auf {{count}} Modi anwenden?",
-		"modeList": "Modi"
+		"modeList": "Modi",
+		"locked": "Auf eigene Konfiguration gesperrt"
 	},
 	"enhancePrompt": "Prompt mit zusätzlichem Kontext verbessern",
 	"addImages": "Bilder zur Nachricht hinzufügen",
