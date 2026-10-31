@@ -74,7 +74,6 @@ export type ExtensionState = Pick<
 	| "execaShellPath"
 	| "diagnosticsEnabled"
 	| "language"
-	| "modeApiConfigs"
 	| "customModePrompts"
 	| "customSupportPrompts"
 	| "enhancementApiConfigId"
@@ -115,6 +114,8 @@ export type ExtensionState = Pick<
 	| "pruneToolResultBudget"
 > & {
 	lockApiConfigAcrossModes?: boolean
+	/** The profile id bound to each mode, from the profile store. */
+	modeApiConfigs?: Record<string, string>
 	version: string
 	clineMessages: ClineMessage[]
 	currentTaskId?: string

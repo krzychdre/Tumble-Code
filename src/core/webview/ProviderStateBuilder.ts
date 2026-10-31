@@ -84,7 +84,7 @@ const PASSTHROUGH_SETTING_KEYS = [
  * Keys `getState()` carries for host code that the webview state never had.
  * Kept out of the posted state so its shape stays what the webview knows.
  */
-const HOST_ONLY_KEYS = ["lastShownAnnouncementId", "apiModelId", "diagnosticsEnabled", "modeApiConfigs"] as const
+const HOST_ONLY_KEYS = ["lastShownAnnouncementId", "apiModelId", "diagnosticsEnabled"] as const
 
 const CLOUD_ORGANIZATIONS_CACHE_DURATION_MS = 5 * 1000
 
@@ -230,6 +230,8 @@ interface ProviderStateSources {
 	getCwd(): string
 	getMcpServers(): McpServer[]
 	isApiConfigLockedAcrossModes(): boolean
+	/** The profile id bound to each mode, from the profile store. */
+	getModeApiConfigs(): Promise<Record<string, string>>
 
 	/** The provider's own `getState()`, so the webview state follows it (and test spies on it). */
 	getState(): Promise<ProviderState>
@@ -359,6 +361,16 @@ export class ProviderStateBuilder {
 			)
 		}
 
+		// An unreadable profile store must not block the rest of the state.
+		let modeApiConfigs: Record<string, string> = {}
+		try {
+			modeApiConfigs = await this.sources.getModeApiConfigs()
+		} catch (error) {
+			logger.warn(
+				`[state] provider profiles unreadable, sending no mode bindings: ${error instanceof Error ? error.message : String(error)}`,
+			)
+		}
+
 		const state = await this.sources.getState()
 		// Resolve again: a no-op for the real getState(), and it keeps every
 		// default in place when getState() is replaced (tests, partial states).
@@ -367,7 +379,6 @@ export class ProviderStateBuilder {
 			lastShownAnnouncementId: _lastShownAnnouncementId,
 			apiModelId: _apiModelId,
 			diagnosticsEnabled: _diagnosticsEnabled,
-			modeApiConfigs: _modeApiConfigs,
 			...shared
 		} = settings as typeof settings & Record<(typeof HOST_ONLY_KEYS)[number], unknown>
 
@@ -389,6 +400,7 @@ export class ProviderStateBuilder {
 			sharingEnabled: state.sharingEnabled ?? false,
 			publicSharingEnabled: state.publicSharingEnabled ?? false,
 			lockApiConfigAcrossModes: state.lockApiConfigAcrossModes ?? false,
+			modeApiConfigs,
 			uriScheme: vscode.env.uriScheme,
 			currentTaskId: currentTask?.taskId,
 			currentTaskItem: currentTask?.taskId ? taskHistoryStore?.get(currentTask.taskId) : undefined,

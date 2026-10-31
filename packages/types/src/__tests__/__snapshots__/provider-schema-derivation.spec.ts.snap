@@ -2927,7 +2927,6 @@ exports[`generated provider settings schemas > keeps the global state keys in or
   "language",
   "mcpEnabled",
   "mode",
-  "modeApiConfigs",
   "customModes",
   "customModePrompts",
   "customSupportPrompts",

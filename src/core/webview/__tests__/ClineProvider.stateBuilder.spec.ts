@@ -314,7 +314,6 @@ const FULL_SETTINGS = {
 	currentApiConfigName: "work",
 	listApiConfigMeta: [{ id: "cfg-work", name: "work", apiProvider: "openrouter" }],
 	pinnedApiConfigs: { "cfg-work": true },
-	modeApiConfigs: { code: "cfg-work" },
 	customModePrompts: { code: { roleDefinition: "Custom role" } },
 	customSupportPrompts: { ENHANCE: "Enhance this" },
 	enhancementApiConfigId: "cfg-enhance",
@@ -379,6 +378,12 @@ const normalize = (state: Record<string, unknown>): Record<string, unknown> => {
 	// The host stores the memory folder with the platform separator (validateMemoryPath).
 	if (typeof out.autoMemoryDirectory === "string") {
 		out.autoMemoryDirectory = out.autoMemoryDirectory.split(path.sep).join("/")
+	}
+	// Every mode starts bound to the profile store's default profile, whose id is random.
+	if (out.modeApiConfigs) {
+		out.modeApiConfigs = Object.fromEntries(
+			Object.keys(out.modeApiConfigs as Record<string, string>).map((mode) => [mode, "<profile id>"]),
+		)
 	}
 	// Sort keys so the snapshot does not depend on the builder's key order.
 	return Object.fromEntries(Object.entries(out).sort(([a], [b]) => a.localeCompare(b)))
@@ -521,10 +526,28 @@ describe("ClineProvider state builders (CORE-R1 characterization)", () => {
 		}
 	})
 
+	it("the posted state carries the mode bindings of the profile store", async () => {
+		const provider = await makeProvider({ cloudMode: "signedOut" })
+		await provider.providerSettingsManager.setModeConfig("architect", "cfg-architect")
+
+		const posted = await provider.getStateToPostToWebview()
+
+		expect(posted.modeApiConfigs).toMatchObject({ architect: "cfg-architect" })
+	})
+
+	it("an unreadable profile store posts no mode bindings and the rest of the state", async () => {
+		const provider = await makeProvider({ cloudMode: "signedOut" })
+		vi.spyOn(provider.providerSettingsManager, "getModeConfigs").mockRejectedValue(new Error("corrupt"))
+
+		const posted = await provider.getStateToPostToWebview()
+
+		expect(posted.modeApiConfigs).toEqual({})
+	})
+
 	it("the posted state omits the host-only keys that getState() carries", async () => {
 		const provider = await makeProvider({ cloudMode: "signedIn", settings: FULL_SETTINGS })
 		const posted = await provider.getStateToPostToWebview()
-		for (const key of ["lastShownAnnouncementId", "apiModelId", "diagnosticsEnabled", "modeApiConfigs"]) {
+		for (const key of ["lastShownAnnouncementId", "apiModelId", "diagnosticsEnabled"]) {
 			expect(posted).not.toHaveProperty(key)
 		}
 	})

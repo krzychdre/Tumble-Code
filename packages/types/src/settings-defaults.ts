@@ -94,7 +94,6 @@ const settingsDefaults = {
 	listApiConfigMeta: [],
 	pinnedApiConfigs: {},
 	lockedApiConfigModes: {},
-	modeApiConfigs: {},
 	customModePrompts: {},
 	customSupportPrompts: {},
 	profileThresholds: {},

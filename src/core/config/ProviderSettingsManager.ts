@@ -420,6 +420,17 @@ export class ProviderSettingsManager {
 		}
 	}
 
+	/**
+	 * The profile id bound to each mode.
+	 */
+	public async getModeConfigs(): Promise<Record<string, string>> {
+		try {
+			return await this.lock(async () => ({ ...(await this.load()).modeApiConfigs }))
+		} catch (error) {
+			throw new Error(`Failed to get mode configs: ${error}`)
+		}
+	}
+
 	/** Every stored profile as flat settings with its secrets. */
 	public async listProfileSettings(): Promise<ProviderSettingsWithId[]> {
 		return await this.lock(async () =>

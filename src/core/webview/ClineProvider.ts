@@ -322,6 +322,7 @@ export class ClineProvider
 			getCwd: () => this.cwd,
 			getMcpServers: () => this.mcpHub?.getAllServers() ?? [],
 			isApiConfigLockedAcrossModes: () => this.context.workspaceState.get("lockApiConfigAcrossModes", false),
+			getModeApiConfigs: () => this.providerSettingsManager.getModeConfigs(),
 			getState: () => this.getState(),
 			getTaskHistoryStore: () => this.getTaskHistoryStore(),
 			getCurrentTask: () => this.getCurrentTask(),

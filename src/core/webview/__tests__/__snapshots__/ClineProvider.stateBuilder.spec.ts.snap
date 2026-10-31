@@ -130,9 +130,6 @@ exports[`ClineProvider state builders (CORE-R1 characterization) > with a fully 
   "memoryRecallEnabled": false,
   "memoryWriterApiConfigId": "cfg-memory",
   "mode": "architect",
-  "modeApiConfigs": {
-    "code": "cfg-work",
-  },
   "organizationAllowList": {
     "allowAll": false,
     "providers": {
@@ -330,6 +327,14 @@ exports[`ClineProvider state builders (CORE-R1 characterization) > with a fully 
   "memoryWriterApiConfigId": "cfg-memory",
   "messageQueue": undefined,
   "mode": "architect",
+  "modeApiConfigs": {
+    "architect": "<profile id>",
+    "ask": "<profile id>",
+    "code": "<profile id>",
+    "debug": "<profile id>",
+    "orchestrator": "<profile id>",
+    "vision": "<profile id>",
+  },
   "openAiCodexIsAuthenticated": false,
   "organizationAllowList": {
     "allowAll": false,
@@ -480,7 +485,6 @@ exports[`ClineProvider state builders (CORE-R1 characterization) > with a missin
   "memoryRecallEnabled": true,
   "memoryWriterApiConfigId": undefined,
   "mode": "architect",
-  "modeApiConfigs": {},
   "organizationAllowList": {
     "allowAll": true,
     "providers": {},
@@ -625,6 +629,14 @@ exports[`ClineProvider state builders (CORE-R1 characterization) > with a missin
   "memoryWriterApiConfigId": undefined,
   "messageQueue": undefined,
   "mode": "architect",
+  "modeApiConfigs": {
+    "architect": "<profile id>",
+    "ask": "<profile id>",
+    "code": "<profile id>",
+    "debug": "<profile id>",
+    "orchestrator": "<profile id>",
+    "vision": "<profile id>",
+  },
   "openAiCodexIsAuthenticated": false,
   "organizationAllowList": {
     "allowAll": true,
@@ -767,7 +779,6 @@ exports[`ClineProvider state builders (CORE-R1 characterization) > with an empty
   "memoryRecallEnabled": true,
   "memoryWriterApiConfigId": undefined,
   "mode": "architect",
-  "modeApiConfigs": {},
   "organizationAllowList": "*",
   "organizationSettingsVersion": -1,
   "parallelTasksMaxConcurrency": 3,
@@ -909,6 +920,14 @@ exports[`ClineProvider state builders (CORE-R1 characterization) > with an empty
   "memoryWriterApiConfigId": undefined,
   "messageQueue": undefined,
   "mode": "architect",
+  "modeApiConfigs": {
+    "architect": "<profile id>",
+    "ask": "<profile id>",
+    "code": "<profile id>",
+    "debug": "<profile id>",
+    "orchestrator": "<profile id>",
+    "vision": "<profile id>",
+  },
   "openAiCodexIsAuthenticated": false,
   "organizationAllowList": "*",
   "organizationSettingsVersion": -1,
