@@ -1,5 +1,14 @@
 # Tumble Code Changelog
 
+## 1.3.0
+
+Released 2026-10-31
+
+### New
+
+- **Council in the Marketplace.** A Marketplace item can now hold a set of modes that install and uninstall together. The first one is Council: a chair mode that has an explorer and a verifier, each on its own model, check each other before it answers.
+- **Request budget for a custom mode.** Set `maxRequests` on a mode in `.roomodes` or the global modes file and a task in that mode is told to finish once it has made that many model requests, then stopped two requests later. A parallel subagent stopped this way hands its last message back as a partial report.
+
 ## 1.2.0
 
 Released 2026-10-29
