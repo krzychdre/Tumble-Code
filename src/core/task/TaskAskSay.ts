@@ -69,6 +69,8 @@ export interface TaskAskSayAccess
 	checkpointSave: (force?: boolean, suppressMessage?: boolean) => Promise<unknown>
 	/** Sends a queued user message as if the user had just submitted it. */
 	submitUserMessage: (text: string, images?: string[]) => Promise<void>
+	/** Starts the mode's request budget over (TaskApiLoop#restartModeBudget). */
+	restartModeBudget: () => void
 	/**
 	 * Optional per-task auto-approval override (headless background tasks). Checked
 	 * before the global auto-approval state; returns "approve"/"deny" to resolve an
@@ -546,6 +548,7 @@ export class TaskAskSay {
 		// Suppress the checkpoint_saved chat row for this particular checkpoint to keep the timeline clean.
 		if (askResponse === "messageResponse") {
 			void this.access.checkpointSave(false, true)
+			this.access.restartModeBudget()
 		}
 
 		// Mark the last follow-up question as answered

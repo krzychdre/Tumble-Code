@@ -34,6 +34,7 @@ describe("Task.ask queued message drain", () => {
 		}
 		;(task as any).history = historyStub
 		;(task as any).checkpointSave = vi.fn(async () => {})
+		;(task as any).restartModeBudget = vi.fn()
 		;(task as any).emit = vi.fn()
 		;(task as any).providerRef = { deref: () => undefined }
 
@@ -79,6 +80,7 @@ describe("Task.ask queued message drain", () => {
 		}
 		;(task as any).history = historyStub
 		;(task as any).checkpointSave = vi.fn(async () => {})
+		;(task as any).restartModeBudget = vi.fn()
 		;(task as any).emit = vi.fn()
 		;(task as any).providerRef = { deref: () => undefined }
 

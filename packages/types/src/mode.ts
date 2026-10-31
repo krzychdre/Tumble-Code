@@ -137,7 +137,7 @@ export const modeConfigSchema = z.object({
 		.int()
 		.min(1)
 		.describe(
-			"Optional request budget: how many model requests a task makes in this mode before it is told to finish. It is stopped two requests later.",
+			"Optional request budget: how many model requests a task makes in this mode for one assignment before it is told to finish. It is stopped two requests later. The count starts again on a mode switch and on every message from the user.",
 		)
 		.optional(),
 })

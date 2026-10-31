@@ -111,15 +111,14 @@ describe("TaskApiLoop mode request budget", () => {
 		}
 	})
 
-	it("counting starts again when the task switches mode", async () => {
-		await requests(3)
-		mode = "code"
-		await requests(10)
-		mode = "council-explorer"
+	it("restartModeBudget starts the count and the reminder over", async () => {
+		await requests(5)
 
-		const contents = await requests(3)
+		loop.restartModeBudget()
+		const contents = await requests(4)
 
-		expect(contents).toEqual([[], [], []])
+		expect(contents.slice(0, 3)).toEqual([[], [], []])
+		expect(contents[3][0].text).toContain("budget of 3 requests")
 	})
 
 	it("a mode without a budget is never reminded or stopped", async () => {
