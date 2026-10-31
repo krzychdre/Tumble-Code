@@ -94,6 +94,19 @@ describe("SimpleInstaller", () => {
 			expect(mockFs.writeFile).not.toHaveBeenCalled()
 		})
 
+		it("installs every mode of a bundle and points at the first one", async () => {
+			mockFs.readFile.mockResolvedValueOnce("customModes:\n  - slug: other\n  - slug: chair\n  - slug: helper\n")
+
+			const result = await installer.installItem(
+				{ ...mockModeItem, content: yaml.stringify([{ slug: "chair" }, { slug: "helper" }]) },
+				{ target: "project" },
+			)
+
+			const [[importedYaml]] = (mockCustomModesManager.importModeWithRules as any).mock.calls
+			expect(yaml.parse(importedYaml).customModes.map((mode: any) => mode.slug)).toEqual(["chair", "helper"])
+			expect(result.line).toBe(3)
+		})
+
 		it("should handle import failure from CustomModesManager", async () => {
 			mockCustomModesManager.importModeWithRules = vi.fn().mockResolvedValue({
 				success: false,
@@ -338,6 +351,26 @@ describe("SimpleInstaller", () => {
 			await installer.removeItem(arrayContentItem, { target: "project" })
 
 			expect(mockCustomModesManager.deleteCustomMode).toHaveBeenCalledWith("test-array", true)
+		})
+
+		it("removes every mode of a bundle", async () => {
+			const bundle = { ...mockModeItem, content: yaml.stringify([{ slug: "chair" }, { slug: "helper" }]) }
+
+			await installer.removeItem(bundle, { target: "global" })
+
+			expect(vi.mocked(mockCustomModesManager.deleteCustomMode).mock.calls).toEqual([
+				["chair", true],
+				["helper", true],
+			])
+		})
+
+		it("removes nothing when one mode of a bundle has no slug", async () => {
+			const bundle = { ...mockModeItem, content: yaml.stringify([{ slug: "chair" }, { name: "Helper" }]) }
+
+			await expect(installer.removeItem(bundle, { target: "global" })).rejects.toThrow(
+				"Mode missing slug identifier",
+			)
+			expect(mockCustomModesManager.deleteCustomMode).not.toHaveBeenCalled()
 		})
 
 		it("should throw error when CustomModesManager is not available", async () => {

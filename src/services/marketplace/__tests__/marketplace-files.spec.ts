@@ -45,12 +45,17 @@ describe("marketplace files in the repo", () => {
 			expect(item.name).not.toMatch(/\p{Extended_Pictographic}/u)
 		})
 
-		it("carries content that installs as a valid custom mode", () => {
-			// Mirrors importModeWithRules: rulesFiles is stripped before validation.
-			const { rulesFiles: _rulesFiles, ...modeConfig } = yaml.parse(item.content)
-			const result = modeConfigSchema.safeParse(modeConfig)
-			expect(result.success, JSON.stringify(result.error?.issues)).toBe(true)
-			expect(result.data?.slug).toBe(item.id)
+		it("carries content that installs as valid custom modes", () => {
+			const parsed = yaml.parse(item.content)
+			const modes = Array.isArray(parsed) ? parsed : [parsed]
+			for (const mode of modes) {
+				// Mirrors importModeWithRules: rulesFiles is stripped before validation.
+				const { rulesFiles: _rulesFiles, ...modeConfig } = mode
+				const result = modeConfigSchema.safeParse(modeConfig)
+				expect(result.success, JSON.stringify(result.error?.issues)).toBe(true)
+			}
+			// The installed check looks for a mode whose slug is the item id.
+			expect(modes[0].slug).toBe(item.id)
 		})
 	})
 

@@ -496,7 +496,7 @@ describe("RunParallelTasksTool helpers", () => {
 		it("a subagent over its request budget: its last message is the partial report, no restart", () => {
 			const text = describeSubtaskFailure({
 				abortReason: "budget",
-				failureMessage: "It used its budget of 15 requests in konsylium-odkrywca mode.",
+				failureMessage: "It used its budget of 15 requests in council-explorer mode.",
 			})
 			expect(text).toMatch(/^Stopped at its request budget: It used its budget of 15 requests/)
 			expect(text).toContain("partial report")

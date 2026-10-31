@@ -19,7 +19,7 @@ vi.mock("../../../i18n", () => ({
 }))
 
 const budgetedMode = {
-	slug: "konsylium-odkrywca",
+	slug: "council-explorer",
 	name: "Explorer",
 	roleDefinition: "Explores.",
 	groups: ["read"],
@@ -34,7 +34,7 @@ describe("TaskApiLoop mode request budget", () => {
 	let mode: string
 
 	beforeEach(() => {
-		mode = "konsylium-odkrywca"
+		mode = "council-explorer"
 		access = {
 			taskId: "sub-1",
 			isBackground: true,
@@ -83,7 +83,7 @@ describe("TaskApiLoop mode request budget", () => {
 		expect(await request()).toBe(true)
 		expect(access.stopBackgroundTask).toHaveBeenCalledWith(
 			"budget",
-			"It used its budget of 3 requests in konsylium-odkrywca mode and went on after a reminder to finish.",
+			"It used its budget of 3 requests in council-explorer mode and went on after a reminder to finish.",
 		)
 		expect(access.abortTask).not.toHaveBeenCalled()
 	})
@@ -95,7 +95,7 @@ describe("TaskApiLoop mode request budget", () => {
 		expect(await request()).toBe(true)
 		expect(access.askSay.say).toHaveBeenCalledWith(
 			"error",
-			"Task stopped: It used its budget of 3 requests in konsylium-odkrywca mode and went on after a reminder to finish.",
+			"Task stopped: It used its budget of 3 requests in council-explorer mode and went on after a reminder to finish.",
 		)
 		expect(access.abortReason).toBe("budget")
 		expect(access.abortTask).toHaveBeenCalled()
@@ -115,7 +115,7 @@ describe("TaskApiLoop mode request budget", () => {
 		await requests(3)
 		mode = "code"
 		await requests(10)
-		mode = "konsylium-odkrywca"
+		mode = "council-explorer"
 
 		const contents = await requests(3)
 
