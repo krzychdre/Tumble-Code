@@ -116,6 +116,8 @@
 	"selectApiConfig": "Seleccioneu la configuració de l'API",
 	"lockApiConfigAcrossModes": "Bloqueja la configuració de l'API a tots els modes en aquest espai de treball",
 	"unlockApiConfigAcrossModes": "La configuració de l'API està bloquejada a tots els modes en aquest espai de treball (fes clic per desbloquejar)",
+	"lockModeApiConfig": "Bloqueja {{mode}} amb aquesta configuració",
+	"unlockModeApiConfig": "{{mode}} està bloquejat amb aquesta configuració (fes clic per desbloquejar)",
 	"applyConfigToModes": {
 		"button": "Aplica aquesta configuració a altres modes",
 		"description": "Tria quins modes han d'utilitzar «{{config}}».",
@@ -126,7 +128,8 @@
 		"apply": "Aplica",
 		"confirm": "Confirma",
 		"confirmPrompt": "Aplicar a {{count}} modes?",
-		"modeList": "Modes"
+		"modeList": "Modes",
+		"locked": "Bloquejat amb la seva pròpia configuració"
 	},
 	"enhancePrompt": "Millora la sol·licitud amb context addicional",
 	"addImages": "Afegeix imatges al missatge",

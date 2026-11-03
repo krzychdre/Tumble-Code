@@ -86,6 +86,8 @@ describe("ApiConfigSelector", () => {
 		togglePinnedApiConfig: mockTogglePinnedApiConfig,
 		lockApiConfigAcrossModes: false,
 		onToggleLockApiConfig: vi.fn(),
+		mode: "code",
+		onToggleModeLock: vi.fn(),
 	}
 
 	beforeEach(() => {
@@ -627,6 +629,25 @@ describe("ApiConfigSelector", () => {
 			)
 		})
 
+		test("a locked mode stays unchecked and disabled, also after Select all, and is not applied", () => {
+			render(<ApiConfigSelector {...modeProps} lockedApiConfigModes={{ architect: true }} />)
+			openModesPanel()
+
+			const architect = screen.getByRole("checkbox", { name: "Architect" })
+			expect(architect).not.toBeChecked()
+			expect(architect).toBeDisabled()
+
+			fireEvent.click(screen.getByRole("button", { name: "chat:applyConfigToModes.selectNone" }))
+			fireEvent.click(screen.getByRole("button", { name: "chat:applyConfigToModes.selectAll" }))
+			expect(architect).not.toBeChecked()
+
+			fireEvent.click(screen.getByRole("button", { name: "chat:applyConfigToModes.apply" }))
+			expect(vi.mocked(vscode.postMessage)).toHaveBeenCalledWith({
+				type: "assignCurrentApiConfigToModes",
+				values: { configId: "config1", modeSlugs: ["code", "ask"] },
+			})
+		})
+
 		test("requires a confirmation step before applying to a large number of modes", () => {
 			const manyModes = Array.from({ length: 12 }, (_, i) => ({ slug: `mode${i}`, name: `Mode ${i}` }))
 			render(<ApiConfigSelector {...modeProps} availableModes={manyModes} modeApiConfigs={{}} />)
@@ -644,6 +665,40 @@ describe("ApiConfigSelector", () => {
 				type: "assignCurrentApiConfigToModes",
 				values: { configId: "config1", modeSlugs: manyModes.map((m) => m.slug) },
 			})
+		})
+	})
+
+	describe("mode lock", () => {
+		const lockProps = { ...defaultProps, availableModes: [{ slug: "code", name: "Code" }] }
+
+		test.each([
+			[false, "chat:lockModeApiConfig"],
+			[true, "chat:unlockModeApiConfig"],
+		])("locked=%s: the lock of the current mode is titled %s and calls onToggleModeLock", (locked, title) => {
+			const onToggleModeLock = vi.fn()
+			render(
+				<ApiConfigSelector
+					{...lockProps}
+					lockedApiConfigModes={{ code: locked }}
+					onToggleModeLock={onToggleModeLock}
+				/>,
+			)
+			fireEvent.click(screen.getByTestId("dropdown-trigger"))
+
+			const lock = screen.getByRole("button", { name: title })
+			expect(lock).toHaveAttribute("aria-pressed", String(locked))
+			fireEvent.click(lock)
+			expect(onToggleModeLock).toHaveBeenCalledTimes(1)
+		})
+
+		test("a locked current mode cannot switch its configuration", () => {
+			render(<ApiConfigSelector {...lockProps} lockedApiConfigModes={{ code: true }} />)
+			fireEvent.click(screen.getByTestId("dropdown-trigger"))
+
+			const other = screen.getByText("Config 2").closest("button")!
+			expect(other).toBeDisabled()
+			fireEvent.click(other)
+			expect(mockOnChange).not.toHaveBeenCalled()
 		})
 	})
 })

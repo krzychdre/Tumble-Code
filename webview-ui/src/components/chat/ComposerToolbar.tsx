@@ -43,6 +43,7 @@ export const ComposerToolbar = ({
 	const togglePinnedApiConfig = useExtensionSelector((s) => s.togglePinnedApiConfig)
 	const cloudUserInfo = useExtensionSelector((s) => s.cloudUserInfo)
 	const lockApiConfigAcrossModes = useExtensionSelector((s) => s.lockApiConfigAcrossModes)
+	const lockedApiConfigModes = useExtensionSelector((s) => s.lockedApiConfigModes)
 	const modeApiConfigs = useExtensionSelector((s) => s.modeApiConfigs)
 
 	// Find the ID and display text for the currently selected API configuration.
@@ -76,6 +77,15 @@ export const ComposerToolbar = ({
 		vscode.postMessage({ type: "lockApiConfigAcrossModes", bool: newValue })
 	}, [lockApiConfigAcrossModes])
 
+	const handleToggleModeLock = useCallback(() => {
+		vscode.postMessage({
+			type: "lockModeApiConfig",
+			text: mode,
+			bool: !lockedApiConfigModes?.[mode],
+			values: { configId: currentConfigId },
+		})
+	}, [mode, lockedApiConfigModes, currentConfigId])
+
 	return (
 		<div className="flex items-center gap-2">
 			<div className="flex items-center gap-2 min-w-0 overflow-clip flex-1">
@@ -100,6 +110,9 @@ export const ComposerToolbar = ({
 					togglePinnedApiConfig={togglePinnedApiConfig}
 					lockApiConfigAcrossModes={!!lockApiConfigAcrossModes}
 					onToggleLockApiConfig={handleToggleLockApiConfig}
+					mode={mode}
+					lockedApiConfigModes={lockedApiConfigModes}
+					onToggleModeLock={handleToggleModeLock}
 					availableModes={availableModes}
 					modeApiConfigs={modeApiConfigs}
 				/>

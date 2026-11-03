@@ -114,6 +114,8 @@
 	"selectApiConfig": "API yapılandırmasını seçin",
 	"lockApiConfigAcrossModes": "Bu çalışma alanındaki tüm modlarda API yapılandırmasını kilitle",
 	"unlockApiConfigAcrossModes": "Bu çalışma alanındaki tüm modlarda API yapılandırması kilitli (kilidi açmak için tıkla)",
+	"lockModeApiConfig": "{{mode}} modunu bu yapılandırmaya kilitle",
+	"unlockModeApiConfig": "{{mode}} bu yapılandırmaya kilitli (kilidi açmak için tıkla)",
 	"applyConfigToModes": {
 		"button": "Bu yapılandırmayı diğer modlara uygula",
 		"description": "\"{{config}}\" kullanacak modları seçin.",
@@ -124,7 +126,8 @@
 		"apply": "Uygula",
 		"confirm": "Onayla",
 		"confirmPrompt": "{{count}} moda uygulansın mı?",
-		"modeList": "Modlar"
+		"modeList": "Modlar",
+		"locked": "Kendi yapılandırmasına kilitli"
 	},
 	"enhancePrompt": "Ek bağlamla istemi geliştir",
 	"addImages": "Mesaja resim ekle",

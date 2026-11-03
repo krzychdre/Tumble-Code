@@ -114,6 +114,8 @@
 	"selectApiConfig": "Selecteer API-configuratie",
 	"lockApiConfigAcrossModes": "API-configuratie vergrendelen voor alle modi in deze werkruimte",
 	"unlockApiConfigAcrossModes": "API-configuratie is vergrendeld voor alle modi in deze werkruimte (klik om te ontgrendelen)",
+	"lockModeApiConfig": "{{mode}} vergrendelen op deze configuratie",
+	"unlockModeApiConfig": "{{mode}} is vergrendeld op deze configuratie (klik om te ontgrendelen)",
 	"applyConfigToModes": {
 		"button": "Pas deze configuratie toe op andere modi",
 		"description": "Kies welke modi \"{{config}}\" moeten gebruiken.",
@@ -124,7 +126,8 @@
 		"apply": "Toepassen",
 		"confirm": "Bevestigen",
 		"confirmPrompt": "Toepassen op {{count}} modi?",
-		"modeList": "Modi"
+		"modeList": "Modi",
+		"locked": "Vergrendeld op eigen configuratie"
 	},
 	"enhancePrompt": "Prompt verbeteren met extra context",
 	"enhancePromptDescription": "De knop 'Prompt verbeteren' helpt je prompt te verbeteren door extra context, verduidelijking of herformulering te bieden. Probeer hier een prompt te typen en klik opnieuw op de knop om te zien hoe het werkt.",

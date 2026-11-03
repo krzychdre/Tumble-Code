@@ -12,6 +12,10 @@ import { ModeIcon, modeLabel } from "./modeIcon"
 // Above this many target modes, applying requires an explicit confirmation step.
 const LARGE_MODE_ASSIGN_THRESHOLD = 10
 
+// Locked modes keep their own configuration, so bulk assignment never selects them.
+const unlockedModeSlugs = (modes: Array<{ slug: string }>, lockedModes: Record<string, boolean> | undefined) =>
+	new Set(modes.map((m) => m.slug).filter((slug) => !lockedModes?.[slug]))
+
 interface ApiConfigSelectorProps {
 	value: string
 	displayName: string
@@ -24,6 +28,9 @@ interface ApiConfigSelectorProps {
 	togglePinnedApiConfig: (id: string) => void
 	lockApiConfigAcrossModes: boolean
 	onToggleLockApiConfig: () => void
+	mode: string
+	lockedApiConfigModes?: Record<string, boolean>
+	onToggleModeLock: () => void
 	availableModes?: Array<{ slug: string; name: string }>
 	modeApiConfigs?: Record<string, string>
 }
@@ -40,6 +47,9 @@ export const ApiConfigSelector = ({
 	togglePinnedApiConfig,
 	lockApiConfigAcrossModes,
 	onToggleLockApiConfig,
+	mode,
+	lockedApiConfigModes,
+	onToggleModeLock,
 	availableModes = [],
 	modeApiConfigs,
 }: ApiConfigSelectorProps) => {
@@ -48,17 +58,20 @@ export const ApiConfigSelector = ({
 	const [searchValue, setSearchValue] = useState("")
 	const portalContainer = useRooPortal("roo-portal")
 
+	const currentMode = useMemo(() => availableModes.find((m) => m.slug === mode), [availableModes, mode])
+	const isModeLocked = !!lockedApiConfigModes?.[mode]
+
 	// "Apply this profile to many modes" sub-panel state.
 	const [showModesPanel, setShowModesPanel] = useState(false)
 	const [selectedModeSlugs, setSelectedModeSlugs] = useState<Set<string>>(new Set())
 	const [confirming, setConfirming] = useState(false)
 
 	const openModesPanel = useCallback(() => {
-		// All modes checked by default.
-		setSelectedModeSlugs(new Set(availableModes.map((m) => m.slug)))
+		// All unlocked modes checked by default.
+		setSelectedModeSlugs(unlockedModeSlugs(availableModes, lockedApiConfigModes))
 		setConfirming(false)
 		setShowModesPanel(true)
-	}, [availableModes])
+	}, [availableModes, lockedApiConfigModes])
 
 	const closeModesPanel = useCallback(() => {
 		setShowModesPanel(false)
@@ -164,9 +177,12 @@ export const ApiConfigSelector = ({
 					<button
 						type="button"
 						aria-pressed={isCurrentConfig}
+						disabled={isModeLocked}
 						onClick={() => handleSelect(config.id)}
 						className={cn(
 							"flex-1 min-w-0 flex items-center gap-1 overflow-hidden text-left cursor-pointer",
+							"disabled:cursor-not-allowed",
+							isModeLocked && !isCurrentConfig && "opacity-50",
 							"before:absolute before:inset-0 before:content-['']",
 							"before:rounded-control",
 							"focus-visible:outline-none focus-visible:before:outline focus-visible:before:outline-1 focus-visible:before:outline-vscode-focusBorder focus-visible:before:-outline-offset-1",
@@ -212,7 +228,7 @@ export const ApiConfigSelector = ({
 				</div>
 			)
 		},
-		[value, handleSelect, t, togglePinnedApiConfig],
+		[value, isModeLocked, handleSelect, t, togglePinnedApiConfig],
 	)
 
 	return (
@@ -261,7 +277,9 @@ export const ApiConfigSelector = ({
 								<button
 									type="button"
 									className="text-xs text-vscode-textLink-foreground bg-transparent border-none p-0 cursor-pointer hover:underline"
-									onClick={() => setSelectedModeSlugs(new Set(availableModes.map((m) => m.slug)))}>
+									onClick={() =>
+										setSelectedModeSlugs(unlockedModeSlugs(availableModes, lockedApiConfigModes))
+									}>
 									{t("chat:applyConfigToModes.selectAll")}
 								</button>
 								<span className="text-vscode-descriptionForeground" aria-hidden="true">
@@ -282,18 +300,33 @@ export const ApiConfigSelector = ({
 								aria-label={t("chat:applyConfigToModes.modeList")}>
 								{availableModes.map((mode) => {
 									const alreadyAssigned = modeApiConfigs?.[mode.slug] === value
+									const locked = !!lockedApiConfigModes?.[mode.slug]
 									return (
 										<label
 											key={mode.slug}
-											className="mx-1 px-2.5 py-1.5 text-sm cursor-pointer flex items-center gap-2 rounded-control hover:bg-surface-hover">
+											className={cn(
+												"mx-1 px-2.5 py-1.5 text-sm flex items-center gap-2 rounded-control",
+												locked
+													? "opacity-50 cursor-not-allowed"
+													: "cursor-pointer hover:bg-surface-hover",
+											)}>
 											<input
 												type="checkbox"
 												aria-label={modeLabel(mode.name)}
 												checked={selectedModeSlugs.has(mode.slug)}
+												disabled={locked}
 												onChange={() => toggleModeSlug(mode.slug)}
 											/>
 											<ModeIcon slug={mode.slug} className="size-4" />
 											<span className="flex-1 min-w-0 truncate">{modeLabel(mode.name)}</span>
+											{locked && (
+												<StandardTooltip content={t("chat:applyConfigToModes.locked")}>
+													<span
+														className="codicon codicon-lock text-xs text-vscode-descriptionForeground flex-shrink-0"
+														aria-label={t("chat:applyConfigToModes.locked")}
+													/>
+												</StandardTooltip>
+											)}
 											{alreadyAssigned && (
 												<span className="text-vscode-descriptionForeground text-xs flex-shrink-0">
 													{t("chat:applyConfigToModes.current")}
@@ -398,6 +431,31 @@ export const ApiConfigSelector = ({
 											{unpinnedConfigs.map((config) => renderConfigItem(config, false))}
 										</div>
 									)}
+								</div>
+							)}
+
+							{/* Lock of the current mode's configuration */}
+							{currentMode && (
+								<div className="flex flex-row items-center gap-2 pl-3 pr-2 py-1 border-t border-frame">
+									<ModeIcon slug={currentMode.slug} className="size-4" />
+									<span className="flex-1 min-w-0 truncate text-xs text-vscode-descriptionForeground">
+										{modeLabel(currentMode.name)}
+									</span>
+									<IconButton
+										icon={isModeLocked ? "codicon-lock" : "codicon-unlock"}
+										title={
+											isModeLocked
+												? t("chat:unlockModeApiConfig", { mode: modeLabel(currentMode.name) })
+												: t("chat:lockModeApiConfig", { mode: modeLabel(currentMode.name) })
+										}
+										aria-pressed={isModeLocked}
+										className={
+											isModeLocked
+												? "text-vscode-focusBorder"
+												: "text-vscode-descriptionForeground"
+										}
+										onClick={onToggleModeLock}
+									/>
 								</div>
 							)}
 

@@ -165,6 +165,7 @@ type ExpectedWebviewMessageType =
 	| "toggleApiConfigPin"
 	| "hasOpenedModeSelector"
 	| "lockApiConfigAcrossModes"
+	| "lockModeApiConfig"
 	| "assignCurrentApiConfigToModes"
 	| "cliModeProviderSettings"
 	| "startOpenRouterSignIn"

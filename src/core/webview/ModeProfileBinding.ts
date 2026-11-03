@@ -76,7 +76,8 @@ export interface ModeProfileBindingHost
  *   present it replaces the profile store for mode switches, mode-scoped
  *   subagents and resumed tasks, and wins over the workspace lock.
  * - `locked`: the workspace locks one API profile across modes
- *   (`lockApiConfigAcrossModes`); the current profile stays.
+ *   (`lockApiConfigAcrossModes`); the current profile stays. A mode locked
+ *   to its own profile (`lockedApiConfigModes`) resolves from the store.
  * - `store`: the "use a specific configuration for this mode" binding of the
  *   profile store, with the profile list read on the way (callers publish
  *   it as `listApiConfigMeta`).
@@ -151,6 +152,11 @@ export class ModeProfileBinding {
 		return this.cliModeProviderSettings !== undefined
 	}
 
+	/** The mode's profile binding is locked (`lockedApiConfigModes`): nothing rebinds it. */
+	private isModeLocked(mode: string): boolean {
+		return this.host.getGlobalState("lockedApiConfigModes")?.[mode] === true
+	}
+
 	private getCliProviderSettingsForMode(mode: string): ProviderSettings | undefined {
 		const settings = this.cliModeProviderSettings
 		return settings ? (settings.modes[mode] ?? settings.base) : undefined
@@ -168,7 +174,7 @@ export class ModeProfileBinding {
 			return { source: "cli", apiConfiguration: cliSettings }
 		}
 
-		if (this.host.isApiConfigLockedAcrossModes()) {
+		if (this.host.isApiConfigLockedAcrossModes() && !this.isModeLocked(mode)) {
 			return { source: "locked" }
 		}
 
@@ -525,7 +531,7 @@ export class ModeProfileBinding {
 				// These promises do the following:
 				// 1. Adds or updates the list of provider profiles.
 				// 2. Sets the current provider profile.
-				// 3. Sets the current mode's provider profile.
+				// 3. Sets the current mode's provider profile, unless the mode is locked.
 				// 4. Copies the provider settings to the context.
 				//
 				// Note: 1, 2, and 4 can be done in one `ContextProxy` call:
@@ -535,7 +541,7 @@ export class ModeProfileBinding {
 				await Promise.all([
 					this.host.updateGlobalState("listApiConfigMeta", await this.providerSettingsManager.listConfig()),
 					this.host.updateGlobalState("currentApiConfigName", name),
-					this.providerSettingsManager.setModeConfig(mode, id),
+					this.isModeLocked(mode) ? undefined : this.providerSettingsManager.setModeConfig(mode, id),
 					this.host.contextProxy.setProviderSettings(providerSettings),
 				])
 
@@ -612,7 +618,7 @@ export class ModeProfileBinding {
 
 		const { mode } = await this.host.getState()
 
-		if (id && persistModeConfig) {
+		if (id && persistModeConfig && !this.isModeLocked(mode)) {
 			await this.providerSettingsManager.setModeConfig(mode, id)
 		}
 

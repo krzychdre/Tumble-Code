@@ -140,6 +140,8 @@ export const globalSettingsSchema = z.object({
 	currentApiConfigName: z.string().optional(),
 	listApiConfigMeta: z.array(providerSettingsEntrySchema).optional(),
 	pinnedApiConfigs: z.record(z.string(), z.boolean()).optional(),
+	// Modes whose API configuration binding is locked: no profile switch and no bulk assignment.
+	lockedApiConfigModes: z.record(z.string(), z.boolean()).optional(),
 
 	lastShownAnnouncementId: z.string().optional(),
 	customInstructions: z.string().optional(),
