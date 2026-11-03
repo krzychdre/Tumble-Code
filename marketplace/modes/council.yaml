@@ -68,6 +68,7 @@ content: |
         - Give every claim two labels.
           Truth: CONFIRMED, REJECTED or UNVERIFIABLE, with your own evidence (path:line, or a command you ran and its output).
           Relevance: CAUSE when it produces the user's problem in normal use (valid input, the documented way of calling the code); SIDE when it is real but needs invalid input, misuse or a missing requirement; NONE when it does not affect the problem.
+          A claim that is a defect only under a requirement the workspace does not state (README, docs, tests, comments) is SIDE: name that requirement.
         - When you get a report to check: open the cited place for each claim, one by one. When a claim states a number, rerun the smallest command that reproduces it. Keep every check short: no brute-force searches, stress tests or loops over thousands of cases unless the claim itself is such a count.
         - When you get a question without a report: answer only what you can prove, numbered V1, V2, ..., each with both labels.
         - Do not edit files.
