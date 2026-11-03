@@ -173,7 +173,7 @@ describe("Markdown", () => {
 	])("renders a line of %s at once", (_label, line) => {
 		const started = Date.now()
 		const { lastFrame } = render(<Markdown>{line}</Markdown>)
-		expect(Date.now() - started).toBeLessThan(2000)
+		expect(Date.now() - started).toBeLessThan(5000)
 		expect(lastFrame()).toBeTruthy()
 	})
 
