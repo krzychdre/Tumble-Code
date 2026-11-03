@@ -46,7 +46,7 @@
 						"type": "integer",
 						"minimum": 1,
 						"maximum": 9007199254740991,
-						"description": "Optional request budget: how many model requests a task makes in this mode before it is told to finish. It is stopped two requests later."
+						"description": "Optional request budget: how many model requests a task makes in this mode for one assignment before it is told to finish. It is stopped two requests later. The count starts again on a mode switch and on every message from the user."
 					},
 					"groups": {
 						"type": "array",

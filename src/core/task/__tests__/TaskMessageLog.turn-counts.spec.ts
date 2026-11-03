@@ -150,6 +150,7 @@ function makeTask(historyMessages: number, view: "full" | "appends" = "full", on
 		restoreTodoListForTask: vi.fn(),
 		messageQueueService: { isEmpty: () => true, dequeueMessage: () => undefined, messages: [] },
 		checkpointSave: vi.fn(async () => {}),
+		restartModeBudget: vi.fn(),
 		emit: vi.fn((event: string, payload?: { action?: "created" | "updated" }) => {
 			if (event === TumbleCodeEventName.Message && payload?.action) {
 				messageEvents[payload.action]++

@@ -787,6 +787,33 @@ describe("submitUserMessage", () => {
 	})
 })
 
+// The mode's request budget bounds one assignment: a mode switch or a message
+// from the user starts it over (TaskApiLoop.mode-request-budget.spec covers the count).
+describe("mode request budget restart", () => {
+	let task: Task
+	let restart: ReturnType<typeof vi.spyOn>
+	beforeEach(() => {
+		task = newTask(makeProvider())
+		;(task as any).checkpointSave = vi.fn().mockResolvedValue(undefined)
+		restart = vi.spyOn(task.apiLoop, "restartModeBudget")
+	})
+
+	it("restarts on a mode switch", () => {
+		task.setTaskMode("council")
+
+		expect(restart).toHaveBeenCalledOnce()
+	})
+
+	it.each([
+		["messageResponse", 1],
+		["yesButtonClicked", 0],
+	] as const)("a %s answer restarts it %i time(s)", (response, times) => {
+		task.handleWebviewAskResponse(response, "next question")
+
+		expect(restart).toHaveBeenCalledTimes(times)
+	})
+})
+
 describe("abortTask and dispose", () => {
 	let task: Task
 	beforeEach(() => {

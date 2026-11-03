@@ -287,10 +287,10 @@ export class TaskApiLoop {
 	// A background task got the "change course" hint for its current run of
 	// mistakes (see handleBackgroundMistakeLimit). Cleared once the run ends.
 	private backgroundMistakeHintSent = false
-	// The mode's request budget (ModeConfig.maxRequests) is counted from when
-	// the task entered its current mode; see handleModeRequestBudget.
-	private budgetMode: string | undefined
-	private requestsInMode = 0
+	// The mode's request budget (ModeConfig.maxRequests) is counted since the
+	// task entered its current mode or last got a message from the user; see
+	// restartModeBudget and handleModeRequestBudget.
+	private budgetRequests = 0
 	private budgetReminderSent = false
 
 	/**
@@ -557,6 +557,16 @@ export class TaskApiLoop {
 	}
 
 	/**
+	 * Start the mode's request budget over. Task calls it on a mode switch and
+	 * on every message from the user, so the budget bounds one assignment
+	 * (one council round, one answer), not the task's whole life in the mode.
+	 */
+	restartModeBudget(): void {
+		this.budgetRequests = 0
+		this.budgetReminderSent = false
+	}
+
+	/**
 	 * The request budget of the task's mode (ModeConfig.maxRequests). The
 	 * request after the budget carries one reminder to finish; a task still
 	 * going MODE_BUDGET_GRACE_REQUESTS requests later is stopped. A background
@@ -573,17 +583,12 @@ export class TaskApiLoop {
 			return false
 		}
 		const mode = await this.access.getTaskMode()
-		if (mode !== this.budgetMode) {
-			this.budgetMode = mode
-			this.requestsInMode = 0
-			this.budgetReminderSent = false
-		}
-		this.requestsInMode++
+		this.budgetRequests++
 		const budget = getModeBySlug(mode, state?.customModes)?.maxRequests
-		if (budget === undefined || this.requestsInMode <= budget) {
+		if (budget === undefined || this.budgetRequests <= budget) {
 			return false
 		}
-		if (this.requestsInMode > budget + MODE_BUDGET_GRACE_REQUESTS) {
+		if (this.budgetRequests > budget + MODE_BUDGET_GRACE_REQUESTS) {
 			const message = `It used its budget of ${budget} requests in ${mode} mode and went on after a reminder to finish.`
 			if (this.access.isBackground) {
 				await this.access.stopBackgroundTask("budget", message)

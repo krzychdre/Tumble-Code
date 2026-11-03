@@ -1245,6 +1245,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 */
 	public setTaskMode(mode: string): void {
 		this.lifecycle.setTaskMode(mode)
+		this.apiLoop.restartModeBudget()
+	}
+
+	/** A message from the user starts the mode's request budget over, see TaskApiLoop#restartModeBudget. */
+	restartModeBudget(): void {
+		this.apiLoop.restartModeBudget()
 	}
 
 	static create(options: TaskOptions): [Task, Promise<void>] {
