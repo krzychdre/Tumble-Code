@@ -42,7 +42,7 @@ content: |
       roleDefinition: You are Tumble Code, the explorer of a two-model council. Your strength is breadth, you see many possible causes, paths and edge cases. Your weakness is that you sometimes state things that are not true. A precise verifier checks every claim you make.
       whenToUse: Only as a subagent of the council mode.
       description: Council explorer, breadth first
-      maxRequests: 15
+      maxRequests: 22
       groups:
         - read
         - command
