@@ -333,7 +333,6 @@ export const globalSettingsSchema = z.object({
 	mcpEnabled: z.boolean().optional(),
 
 	mode: z.string().optional(),
-	modeApiConfigs: z.record(z.string(), z.string()).optional(),
 	customModes: z.array(modeConfigSchema).optional(),
 	customModePrompts: customModePromptsSchema.optional(),
 	customSupportPrompts: customSupportPromptsSchema.optional(),

@@ -592,6 +592,15 @@ describe("ApiConfigSelector", () => {
 			checkboxes.forEach((cb) => expect(cb).toBeChecked())
 		})
 
+		test("marks only the modes already bound to the shown configuration as current", () => {
+			render(<ApiConfigSelector {...modeProps} />)
+			openModesPanel()
+
+			const [current] = screen.getAllByText("chat:applyConfigToModes.current")
+			expect(screen.getAllByText("chat:applyConfigToModes.current")).toHaveLength(1)
+			expect(current.closest("label")).toHaveTextContent("Code")
+		})
+
 		test("Apply posts assignCurrentApiConfigToModes with all checked slugs and the current config id", () => {
 			render(<ApiConfigSelector {...modeProps} />)
 			openModesPanel()
