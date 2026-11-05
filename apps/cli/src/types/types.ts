@@ -130,9 +130,10 @@ export interface CliModelSettings {
 	/**
 	 * How many requests the provider serves for this model at once (a local
 	 * server's parallel slots, a plan's concurrency limit), a whole number of 1
-	 * or more. Caps the subagents run_parallel_tasks starts on the model: each
-	 * takes one request, and the main task takes one when it runs on the same
-	 * model. Works with every provider. Without it only the global subagent
+	 * or more. Every request of the run to the model counts and one over the
+	 * limit waits. Caps the subagents run_parallel_tasks starts on the model:
+	 * each takes one request, and the main task takes one when it runs on the
+	 * same model. Works with every provider. Without it only the global subagent
 	 * limit applies.
 	 */
 	maxConcurrentRequests?: number

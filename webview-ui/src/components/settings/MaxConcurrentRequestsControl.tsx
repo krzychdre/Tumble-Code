@@ -11,8 +11,9 @@ interface MaxConcurrentRequestsControlProps {
 
 /**
  * The profile's `maxConcurrentRequests`: how many requests this provider and
- * model take at once. Each subagent on the profile takes one, and the main task
- * takes one when it runs on the same profile. Empty means no per-profile limit
+ * model take at once, counted over every request to the model in the window.
+ * Each subagent on the profile takes one, and the main task takes one when it
+ * runs on the same profile. Empty means no per-profile limit
  * (only the global "Max parallel subagents" applies); 0 is not a valid value,
  * so the formatter turns it into empty too. A set limit also shows how many
  * subagents fit beside a main task on the same profile.

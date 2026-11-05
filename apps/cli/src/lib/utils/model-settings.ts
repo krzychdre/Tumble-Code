@@ -35,7 +35,8 @@
  * `maxConcurrentRequests` works with every provider too: how many requests
  * the provider serves for the model at once (a local server's parallel slots,
  * a plan's concurrency limit). It becomes the extension's
- * maxConcurrentRequests, the cap on the subagents that run on the model, where
+ * maxConcurrentRequests: every request of the run to the model counts and one
+ * over the limit waits, and it caps the subagents that run on the model, where
  * the main task takes one request when it runs on the same model.
  *
  * `provider`, `baseUrl`, `apiKey` and `apiKeyEnv` put the model on its own

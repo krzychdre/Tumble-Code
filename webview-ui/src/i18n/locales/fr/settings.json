@@ -436,7 +436,7 @@
 		},
 		"maxConcurrentRequests": {
 			"label": "Maximum de requêtes simultanées",
-			"description": "Nombre de requêtes que ce fournisseur et ce modèle acceptent en même temps (par exemple les emplacements parallèles d'un serveur local). Chaque sous-agent qui s'exécute sur ce profil en occupe une, et la tâche principale en occupe une lorsqu'elle s'exécute sur le même profil. Laissez vide pour ne pas limiter ce profil : seul le paramètre global \"Maximum de sous-agents en parallèle\" s'applique.",
+			"description": "Nombre de requêtes que ce fournisseur et ce modèle acceptent en même temps (par exemple les emplacements parallèles d'un serveur local). Chaque requête au modèle compte, de chaque tâche, onglet d'éditeur et sous-agent de cette fenêtre VS Code, et une requête au-delà de la limite attend qu'un emplacement se libère. Cela limite aussi les sous-agents : chaque sous-agent qui s'exécute sur ce profil en occupe une, et la tâche principale en occupe une lorsqu'elle s'exécute sur le même profil. Laissez vide pour ne pas limiter ce profil : seul le paramètre global \"Maximum de sous-agents en parallèle\" s'applique.",
 			"unlimited": "Aucune limite",
 			"slotsWithMainTask": "Places restantes pour les sous-agents quand la tâche principale s'exécute sur ce profil : {{slots}}"
 		},

@@ -436,7 +436,7 @@
 		},
 		"maxConcurrentRequests": {
 			"label": "Maks. równoczesnych zapytań",
-			"description": "Ile zapytań ten dostawca i model obsłużą jednocześnie (na przykład liczba równoległych slotów lokalnego serwera). Każdy subagent działający na tym profilu zajmuje jedno miejsce, a główne zadanie zajmuje jedno, gdy działa na tym samym profilu. Zostaw puste, aby nie ograniczać tego profilu: obowiązuje wtedy tylko globalne ustawienie \"Maks. równoległych subagentów\".",
+			"description": "Ile zapytań ten dostawca i model obsłużą jednocześnie (na przykład liczba równoległych slotów lokalnego serwera). Liczy się każde zapytanie do modelu, z każdego zadania, karty edytora i subagenta w tym oknie VS Code, a zapytanie ponad limit czeka na wolny slot. Ustawienie ogranicza też subagentów: każdy subagent działający na tym profilu zajmuje jedno miejsce, a główne zadanie zajmuje jedno, gdy działa na tym samym profilu. Zostaw puste, aby nie ograniczać tego profilu: obowiązuje wtedy tylko globalne ustawienie \"Maks. równoległych subagentów\".",
 			"unlimited": "Bez limitu",
 			"slotsWithMainTask": "Miejsca dla subagentów, gdy główne zadanie działa na tym profilu: {{slots}}"
 		},

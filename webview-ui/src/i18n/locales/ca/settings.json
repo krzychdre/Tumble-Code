@@ -436,7 +436,7 @@
 		},
 		"maxConcurrentRequests": {
 			"label": "Màxim de sol·licituds simultànies",
-			"description": "Quantes sol·licituds accepten alhora aquest proveïdor i aquest model (per exemple, les ranures paral·leles d'un servidor local). Cada subagent que s'executa amb aquest perfil n'ocupa una, i la tasca principal n'ocupa una quan s'executa amb el mateix perfil. Deixa-ho buit per no limitar aquest perfil: només s'aplica l'opció global \"Màxim de subagents en paral·lel\".",
+			"description": "Quantes sol·licituds accepten alhora aquest proveïdor i aquest model (per exemple, les ranures paral·leles d'un servidor local). Compta cada sol·licitud al model, de cada tasca, pestanya de l'editor i subagent d'aquesta finestra de VS Code, i una sol·licitud que superi el límit espera que quedi lliure una ranura. També limita els subagents: cada subagent que s'executa amb aquest perfil n'ocupa una, i la tasca principal n'ocupa una quan s'executa amb el mateix perfil. Deixa-ho buit per no limitar aquest perfil: només s'aplica l'opció global \"Màxim de subagents en paral·lel\".",
 			"unlimited": "Sense límit",
 			"slotsWithMainTask": "Places lliures per a subagents quan la tasca principal s'executa amb aquest perfil: {{slots}}"
 		},
