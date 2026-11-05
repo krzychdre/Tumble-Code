@@ -957,8 +957,9 @@
 	"subagents": {
 		"maxConcurrency": {
 			"label": "Max parallel subagents",
-			"description": "Hard cap on how many parallel subtasks (run_parallel_tasks) may run at the same time. Set to Off (below 2) to disable parallel subtasks entirely — the orchestrator then delegates via single subtasks instead. The orchestrator can request fewer, never more; additional subtasks wait in the queue.",
-			"off": "Off"
+			"description": "Hard cap on how many parallel subtasks (run_parallel_tasks) may run at the same time: 2 to 20, or No limit. Set to Off (below 2) to disable parallel subtasks entirely: the orchestrator then delegates via single subtasks instead. Each profile's \"Max concurrent requests\" caps them further, also with No limit. The orchestrator can request fewer, never more; additional subtasks wait in the queue.",
+			"off": "Off",
+			"noLimit": "No limit"
 		},
 		"followupTimeout": {
 			"label": "Question timeout",

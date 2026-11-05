@@ -1,7 +1,7 @@
 // npx vitest core/tools/__tests__/toolStreamState.perTask.spec.ts
 //
 // DEF-C4: every tool is a module singleton (`writeToFileTool`, `editFileTool`, ...)
-// shared by all tasks, and up to 8 parallel subagents stream tool calls at the
+// shared by all tasks, and up to 20 parallel subagents stream tool calls at the
 // same time as the foreground task. Partial-stream state therefore has to be
 // kept per task: one task's chunks, execute() or reset must never change what
 // another task sees.

@@ -957,8 +957,9 @@
 	"subagents": {
 		"maxConcurrency": {
 			"label": "Maximale parallele Subagenten",
-			"description": "Harte Obergrenze, wie viele parallele Teilaufgaben (run_parallel_tasks) gleichzeitig laufen dürfen. Auf Aus (unter 2) setzen, um parallele Teilaufgaben ganz zu deaktivieren; der Orchestrator delegiert dann über einzelne Teilaufgaben. Der Orchestrator kann weniger, nie mehr anfordern; zusätzliche Teilaufgaben warten in der Warteschlange.",
-			"off": "Aus"
+			"description": "Harte Obergrenze, wie viele parallele Teilaufgaben (run_parallel_tasks) gleichzeitig laufen dürfen: 2 bis 20 oder Kein Limit. Auf Aus (unter 2) setzen, um parallele Teilaufgaben ganz zu deaktivieren: Der Orchestrator delegiert dann über einzelne Teilaufgaben. Die Einstellung \"Maximale gleichzeitige Anfragen\" jedes Profils begrenzt sie zusätzlich, ebenfalls mit Kein Limit. Der Orchestrator kann weniger, nie mehr anfordern; zusätzliche Teilaufgaben warten in der Warteschlange.",
+			"off": "Aus",
+			"noLimit": "Kein Limit"
 		},
 		"followupTimeout": {
 			"label": "Fragen-Timeout",

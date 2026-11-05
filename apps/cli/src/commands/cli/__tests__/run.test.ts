@@ -1491,13 +1491,13 @@ describe("run command execution timeout", () => {
 		expect(mockHost.lastOptions).toBeUndefined()
 	})
 
-	it("passes maxParallelSubagents from the settings file", async () => {
-		await saveSettings({ provider: "openrouter", maxParallelSubagents: 6 })
+	it.each([20, -1])("passes maxParallelSubagents %j from the settings file", async (value) => {
+		await saveSettings({ provider: "openrouter", maxParallelSubagents: value })
 		await runWithExitThrowing()
-		expect(mockHost.lastOptions?.maxParallelSubagents).toBe(6)
+		expect(mockHost.lastOptions?.maxParallelSubagents).toBe(value)
 	})
 
-	it.each([9, -1, 2.5, "4"])("rejects maxParallelSubagents %j", async (value) => {
+	it.each([21, -2, 2.5, "4"])("rejects maxParallelSubagents %j", async (value) => {
 		await saveSettings({ provider: "openrouter", maxParallelSubagents: value as never })
 
 		const { outcome, errors } = await runWithExitThrowing()

@@ -430,7 +430,7 @@ and prints a one-line hint saying where to set one.
 | `requireApproval`         | `true` asks before actions, as `--require-approval`                       |
 | `consecutiveMistakeLimit` | As for `--consecutive-mistake-limit`                                      |
 | `commandExecutionTimeout` | Seconds, as for `--command-execution-timeout`; see the note below         |
-| `maxParallelSubagents`    | Subagents running at once in the run (default 3, at most 8; 0 or 1 = off) |
+| `maxParallelSubagents`    | Subagents at once in a run (default 3, at most 20, -1 no limit; 0/1: off) |
 | `oneshot`                 | `true` exits when the task completes, as `--oneshot`                      |
 | `modes`                   | Settings per mode, see below                                              |
 | `models`                  | Per model: connection, effort, window, prices, images, size, concurrency  |
@@ -825,9 +825,10 @@ settings:
   `models` or the top level.
 - Without it the model has no limit of its own. The global limit of parallel
   subagents still applies to all models together: `maxParallelSubagents` at
-  the top level of cli-settings.json (default 3, at most 8, 0 or 1 turns
-  subagents off), the same as "Max parallel subagents" in VS Code. Raise it
-  when your models take more than 3 subagents together.
+  the top level of cli-settings.json (default 3, at most 20, -1 for no limit,
+  0 or 1 turns subagents off), the same as "Max parallel subagents" in VS Code.
+  Raise it when your models take more than 3 subagents together; with -1 only
+  the per-model limits and the size of the fan-out bound the subagents.
 - It works with every provider and follows the model through every mode and
   through `/model`. A value that is not a whole number of 1 or more fails at
   startup and names the model.

@@ -957,8 +957,9 @@
 	"subagents": {
 		"maxConcurrency": {
 			"label": "Massimo subagenti paralleli",
-			"description": "Limite rigido su quante sotto-attività parallele (run_parallel_tasks) possono eseguirsi contemporaneamente. Imposta su Disattivato (sotto 2) per disabilitare del tutto le sotto-attività parallele; l'orchestratore delega allora tramite sotto-attività singole. L'orchestratore può richiederne meno, mai di più; le sotto-attività aggiuntive attendono in coda.",
-			"off": "Disattivato"
+			"description": "Limite rigido su quante sotto-attività parallele (run_parallel_tasks) possono eseguirsi contemporaneamente: da 2 a 20, oppure Nessun limite. Imposta su Disattivato (sotto 2) per disabilitare del tutto le sotto-attività parallele: l'orchestratore delega allora tramite sotto-attività singole. Il \"Massimo di richieste simultanee\" di ogni profilo le limita ulteriormente, anch'esso con Nessun limite. L'orchestratore può richiederne meno, mai di più; le sotto-attività aggiuntive attendono in coda.",
+			"off": "Disattivato",
+			"noLimit": "Nessun limite"
 		},
 		"followupTimeout": {
 			"label": "Timeout della domanda",

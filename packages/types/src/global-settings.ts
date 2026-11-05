@@ -24,7 +24,14 @@ export const DEFAULT_WRITE_DELAY_MS = 1000
 export const DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY = 3
 
 /** Upper bound accepted for `parallelTasksMaxConcurrency` (settings slider). */
-export const MAX_PARALLEL_TASKS_MAX_CONCURRENCY = 8
+export const MAX_PARALLEL_TASKS_MAX_CONCURRENCY = 20
+
+/**
+ * `parallelTasksMaxConcurrency` value for "No limit": no global cap, only each
+ * profile's `maxConcurrentRequests` and the fan-out size bound the subagents.
+ * A number rather than Infinity, which settings stored as JSON cannot hold.
+ */
+export const PARALLEL_TASKS_NO_LIMIT = -1
 
 /**
  * `parallelTasksMaxConcurrency` values below this disable `run_parallel_tasks`
@@ -33,9 +40,13 @@ export const MAX_PARALLEL_TASKS_MAX_CONCURRENCY = 8
  */
 export const MIN_PARALLEL_TASKS_CONCURRENCY = 2
 
-/** Whether the configured cap enables the parallel-subtasks feature at all. */
-export const isParallelTasksEnabled = (cap: number | undefined): boolean =>
-	(cap ?? DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY) >= MIN_PARALLEL_TASKS_CONCURRENCY
+/** The cap a `parallelTasksMaxConcurrency` value sets: Infinity for {@link PARALLEL_TASKS_NO_LIMIT}. */
+export const parallelTasksCap = (value: number | undefined): number =>
+	value === PARALLEL_TASKS_NO_LIMIT ? Infinity : (value ?? DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY)
+
+/** Whether a `parallelTasksMaxConcurrency` value enables the parallel-subtasks feature at all. */
+export const isParallelTasksEnabled = (value: number | undefined): boolean =>
+	parallelTasksCap(value) >= MIN_PARALLEL_TASKS_CONCURRENCY
 
 /** Default wait (seconds) before a subagent followup is auto-approved. */
 export const DEFAULT_SUBAGENT_FOLLOWUP_TIMEOUT_SEC = 300

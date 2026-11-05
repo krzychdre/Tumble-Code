@@ -2,7 +2,7 @@
 //
 // CORE-R12: the partial-stream state of a tool call belongs to the task that
 // streams it, not to the tool. Every tool is a module singleton shared by all
-// tasks (up to 8 parallel subagents stream next to the foreground task), so
+// tasks (up to 20 parallel subagents stream next to the foreground task), so
 // the state lives in one typed place on the task, `task.toolStreamState`,
 // keyed by tool name, and the tool singletons keep no per-task state at all.
 //

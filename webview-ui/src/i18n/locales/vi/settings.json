@@ -957,8 +957,9 @@
 	"subagents": {
 		"maxConcurrency": {
 			"label": "Số tác nhân con song song tối đa",
-			"description": "Giới hạn cứng số tác vụ con song song (run_parallel_tasks) có thể chạy cùng lúc. Đặt thành Tắt (dưới 2) để tắt hoàn toàn tác vụ con song song; khi đó bộ điều phối ủy quyền qua từng tác vụ con đơn lẻ. Bộ điều phối có thể yêu cầu ít hơn, không bao giờ nhiều hơn; các tác vụ con thêm chờ trong hàng đợi.",
-			"off": "Tắt"
+			"description": "Giới hạn cứng số tác vụ con song song (run_parallel_tasks) có thể chạy cùng lúc: từ 2 đến 20, hoặc Không giới hạn. Đặt thành Tắt (dưới 2) để tắt hoàn toàn tác vụ con song song: khi đó bộ điều phối ủy quyền qua từng tác vụ con đơn lẻ. Thiết lập \"Số yêu cầu đồng thời tối đa\" của mỗi hồ sơ giới hạn thêm số này, cũng có thể đặt Không giới hạn. Bộ điều phối có thể yêu cầu ít hơn, không bao giờ nhiều hơn; các tác vụ con thêm chờ trong hàng đợi.",
+			"off": "Tắt",
+			"noLimit": "Không giới hạn"
 		},
 		"followupTimeout": {
 			"label": "Thời hạn chờ câu hỏi",

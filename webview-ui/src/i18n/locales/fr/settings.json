@@ -957,8 +957,9 @@
 	"subagents": {
 		"maxConcurrency": {
 			"label": "Maximum de sous-agents en parallèle",
-			"description": "Plafond strict sur le nombre de sous-tâches parallèles (run_parallel_tasks) pouvant s'exécuter en même temps. Mettre sur Désactivé (en dessous de 2) pour désactiver entièrement les sous-tâches parallèles ; l'orchestrateur délègue alors via des sous-tâches uniques. L'orchestrateur peut en demander moins, jamais plus ; les sous-tâches supplémentaires attendent dans la file.",
-			"off": "Désactivé"
+			"description": "Plafond strict sur le nombre de sous-tâches parallèles (run_parallel_tasks) pouvant s'exécuter en même temps : de 2 à 20, ou Aucune limite. Mettre sur Désactivé (en dessous de 2) pour désactiver entièrement les sous-tâches parallèles : l'orchestrateur délègue alors via des sous-tâches uniques. Le réglage \"Maximum de requêtes simultanées\" de chaque profil les plafonne davantage, également avec Aucune limite. L'orchestrateur peut en demander moins, jamais plus ; les sous-tâches supplémentaires attendent dans la file.",
+			"off": "Désactivé",
+			"noLimit": "Aucune limite"
 		},
 		"followupTimeout": {
 			"label": "Délai de réponse à la question",

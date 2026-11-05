@@ -185,7 +185,7 @@ export interface CliSettings {
 	commandExecutionTimeout?: number
 	/**
 	 * How many parallel subagents may run at once in the whole run (default 3,
-	 * at most 8; 0 or 1 turns subagents off), the extension's "Max parallel
+	 * at most 20, -1 for no limit; 0 or 1 turns subagents off), the extension's "Max parallel
 	 * subagents". `models.<id>.maxConcurrentRequests` caps them further per
 	 * model.
 	 */

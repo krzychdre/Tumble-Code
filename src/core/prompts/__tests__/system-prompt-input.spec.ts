@@ -7,17 +7,22 @@
 
 import type * as vscode from "vscode"
 
+import { PARALLEL_TASKS_NO_LIMIT } from "@tumble-code/types"
+
 import { buildSystemPromptInput, getRequestDisabledTools } from "../system-prompt-input"
 
 const context = {} as vscode.ExtensionContext
 
 describe("getRequestDisabledTools", () => {
-	it("keeps the user's list as is for a foreground task with parallel tasks on", () => {
-		const disabled = ["switch_mode"]
-		expect(getRequestDisabledTools({ disabledTools: disabled, parallelTasksMaxConcurrency: 4 }, false)).toBe(
-			disabled,
-		)
-	})
+	it.each([4, PARALLEL_TASKS_NO_LIMIT])(
+		"keeps the user's list as is for a foreground task with parallel tasks on (cap %j)",
+		(cap) => {
+			const disabled = ["switch_mode"]
+			expect(getRequestDisabledTools({ disabledTools: disabled, parallelTasksMaxConcurrency: cap }, false)).toBe(
+				disabled,
+			)
+		},
+	)
 
 	it("removes the delegation tools from a background task", () => {
 		expect(getRequestDisabledTools({ parallelTasksMaxConcurrency: 4 }, true)).toEqual([

@@ -957,8 +957,9 @@
 	"subagents": {
 		"maxConcurrency": {
 			"label": "Maksimum subagen paralel",
-			"description": "Batas keras berapa banyak sub-tugas paralel (run_parallel_tasks) yang boleh berjalan pada saat yang sama. Setel ke Mati (di bawah 2) untuk menonaktifkan sub-tugas paralel sepenuhnya; orkestrator lalu mendelegasikan melalui sub-tugas tunggal. Orkestrator dapat meminta lebih sedikit, tidak pernah lebih banyak; sub-tugas tambahan menunggu dalam antrean.",
-			"off": "Mati"
+			"description": "Batas keras berapa banyak sub-tugas paralel (run_parallel_tasks) yang boleh berjalan pada saat yang sama: 2 sampai 20, atau Tanpa batas. Setel ke Mati (di bawah 2) untuk menonaktifkan sub-tugas paralel sepenuhnya: orkestrator lalu mendelegasikan melalui sub-tugas tunggal. \"Maksimum permintaan bersamaan\" pada setiap profil membatasinya lebih lanjut, juga dengan Tanpa batas. Orkestrator dapat meminta lebih sedikit, tidak pernah lebih banyak; sub-tugas tambahan menunggu dalam antrean.",
+			"off": "Mati",
+			"noLimit": "Tanpa batas"
 		},
 		"followupTimeout": {
 			"label": "Waktu tunggu pertanyaan",

@@ -5,7 +5,7 @@ import { fileURLToPath } from "url"
 import { createElement } from "react"
 
 import { setLogger } from "@tumble-code/vscode-shim"
-import { MAX_PARALLEL_TASKS_MAX_CONCURRENCY } from "@tumble-code/types"
+import { MAX_PARALLEL_TASKS_MAX_CONCURRENCY, PARALLEL_TASKS_NO_LIMIT } from "@tumble-code/types"
 import { debugLog, getDebugLogPath } from "@tumble-code/core/cli"
 
 import {
@@ -374,6 +374,7 @@ async function resolveRunLimits(settings: CliSettings, flagOptions: FlagOptions)
 	const { maxParallelSubagents } = settings
 	if (
 		maxParallelSubagents !== undefined &&
+		maxParallelSubagents !== PARALLEL_TASKS_NO_LIMIT &&
 		!(
 			Number.isInteger(maxParallelSubagents) &&
 			maxParallelSubagents >= 0 &&
@@ -381,7 +382,7 @@ async function resolveRunLimits(settings: CliSettings, flagOptions: FlagOptions)
 		)
 	) {
 		console.error(
-			`[CLI] Error: Invalid maxParallelSubagents in ${getSettingsPath()}: ${JSON.stringify(maxParallelSubagents)}; must be a whole number from 0 to ${MAX_PARALLEL_TASKS_MAX_CONCURRENCY} (0 or 1 turns subagents off)`,
+			`[CLI] Error: Invalid maxParallelSubagents in ${getSettingsPath()}: ${JSON.stringify(maxParallelSubagents)}; must be a whole number from 0 to ${MAX_PARALLEL_TASKS_MAX_CONCURRENCY} (0 or 1 turns subagents off), or ${PARALLEL_TASKS_NO_LIMIT} for no limit`,
 		)
 		process.exit(1)
 	}

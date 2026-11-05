@@ -3,9 +3,9 @@ import * as path from "path"
 
 import { worktreeService } from "@tumble-code/core"
 import {
-	DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY,
 	isCompactProfile,
 	isParallelTasksEnabled,
+	parallelTasksCap,
 	subagentSlotsForProfile,
 	TumbleCodeEventName,
 	type HistoryItem,
@@ -56,7 +56,8 @@ export const DISALLOWED_SUBTASK_MODES = ["architect", "orchestrator"] as const
  * concurrency, or an error string describing what's wrong.
  *
  * `maxConcurrencyCap` is the user's configured hard limit
- * (`parallelTasksMaxConcurrency`): the model-supplied `maxConcurrency` may
+ * (`parallelTasksCap` of `parallelTasksMaxConcurrency`, Infinity for "No
+ * limit"): the model-supplied `maxConcurrency` may
  * lower concurrency below it but never exceed it. `execute` calls this only
  * when the cap enables the tool (see isParallelTasksEnabled).
  */
@@ -585,8 +586,8 @@ export class RunParallelTasksTool extends BaseTool<"run_parallel_tasks"> {
 			// The user's configured hard cap bounds whatever concurrency the
 			// model asked for; below 2 it disables the feature entirely.
 			const state = await provider.getState()
-			const maxConcurrencyCap = state.parallelTasksMaxConcurrency ?? DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY
-			if (!isParallelTasksEnabled(maxConcurrencyCap)) {
+			const maxConcurrencyCap = parallelTasksCap(state.parallelTasksMaxConcurrency)
+			if (!isParallelTasksEnabled(state.parallelTasksMaxConcurrency)) {
 				task.recordToolError("run_parallel_tasks")
 				pushToolResult(
 					formatResponse.toolError(
