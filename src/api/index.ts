@@ -4,6 +4,7 @@ import OpenAI from "openai"
 import { classifyProvider, type ProviderSettings, type ModelInfo } from "@tumble-code/types"
 
 import { ApiStream } from "./transform/stream"
+import { limitModelRequests } from "./model-request-limiter"
 import {
 	type ResolvedModel,
 	type RuntimeProviderEntry,
@@ -168,7 +169,9 @@ function getExecutableProviderEntry(configuration: ProviderSettings): RuntimePro
 export function buildApiHandler(configuration: ProviderSettings): ApiHandler {
 	const { apiProvider: _apiProvider, ...options } = configuration
 
-	return getExecutableProviderEntry(configuration).factory(options)
+	const handler = getExecutableProviderEntry(configuration).factory(options)
+	limitModelRequests(handler, configuration)
+	return handler
 }
 
 /**

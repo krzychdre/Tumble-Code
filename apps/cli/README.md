@@ -816,6 +816,10 @@ settings:
 }
 ```
 
+- Every request to the model counts: the main task, each subagent and the side
+  requests such as condensing the context or writing memories. A request over
+  the limit waits until another one ends. The count is per process, so two CLI
+  runs on the same server each count only their own requests.
 - It caps the subagents that `run_parallel_tasks` starts on the model: each one
   sends its own requests, so each takes one. The main task takes one too when
   it runs on the same model, so a limit of 4 leaves 3 subagents beside it, and

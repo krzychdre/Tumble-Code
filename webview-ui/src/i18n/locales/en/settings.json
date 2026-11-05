@@ -498,7 +498,7 @@
 		},
 		"maxConcurrentRequests": {
 			"label": "Max concurrent requests",
-			"description": "How many requests this provider and model take at once (for example the parallel slots of a local server). Each subagent running on this profile takes one, and the main task takes one when it runs on the same profile. Leave empty for no limit on this profile: only the global \"Max parallel subagents\" setting applies.",
+			"description": "How many requests this provider and model take at once (for example the parallel slots of a local server). Every request to the model counts, from every task, editor tab and subagent in this VS Code window, and a request over the limit waits for a free slot. It also caps the subagents: each one running on this profile takes one, and the main task takes one when it runs on the same profile. Leave empty for no limit on this profile: only the global \"Max parallel subagents\" setting applies.",
 			"unlimited": "No limit",
 			"slotsWithMainTask": "Slots left for subagents when the main task runs on this profile: {{slots}}"
 		},

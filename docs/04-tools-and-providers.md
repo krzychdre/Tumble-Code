@@ -65,7 +65,10 @@ Gemini, the Responses API and a few others keep their own parsers because their 
 
 A profile also carries limits that belong to the provider and model rather than to one request.
 `maxConcurrentRequests` (whole number, 1 or more, unset = no limit of its own) says how many requests the provider
-serves at once. Each subagent of `run_parallel_tasks` takes one slot of the profile it runs on, and the parent task
+serves at once. `buildApiHandler` routes every handler through `limitModelRequests` (`src/api/model-request-limiter.ts`):
+each request (the task loop's `createMessage`, a one-shot completion) holds a slot of its model (provider and model id)
+while it runs, counted across every panel, task and subagent of the process, and a request over its profile's limit
+waits. Each subagent of `run_parallel_tasks` also takes one slot of the profile it runs on, and the parent task
 takes one when it runs on the same profile; `subagentSlotsForProfile` in `packages/types/src/provider-concurrency.ts`
 does that arithmetic. The global `parallelTasksMaxConcurrency` still caps the subagents of a task across profiles.
 

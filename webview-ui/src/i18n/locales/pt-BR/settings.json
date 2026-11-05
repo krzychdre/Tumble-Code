@@ -436,7 +436,7 @@
 		},
 		"maxConcurrentRequests": {
 			"label": "Máximo de requisições simultâneas",
-			"description": "Quantas requisições este provedor e este modelo aceitam ao mesmo tempo (por exemplo, os slots paralelos de um servidor local). Cada subagente executado neste perfil ocupa um, e a tarefa principal ocupa um quando é executada no mesmo perfil. Deixe vazio para não limitar este perfil: vale apenas a configuração global \"Máximo de subagentes paralelos\".",
+			"description": "Quantas requisições este provedor e este modelo aceitam ao mesmo tempo (por exemplo, os slots paralelos de um servidor local). Toda requisição ao modelo conta, de cada tarefa, aba do editor e subagente desta janela do VS Code, e uma requisição acima do limite espera por um slot livre. Também limita os subagentes: cada subagente executado neste perfil ocupa um, e a tarefa principal ocupa um quando é executada no mesmo perfil. Deixe vazio para não limitar este perfil: vale apenas a configuração global \"Máximo de subagentes paralelos\".",
 			"unlimited": "Sem limite",
 			"slotsWithMainTask": "Vagas livres para subagentes quando a tarefa principal é executada neste perfil: {{slots}}"
 		},

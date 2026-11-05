@@ -34,6 +34,9 @@ const { providerMocks, nativeOllamaMock } = vi.hoisted(() => {
 			readonly providerClass = providerClass
 
 			constructor(readonly options: unknown) {}
+
+			// Every ApiHandler has it; buildApiHandler wraps it in the model's request limit.
+			createMessage() {}
 		}
 
 	return {

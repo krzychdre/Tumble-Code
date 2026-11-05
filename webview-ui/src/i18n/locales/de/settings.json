@@ -436,7 +436,7 @@
 		},
 		"maxConcurrentRequests": {
 			"label": "Maximale gleichzeitige Anfragen",
-			"description": "Wie viele Anfragen dieser Anbieter und dieses Modell gleichzeitig verarbeiten (zum Beispiel die parallelen Slots eines lokalen Servers). Jeder Subagent auf diesem Profil belegt einen Platz, und die Hauptaufgabe belegt einen, wenn sie auf demselben Profil läuft. Leer lassen, um dieses Profil nicht zu begrenzen: Dann gilt nur die globale Einstellung \"Maximale parallele Subagenten\".",
+			"description": "Wie viele Anfragen dieser Anbieter und dieses Modell gleichzeitig verarbeiten (zum Beispiel die parallelen Slots eines lokalen Servers). Jede Anfrage an das Modell zählt, aus jeder Aufgabe, jedem Editor-Tab und jedem Subagenten in diesem VS Code-Fenster, und eine Anfrage über dem Limit wartet auf einen freien Slot. Außerdem begrenzt es die Subagenten: Jeder Subagent auf diesem Profil belegt einen Platz, und die Hauptaufgabe belegt einen, wenn sie auf demselben Profil läuft. Leer lassen, um dieses Profil nicht zu begrenzen: Dann gilt nur die globale Einstellung \"Maximale parallele Subagenten\".",
 			"unlimited": "Kein Limit",
 			"slotsWithMainTask": "Freie Plätze für Subagenten, wenn die Hauptaufgabe auf diesem Profil läuft: {{slots}}"
 		},

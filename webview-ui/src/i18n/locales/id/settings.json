@@ -436,7 +436,7 @@
 		},
 		"maxConcurrentRequests": {
 			"label": "Maksimum permintaan bersamaan",
-			"description": "Berapa banyak permintaan yang diterima penyedia dan model ini sekaligus (misalnya slot paralel server lokal). Setiap subagen yang berjalan pada profil ini memakai satu slot, dan tugas utama memakai satu slot saat berjalan pada profil yang sama. Biarkan kosong agar profil ini tidak dibatasi: hanya pengaturan global \"Maksimum subagen paralel\" yang berlaku.",
+			"description": "Berapa banyak permintaan yang diterima penyedia dan model ini sekaligus (misalnya slot paralel server lokal). Setiap permintaan ke model dihitung, dari setiap tugas, tab editor, dan subagen di jendela VS Code ini, dan permintaan yang melebihi batas menunggu slot kosong. Ini juga membatasi subagen: setiap subagen yang berjalan pada profil ini memakai satu slot, dan tugas utama memakai satu slot saat berjalan pada profil yang sama. Biarkan kosong agar profil ini tidak dibatasi: hanya pengaturan global \"Maksimum subagen paralel\" yang berlaku.",
 			"unlimited": "Tanpa batas",
 			"slotsWithMainTask": "Slot tersisa untuk subagen saat tugas utama berjalan pada profil ini: {{slots}}"
 		},
