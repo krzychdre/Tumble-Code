@@ -957,8 +957,9 @@
 	"subagents": {
 		"maxConcurrency": {
 			"label": "Maximale parallelle subagenten",
-			"description": "Harde bovengrens voor hoeveel parallelle subtaken (run_parallel_tasks) tegelijk mogen draaien. Zet op Uit (onder 2) om parallelle subtaken volledig uit te schakelen; de orchestrator delegeert dan via losse subtaken. De orchestrator kan er minder, nooit meer vragen; extra subtaken wachten in de wachtrij.",
-			"off": "Uit"
+			"description": "Harde bovengrens voor hoeveel parallelle subtaken (run_parallel_tasks) tegelijk mogen draaien: 2 tot 20, of Geen limiet. Zet op Uit (onder 2) om parallelle subtaken volledig uit te schakelen: de orchestrator delegeert dan via losse subtaken. De instelling \"Maximaal aantal gelijktijdige verzoeken\" van elk profiel begrenst ze verder, ook met Geen limiet. De orchestrator kan er minder, nooit meer vragen; extra subtaken wachten in de wachtrij.",
+			"off": "Uit",
+			"noLimit": "Geen limiet"
 		},
 		"followupTimeout": {
 			"label": "Time-out voor vraag",

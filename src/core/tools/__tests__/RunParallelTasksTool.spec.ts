@@ -14,7 +14,12 @@ afterAll(() => {
 	rmSync(tmpStorageRoot, { recursive: true, force: true })
 })
 
-import { TaskStatus, TumbleCodeEventName } from "@tumble-code/types"
+import {
+	MAX_PARALLEL_TASKS_MAX_CONCURRENCY,
+	PARALLEL_TASKS_NO_LIMIT,
+	TaskStatus,
+	TumbleCodeEventName,
+} from "@tumble-code/types"
 
 // Mock worktreeService before importing the tool. vi.hoisted ensures the
 // mock functions are available when the hoisted vi.mock factory runs.
@@ -757,6 +762,22 @@ describe("RunParallelTasksTool.execute", () => {
 		await execPromise
 		await vi.waitFor(() => expect(provider.children.length).toBe(3))
 		provider.children.slice(1).forEach((c) => c.complete())
+		await settled(provider)
+	})
+
+	it("starts every subtask of the call at once when the cap is No limit", async () => {
+		const provider = makeFakeProvider({ parallelTasksMaxConcurrency: PARALLEL_TASKS_NO_LIMIT })
+		const parent = makeFakeParentTask(provider)
+		const subtasks = Array.from({ length: MAX_PARALLEL_TASKS_MAX_CONCURRENCY + 1 }, (_, i) => ({
+			message: `t${i}`,
+		}))
+		const execPromise = runParallelTasksTool.execute({ subtasks }, parent, makeCallbacks())
+
+		await vi.waitFor(() => expect(provider.children.length).toBe(subtasks.length))
+		expect(provider.backgroundSubagents.slots.waiting).toBe(0)
+
+		provider.children.forEach((c) => c.complete())
+		await execPromise
 		await settled(provider)
 	})
 

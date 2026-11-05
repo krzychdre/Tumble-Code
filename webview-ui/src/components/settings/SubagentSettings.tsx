@@ -6,6 +6,7 @@ import {
 	DEFAULT_SUBAGENT_FOLLOWUP_TIMEOUT_SEC,
 	MAX_PARALLEL_TASKS_MAX_CONCURRENCY,
 	MIN_PARALLEL_TASKS_CONCURRENCY,
+	PARALLEL_TASKS_NO_LIMIT,
 	isCompactProfile,
 } from "@tumble-code/types"
 
@@ -19,6 +20,9 @@ import { SearchableSetting } from "./SearchableSetting"
 import { SettingsCard, settingDescription } from "./SettingsCard"
 
 type SubagentSettingsProps = HTMLAttributes<HTMLDivElement>
+
+/** The slider's last step, past the highest number: "No limit". */
+const NO_LIMIT_STEP = MAX_PARALLEL_TASKS_MAX_CONCURRENCY + 1
 
 /**
  * Settings for parallel background subagents (`run_parallel_tasks` fan-outs):
@@ -34,7 +38,10 @@ export const SubagentSettings = (props: SubagentSettingsProps) => {
 	// settings say, so the tab says so instead of changing them for everyone.
 	const [apiConfiguration] = useSetting("apiConfiguration")
 
-	const concurrency = parallelTasksMaxConcurrency ?? DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY
+	const concurrency =
+		parallelTasksMaxConcurrency === PARALLEL_TASKS_NO_LIMIT
+			? NO_LIMIT_STEP
+			: (parallelTasksMaxConcurrency ?? DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY)
 	const followupTimeout = subagentFollowupTimeoutSec ?? DEFAULT_SUBAGENT_FOLLOWUP_TIMEOUT_SEC
 
 	return (
@@ -61,16 +68,22 @@ export const SubagentSettings = (props: SubagentSettingsProps) => {
 						<div className="flex items-center gap-2">
 							<Slider
 								min={1}
-								max={MAX_PARALLEL_TASKS_MAX_CONCURRENCY}
+								max={NO_LIMIT_STEP}
 								step={1}
 								value={[concurrency]}
-								onValueChange={([value]) => setParallelTasksMaxConcurrency(value)}
+								onValueChange={([value]) =>
+									setParallelTasksMaxConcurrency(
+										value === NO_LIMIT_STEP ? PARALLEL_TASKS_NO_LIMIT : value,
+									)
+								}
 								data-testid="subagents-max-concurrency-slider"
 							/>
-							<span className="w-10">
+							<span className="w-20">
 								{concurrency < MIN_PARALLEL_TASKS_CONCURRENCY
 									? t("settings:subagents.maxConcurrency.off")
-									: concurrency}
+									: concurrency === NO_LIMIT_STEP
+										? t("settings:subagents.maxConcurrency.noLimit")
+										: concurrency}
 							</span>
 						</div>
 						<div className={settingDescription}>{t("settings:subagents.maxConcurrency.description")}</div>

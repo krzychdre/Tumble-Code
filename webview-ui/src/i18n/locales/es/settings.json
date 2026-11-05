@@ -957,8 +957,9 @@
 	"subagents": {
 		"maxConcurrency": {
 			"label": "Máximo de subagentes en paralelo",
-			"description": "Límite estricto de cuántas subtareas paralelas (run_parallel_tasks) pueden ejecutarse a la vez. Ajusta a Desactivado (por debajo de 2) para deshabilitar las subtareas paralelas por completo; el orquestador delega entonces mediante subtareas únicas. El orquestador puede pedir menos, nunca más; las subtareas adicionales esperan en la cola.",
-			"off": "Desactivado"
+			"description": "Límite estricto de cuántas subtareas paralelas (run_parallel_tasks) pueden ejecutarse a la vez: de 2 a 20, o Sin límite. Ajusta a Desactivado (por debajo de 2) para deshabilitar las subtareas paralelas por completo: el orquestador delega entonces mediante subtareas únicas. El \"Máximo de solicitudes simultáneas\" de cada perfil las limita aún más, también con Sin límite. El orquestador puede pedir menos, nunca más; las subtareas adicionales esperan en la cola.",
+			"off": "Desactivado",
+			"noLimit": "Sin límite"
 		},
 		"followupTimeout": {
 			"label": "Tiempo de espera de la pregunta",

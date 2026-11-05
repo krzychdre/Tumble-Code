@@ -957,8 +957,9 @@
 	"subagents": {
 		"maxConcurrency": {
 			"label": "Maksimum paralel alt aracı",
-			"description": "Aynı anda kaç paralel alt görevin (run_parallel_tasks) çalışabileceğine dair sert sınır. Paralel alt görevleri tamamen devre dışı bırakmak için Kapalı (2'nin altı) olarak ayarlayın; orkestratör o zaman tekil alt görevlerle yetkilendirir. Orkestratör daha az isteyebilir, asla daha fazla değil; ek alt görevler kuyrukta bekler.",
-			"off": "Kapalı"
+			"description": "Aynı anda kaç paralel alt görevin (run_parallel_tasks) çalışabileceğine dair sert sınır: 2 ile 20 arası veya Sınırsız. Paralel alt görevleri tamamen devre dışı bırakmak için Kapalı (2'nin altı) olarak ayarlayın: orkestratör o zaman tekil alt görevlerle yetkilendirir. Her profilin \"Maksimum eşzamanlı istek\" ayarı bunları ayrıca sınırlar, o da Sınırsız olabilir. Orkestratör daha az isteyebilir, asla daha fazla değil; ek alt görevler kuyrukta bekler.",
+			"off": "Kapalı",
+			"noLimit": "Sınırsız"
 		},
 		"followupTimeout": {
 			"label": "Soru zaman aşımı",

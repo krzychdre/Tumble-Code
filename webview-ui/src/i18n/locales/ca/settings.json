@@ -957,8 +957,9 @@
 	"subagents": {
 		"maxConcurrency": {
 			"label": "Màxim de subagents en paral·lel",
-			"description": "Límit estricte de quantes subtasques paral·leles (run_parallel_tasks) poden executar-se alhora. Definiu-ho a Desactivat (per sota de 2) per inhabilitar completament les subtasques paral·leles; aleshores l'orquestador delega mitjançant subtasques úniques. L'orquestador pot demanar-ne menys, mai més; les subtasques addicionals esperen a la cua.",
-			"off": "Desactivat"
+			"description": "Límit estricte de quantes subtasques paral·leles (run_parallel_tasks) poden executar-se alhora: de 2 a 20, o Sense límit. Definiu-ho a Desactivat (per sota de 2) per inhabilitar completament les subtasques paral·leles: aleshores l'orquestador delega mitjançant subtasques úniques. El \"Màxim de sol·licituds simultànies\" de cada perfil les limita encara més, també amb Sense límit. L'orquestador pot demanar-ne menys, mai més; les subtasques addicionals esperen a la cua.",
+			"off": "Desactivat",
+			"noLimit": "Sense límit"
 		},
 		"followupTimeout": {
 			"label": "Temps d'espera de la pregunta",
