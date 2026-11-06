@@ -29,8 +29,6 @@ export function highlightFzfMatch(
 	positions: number[],
 	highlightClassName: string = "history-item-highlight",
 ) {
-	if (!positions.length) return text
-
 	const parts: { text: string; highlight: boolean }[] = []
 	let lastIndex = 0
 
