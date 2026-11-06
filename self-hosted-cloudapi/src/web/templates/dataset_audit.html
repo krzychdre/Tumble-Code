@@ -7,7 +7,7 @@
 
 <p class="diag-lead">
   What the export with these options would replace: every original text, the pseudonym it becomes and how often.
-  {{ samples|fmt_int }} sample{{ '' if samples == 1 else 's' }} from {{ tasks|fmt_int }} task{{ '' if tasks == 1 else 's' }}{% if truncated %} (stopped after {{ limit|fmt_int }} samples){% endif %}.
+  {{ samples|fmt_int }} sample{{ '' if samples == 1 else 's' }} from {{ tasks|fmt_int }} task{{ '' if tasks == 1 else 's' }}{% if truncated %} (stopped early: the audit reads at most {{ task_limit|fmt_int }} tasks and {{ limit|fmt_int }} samples){% endif %}.
 </p>
 <p class="diag-actions">
   <a class="btn" href="/app/dataset/export.jsonl?{{ export_query }}" download>Download this dataset</a>
