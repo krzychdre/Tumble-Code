@@ -113,5 +113,8 @@ describe("WebviewHtml", () => {
 		expect(openRouterOrigin("")).toBe("https://openrouter.ai")
 		expect(openRouterOrigin("https://router.example.com/api/v1")).toBe("https://router.example.com")
 		expect(openRouterOrigin("not a url")).toBe("https://openrouter.ai")
+		expect(openRouterOrigin("http://localhost:8080")).toBe("http://localhost:8080")
+		expect(openRouterOrigin('https://a"><script>x</script>')).toBe("https://openrouter.ai")
+		expect(openRouterOrigin("https://a;script-src *")).toBe("https://openrouter.ai")
 	})
 })
