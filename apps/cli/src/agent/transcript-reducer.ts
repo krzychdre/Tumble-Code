@@ -226,6 +226,12 @@ class Reduction {
 	pendingMcp: McpAskDetails | undefined
 
 	messages: readonly TUIMessage[]
+	/**
+	 * Position of each message by id, built on first use. Every state push
+	 * replays the whole transcript, so a linear search per delivery made one
+	 * push quadratic. Rows are only appended or replaced, never moved.
+	 */
+	private positions: Map<string, number> | undefined
 	isLoading: boolean
 	isResumingTask: boolean
 	currentTodos: readonly TodoItem[]
@@ -281,12 +287,22 @@ class Reduction {
 		this.merged.set(id, target)
 	}
 
+	private positionOf(id: string): number | undefined {
+		this.positions ??= new Map(this.messages.map((m, index) => [m.id, index]))
+		return this.positions.get(id)
+	}
+
 	findMessage(id: string): TUIMessage | undefined {
-		return this.messages.find((m) => m.id === id)
+		const index = this.positionOf(id)
+		return index === undefined ? undefined : this.messages[index]
 	}
 
 	addMessage(message: TUIMessage): void {
+		const isNew = this.positionOf(message.id) === undefined
 		this.messages = applyAddMessage(this.messages, message)
+		if (isNew) {
+			this.positions!.set(message.id, this.messages.length - 1)
+		}
 		this.effects.push({ type: "addMessage", message })
 	}
 

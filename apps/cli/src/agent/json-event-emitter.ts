@@ -647,10 +647,10 @@ export class JsonEventEmitter {
 	 * For json mode: accumulate for final output
 	 */
 	private emitEvent(event: JsonEvent): void {
-		this.events.push(event)
-
 		if (this.mode === "stream-json") {
 			this.outputLine(event)
+		} else {
+			this.events.push(event)
 		}
 	}
 
