@@ -13,7 +13,7 @@ const RELEASE_VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/
  * The installer of exactly `version`: the install.sh of that release's tag,
  * not of the moving main branch, downloaded whole before it runs (a pipe into
  * sh runs a download cut short), and it checks the tarball against the
- * release's .sha256 before unpacking it.
+ * release's .sha256 (and, with gh, its build attestation) before unpacking it.
  */
 export function installScriptCommand(version: string): string {
 	if (!RELEASE_VERSION.test(version)) {

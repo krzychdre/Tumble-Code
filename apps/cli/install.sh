@@ -7,7 +7,6 @@
 #   ROO_BIN_DIR       - Binary symlink directory (default: ~/.local/bin)
 #   ROO_VERSION       - Specific version to install (default: latest)
 #   ROO_LOCAL_TARBALL - Path to local tarball to install (skips download)
-#   ROO_SKIP_CHECKSUM - Set to 1 to install a release that publishes no .sha256
 #   ROO_NPM_TIMEOUT   - Seconds before a stalled npm install is killed (default: 180)
 #   ROO_CONNECT_TIMEOUT - Seconds to wait while connecting to GitHub or npm (default: 10)
 
@@ -18,6 +17,9 @@ INSTALL_DIR="${ROO_INSTALL_DIR:-$HOME/.roo/cli}"
 BIN_DIR="${ROO_BIN_DIR:-$HOME/.local/bin}"
 REPO="krzychdre/Tumble-Code"
 MIN_NODE_VERSION=22
+# Releases up to this one were published before the release workflow attested
+# the CLI tarballs, so they have no build provenance to verify.
+LAST_UNATTESTED_VERSION="1.2.0"
 
 # Robustness knobs: every network step is bounded so the installer can never
 # stall on an unreachable network, and the dependencies are installed into a
@@ -291,19 +293,13 @@ sha256_of() {
 }
 
 # Checks the downloaded tarball against the .sha256 the release publishes
-# next to it, before anything from it is unpacked or run. A missing checksum
-# stops the install unless ROO_SKIP_CHECKSUM=1 is set (releases made before
-# checksums were published).
+# next to it, before anything from it is unpacked or run.
 verify_checksum() {
     SUM_FILE="$2.sha256"
     if ! curl -fsSL --connect-timeout "$CONNECT_TIMEOUT" --max-time "$METADATA_TIMEOUT" "$1.sha256" -o "$SUM_FILE" 2>/dev/null; then
-        if [ "${ROO_SKIP_CHECKSUM:-}" = "1" ]; then
-            warn "No checksum published for this release; installing without verifying it (ROO_SKIP_CHECKSUM=1)."
-            return 0
-        fi
         error "Could not download the checksum $1.sha256 to verify the download.
 
-Run the installer again, or set ROO_SKIP_CHECKSUM=1 to install an older release without one."
+Run the installer again."
     fi
     EXPECTED=$(cut -d ' ' -f 1 "$SUM_FILE" | tr 'A-F' 'a-f')
     ACTUAL=$(sha256_of "$2") || error "Neither sha256sum nor shasum is available to verify the download."
@@ -311,6 +307,40 @@ Run the installer again, or set ROO_SKIP_CHECKSUM=1 to install an older release 
         error "The download does not match its published checksum (expected ${EXPECTED:-nothing}, got $ACTUAL). Nothing was installed."
     fi
     info "Checksum verified."
+}
+
+# True when $VERSION is newer than LAST_UNATTESTED_VERSION (major.minor.patch).
+is_attested_release() {
+    node -e '
+const [a, b] = process.argv.slice(1).map((v) => v.split(".").map((n) => parseInt(n, 10)))
+for (let i = 0; i < 3; i++) if (a[i] !== b[i]) process.exit(a[i] > b[i] ? 0 : 1)
+process.exit(1)' "$VERSION" "$LAST_UNATTESTED_VERSION"
+}
+
+# The checksum ships in the same release as the tarball, so it cannot catch a
+# replaced release asset. The attestation can: GitHub's release workflow signs
+# it when it builds the tarball. Verified with the GitHub CLI when it is
+# installed, has the attestation command (gh 2.49+) and is signed in (exit 4:
+# authentication required).
+verify_attestation() {
+    if ! is_attested_release; then
+        return 0
+    fi
+    if ! command -v gh >/dev/null 2>&1 || ! gh attestation --help >/dev/null 2>&1; then
+        info "No GitHub CLI (gh 2.49 or newer) found, so only the checksum was verified."
+        return 0
+    fi
+    ATTEST_STATUS=0
+    gh attestation verify "$1" --repo "$REPO" >"$TMP_DIR/gh-attestation.log" 2>&1 || ATTEST_STATUS=$?
+    if [ "$ATTEST_STATUS" -eq 4 ]; then
+        info "GitHub CLI (gh) is not signed in, so only the checksum was verified."
+        return 0
+    fi
+    if [ "$ATTEST_STATUS" -ne 0 ]; then
+        tail -n 5 "$TMP_DIR/gh-attestation.log" 2>/dev/null | sed 's/^/    /' >&2
+        error "The download's build provenance did not verify (gh attestation verify --repo $REPO). Nothing was installed."
+    fi
+    info "Build provenance verified."
 }
 
 # Download and extract
@@ -353,6 +383,7 @@ Check your internet connection and run the installer again."
         fi
 
         verify_checksum "$URL" "$TMP_DIR/$TARBALL"
+        verify_attestation "$TMP_DIR/$TARBALL"
     fi
 
     # Extract into a staging directory and replace the installation only after

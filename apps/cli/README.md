@@ -36,8 +36,12 @@ directory is refused before anything is downloaded.
 ROO_VERSION=0.1.0 curl -fsSL https://raw.githubusercontent.com/krzychdre/Tumble-Code/main/apps/cli/install.sh | sh
 ```
 
-**Checksum:** the installer checks the downloaded tarball against the `.sha256` the release publishes beside it and
-installs nothing when they differ. A release published without one installs only with `ROO_SKIP_CHECKSUM=1`.
+**Checksum and build provenance:** the installer checks the downloaded tarball against the `.sha256` the release
+publishes beside it and installs nothing when they differ. When the [GitHub CLI](https://cli.github.com/) (`gh` 2.49 or
+newer, signed in) is installed, it also runs `gh attestation verify` on the tarball: the release workflow attests every
+CLI tarball it builds, so a tarball that was not built by this repository's workflow is refused. Without `gh` the
+installer checks the checksum only and says so. Releases up to 1.2.0 were published before the attestations and are
+checked by their checksum only.
 
 **Offline machines and flaky networks:**
 
