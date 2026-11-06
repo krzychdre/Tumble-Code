@@ -25,7 +25,6 @@ type ListFormat = "json" | "text"
 type BaseListOptions = {
 	workspace?: string
 	extension?: string
-	apiKey?: string
 	format?: string
 	debug?: boolean
 }
@@ -101,7 +100,7 @@ function outputSessionsText(sessions: SessionLike[]): void {
 async function createListHost(options: BaseListOptions, hostOptions: ListHostOptions): Promise<ExtensionHost> {
 	const workspacePath = resolveWorkspacePath(options.workspace)
 	const extensionPath = resolveExtensionPath(options.extension)
-	const apiKey = options.apiKey || getApiKeyFromEnv("anthropic")
+	const apiKey = getApiKeyFromEnv("anthropic")
 	// The same global MCP file as a run uses. A settings file that does not
 	// parse must not break a listing, so it falls back to the default file.
 	const { mcpSettingsPath } = await loadSettings().catch(() => ({ mcpSettingsPath: undefined }))

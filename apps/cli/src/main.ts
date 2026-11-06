@@ -33,7 +33,6 @@ program
 	.option("-e, --extension <path>", "Path to the extension bundle directory")
 	.option("-d, --debug", "Enable debug output (includes detailed debug information)", false)
 	.option("-a, --require-approval", "Require manual approval for actions", false)
-	.option("-k, --api-key <key>", "API key for the LLM provider")
 	.option("--provider <provider>", "API provider (anthropic, openrouter, ollama, etc.)")
 	.option(
 		"-m, --model <model>",
@@ -83,7 +82,6 @@ const applyListOptions = (command: Command) =>
 	command
 		.option("-w, --workspace <path>", "Workspace directory path (defaults to current working directory)")
 		.option("-e, --extension <path>", "Path to the extension bundle directory")
-		.option("-k, --api-key <key>", "Anthropic API key for the extension the listing starts (not needed to list)")
 		.option("--format <format>", 'Output format: "json" (default) or "text"', "json")
 		.option("-d, --debug", "Enable debug output", false)
 

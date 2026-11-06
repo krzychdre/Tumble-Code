@@ -146,7 +146,7 @@ async function findProviderConfigProblem(
 		}
 
 		return [
-			`No API key provided. Use --api-key, set apiKey or apiKeyEnv in ${getSettingsPath()}, or set the provider's environment variable.`,
+			`No API key provided. Set apiKey or apiKeyEnv in ${getSettingsPath()}, or set the provider's environment variable.`,
 			`For ${config.provider}, set ${getEnvVarName(config.provider)}`,
 		]
 	}
@@ -265,7 +265,6 @@ function resolveProviders(
 		provider: flagOptions.provider,
 		model: flagOptions.model,
 		baseUrl: flagOptions.baseUrl,
-		apiKey: flagOptions.apiKey,
 	}
 	// A model whose `models` entry sets a provider, base URL or key runs on
 	// that connection, under the flags.
@@ -563,7 +562,7 @@ async function resolveRunOptions(
 	// state) the run starts on the default provider; say how to choose one.
 	if (isTuiEnabled && !flagOptions.provider && !settings.provider && !vsCodeConfig?.provider) {
 		console.log(
-			`[CLI] No provider configured, using ${DEFAULT_FLAGS.provider}. Set provider and apiKey (or apiKeyEnv) in ${getSettingsPath()}, or pass --provider and --api-key.`,
+			`[CLI] No provider configured, using ${DEFAULT_FLAGS.provider}. Set provider and apiKey (or apiKeyEnv) in ${getSettingsPath()}, or pass --provider and set the provider's environment variable.`,
 		)
 	}
 	const providers = resolveProviders(settings, flagOptions, vsCodeConfig)

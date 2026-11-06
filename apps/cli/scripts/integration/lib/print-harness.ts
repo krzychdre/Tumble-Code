@@ -7,11 +7,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const defaultCliRoot = path.resolve(__dirname, "../../..")
 
 /**
- * The provider flags every case runs with. They only have to pass the CLI's
- * own checks: run.ts sets ROO_CLI_FAKE_AI_MODULE, so the extension runs on
- * the scripted model in fake-model.ts instead, with no network or real key.
+ * The provider every case runs with. Provider and key only have to pass the
+ * CLI's own checks: run.ts sets ROO_CLI_FAKE_AI_MODULE, so the extension runs
+ * on the scripted model in fake-model.ts instead, with no network or real key.
  */
-const PROVIDER_ARGS = ["--provider", "anthropic", "--api-key", "unused-by-the-scripted-model"]
+const PROVIDER_ARGS = ["--provider", "anthropic"]
 
 export interface PrintRunResult {
 	exitCode: number | undefined
@@ -29,6 +29,7 @@ export async function runPrint(args: string[], timeoutMs = 120_000): Promise<Pri
 
 	const result = await execa("tsx", ["src/index.ts", "--print", ...PROVIDER_ARGS, ...args], {
 		cwd: cliRoot,
+		env: { ANTHROPIC_API_KEY: "unused-by-the-scripted-model" },
 		stdin: "ignore",
 		reject: false,
 		timeout: timeoutMs,

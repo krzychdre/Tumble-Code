@@ -273,7 +273,7 @@ export function getProviderSettings(
 	}
 
 	if (apiKey) {
-		// bedrock maps --api-key to the token credentials fields.
+		// bedrock maps the key to the token credentials fields.
 		if (provider === "bedrock") {
 			config.awsUseApiKey = true
 			config.awsApiKey = apiKey

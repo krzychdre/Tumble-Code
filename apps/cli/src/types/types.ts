@@ -19,7 +19,6 @@ export type FlagOptions = {
 	debug: boolean
 	requireApproval: boolean
 	exitOnError: boolean
-	apiKey?: string
 	provider?: SupportedProvider
 	model?: string
 	baseUrl?: string
@@ -142,7 +141,7 @@ export interface CliModelSettings {
 	 * same as writing `"modes": { "code": { "model": "<this id>" } }` for each
 	 * of them, so a mode listed here runs the model on startup, on every mode
 	 * switch, in subtasks and on resume. Works with every provider. Ignored for
-	 * a run given any of --provider, --model, --base-url or --api-key, like
+	 * a run given any of --provider, --model or --base-url, like
 	 * `modes`.
 	 */
 	modes?: string[]
@@ -170,7 +169,7 @@ export interface CliSettings {
 	 * names and inherits the rest; an entry that names a different provider
 	 * starts from that provider's defaults (model, baseUrl and key are not
 	 * carried across providers). Ignored for a run given any of --provider,
-	 * --model, --base-url or --api-key. A model can also name its modes in its
+	 * --model or --base-url. A model can also name its modes in its
 	 * own entry (`models.<id>.modes`), which sets the model of those modes.
 	 */
 	modes?: Record<string, CliModeSettings>

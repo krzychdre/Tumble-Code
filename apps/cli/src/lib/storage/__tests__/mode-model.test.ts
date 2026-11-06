@@ -208,7 +208,7 @@ describe("createModelChoiceSaver", () => {
 
 		await expect(sessionOnly("code", "Q")).resolves.toEqual({
 			outcome: "session-only",
-			reason: "this run was started with --provider, --model, --base-url or --api-key, which set one model for every mode",
+			reason: "this run was started with --provider, --model or --base-url, which set one model for every mode",
 		})
 		expect(fs.existsSync(settingsPath)).toBe(false)
 	})
