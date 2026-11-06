@@ -141,6 +141,7 @@ async def record_event_endpoint(
         org_id=current_user.get("org_id"),
         event_type=body.type,
         properties=body.properties or {},
+        client_event_id=body.client_event_id,
     )
     return {"status": "ok"}
 

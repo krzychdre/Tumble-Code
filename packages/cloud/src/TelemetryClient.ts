@@ -229,7 +229,9 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 		let response: Response | undefined
 
 		try {
-			response = await this.post(`events`, result.data)
+			// The id travels in the serialized body, so the retry queue re-sends
+			// it unchanged and the server stores the event once.
+			response = await this.post(`events`, { ...result.data, clientEventId: crypto.randomUUID() })
 		} catch (error) {
 			console.error(`[TelemetryClient#capture] Error sending telemetry event: ${error}`)
 			// Error is already queued for retry in the post method

@@ -256,13 +256,13 @@ async def _stamp_project(db, task) -> None:
         )
 
 
-def event_row(
+def event_values(
     user_id: str, org_id: str | None, event_type: str, properties: dict
-) -> TelemetryEvent:
-    """The row ``record_event`` stores for an event: its payload, and the
+) -> dict:
+    """The columns ``record_event`` stores for an event: its payload, and the
     columns lifted out of it so readers need not parse it."""
     task_id = properties.get("taskId")
-    return TelemetryEvent(
+    return dict(
         user_id=user_id,
         organization_id=org_id,
         event_type=event_type,
@@ -367,11 +367,26 @@ async def record_event(
     org_id: str,
     event_type: str,
     properties: dict,
+    client_event_id: str | None = None,
 ) -> None:
-    """Record a telemetry event."""
-    event = event_row(user_id, org_id, event_type, properties)
-    db.add(event)
-    await db.flush()
+    """Record a telemetry event.
+
+    An event the client sends again (its retry queue re-sends after a timeout,
+    also when the first request was committed) carries the same
+    ``client_event_id`` and is stored and counted once. An event without one
+    (an older client) is always stored.
+    """
+    event = await db.scalar(
+        dialect_insert(db)(TelemetryEvent)
+        .values(
+            **event_values(user_id, org_id, event_type, properties),
+            client_event_id=client_event_id,
+        )
+        .on_conflict_do_nothing(index_elements=["user_id", "client_event_id"])
+        .returning(TelemetryEvent)
+    )
+    if event is None:
+        return
 
     # Which client ran the task: the task's own messages never say, its
     # telemetry does (services/client_kind).

@@ -40,7 +40,8 @@ from src.services.telemetry_service import record_event
 from src.services.telemetry_vocab import EMBEDDING_EVENT, LLM_COMPLETION_EVENT
 from src.web.presenters.metrics_view import GROUPINGS, MetricsView
 from src.web.presenters.task_list import NO_GROUP, NO_KEY
-from tests.web_helpers import _seed_user
+from src.dependencies import get_current_user
+from tests.web_helpers import _override_current_user, _seed_user
 
 READER = "user_test"
 MEMBER = "user_member"
@@ -490,3 +491,44 @@ async def test_deleting_a_user_deletes_their_rows_only(db_session, clock):
     users = (await db.execute(select(UsageRollup.user_id))).scalars().all()
     assert users == [READER]
     assert await compute_user_metrics(db, READER, "all", now=NOW) == before
+
+
+async def _stored_counts(db) -> tuple[int, int]:
+    events = await db.scalar(select(func.count(TelemetryEvent.id)))
+    rolled = await db.scalar(select(func.sum(UsageRollup.events)))
+    return events, rolled
+
+
+async def test_a_retried_event_is_stored_and_counted_once(any_db, clock):
+    """The client re-sends an event with the id it gave it once; an event
+    without an id (an older client) is stored every time, and the id is
+    the sender's own (another user's event with the same id still lands)."""
+    db = any_db
+    await _seed_user(db)
+    await _seed_user(db, user_id=MEMBER, email="m@example.com")
+    props = {"taskId": "t", "modelId": "glm", "inputTokens": 7, "cost": 0.5}
+
+    for _ in range(3):
+        await record_event(db, READER, None, LLM_COMPLETION_EVENT, props, "evt-1")
+    assert await _stored_counts(db) == (1, 1)
+
+    for _ in range(2):
+        await record_event(db, READER, None, LLM_COMPLETION_EVENT, props)
+    await record_event(db, MEMBER, None, LLM_COMPLETION_EVENT, props, "evt-1")
+    await db.commit()
+    assert await _stored_counts(db) == (4, 4)
+
+
+async def test_the_events_route_takes_the_clients_event_id(client, db_session):
+    await _seed_user(db_session)
+    event = {"type": LLM_COMPLETION_EVENT, "properties": {"taskId": "t"}}
+    _override_current_user(client.app)
+    try:
+        for body in (event, {**event, "clientEventId": "evt-1"}):
+            for _ in range(2):
+                assert client.post("/api/events", json=body).status_code == 200
+    finally:
+        client.app.dependency_overrides.pop(get_current_user, None)
+
+    ids = (await db_session.execute(select(TelemetryEvent.client_event_id))).all()
+    assert sorted(ids, key=str) == [("evt-1",), (None,), (None,)]

@@ -14,3 +14,5 @@ class TelemetryEventRequest(BaseModel):
 
     type: str
     properties: Optional[Dict[str, Any]] = None
+    # Kept across the client's retries; older clients send none.
+    client_event_id: Optional[str] = None

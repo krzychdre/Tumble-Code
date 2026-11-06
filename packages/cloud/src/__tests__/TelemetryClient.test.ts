@@ -4,6 +4,7 @@
 
 import { type ClineMessage, type TelemetryPropertiesProvider, TelemetryEventName } from "@tumble-code/types"
 
+import { RetryQueue } from "../retry-queue/index.js"
 import { CloudTelemetryClient as TelemetryClient } from "../TelemetryClient.js"
 
 const mockFetch = vi.fn()
@@ -77,6 +78,7 @@ describe("CloudTelemetryClient", () => {
 			expect(sentBody()).toEqual({
 				type: TelemetryEventName.TOOL_USED,
 				properties: { ...PROVIDER_PROPERTIES, taskId: "t1", tool: "read_file", mode: "architect" },
+				clientEventId: expect.any(String),
 			})
 		})
 
@@ -108,6 +110,7 @@ describe("CloudTelemetryClient", () => {
 			expect(sentBody()).toEqual({
 				type: TelemetryEventName.TASK_MESSAGE,
 				properties: { ...PROVIDER_PROPERTIES, taskId: "t1", message: MESSAGES[0] },
+				clientEventId: expect.any(String),
 			})
 		})
 
@@ -137,6 +140,24 @@ describe("CloudTelemetryClient", () => {
 			await makeClient().capture({ event: TelemetryEventName.TASK_CREATED, properties: { taskId: "t1" } })
 
 			expect(mockFetch).not.toHaveBeenCalled()
+		})
+
+		it("gives each event its own id and re-sends a failed one with the same id", async () => {
+			const queue = new RetryQueue({ get: () => undefined, update: async () => {} }, {}, () => {})
+			const client = new TelemetryClient(authService, settingsService, () => [], queue)
+			provider = { getTelemetryProperties: vi.fn().mockResolvedValue(PROVIDER_PROPERTIES) }
+			client.setProvider(provider)
+			const event = { event: TelemetryEventName.TASK_CREATED, properties: { taskId: "t1" } }
+			mockFetch.mockRejectedValueOnce(new TypeError("fetch failed"))
+
+			await client.capture(event)
+			await client.capture(event)
+			await queue.retryAll()
+			queue.dispose()
+
+			const ids = mockFetch.mock.calls.map(([, options]) => JSON.parse(options.body).clientEventId)
+			expect(ids).toEqual([expect.any(String), expect.any(String), ids[0]])
+			expect(ids[1]).not.toBe(ids[0])
 		})
 
 		it("swallows a failed request", async () => {
