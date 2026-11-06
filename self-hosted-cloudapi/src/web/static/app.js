@@ -18,6 +18,11 @@
  *   are the reader's. A page computed in another zone (body data-tz, e.g. UTC
  *   on the first visit) reloads once, only if the cookie stuck, and never
  *   twice for the same zone, so blocked cookies cannot loop.
+ * - An element with data-refresh="<seconds>" and an id is fetched again from
+ *   the page's own address that often while the tab is shown, and replaced
+ *   in place. An opened <details> or a cleared checkbox in it (matched by id)
+ *   stays as the reader left it. A failed fetch, or an answer without the
+ *   region (the sign-in page once the session ended), keeps what is shown.
  */
 ;(function () {
 	"use strict"
@@ -178,4 +183,65 @@
 			)
 		})
 	})
+
+	;(function autoRefresh() {
+		var region = document.querySelector("[data-refresh][id]")
+		if (!region) return
+		var everyMs = Number(region.getAttribute("data-refresh")) * 1000
+		var last = Date.now()
+		var timer = null
+		var busy = false
+
+		function readerState() {
+			return Array.prototype.slice
+				.call(region.querySelectorAll("details[id], input[type=checkbox][id]"))
+				.map(function (el) {
+					return { id: el.id, on: el.tagName === "DETAILS" ? el.open : el.checked }
+				})
+		}
+
+		function restore(state) {
+			state.forEach(function (s) {
+				var el = document.getElementById(s.id)
+				if (!el) return
+				if (el.tagName === "DETAILS") el.open = s.on
+				else el.checked = s.on
+			})
+		}
+
+		function refresh() {
+			busy = true
+			fetch(window.location.href, { credentials: "same-origin", headers: { Accept: "text/html" } })
+				.then(function (resp) {
+					if (!resp.ok) throw new Error("HTTP " + resp.status)
+					return resp.text()
+				})
+				.then(function (html) {
+					var next = new DOMParser().parseFromString(html, "text/html").getElementById(region.id)
+					if (!next) return
+					var state = readerState()
+					next = document.importNode(next, true)
+					region.replaceWith(next)
+					region = next
+					restore(state)
+				})
+				.catch(function () {})
+				.then(function () {
+					busy = false
+					last = Date.now()
+					schedule()
+				})
+		}
+
+		// A hidden tab asks for nothing; shown again, it refreshes as soon as
+		// the last answer is older than the interval.
+		function schedule() {
+			clearTimeout(timer)
+			if (document.hidden || busy) return
+			timer = setTimeout(refresh, Math.max(0, last + everyMs - Date.now()))
+		}
+
+		document.addEventListener("visibilitychange", schedule)
+		schedule()
+	})()
 })()

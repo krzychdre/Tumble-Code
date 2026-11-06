@@ -1,0 +1,81 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>
+<!--
+  static/app.js, data-refresh: the metrics page fetches itself again on an
+  interval and replaces the region, keeping what the reader opened or cleared,
+  keeping what is shown when an answer is unusable, and asking nothing while
+  the tab is hidden. fetch is stubbed with one answer per round.
+-->
+<div id="metrics-live" data-refresh="1">
+  <span id="figure">100</span>
+  <details id="daily-table"><summary>Show as a table</summary></details>
+  <input type="checkbox" id="toggle-tokens" checked>
+  <input type="checkbox" id="toggle-cost" checked>
+</div>
+
+<script>
+  function page(figure) {
+    return '<html><body><div id="metrics-live" data-refresh="1"><span id="figure">' + figure + '</span>' +
+      '<details id="daily-table"><summary>Show as a table</summary></details>' +
+      '<input type="checkbox" id="toggle-tokens" checked><input type="checkbox" id="toggle-cost" checked></div></body></html>'
+  }
+  var answers = [
+    { ok: true, status: 200, html: page("200") },
+    { ok: false, status: 500, html: "Internal Server Error" },
+    { ok: true, status: 200, html: "<html><body><h1>Sign in</h1></body></html>" },
+    { ok: true, status: 200, html: page("400") },
+  ]
+  window.__fetched = []
+  window.fetch = function (url, opts) {
+    var a = answers[window.__fetched.length]
+    window.__fetched.push([url, opts && opts.credentials])
+    return Promise.resolve({ ok: a.ok, status: a.status, text: function () { return Promise.resolve(a.html) } })
+  }
+  var hidden = false
+  Object.defineProperty(document, "hidden", { configurable: true, get: function () { return hidden } })
+</script>
+<script src="../../src/web/static/app.js"></script>
+<script>
+window.addEventListener("load", function () {
+  var out = [], fail = 0
+  function check(name, cond) { out.push((cond ? "PASS " : "FAIL ") + name); if (!cond) fail++ }
+  function figure() { return document.getElementById("figure").textContent }
+  function setHidden(value) {
+    hidden = value
+    document.dispatchEvent(new Event("visibilitychange"))
+  }
+
+  // What the reader did before the first refresh.
+  document.getElementById("daily-table").open = true
+  document.getElementById("toggle-cost").checked = false
+
+  setTimeout(function () {
+    check("fetched once after the interval", window.__fetched.length === 1)
+    check("fetched the page's own address with the session cookie",
+          window.__fetched[0][0] === window.location.href && window.__fetched[0][1] === "same-origin")
+    check("the new figures replace the old", figure() === "200")
+    check("an opened table stays open", document.getElementById("daily-table").open === true)
+    check("a cleared series stays cleared", document.getElementById("toggle-cost").checked === false)
+    check("a series left on stays on", document.getElementById("toggle-tokens").checked === true)
+  }, 1500)
+  setTimeout(function () {
+    check("a server error keeps what is shown", window.__fetched.length === 2 && figure() === "200")
+  }, 2500)
+  setTimeout(function () {
+    check("an answer without the region keeps what is shown", window.__fetched.length === 3 && figure() === "200")
+    setHidden(true)
+  }, 3500)
+  setTimeout(function () {
+    check("a hidden tab asks for nothing", window.__fetched.length === 3)
+    setHidden(false)
+  }, 5500)
+  setTimeout(function () {
+    check("shown again after the interval, it refreshes at once", window.__fetched.length === 4)
+    check("the replaced region refreshes again", figure() === "400")
+    var pre = document.createElement("pre")
+    pre.id = "results"
+    pre.textContent = out.join("\n") + "\nTOTAL_FAILURES=" + fail
+    document.body.appendChild(pre)
+  }, 5600)
+})
+</script>
+</body></html>
