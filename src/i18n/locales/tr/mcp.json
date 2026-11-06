@@ -10,7 +10,8 @@
 		"disconnect_servers_partial": "{{count}} MCP sunucusu bağlantısı kesilemedi. Ayrıntılar için çıktıyı kontrol edin.",
 		"toolNotFound": "Araç '{{toolName}}' sunucu '{{serverName}}' üzerinde mevcut değil. Mevcut araçlar: {{availableTools}}",
 		"serverNotFound": "MCP sunucusu '{{serverName}}' yapılandırılmamış. Mevcut sunucular: {{availableServers}}",
-		"toolDisabled": "Sunucu '{{serverName}}' üzerindeki araç '{{toolName}}' devre dışı. Mevcut etkin araçlar: {{availableTools}}"
+		"toolDisabled": "Sunucu '{{serverName}}' üzerindeki araç '{{toolName}}' devre dışı. Mevcut etkin araçlar: {{availableTools}}",
+		"command_not_found": "MCP sunucusu başlatılamıyor: \"{{command}}\" komutu bulunamadı. Komutu yükleyin ve PATH üzerinden erişilebilir olduğundan emin olun ya da tam yolunu verin."
 	},
 	"info": {
 		"server_restarting": "{{serverName}} MCP sunucusu yeniden başlatılıyor...",
