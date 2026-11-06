@@ -13,11 +13,13 @@
 import fnmatch
 import hashlib
 import logging
+import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+import yaml
 from pydantic import ValidationError
 from sqlalchemy import select
 
@@ -97,6 +99,16 @@ def test_container_does_not_run_as_root():
     ]
     assert users, "Dockerfile never sets USER, so the app runs as root"
     assert users[-1].split(":")[0] not in ("root", "0")
+
+
+def test_docker_waits_longer_than_the_graceful_shutdown():
+    """Compose's stop_grace_period must outlast uvicorn's drain, or Docker
+    SIGKILLs it (the default is 10 s)."""
+    entrypoint = (ROOT / "docker-entrypoint.sh").read_text()
+    [drain] = re.findall(r"--timeout-graceful-shutdown (\d+)", entrypoint)
+    compose = yaml.safe_load((ROOT / "docker-compose.yml").read_text())
+    grace = compose["services"]["api"]["stop_grace_period"]
+    assert grace.endswith("s") and int(grace[:-1]) > int(drain)
 
 
 # --- Secrets ----------------------------------------------------------------
