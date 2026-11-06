@@ -37,6 +37,8 @@ describe("getLatestCliVersion", () => {
 
 		await expect(getLatestCliVersion(fetchImpl)).resolves.toBe("1.1.1")
 		expect(fetchImpl.mock.calls[0]?.[0]).toBe("https://api.github.com/repos/krzychdre/tumble-code/releases/latest")
+		// Bounded, so a blackholed connection cannot hang `tumble upgrade`.
+		expect(fetchImpl.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal)
 	})
 
 	it("throws when release check fails", async () => {
@@ -93,6 +95,7 @@ describe("installScriptCommand", () => {
 		expect(command).toContain("https://raw.githubusercontent.com/krzychdre/tumble-code/v1.4.2/apps/cli/install.sh")
 		expect(command).not.toContain("/main/")
 		expect(command).not.toMatch(/\|\s*sh/)
+		expect(command).toContain("--max-time 60")
 	})
 
 	it.each(["1.2.3; rm -rf ~", "$(id)", "1.2", "latest", "1.2.3 && x"])("refuses the version %j", (version) => {

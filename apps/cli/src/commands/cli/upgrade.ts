@@ -20,7 +20,7 @@ export function installScriptCommand(version: string): string {
 		throw new Error(`Refusing to install an unexpected version: ${JSON.stringify(version)}`)
 	}
 	const url = `https://raw.githubusercontent.com/krzychdre/tumble-code/v${version}/apps/cli/install.sh`
-	return `script=$(mktemp) && trap 'rm -f "$script"' EXIT && curl -fsSL ${url} -o "$script" && sh "$script"`
+	return `script=$(mktemp) && trap 'rm -f "$script"' EXIT && curl -fsSL --connect-timeout 10 --max-time 60 ${url} -o "$script" && sh "$script"`
 }
 
 export interface UpgradeOptions {
@@ -84,6 +84,7 @@ export async function getLatestCliVersion(fetchImpl: typeof fetch = fetch): Prom
 			Accept: "application/vnd.github+json",
 			"User-Agent": "roo-cli",
 		},
+		signal: AbortSignal.timeout(15_000),
 	})
 
 	if (!response.ok) {

@@ -23,6 +23,7 @@ MIN_NODE_VERSION=22
 # stall on an unreachable network, and the dependencies are installed into a
 # staging directory so a failed install cannot destroy a working one.
 CONNECT_TIMEOUT="${ROO_CONNECT_TIMEOUT:-10}" # seconds per network connection
+METADATA_TIMEOUT=30                          # seconds for a whole small download (release JSON, checksum)
 NPM_TIMEOUT="${ROO_NPM_TIMEOUT:-180}"        # wall-clock budget for one npm install
 # Ignore junk in the knobs instead of dying later inside [ ].
 case "$NPM_TIMEOUT" in *[!0-9]*|"") NPM_TIMEOUT=180 ;; esac
@@ -164,7 +165,7 @@ get_version() {
 
     # The latest release carries the extension and the CLI under one version;
     # nightly builds are pre-releases, which GitHub never reports as latest.
-    RELEASE_JSON=$(curl -fsSL --connect-timeout "$CONNECT_TIMEOUT" "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null) || {
+    RELEASE_JSON=$(curl -fsSL --connect-timeout "$CONNECT_TIMEOUT" --max-time "$METADATA_TIMEOUT" "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null) || {
         error "Failed to fetch the latest release from GitHub. Check your internet connection."
     }
     VERSION=$(printf "%s" "$RELEASE_JSON" | node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(0, "utf8")).tag_name.replace(/^v/, ""))')
@@ -277,7 +278,7 @@ sha256_of() {
 # checksums were published).
 verify_checksum() {
     SUM_FILE="$2.sha256"
-    if ! curl -fsSL --connect-timeout "$CONNECT_TIMEOUT" "$1.sha256" -o "$SUM_FILE" 2>/dev/null; then
+    if ! curl -fsSL --connect-timeout "$CONNECT_TIMEOUT" --max-time "$METADATA_TIMEOUT" "$1.sha256" -o "$SUM_FILE" 2>/dev/null; then
         if [ "${ROO_SKIP_CHECKSUM:-}" = "1" ]; then
             warn "No checksum published for this release; installing without verifying it (ROO_SKIP_CHECKSUM=1)."
             return 0
