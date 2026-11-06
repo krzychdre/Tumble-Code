@@ -4,7 +4,7 @@
 <script id="messages-data" type="application/json">[
  {"ts":1,"type":"say","say":"text","text":"Draw the chart"},
  {"ts":1700000000002,"type":"say","say":"text","text":"Chart:\n\n![PV](monitoring/x.png)\n\n![abs](/home/u/out.png)\n\n![spaced](<./a b.png>)\n\n![amp](a&b.png)"},
- {"ts":3,"type":"say","say":"completion_result","text":"![web](https://example.com/x.png) ![panel](/static/x.png) ![data](data:image/png;base64,AAAA)"},
+ {"ts":3,"type":"say","say":"completion_result","text":"![web](https://example.com/x.png) ![](http://example.com/y.png) ![proto](//example.com/z.png) ![panel](/static/x.png) ![data](data:image/png;base64,AAAA)"},
  {"ts":4,"type":"say","say":"text","text":"pasted","images":["data:image/png;base64,BBBB"]}
 ]</script>
 <script src="../../src/web/static/vendor/marked.min.js"></script>
@@ -23,7 +23,10 @@ window.addEventListener("load", function () {
   check("an absolute filesystem path is local too", img(1700000000002, "abs").getAttribute("src") === base + "%2Fhome%2Fu%2Fout.png")
   check("marked's %20 is decoded back to the path as written", img(1700000000002, "spaced").getAttribute("data-local-path") === "./a b.png")
   check("the path is encoded in the query", img(1700000000002, "amp").getAttribute("src") === base + "a%26b.png")
-  check("an https image is left alone", img(3, "web").getAttribute("src") === "https://example.com/x.png")
+  function link(ts, href) { return row(ts).querySelector('a[href="' + href + '"]') }
+  check("an https image becomes a link named by its alt", !img(3, "web") && link(3, "https://example.com/x.png").textContent === "web")
+  check("an image without alt becomes a link named by its URL", link(3, "http://example.com/y.png").textContent === "http://example.com/y.png")
+  check("a protocol-relative image becomes a link", !img(3, "proto") && link(3, "//example.com/z.png").textContent === "proto")
   check("the panel's own URL is left alone", img(3, "panel").getAttribute("src") === "/static/x.png")
   check("a data: image is left alone", /^data:/.test(img(3, "data").getAttribute("src")))
   check("a pasted attachment is left alone", /^data:image\/png;base64,BBBB/.test(row(4).querySelector(".img-msg img").getAttribute("src")))
@@ -44,7 +47,7 @@ window.addEventListener("load", function () {
     check("every local image got one", notes.length === 5)
     check("the placeholder is text, not markup", !document.querySelector("#conversation .img-missing *"))
     check("no local image is left", !document.querySelector("#conversation img.local-img"))
-    check("remote images are not replaced", !!img(3, "web"))
+    check("remote images stay links", !row(3).querySelector("img[src*='example.com']"))
 
     var pre = document.createElement("pre")
     pre.id = "results"

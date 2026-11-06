@@ -46,9 +46,9 @@ _MIN_CHECKS = {
     "mermaid_checks.html": 11,
     # Copy per row (Markdown as written, fences, no fold), the .md/.json download.
     "copy_download_checks.html": 17,
-    # Local image paths rewritten to the serve URL, others left alone, live
-    # rows, the retry and the placeholder.
-    "images_checks.html": 14,
+    # Local image paths rewritten to the serve URL, remote ones turned into
+    # links, others left alone, live rows, the retry and the placeholder.
+    "images_checks.html": 16,
     "resume_span_checks.html": 6,
     "tasklist_checks.html": 18,
     # Groups and run trees served closed, the remembered ones reopened, opening

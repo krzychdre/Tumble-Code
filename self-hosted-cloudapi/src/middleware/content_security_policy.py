@@ -13,8 +13,10 @@ What the policy allows, and why:
   values). ``style-src-attr 'unsafe-inline'`` keeps the handful of computed
   ``style="..."`` attributes (tree depth, bar widths) working; an attribute
   cannot load anything or run code.
-- ``img-src 'self' data: https:``: attachments are data: URLs; an image a
-  model put in its Markdown is an https: URL.
+- ``img-src 'self' data:``: attachments and diagrams are data: URLs, uploaded
+  task images are served here. A remote image would tell its host who reads
+  the page (a read receipt on a shared link), so render.js shows one as a
+  link instead.
 - ``connect-src 'self' ws://host wss://host``: the live bridge's socket.io,
   which polls over XHR and upgrades to a websocket on the same host. The
   websocket origins are spelled out because older browsers do not let
@@ -27,10 +29,9 @@ The sign-in pages of routers/browser.py (``/auth/...``) are left alone: they
 live outside the panel's prefixes, and the error page closes its tab through a
 ``javascript:`` link. JSON responses need no policy.
 
-The same pages also get ``Referrer-Policy: same-origin``. A shared page shows
-images from any https: host (a model's Markdown), and a page's links lead
-anywhere: without a policy, an older browser (or one set to send the full
-URL) told every such host the page's address, the share link included. With
+The same pages also get ``Referrer-Policy: same-origin``. A page's links
+lead anywhere: without a policy, an older browser (or one set to send the
+full URL) told every such host the page's address, the share link included. With
 ``same-origin`` no other origin is sent a Referer at all, while the panel's
 own form posts keep their ``Origin`` header (``no-referrer`` would turn it
 into ``null``, which middleware/csrf.py refuses).
@@ -52,7 +53,7 @@ _BASE = (
     "script-src 'self'",
     "style-src 'self'",
     "style-src-attr 'unsafe-inline'",
-    "img-src 'self' data: https:",
+    "img-src 'self' data:",
     "font-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
