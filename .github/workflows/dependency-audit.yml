@@ -5,7 +5,8 @@ name: Dependency audit
 # published without any change in this repository.
 #
 # Blocking: a high or critical advisory fails the run unless it is accepted,
-# with a reason and an expiry date, in scripts/audit-allowlist.mjs.
+# with a reason and an expiry date, in scripts/audit-allowlist.mjs, and so
+# does a package without a valid registry signature.
 
 on:
     workflow_dispatch:
@@ -39,11 +40,13 @@ jobs:
               uses: ./.github/actions/setup-node-pnpm
               with:
                   skip-install: "true"
-            # pnpm audit exits non-zero whenever it finds anything, and the default
-            # shell runs with pipefail; this step only reports, the next one decides.
+            # pnpm audit exits non-zero whenever it finds anything; the gate step decides.
+            - name: Audit the shipped dependencies
+              run: pnpm audit --prod --json > "$RUNNER_TEMP/audit.json" || true
             - name: Summarize advisories
-              run: |
-                  { pnpm audit --prod --json || true; } | node scripts/audit-summary.mjs >> "$GITHUB_STEP_SUMMARY"
+              run: node scripts/audit-summary.mjs < "$RUNNER_TEMP/audit.json" >> "$GITHUB_STEP_SUMMARY"
             - name: Fail on unaccepted high or critical advisories
-              run: |
-                  { pnpm audit --prod --json || true; } | node scripts/audit-gate.mjs
+              run: node scripts/audit-gate.mjs < "$RUNNER_TEMP/audit.json"
+            # Every package in the lockfile, dev tools included, must carry a valid registry signature.
+            - name: Verify registry signatures
+              run: pnpm audit signatures
