@@ -1,5 +1,41 @@
 # Tumble Code Changelog
 
+## 1.3.0
+
+Released 2026-11-06
+
+### New
+
+- **Council in the Marketplace.** A Marketplace item can now hold a set of modes that install and uninstall together. The first one is Council: a chair mode that has an explorer and a verifier, each on its own model, check each other before it answers.
+- **Lock a mode to its API configuration.** The padlock next to the mode in the API configuration picker keeps that mode on its configuration: you cannot switch it until you unlock it, and "Apply this configuration to other modes" leaves locked modes unchecked and unchanged.
+- **Request budget for a custom mode.** Set `maxRequests` on a mode in `.roomodes` or the global modes file and a task in that mode is told to finish once it has made that many model requests for one assignment, then stopped two requests later. The count starts again when the task switches mode and with every message you send, so the same mode can be used again in one conversation. A parallel subagent stopped this way hands its last message back as a partial report.
+
+### Improved
+
+- **CLI: breaking, the `-k, --api-key` option is gone.** A key on the command line was visible to every user of the machine in the process list; set the provider's environment variable (for example `OPENROUTER_API_KEY`) or `apiKey` / `apiKeyEnv` in `~/.roo/cli-settings.json` instead.
+- **"Max concurrent requests" counts every request to the model.** The profile limit (in the CLI `models.<id>.maxConcurrentRequests`) now bounds all requests the model gets at once, from every task, editor tab and subagent in the VS Code window or CLI run, including condensing and memory requests. A request over the limit waits for a free slot instead of overloading a local server.
+- **Up to 20 parallel subagents, or no limit.** "Max parallel subagents" now goes up to 20, and its last step is No limit, where only each profile's "Max concurrent requests" and the number of subtasks bound how many run at once. In the CLI, `maxParallelSubagents` accepts 0 to 20, or -1 for no limit.
+- **CLI: faster `tumble doctor` when something is down.** Its checks run at the same time, so a hanging ripgrep and an unreachable cloud cost at most 5 seconds together instead of 8; the report keeps its order.
+- **CLI: quicker small commands.** `tumble --version`, `--help`, `doctor`, `upgrade`, `list` and `auth` no longer load the interactive interface first, which takes about 90 ms off each.
+- **CLI: the installer verifies where the download was built.** Every CLI release now carries a GitHub build attestation, and when the GitHub CLI (`gh`) is installed and signed in, the installer refuses a tarball that this project's release workflow did not build. The `ROO_SKIP_CHECKSUM` setting is gone: every CLI release publishes a checksum.
+- **CLI: less CPU and memory on long tasks.** Each update of a long transcript no longer re-searches the whole conversation for every message, and `--output-format stream-json` no longer keeps every event it has already printed.
+- **CLI: the approval mode is always visible.** The footer shows `permissions: allow` or `permissions: ask` and follows `/permissions` at once, and a `--print` run starts with one line on stderr saying whether actions run without approval.
+- **Self-hosted cloud: the usage metrics page refreshes itself.** While the page is open in a visible tab, its figures, charts and tables update every 30 seconds without a reload; an opened daily table and a hidden chart series stay as you left them.
+- **Smoother streaming of code.** A code block in an answer that is still arriving is colored a few times per second instead of on every word, so long code answers stream with less lag.
+
+### Fixed
+
+- **File restrictions of a mode cover renames.** A mode that may edit only some files (for example only Markdown) can no longer rename an allowed file into one it may not edit.
+- **CLI: safer installer.** The installer refuses to replace a directory that is not a previous CLI installation (a mistyped `ROO_INSTALL_DIR` can no longer wipe it), and an upgrade that fails while moving the new release into place leaves the previous installation working.
+- **CLI: private debug log and exports.** `~/.roo/cli-debug.log` and the files `/export` writes are now readable by you only, and a debug log over 10 MB is moved to `cli-debug.log.1` when the next `--debug` run starts.
+- **CLI: terminal control codes from the agent.** Text from the model, a command or an MCP server can no longer write to your clipboard, hide a link target, clear the screen or move the cursor; colours in command output still show. This covers print mode and the interactive view.
+- **CLI: upgrade and installer no longer hang on a dead connection.** `tumble upgrade` gives up on the version check after 15 seconds, and the installer bounds its release lookup and checksum download, so a blackholed network ends with an error instead of waiting forever.
+- **CLI: web_fetch connects to the address it checked.** In the CLI, `web_fetch` now connects to the public address it verified instead of looking the name up a second time, so a hostile DNS server can no longer switch the request to your own machine or local network between the check and the request.
+- **MCP servers on Windows.** Arguments of a local MCP server are passed exactly as written, so values containing `&`, `|` or `%` no longer break or change the command. When the server's command cannot be found, the server list now says which command is missing and that it must be installed and reachable through PATH, or given as a full path.
+- **"current" label in "Apply this configuration to other modes".** The list now marks the modes that already use the shown API configuration; the label never appeared before.
+- **Stricter script protection in the Tumble panels.** The panels' content security policy now uses an unguessable value per page, and an unusual OpenRouter base URL can no longer alter that policy.
+- **Mail links in answers.** Clicking a mail link or an in-page link in a chat answer no longer tries to open a file with that name; mail links open your mail program again.
+
 ## 1.2.0
 
 Released 2026-10-29
