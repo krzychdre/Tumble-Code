@@ -42,7 +42,7 @@ function createTarball(dir: string): string {
  */
 function runInstaller(
 	env: Record<string, string> = {},
-	opts: { serveTarball?: boolean; previousInstall?: boolean } = {},
+	opts: { serveTarball?: boolean; target?: "previousInstall" | "unrelated" | "empty" } = {},
 ) {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "tumble-install-"))
 	const binDir = path.join(dir, "bin")
@@ -52,10 +52,18 @@ function runInstaller(
 	const installDir = path.join(dir, "install")
 	fs.mkdirSync(binDir)
 
-	if (opts.previousInstall) {
-		// An old installation at the target that must survive a failed run.
+	// What is already at the target: an old installation that must survive a
+	// failed run, a directory that is no installation at all, or an empty one.
+	if (opts.target) {
 		fs.mkdirSync(installDir, { recursive: true })
+	}
+	if (opts.target === "previousInstall" || opts.target === "unrelated") {
 		fs.writeFileSync(path.join(installDir, "previous.txt"), "keep me\n")
+	}
+	if (opts.target === "previousInstall") {
+		fs.mkdirSync(path.join(installDir, "bin"))
+		fs.writeFileSync(path.join(installDir, "bin", "tumble"), "#!/bin/sh\n")
+		fs.writeFileSync(path.join(installDir, "package.json"), "{}")
 	}
 
 	fs.writeFileSync(
@@ -157,6 +165,8 @@ function runInstaller(
 		packageJson: readInInstall("package.json"),
 		previous: readInInstall("previous.txt"),
 		binTumble: fs.existsSync(path.join(installDir, "bin", "tumble")),
+		// The swap's working directories beside the target.
+		leftovers: fs.readdirSync(dir).filter((name) => name.startsWith("install.")),
 	}
 	fs.rmSync(dir, { recursive: true, force: true })
 	return { ...result, urls, curlCalls, npmLogLines, install }
@@ -196,13 +206,17 @@ describe.skipIf(process.platform === "win32")("install.sh", () => {
 // previous installation - so a dead Wi-Fi moment could leave the CLI broken.
 describe.skipIf(process.platform === "win32")("install.sh network hardening", () => {
 	it("installs the staged release when the registry answers", () => {
-		const { status, npmLogLines, stdout, install } = runInstaller({}, { serveTarball: true, previousInstall: true })
+		const { status, npmLogLines, stdout, install } = runInstaller(
+			{},
+			{ serveTarball: true, target: "previousInstall" },
+		)
 
 		expect(status).toBe(0)
 		// The staged tarball replaced the previous installation on success.
 		expect(install.previous).toBeNull()
 		expect(install.packageJson).toContain("tumble-cli")
 		expect(install.binTumble).toBe(true)
+		expect(install.leftovers).toEqual([])
 		// Exactly one bounded online install attempt: no --production, no offline mode.
 		expect(npmLogLines.filter((line) => line.startsWith("npm install"))).toEqual([
 			"npm install --omit=dev --no-audit --no-fund --loglevel=warn --prefer-offline",
@@ -210,10 +224,26 @@ describe.skipIf(process.platform === "win32")("install.sh network hardening", ()
 		expect(stdout).toContain("Installing dependencies...")
 	})
 
+	it("refuses to replace a directory that is not an installation, before downloading anything", () => {
+		const { status, stderr, urls, install } = runInstaller({}, { serveTarball: true, target: "unrelated" })
+
+		expect(status).not.toBe(0)
+		expect(stderr).toContain("is not a Tumble Code CLI installation")
+		expect(urls).toEqual([])
+		expect(install.previous).toBe("keep me\n")
+	})
+
+	it("installs into an existing empty directory", () => {
+		const { status, install } = runInstaller({}, { serveTarball: true, target: "empty" })
+
+		expect(status).toBe(0)
+		expect(install.binTumble).toBe(true)
+	})
+
 	it("keeps the previous installation when the machine is truly offline", () => {
 		const { status, npmLogLines, stderr, install } = runInstaller(
 			{ TUMBLE_NPM_PING_FAILS: "1", TUMBLE_NPM_INSTALL_FAILS: "1" },
-			{ serveTarball: true, previousInstall: true },
+			{ serveTarball: true, target: "previousInstall" },
 		)
 
 		expect(status).not.toBe(0)
@@ -268,7 +298,7 @@ describe.skipIf(process.platform === "win32")("install.sh network hardening", ()
 	it("kills npm and reports a timeout instead of hanging when it stalls", () => {
 		const { status, npmLogLines, stderr, install } = runInstaller(
 			{ ROO_NPM_TIMEOUT: "1", TUMBLE_NPM_INSTALL_HANG_SECS: "8" },
-			{ serveTarball: true, previousInstall: true },
+			{ serveTarball: true, target: "previousInstall" },
 		)
 
 		expect(status).not.toBe(0)
@@ -305,7 +335,7 @@ describe.skipIf(process.platform === "win32")("install.sh checksum", () => {
 	it("installs nothing when the download does not match", () => {
 		const { status, stderr, install, npmLogLines } = runInstaller(
 			{ TUMBLE_CHECKSUM: "0".repeat(64) },
-			{ serveTarball: true, previousInstall: true },
+			{ serveTarball: true, target: "previousInstall" },
 		)
 
 		expect(status).not.toBe(0)
@@ -315,7 +345,7 @@ describe.skipIf(process.platform === "win32")("install.sh checksum", () => {
 	})
 
 	it("refuses a release without a checksum unless told to skip it", () => {
-		const refused = runInstaller({ TUMBLE_NO_CHECKSUM: "1" }, { serveTarball: true, previousInstall: true })
+		const refused = runInstaller({ TUMBLE_NO_CHECKSUM: "1" }, { serveTarball: true, target: "previousInstall" })
 		expect(refused.status).not.toBe(0)
 		expect(refused.stderr).toContain("ROO_SKIP_CHECKSUM=1")
 		expect(refused.install.previous).toBe("keep me\n")

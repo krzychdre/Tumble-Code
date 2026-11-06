@@ -146,6 +146,24 @@ detect_platform() {
     info "Detected platform: $PLATFORM"
 }
 
+# The installation directory is deleted when the new release replaces it, so
+# it must be empty or hold a previous installation: ROO_INSTALL_DIR=$HOME or /
+# would otherwise wipe that whole tree. Checked before anything is downloaded.
+check_install_dir() {
+    if [ ! -e "$INSTALL_DIR" ]; then
+        return 0
+    fi
+    if [ -f "$INSTALL_DIR/package.json" ] && [ -f "$INSTALL_DIR/bin/tumble" ]; then
+        return 0
+    fi
+    if [ -d "$INSTALL_DIR" ] && [ -z "$(ls -A "$INSTALL_DIR")" ]; then
+        return 0
+    fi
+    error "$INSTALL_DIR exists and is not a Tumble Code CLI installation (no package.json and bin/tumble), so the installer will not replace it.
+
+Choose another directory with ROO_INSTALL_DIR, or remove it yourself."
+}
+
 # Get latest release version or use specified version
 get_version() {
     # Skip version fetch if using local tarball
@@ -365,13 +383,23 @@ Check your internet connection and run the installer again."
     fi
 
     # Swap the staged install into place; every failure above left the
-    # previous installation intact.
+    # previous installation intact. The staging directory may be on another
+    # filesystem, so it is first copied next to the target, where the swap is
+    # two renames: a failed copy leaves the previous installation as it was.
+    NEW_DIR="$INSTALL_DIR.new"
+    PREVIOUS_DIR="$INSTALL_DIR.previous"
+    rm -rf "$NEW_DIR" "$PREVIOUS_DIR"
+    mkdir -p "$(dirname "$INSTALL_DIR")"
+    mv "$STAGING_DIR" "$NEW_DIR" || {
+        rm -rf "$NEW_DIR"
+        error "Could not copy the new release next to $INSTALL_DIR. A previous installation, if any, is left untouched."
+    }
     if [ -e "$INSTALL_DIR" ]; then
         info "Replacing previous installation..."
-        rm -rf "$INSTALL_DIR"
+        mv "$INSTALL_DIR" "$PREVIOUS_DIR"
     fi
-    mkdir -p "$(dirname "$INSTALL_DIR")"
-    mv "$STAGING_DIR" "$INSTALL_DIR"
+    mv "$NEW_DIR" "$INSTALL_DIR"
+    rm -rf "$PREVIOUS_DIR"
 }
 
 # Create symlink in bin directory
@@ -470,6 +498,7 @@ main() {
     check_node
     check_npm
     detect_platform
+    check_install_dir
     get_version
     download_and_install
     setup_bin

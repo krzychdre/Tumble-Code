@@ -27,6 +27,9 @@ curl -fsSL https://raw.githubusercontent.com/krzychdre/Tumble-Code/main/apps/cli
 ROO_INSTALL_DIR=/opt/roo-code ROO_BIN_DIR=/usr/local/bin curl -fsSL ... | sh
 ```
 
+The installer replaces that directory, so it must not exist yet, be empty, or hold a previous installation; any other
+directory is refused before anything is downloaded.
+
 **Install a specific version:**
 
 ```bash
