@@ -1,8 +1,8 @@
-"""Who may open a shared task's page (``/shared/{task_id}``).
+"""Who may open a shared task's page (``/shared/{share_token}``).
 
 One policy, decided in one place:
 
-* no share for the task, or a share past its ``expires_at`` (the
+* no share with the token, or a share past its ``expires_at`` (the
   organization's link lifetime, share_policy): not found, for everybody;
 * sharing switched off for the task (server or organization policy,
   src/services/share_policy.py): not found for everybody but the owner;
@@ -64,11 +64,13 @@ def share_expired(share: TaskShare, now: Optional[datetime] = None) -> bool:
 
 
 async def shared_view_access(
-    db: AsyncSession, task_id: str, user: Optional[WebUser]
+    db: AsyncSession, share_token: str, user: Optional[WebUser]
 ) -> ShareAccess:
-    """Decide whether ``user`` (None when anonymous) may view the shared task."""
-    result = await db.execute(select(TaskShare).where(TaskShare.task_id == task_id))
-    share = result.scalar_one_or_none()
+    """Decide whether ``user`` (None when anonymous) may view the task shared
+    under ``share_token``."""
+    share = await db.scalar(
+        select(TaskShare).where(TaskShare.share_token == share_token)
+    )
 
     if share is None or share_expired(share):
         return ShareAccess(ShareVerdict.NOT_FOUND)
@@ -77,7 +79,7 @@ async def shared_view_access(
     # freshly-shared task is drivable straight from its share URL. Anonymous and
     # non-owner viewers stay strictly read-only. The backend independently enforces
     # the same owner-only rule (task:join DB ownership check + per-user command relay).
-    task = await db.scalar(select(Task).where(Task.id == task_id))
+    task = await db.scalar(select(Task).where(Task.id == share.task_id))
     is_owner = user is not None and task is not None and task.user_id == user["user_id"]
 
     policy = await sharing_policy(db, task) if task is not None else None

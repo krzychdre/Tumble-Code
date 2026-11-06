@@ -119,13 +119,14 @@ async def test_shared_page_parses_and_serializes_the_conversation_off_the_loop(
         s.add(
             TaskShare(
                 task_id="task-shared-offload",
+                share_token="tok-task-shared-offload",
                 visibility="public",
-                share_url="http://testserver/shared/task-shared-offload",
+                share_url="http://testserver/shared/tok-task-shared-offload",
             )
         )
         await s.commit()
 
-    resp = client.get("/shared/task-shared-offload")
+    resp = client.get("/shared/tok-task-shared-offload")
 
     assert resp.status_code == 200
     assert "Build me a feature" in resp.text

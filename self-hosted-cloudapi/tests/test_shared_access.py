@@ -1,4 +1,4 @@
-"""Who may open ``/shared/{task_id}``: every branch of the share-view policy.
+"""Who may open ``/shared/{share_token}``: every branch of the share-view policy.
 
 The policy sat inline in the ``/shared`` route. Its branches are pinned here as
 one table through the route, so moving the policy into a service (CAPI-M5)
@@ -41,8 +41,9 @@ async def _seed(session_factory, db_session, visibility: str, task_org: str | No
         s.add(
             TaskShare(
                 task_id="t-share",
+                share_token="tok-t-share",
                 visibility=visibility,
-                share_url="http://testserver/shared/t-share",
+                share_url="http://testserver/shared/tok-t-share",
             )
         )
         await _summarize(s, "t-share")
@@ -80,7 +81,7 @@ async def test_share_view_policy(
     if viewer:
         _override_web_user(app, user_id=viewer, email=f"{viewer}@example.com")
     try:
-        resp = client.get("/shared/t-share", follow_redirects=False)
+        resp = client.get("/shared/tok-t-share", follow_redirects=False)
     finally:
         app.dependency_overrides.pop(get_web_user_optional, None)
 
@@ -126,7 +127,7 @@ async def test_the_service_decides_like_the_route(
 
     await _seed(session_factory, db_session, visibility, task_org)
     access = await shared_view_access(
-        db_session, "t-share", _viewer(viewer) if viewer else None
+        db_session, "tok-t-share", _viewer(viewer) if viewer else None
     )
 
     expected = {
@@ -184,7 +185,7 @@ async def test_share_view_follows_the_server_policy(
     if viewer:
         _override_web_user(app, user_id=viewer, email=f"{viewer}@example.com")
     try:
-        resp = client.get("/shared/t-share", follow_redirects=False)
+        resp = client.get("/shared/tok-t-share", follow_redirects=False)
     finally:
         app.dependency_overrides.pop(get_web_user_optional, None)
 

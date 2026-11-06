@@ -99,7 +99,7 @@ graph TD
   ROUTES --> R2[browser - sign-in pages, callbacks]
   ROUTES --> R3[extension, settings, events, error_reports - /api]
   ROUTES --> R4[web_tasks, web_metrics, web_diagnostics, web_settings - /app]
-  ROUTES --> R5[shared - /shared/id]
+  ROUTES --> R5[shared - /shared/token]
   ROUTES --> SIO[socket.io /bridge]
   R3 --> SVC[services/*]
   R4 --> SVC

@@ -181,7 +181,7 @@ async def test_the_largest_timestamps_still_work_and_beyond_them_is_refused(
         "/app/tasks/t-img/images", params={"ts": 2**63 - 1, "path": "monitoring/x.png"}
     )
     assert ok.status_code == 200
-    for path in ("/app/tasks/t-img/images", "/shared/t-img/images"):
+    for path in ("/app/tasks/t-img/images", "/shared/tok-t-img/images"):
         # Not a column value: refused before the database is asked (it was 500).
         resp = client.get(path, params={"ts": 2**63, "path": "monitoring/x.png"})
         assert resp.status_code == 422, path
@@ -216,8 +216,9 @@ async def _share(db_session, visibility):
     db_session.add(
         TaskShare(
             task_id="t-img",
+            share_token="tok-t-img",
             visibility=visibility,
-            share_url="http://testserver/shared/t-img",
+            share_url="http://testserver/shared/tok-t-img",
         )
     )
     await db_session.commit()
@@ -233,12 +234,15 @@ async def test_a_public_share_serves_its_images_to_anybody(client, db_session):
 
     app.dependency_overrides.pop(get_web_user_optional, None)
     resp = client.get(
-        "/shared/t-img/images", params={"ts": 5, "path": "monitoring/x.png"}
+        "/shared/tok-t-img/images", params={"ts": 5, "path": "monitoring/x.png"}
     )
     assert resp.status_code == 200
     assert resp.content == PNG
     assert resp.headers["x-content-type-options"] == "nosniff"
-    assert 'data-image-base="/shared/t-img/images"' in client.get("/shared/t-img").text
+    assert (
+        'data-image-base="/shared/tok-t-img/images"'
+        in client.get("/shared/tok-t-img").text
+    )
 
 
 async def test_a_private_share_follows_the_page_rules(client, db_session):
@@ -252,14 +256,14 @@ async def test_a_private_share_follows_the_page_rules(client, db_session):
     # The owner may look.
     assert (
         client.get(
-            "/shared/t-img/images", params={"ts": 5, "path": "monitoring/x.png"}
+            "/shared/tok-t-img/images", params={"ts": 5, "path": "monitoring/x.png"}
         ).status_code
         == 200
     )
     # Anonymous: sign in first, like the page.
     app.dependency_overrides.pop(get_web_user_optional, None)
     resp = client.get(
-        "/shared/t-img/images",
+        "/shared/tok-t-img/images",
         params={"ts": 5, "path": "monitoring/x.png"},
         follow_redirects=False,
     )
@@ -269,7 +273,7 @@ async def test_a_private_share_follows_the_page_rules(client, db_session):
     _override_web_user(app, "stranger", "s@example.com")
     assert (
         client.get(
-            "/shared/t-img/images", params={"ts": 5, "path": "monitoring/x.png"}
+            "/shared/tok-t-img/images", params={"ts": 5, "path": "monitoring/x.png"}
         ).status_code
         == 404
     )
@@ -281,7 +285,7 @@ async def test_an_unshared_task_serves_no_images_under_shared(client, db_session
     _upload(client)
     assert (
         client.get(
-            "/shared/t-img/images", params={"ts": 5, "path": "monitoring/x.png"}
+            "/shared/tok-t-img/images", params={"ts": 5, "path": "monitoring/x.png"}
         ).status_code
         == 404
     )

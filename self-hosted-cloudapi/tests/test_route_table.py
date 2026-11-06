@@ -147,8 +147,8 @@ EXPECTED = {
         "APIRoute",
     ),
     ("/app/tasks/bulk-delete", ("POST",), "bulk_delete_tasks", "APIRoute"),
-    ("/shared/{task_id}", ("GET",), "shared_task", "APIRoute"),
-    ("/shared/{task_id}/images", ("GET",), "shared_task_image", "APIRoute"),
+    ("/shared/{share_token}", ("GET",), "shared_task", "APIRoute"),
+    ("/shared/{share_token}/images", ("GET",), "shared_task_image", "APIRoute"),
     ("/static", (), "static", "Mount"),
     ("/bridge", (), None, "Mount"),
     ("/health", ("GET",), "health_check", "APIRoute"),
@@ -457,16 +457,20 @@ def test_web_routes_keep_their_openapi_operations():
             json_,
             (),
         ),
-        ("/shared/{task_id}", "get"): (
-            "shared_task_shared__task_id__get",
+        ("/shared/{share_token}", "get"): (
+            "shared_task_shared__share_token__get",
             ("web",),
             html,
-            (("task_id", "path", True),),
+            (("share_token", "path", True),),
         ),
-        ("/shared/{task_id}/images", "get"): (
-            "shared_task_image_shared__task_id__images_get",
+        ("/shared/{share_token}/images", "get"): (
+            "shared_task_image_shared__share_token__images_get",
             ("web",),
             (),
-            (("task_id", "path", True), ("ts", "query", True), ("path", "query", True)),
+            (
+                ("share_token", "path", True),
+                ("ts", "query", True),
+                ("path", "query", True),
+            ),
         ),
     }

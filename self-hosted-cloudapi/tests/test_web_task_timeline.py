@@ -36,8 +36,9 @@ async def _pages(client, session_factory):
         s.add(
             TaskShare(
                 task_id="run",
+                share_token="tok-run",
                 visibility="public",
-                share_url="http://testserver/shared/run",
+                share_url="http://testserver/shared/tok-run",
             )
         )
         await _summarize(s, "run")
@@ -47,7 +48,7 @@ async def _pages(client, session_factory):
         owner = client.get("/app/tasks/run").text
     finally:
         client.app.dependency_overrides.pop(get_web_user_optional, None)
-    return {"owner": owner, "shared": client.get("/shared/run").text}
+    return {"owner": owner, "shared": client.get("/shared/tok-run").text}
 
 
 async def test_the_timeline_frame_and_jumps_are_on_both_task_pages(

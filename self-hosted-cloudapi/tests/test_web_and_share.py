@@ -138,7 +138,7 @@ async def test_share_existing_task_response_has_no_null_fields(
     assert nulls == [], f"share response must not contain null fields, found: {nulls}"
     assert body["success"] is True
     assert "error" not in body  # unset Optional must be omitted, never null
-    assert body["shareUrl"].endswith("/shared/task-share")
+    assert body["shareUrl"].startswith("http://testserver/shared/")
 
 
 # --- Blocker C: backfill creates Task + replaces messages ------------------
@@ -687,17 +687,15 @@ async def test_a_message_with_a_time_that_is_no_number_does_not_break_the_pages(
             client.post("/api/events/backfill", files=files, data=data).status_code
             == 200
         )
-        assert (
-            client.post(
-                "/api/extension/share",
-                json={"taskId": "task-odd-ts", "visibility": "public"},
-            ).status_code
-            == 200
+        share = client.post(
+            "/api/extension/share",
+            json={"taskId": "task-odd-ts", "visibility": "public"},
         )
+        assert share.status_code == 200
     finally:
         app.dependency_overrides.pop(get_current_user, None)
 
-    shared = client.get("/shared/task-odd-ts")
+    shared = client.get(share.json()["shareUrl"])
     assert shared.status_code == 200
     assert "time is null" in shared.text and "time is text" in shared.text
 

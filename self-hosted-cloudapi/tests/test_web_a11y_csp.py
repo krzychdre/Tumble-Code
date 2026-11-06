@@ -51,8 +51,9 @@ async def _seed_everything(session_factory):
         s.add(
             TaskShare(
                 task_id="run",
+                share_token="tok-run",
                 visibility="public",
-                share_url="http://testserver/shared/run",
+                share_url="http://testserver/shared/tok-run",
             )
         )
         await _summarize(s, "run")
@@ -88,7 +89,7 @@ async def rendered(client, session_factory, monkeypatch):
     monkeypatch.setattr(app_settings, "bridge_enabled", True)
     await _seed_everything(session_factory)
     pages = _pages(client, *_PANEL)
-    pages["/shared/run"] = client.get("/shared/run")
+    pages["/shared/tok-run"] = client.get("/shared/tok-run")
     pages["/app/signed-out"] = client.get("/app/signed-out")
     return pages
 

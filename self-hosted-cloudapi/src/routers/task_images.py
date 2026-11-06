@@ -4,7 +4,7 @@ Implements:
 - POST /api/tasks/{task_id}/images (the client uploads a referenced file)
 
 and ``image_response``, which the task page (/app/tasks/{id}/images) and the
-shared page (/shared/{id}/images) answer with. See
+shared page (/shared/{token}/images) answer with. See
 ai_plans/2026-10-12_18-00_cloud-web-task-images.md.
 """
 

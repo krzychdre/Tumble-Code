@@ -111,18 +111,20 @@ async def test_sharing_again_starts_the_lifetime_afresh(
         s.add(
             TaskShare(
                 task_id="t-1",
+                share_token="tok-t-1",
                 visibility="public",
                 expires_at=datetime.now(timezone.utc) - timedelta(days=1),
             )
         )
         await s.commit()
-    assert client.get("/shared/t-1").status_code == 404
+    assert client.get("/shared/tok-t-1").status_code == 404
 
-    assert _share(client).status_code == 200
+    resp = _share(client)
+    assert resp.status_code == 200
 
     expires_at = _as_utc((await _stored_share(session_factory)).expires_at)
     assert expires_at > datetime.now(timezone.utc) + timedelta(days=6)
-    assert client.get("/shared/t-1").status_code == 200
+    assert client.get(resp.json()["shareUrl"]).status_code == 200
 
 
 def test_a_huge_lifetime_is_bounded_instead_of_overflowing():
@@ -142,8 +144,9 @@ async def test_an_expired_link_is_not_found(
         s.add(
             TaskShare(
                 task_id="t-1",
+                share_token="tok-t-1",
                 visibility="public",
-                share_url="http://testserver/shared/t-1",
+                share_url="http://testserver/shared/tok-t-1",
                 expires_at=datetime.now(timezone.utc) - timedelta(minutes=1),
             )
         )
@@ -154,8 +157,8 @@ async def test_an_expired_link_is_not_found(
     if viewer:
         _override_web_user(app, user_id=viewer, email=f"{viewer}@example.com")
     try:
-        page = client.get("/shared/t-1", follow_redirects=False)
-        image = client.get("/shared/t-1/images", params={"ts": 1, "path": "a.png"})
+        page = client.get("/shared/tok-t-1", follow_redirects=False)
+        image = client.get("/shared/tok-t-1/images", params={"ts": 1, "path": "a.png"})
     finally:
         app.dependency_overrides.pop(get_web_user_optional, None)
 
@@ -172,13 +175,14 @@ async def test_a_link_within_its_lifetime_still_opens(
         s.add(
             TaskShare(
                 task_id="t-1",
+                share_token="tok-t-1",
                 visibility="public",
                 expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
             )
         )
         await s.commit()
 
-    assert client.get("/shared/t-1").status_code == 200
+    assert client.get("/shared/tok-t-1").status_code == 200
 
 
 # --- revoking ---------------------------------------------------------------------
@@ -190,8 +194,9 @@ async def _shared(session_factory, db_session):
         s.add(
             TaskShare(
                 task_id="t-1",
+                share_token="tok-t-1",
                 visibility="public",
-                share_url="http://testserver/shared/t-1",
+                share_url="http://testserver/shared/tok-t-1",
             )
         )
         await s.commit()
@@ -211,15 +216,35 @@ async def test_the_owner_revokes_a_link_through_the_api(
     client, db_session, session_factory
 ):
     await _shared(session_factory, db_session)
-    assert client.get("/shared/t-1").status_code == 200
+    assert client.get("/shared/tok-t-1").status_code == 200
 
     resp = _api_unshare(client, "owner")
 
     assert resp.json() == {"success": True, "revoked": True}
     assert await _stored_share(session_factory) is None
-    assert client.get("/shared/t-1").status_code == 404
+    assert client.get("/shared/tok-t-1").status_code == 404
     # Once more: nothing left to revoke, same shape.
     assert _api_unshare(client, "owner").json() == {"success": True, "revoked": False}
+
+
+async def test_every_share_gets_a_new_link_and_the_old_one_stays_dead(
+    client, db_session, session_factory
+):
+    await _seed_task(session_factory, db_session)
+    first = _share(client).json()["shareUrl"]
+    assert client.get(first).status_code == 200
+    assert _api_unshare(client, "owner").json()["revoked"] is True
+
+    second = _share(client).json()["shareUrl"]
+    third = _share(client).json()["shareUrl"]
+
+    share = await _stored_share(session_factory)
+    assert third == f"http://testserver/shared/{share.share_token}"
+    assert share.share_url == third
+    assert len({first, second, third}) == 3
+    assert client.get(third).status_code == 200
+    for dead in (first, second, "/shared/t-1"):
+        assert client.get(dead).status_code == 404, dead
 
 
 async def test_nobody_else_can_revoke_a_link(client, db_session, session_factory):
@@ -235,7 +260,7 @@ async def test_nobody_else_can_revoke_a_link(client, db_session, session_factory
         app.dependency_overrides.pop(get_web_user_optional, None)
 
     assert await _stored_share(session_factory) is not None
-    assert client.get("/shared/t-1").status_code == 200
+    assert client.get("/shared/tok-t-1").status_code == 200
 
 
 async def test_the_owner_sees_the_link_and_stops_sharing_from_the_task_page(
@@ -257,5 +282,5 @@ async def test_the_owner_sees_the_link_and_stops_sharing_from_the_task_page(
     assert resp.status_code == 303
     assert resp.headers["location"] == "/app/tasks/t-1"
     assert await _stored_share(session_factory) is None
-    assert client.get("/shared/t-1").status_code == 404
+    assert client.get("/shared/tok-t-1").status_code == 404
     assert "/unshare" not in after.text

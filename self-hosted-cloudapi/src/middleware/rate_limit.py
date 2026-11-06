@@ -33,7 +33,7 @@ def make_limiter(requests_per_minute: int) -> Limiter:
     return Limiter(
         key_func=get_remote_address,
         default_limits=[f"{requests_per_minute}/minute"],
-        # Counted per route, not per URL: /shared/<id> with a different id
+        # Counted per route, not per URL: /shared/<token> with a different token
         # each time is still one route.
         key_style="endpoint",
     )
