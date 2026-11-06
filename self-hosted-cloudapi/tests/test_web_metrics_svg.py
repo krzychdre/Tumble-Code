@@ -141,9 +141,9 @@ async def test_daily_chart_puts_tokens_and_cost_on_one_plot_with_an_axis_each(
     assert axis("axis-cost") == ["$0.6", "$0.45", "$0.3", "$0.15", "$0"]
     # The legend toggles are real checkboxes, checked by default.
     for series in ("tokens", "cost"):
-        assert re.search(
-            rf'<input type="checkbox" class="series-toggle toggle-{series}" checked>',
-            html,
+        assert (
+            f'<input type="checkbox" class="series-toggle toggle-{series}" id="toggle-{series}" checked>'
+            in html
         )
     # The same figures as a table, newest day first, closed and unpaged.
     table = re.search(r'<table[^>]*id="table-daily".*?</table>', html, re.DOTALL).group(

@@ -173,6 +173,11 @@ async def test_metrics_page_renders_dimensions(client, db_session, session_facto
     assert "$0.1234" in body
     # The charts are drawn by the server when there is data.
     assert 'class="chart-svg' in body
+    # app.js refreshes this region in place and keeps the table's and the
+    # series' state by these ids, so they must be inside it.
+    region = body.split('<div id="metrics-live" data-refresh="30">')[1]
+    for kept in ('id="daily-table"', 'id="toggle-tokens"', 'id="toggle-cost"'):
+        assert kept in region
 
 
 async def test_metrics_page_remembers_the_picked_period(client, db_session):
@@ -213,6 +218,8 @@ async def test_metrics_page_empty_state(client, db_session):
 
     assert resp.status_code == 200
     assert "No usage recorded" in resp.text
+    # Still refreshed, so usage that arrives later shows up on its own.
+    assert '<div id="metrics-live" data-refresh="30">' in resp.text
     # Nothing to plot, no chart.
     assert 'class="chart-svg' not in resp.text
 

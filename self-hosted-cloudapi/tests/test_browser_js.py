@@ -60,6 +60,9 @@ _MIN_CHECKS = {
     # data-confirm forms (formerly inline onsubmit), the empty state's copy button,
     # the auto-submitting filter form and the problem report's "Copy for agent".
     "app_checks.html": 15,
+    # The metrics region fetched again on an interval: opened table and cleared
+    # series kept, unusable answers ignored, nothing asked while hidden.
+    "refresh_checks.html": 10,
     # The theme applied in <head> and the auto/dark/light toggle, drawn as an icon.
     "theme_checks.html": 8,
     # Ticks per request/error/message, sizes by cost, jumps that wrap, live rows.

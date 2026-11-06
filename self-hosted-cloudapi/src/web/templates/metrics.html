@@ -34,6 +34,10 @@
   </div>
 </div>
 
+{# Everything below the controls: app.js fetches the page again every
+   data-refresh seconds and replaces this region, so the figures follow new
+   usage without a reload. #}
+<div id="metrics-live" data-refresh="30">
 {% if view.only %}
 <ul class="filter-chips" aria-label="Active filters">
   <li><a class="filter-chip" href="{{ view.url(only='') }}" aria-label="Show every {{ view.grouping.label|lower }}">{{ view.grouping.label }}: <b>{{ only_label }}</b> <span class="filter-chip-x" aria-hidden="true">✕</span></a></li>
@@ -177,8 +181,8 @@
    .chart-combo), so the toggle needs no script. #}
 {% macro daily_legend() %}
 <div class="chart-legend" role="group" aria-label="Series shown">
-  <label class="legend-key key-tokens"><input type="checkbox" class="series-toggle toggle-tokens" checked><i></i>Tokens</label>
-  <label class="legend-key key-cost"><input type="checkbox" class="series-toggle toggle-cost" checked><i></i>Cost</label>
+  <label class="legend-key key-tokens"><input type="checkbox" class="series-toggle toggle-tokens" id="toggle-tokens" checked><i></i>Tokens</label>
+  <label class="legend-key key-cost"><input type="checkbox" class="series-toggle toggle-cost" id="toggle-cost" checked><i></i>Cost</label>
 </div>
 {% endmacro %}
 {# Each series is an area, then its line on top; the day groups come last so
@@ -282,4 +286,5 @@
   <p class="empty-hint">Run a task in VS Code with telemetry enabled and come back, or pick a longer period above.</p>
 </div>
 {% endif %}
+</div>
 {% endblock %}
