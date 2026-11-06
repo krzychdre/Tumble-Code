@@ -29,7 +29,6 @@
 		"@changesets/cli": "^3.0.3",
 		"@tumble-code/config-typescript": "workspace:^",
 		"@types/node": "catalog:",
-		"@vscode/vsce": "catalog:",
 		"esbuild": "catalog:",
 		"eslint": "catalog:",
 		"husky": "^9.1.7",

@@ -4,10 +4,11 @@
 	"private": true,
 	"scripts": {
 		"bundle:nightly": "node esbuild.mjs",
-		"vsix:nightly": "cd build && mkdirp ../../../bin && npx vsce package --no-dependencies --allow-package-env-file --out ../../../bin",
+		"vsix:nightly": "cd build && mkdirp ../../../bin && vsce package --no-dependencies --out ../../../bin",
 		"clean": "rimraf build .turbo"
 	},
 	"devDependencies": {
-		"@tumble-code/build": "workspace:^"
+		"@tumble-code/build": "workspace:^",
+		"@vscode/vsce": "catalog:"
 	}
 }

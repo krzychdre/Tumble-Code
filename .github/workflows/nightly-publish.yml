@@ -19,8 +19,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
       - name: Setup Node.js and pnpm
         uses: ./.github/actions/setup-node-pnpm
         with:
@@ -48,7 +46,7 @@ jobs:
             console.log(`🔖 Nightly version set to ${pkg.version}`);
           EOF
       - name: Build VSIX
-        run: pnpm vsix:nightly # Produces bin/roo-code-nightly-0.0.[count].vsix
+        run: pnpm vsix:nightly # Produces bin/tumble-code-nightly-0.0.<number>.vsix
       # Nightlies are not published to the Marketplace: the VSIX is attached to a
       # GitHub prerelease for direct download.
       - name: Create nightly GitHub Release
@@ -56,7 +54,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          VSIX_PATH="bin/$(ls bin | head -n1)"
+          VSIX_PATH="bin/tumble-code-nightly-${VERSION}.vsix"
           gh release create "nightly-v${VERSION}" \
             --title "Nightly v${VERSION}" \
             --notes "Automated nightly build from ${GITHUB_SHA}. Download the \`.vsix\` below and install it in VS Code via \"Extensions: Install from VSIX...\"." \
