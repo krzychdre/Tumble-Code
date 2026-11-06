@@ -2,20 +2,13 @@ import { Command } from "commander"
 
 import { DEFAULT_FLAGS, REASONING_EFFORTS } from "@/types/constants.js"
 import { VERSION } from "@/lib/utils/version.js"
-import {
-	run,
-	loginToOpenAiCodex,
-	logoutFromOpenAiCodex,
-	getOpenAiCodexAuthStatus,
-	loginToCloud,
-	logoutFromCloud,
-	getCloudAuthStatus,
-	listCommands,
-	listModes,
-	listSessions,
-	upgrade,
-	doctor,
-} from "@/commands/index.js"
+import { loadReactProductionBuilds } from "@/lib/utils/react-production.js"
+import type { run } from "@/commands/cli/run.js"
+import type { listCommands, listModes, listSessions } from "@/commands/cli/list.js"
+
+// Each command module is imported when its command runs: `--help`,
+// `--version`, `doctor` and the others then skip the session's module graph
+// (React, ink, the agent), which took about 250 ms.
 
 const program = new Command()
 
@@ -73,7 +66,12 @@ program
 		'Output format (only works with --print): "text" (default), "json" (single result), or "stream-json" (realtime streaming)',
 		"text",
 	)
-	.action(run)
+	.action(async (...args: Parameters<typeof run>) => {
+		// Before anything imports React (react-production.ts).
+		await loadReactProductionBuilds()
+		const command = await import("@/commands/cli/run.js")
+		await command.run(...args)
+	})
 
 const listCommand = program
 	.command("list")
@@ -103,18 +101,21 @@ const runAndExit = async (action: () => Promise<void>) => {
 
 applyListOptions(listCommand.command("commands").description("List available slash commands")).action(
 	async (options: Parameters<typeof listCommands>[0]) => {
+		const { listCommands } = await import("@/commands/cli/list.js")
 		await runAndExit(() => listCommands(options))
 	},
 )
 
 applyListOptions(listCommand.command("modes").description("List available modes")).action(
 	async (options: Parameters<typeof listModes>[0]) => {
+		const { listModes } = await import("@/commands/cli/list.js")
 		await runAndExit(() => listModes(options))
 	},
 )
 
 applyListOptions(listCommand.command("sessions").description("List task sessions")).action(
 	async (options: Parameters<typeof listSessions>[0]) => {
+		const { listSessions } = await import("@/commands/cli/list.js")
 		await runAndExit(() => listSessions(options))
 	},
 )
@@ -123,6 +124,7 @@ program
 	.command("upgrade")
 	.description("Upgrade Tumble Code CLI to the latest version")
 	.action(async () => {
+		const { upgrade } = await import("@/commands/cli/upgrade.js")
 		await runAndExit(() => upgrade())
 	})
 
@@ -131,6 +133,7 @@ program
 	.description("Check the extension bundle, ripgrep, Node.js, the MCP config and the cloud connection")
 	.option("-e, --extension <path>", "Path to the extension bundle directory")
 	.action(async (options: { extension?: string }) => {
+		const { doctor } = await import("@/commands/cli/doctor.js")
 		process.exit(await doctor(options))
 	})
 
@@ -142,6 +145,7 @@ codexAuthCommand
 	.command("login")
 	.description("Sign in to OpenAI Codex with ChatGPT Plus, Pro, Team, or Enterprise")
 	.action(async () => {
+		const { loginToOpenAiCodex } = await import("@/commands/auth/openai-codex.js")
 		const result = await loginToOpenAiCodex()
 		process.exit(result.success ? 0 : 1)
 	})
@@ -150,6 +154,7 @@ codexAuthCommand
 	.command("logout")
 	.description("Remove the stored OpenAI Codex OAuth credentials")
 	.action(async () => {
+		const { logoutFromOpenAiCodex } = await import("@/commands/auth/openai-codex.js")
 		const result = await logoutFromOpenAiCodex()
 		process.exit(result.success ? 0 : 1)
 	})
@@ -158,6 +163,7 @@ codexAuthCommand
 	.command("status")
 	.description("Show OpenAI Codex OAuth status")
 	.action(async () => {
+		const { getOpenAiCodexAuthStatus } = await import("@/commands/auth/openai-codex.js")
 		const result = await getOpenAiCodexAuthStatus()
 		process.exit(result.authenticated ? 0 : 1)
 	})
@@ -170,6 +176,7 @@ cloudAuthCommand
 	.command("login")
 	.description("Sign in to Tumble Code Cloud in the browser; signed-in runs send usage telemetry to it")
 	.action(async () => {
+		const { loginToCloud } = await import("@/commands/auth/cloud.js")
 		const result = await loginToCloud()
 		process.exit(result.success ? 0 : 1)
 	})
@@ -178,6 +185,7 @@ cloudAuthCommand
 	.command("logout")
 	.description("Sign out from Tumble Code Cloud and remove the stored credentials")
 	.action(async () => {
+		const { logoutFromCloud } = await import("@/commands/auth/cloud.js")
 		const result = await logoutFromCloud()
 		process.exit(result.success ? 0 : 1)
 	})
@@ -186,6 +194,7 @@ cloudAuthCommand
 	.command("status")
 	.description("Show whether the CLI is signed in to Tumble Code Cloud, as whom, and which cloud")
 	.action(async () => {
+		const { getCloudAuthStatus } = await import("@/commands/auth/cloud.js")
 		const result = await getCloudAuthStatus()
 		process.exit(result.authenticated ? 0 : 1)
 	})

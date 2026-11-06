@@ -20,7 +20,13 @@ const mocks = vi.hoisted(() => ({
 	upgrade: vi.fn(async () => {}),
 }))
 
-vi.mock("@/commands/index.js", () => mocks)
+// main.ts imports each command module when its command runs.
+vi.mock("@/commands/cli/run.js", () => mocks)
+vi.mock("@/commands/cli/list.js", () => mocks)
+vi.mock("@/commands/cli/upgrade.js", () => mocks)
+vi.mock("@/commands/auth/openai-codex.js", () => mocks)
+vi.mock("@/commands/auth/cloud.js", () => mocks)
+vi.mock("@/lib/utils/react-production.js", () => ({ loadReactProductionBuilds: async () => {} }))
 
 // The version comes from package.json; pin it so the snapshots do not change
 // with every release.
@@ -70,7 +76,9 @@ async function parse(args: string[]): Promise<ParseResult> {
 		vi.resetModules()
 		Object.values(mocks).forEach((mock) => mock.mockClear())
 		await import("../main.js")
-		// Subcommand actions are async and end in process.exit; let them settle.
+		// Subcommand actions import their module, run and end in process.exit;
+		// let them settle.
+		await vi.dynamicImportSettled()
 		await new Promise((resolve) => setTimeout(resolve, 0))
 	} catch (error) {
 		if (!(error instanceof ExitCalled)) {
