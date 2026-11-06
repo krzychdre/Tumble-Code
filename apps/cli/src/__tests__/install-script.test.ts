@@ -7,6 +7,51 @@ import { fileURLToPath } from "url"
 const INSTALL_SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../install.sh")
 const FORK = "krzychdre/Tumble-Code"
 
+// The installer runs with a PATH of the fakes and links to these tools only, so
+// a gh installed on the machine running the tests never takes part.
+const INSTALLER_TOOLS = [
+	"sh",
+	"node",
+	"uname",
+	"tr",
+	"sed",
+	"cut",
+	"mktemp",
+	"rm",
+	"cp",
+	"mv",
+	"mkdir",
+	"chmod",
+	"ln",
+	"ls",
+	"dirname",
+	"basename",
+	"tail",
+	"sleep",
+	"tar",
+	"gzip",
+	"sha256sum",
+	"shasum",
+]
+
+function linkInstallerTools(dir: string): void {
+	fs.mkdirSync(dir)
+	for (const tool of INSTALLER_TOOLS) {
+		const found = spawnSync("sh", ["-c", `command -v ${tool}`], { encoding: "utf8" }).stdout.trim()
+		// sha256sum (Linux) and shasum (macOS) each exist on one system only.
+		if (found) {
+			fs.symlinkSync(found, path.join(dir, tool))
+		}
+	}
+}
+
+/**
+ * The GitHub CLI the installer finds: one that verifies the attestation, one
+ * whose verification fails, one that is signed out (exit 4), or one older
+ * than the attestation command.
+ */
+type FakeGh = "verifies" | "fails" | "signedOut" | "tooOld"
+
 /**
  * Builds a real CLI tarball - package.json, bin/tumble and the bundled
  * ripgrep binary under a release-directory prefix, exactly like the release
@@ -42,15 +87,18 @@ function createTarball(dir: string): string {
  */
 function runInstaller(
 	env: Record<string, string> = {},
-	opts: { serveTarball?: boolean; target?: "previousInstall" | "unrelated" | "empty" } = {},
+	opts: { serveTarball?: boolean; target?: "previousInstall" | "unrelated" | "empty"; gh?: FakeGh } = {},
 ) {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "tumble-install-"))
 	const binDir = path.join(dir, "bin")
 	const log = path.join(dir, "curl.log")
 	const argsLog = path.join(dir, "curl-args.log")
 	const npmLog = path.join(dir, "npm.log")
+	const ghLog = path.join(dir, "gh.log")
 	const installDir = path.join(dir, "install")
+	const toolsDir = path.join(dir, "tools")
 	fs.mkdirSync(binDir)
+	linkInstallerTools(toolsDir)
 
 	// What is already at the target: an old installation that must survive a
 	// failed run, a directory that is no installation at all, or an empty one.
@@ -125,13 +173,30 @@ function runInstaller(
 		{ mode: 0o755 },
 	)
 
+	if (opts.gh) {
+		const verifyStatus = { verifies: 0, fails: 1, signedOut: 4, tooOld: 1 }[opts.gh]
+		fs.writeFileSync(
+			path.join(binDir, "gh"),
+			[
+				"#!/bin/sh",
+				`echo "gh $*" >> "${ghLog}"`,
+				'case "$1 $2" in',
+				`  "attestation --help") exit ${opts.gh === "tooOld" ? 1 : 0} ;;`,
+				`  "attestation verify") echo "Error: verification failed" >&2; exit ${verifyStatus} ;;`,
+				"esac",
+				"exit 1",
+			].join("\n"),
+			{ mode: 0o755 },
+		)
+	}
+
 	const runEnv = opts.serveTarball ? { ...env, TUMBLE_TARBALL: createTarball(dir) } : env
 
 	const result = spawnSync("sh", [INSTALL_SCRIPT], {
 		encoding: "utf8",
 		env: {
 			...process.env,
-			PATH: `${binDir}${path.delimiter}${process.env.PATH ?? ""}`,
+			PATH: `${binDir}${path.delimiter}${toolsDir}`,
 			HOME: dir,
 			ROO_INSTALL_DIR: installDir,
 			ROO_BIN_DIR: path.join(dir, "local-bin"),
@@ -144,12 +209,12 @@ function runInstaller(
 			TUMBLE_NPM_INSTALL_FAILS: "",
 			TUMBLE_CHECKSUM: "",
 			TUMBLE_NO_CHECKSUM: "",
-			ROO_SKIP_CHECKSUM: "",
 			...runEnv,
 		},
 	})
 	const urls = fs.existsSync(log) ? fs.readFileSync(log, "utf8").trim().split("\n") : []
 	const curlCalls = fs.existsSync(argsLog) ? fs.readFileSync(argsLog, "utf8").trim().split("\n") : []
+	const ghCalls = fs.existsSync(ghLog) ? fs.readFileSync(ghLog, "utf8").trim().split("\n") : []
 	const npmLogLines = fs.existsSync(npmLog) ? fs.readFileSync(npmLog, "utf8").trim().split("\n").filter(Boolean) : []
 	// Snapshot the target directory before the temp dir that contains it is removed.
 	const readInInstall = (name: string): string | null => {
@@ -169,7 +234,7 @@ function runInstaller(
 		leftovers: fs.readdirSync(dir).filter((name) => name.startsWith("install.")),
 	}
 	fs.rmSync(dir, { recursive: true, force: true })
-	return { ...result, urls, curlCalls, npmLogLines, install }
+	return { ...result, urls, curlCalls, npmLogLines, ghCalls, install }
 }
 
 // DEF-C29: the installer fetched releases from the upstream Roo repository,
@@ -344,14 +409,59 @@ describe.skipIf(process.platform === "win32")("install.sh checksum", () => {
 		expect(npmLogLines.filter((line) => line.startsWith("npm install"))).toEqual([])
 	})
 
-	it("refuses a release without a checksum unless told to skip it", () => {
-		const refused = runInstaller({ TUMBLE_NO_CHECKSUM: "1" }, { serveTarball: true, target: "previousInstall" })
-		expect(refused.status).not.toBe(0)
-		expect(refused.stderr).toContain("ROO_SKIP_CHECKSUM=1")
-		expect(refused.install.previous).toBe("keep me\n")
+	it("refuses a release without a checksum", () => {
+		const { status, stderr, install } = runInstaller(
+			{ TUMBLE_NO_CHECKSUM: "1" },
+			{ serveTarball: true, target: "previousInstall" },
+		)
 
-		const skipped = runInstaller({ TUMBLE_NO_CHECKSUM: "1", ROO_SKIP_CHECKSUM: "1" }, { serveTarball: true })
-		expect(skipped.status).toBe(0)
-		expect(skipped.stdout).toContain("installing without verifying")
+		expect(status).not.toBe(0)
+		expect(stderr).toContain("Could not download the checksum")
+		expect(install.previous).toBe("keep me\n")
+	})
+})
+
+// The checksum comes from the same release as the tarball; the attestation is
+// signed by the release workflow, so a replaced release asset fails it.
+describe.skipIf(process.platform === "win32")("install.sh build provenance", () => {
+	it("verifies the tarball's attestation against the fork with gh", () => {
+		const { status, stdout, ghCalls } = runInstaller({}, { serveTarball: true, gh: "verifies" })
+
+		expect(status).toBe(0)
+		expect(stdout).toContain("Build provenance verified.")
+		const verify = ghCalls.find((call) => call.startsWith("gh attestation verify "))
+		expect(verify).toMatch(new RegExp(`/tumble-cli-[a-z]+-[a-z0-9]+\\.tar\\.gz --repo ${FORK}$`))
+	})
+
+	it("installs nothing when the attestation does not verify", () => {
+		const { status, stderr, install, npmLogLines } = runInstaller(
+			{},
+			{ serveTarball: true, target: "previousInstall", gh: "fails" },
+		)
+
+		expect(status).not.toBe(0)
+		expect(stderr).toContain("build provenance did not verify")
+		expect(stderr).toContain("verification failed")
+		expect(install.previous).toBe("keep me\n")
+		expect(npmLogLines).toEqual([])
+	})
+
+	it.each([
+		[undefined, "No GitHub CLI"],
+		["tooOld" as const, "No GitHub CLI"],
+		["signedOut" as const, "not signed in"],
+	])("checks the checksum only with gh %s", (gh, note) => {
+		const { status, stdout } = runInstaller({}, { serveTarball: true, gh })
+
+		expect(status).toBe(0)
+		expect(stdout).toContain(note)
+		expect(stdout).toContain("only the checksum was verified")
+	})
+
+	it("does not ask for an attestation of a release published before them", () => {
+		const { status, ghCalls } = runInstaller({ ROO_VERSION: "1.2.0" }, { serveTarball: true, gh: "fails" })
+
+		expect(status).toBe(0)
+		expect(ghCalls).toEqual([])
 	})
 })
