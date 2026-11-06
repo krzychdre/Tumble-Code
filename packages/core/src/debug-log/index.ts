@@ -37,6 +37,28 @@ export function getDebugLogPath(): string {
  */
 export function setDebugLogEnabled(enabled: boolean): void {
 	debugLogEnabled = enabled
+	if (enabled) {
+		prepareLogFile()
+	}
+}
+
+/** Past this size the log is moved to `cli-debug.log.1` (replacing the previous one) when logging starts. */
+const MAX_LOG_BYTES = 10 * 1024 * 1024
+
+/**
+ * The log holds prompts, paths and provider errors: only its owner may read
+ * it, also when an older version created it readable by all.
+ */
+function prepareLogFile(): void {
+	try {
+		fs.mkdirSync(path.dirname(DEBUG_LOG_PATH), { recursive: true, mode: 0o700 })
+		fs.chmodSync(DEBUG_LOG_PATH, 0o600)
+		if (fs.statSync(DEBUG_LOG_PATH).size > MAX_LOG_BYTES) {
+			fs.renameSync(DEBUG_LOG_PATH, `${DEBUG_LOG_PATH}.1`)
+		}
+	} catch {
+		// No log yet (the first entry creates it), or logging cannot work here.
+	}
 }
 
 /**
@@ -49,19 +71,13 @@ export function debugLog(message: string, data?: unknown): void {
 		return
 	}
 	try {
-		const logDir = path.dirname(DEBUG_LOG_PATH)
-
-		if (!fs.existsSync(logDir)) {
-			fs.mkdirSync(logDir, { recursive: true })
-		}
-
 		const timestamp = new Date().toISOString()
 
 		const entry = data
 			? `[${timestamp}] ${message}: ${JSON.stringify(data, null, 2)}\n`
 			: `[${timestamp}] ${message}\n`
 
-		fs.appendFileSync(DEBUG_LOG_PATH, entry)
+		fs.appendFileSync(DEBUG_LOG_PATH, entry, { mode: 0o600 })
 	} catch {
 		// NO-OP - don't let logging errors break functionality
 	}

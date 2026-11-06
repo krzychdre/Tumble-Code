@@ -184,7 +184,8 @@ export function useTaskSubmit({
 
 			try {
 				await fs.mkdir(path.dirname(target), { recursive: true })
-				await fs.writeFile(target, markdown, { encoding: "utf8", flag: "wx" })
+				// Prompts and command output can hold secrets: owner only.
+				await fs.writeFile(target, markdown, { encoding: "utf8", flag: "wx", mode: 0o600 })
 				note(`Exported the conversation to ${target}`)
 			} catch (error) {
 				const code = (error as NodeJS.ErrnoException).code

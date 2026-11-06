@@ -395,6 +395,9 @@ describe("useTaskSubmit /copy and /export", () => {
 		expect(markdown).toContain("pnpm build")
 		expect(systemMessages().at(-1)).toContain(file)
 		expect(runTask).not.toHaveBeenCalled()
+		if (process.platform !== "win32") {
+			expect(fs.statSync(file).mode & 0o777).toBe(0o600)
+		}
 	})
 
 	it("/export <file> writes to that file relative to the workspace and never overwrites", async () => {
