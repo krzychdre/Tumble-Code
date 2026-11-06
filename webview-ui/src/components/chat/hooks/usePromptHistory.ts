@@ -1,10 +1,38 @@
 import { ClineMessage, HistoryItem } from "@tumble-code/types"
 import { useCallback, useMemo, useState } from "react"
 
+import { useExtensionSelector } from "@src/context/ExtensionStateContext"
+
+// Maximum number of prompts to keep in history for memory management
+const MAX_PROMPT_HISTORY_SIZE = 100
+
 const sameStrings = (a: string[], b: string[]) => a.length === b.length && a.every((value, i) => value === b[i])
 
+const samePrompts = (a: string[] | undefined, b: string[] | undefined) =>
+	a === b || (a !== undefined && b !== undefined && sameStrings(a, b))
+
+/** The user's prompts in the open task, newest first; undefined when no task is open. */
+export function taskPromptsOf(clineMessages: ClineMessage[]): string[] | undefined {
+	if (!clineMessages.length) {
+		return undefined
+	}
+	return clineMessages
+		.filter((message) => message.type === "say" && message.say === "user_feedback" && message.text?.trim())
+		.map((message) => message.text!)
+		.slice(-MAX_PROMPT_HISTORY_SIZE)
+		.reverse()
+}
+
+/**
+ * The open task's prompts. The host sends a new clineMessages array on every
+ * streamed token; the prompts stay equal, so the caller does not re-render.
+ */
+export function useTaskPrompts(): string[] | undefined {
+	return useExtensionSelector((s) => taskPromptsOf(s.clineMessages), samePrompts)
+}
+
 interface UsePromptHistoryProps {
-	clineMessages: ClineMessage[] | undefined
+	taskPrompts: string[] | undefined
 	taskHistory: HistoryItem[] | undefined
 	cwd: string | undefined
 	inputValue: string
@@ -27,35 +55,20 @@ export interface UsePromptHistoryReturn {
 }
 
 export const usePromptHistory = ({
-	clineMessages,
+	taskPrompts,
 	taskHistory,
 	cwd,
 	inputValue,
 	setInputValue,
 }: UsePromptHistoryProps): UsePromptHistoryReturn => {
-	// Maximum number of prompts to keep in history for memory management
-	const MAX_PROMPT_HISTORY_SIZE = 100
-
 	// Prompt history navigation state
 	const [historyIndex, setHistoryIndex] = useState(-1)
 	const [tempInput, setTempInput] = useState("")
 
-	// Initialize prompt history with hybrid approach: conversation messages if in task, otherwise task history
+	// The open task's prompts; task history only when no task is open.
 	const filteredPromptHistory = useMemo(() => {
-		// First try to get conversation messages (user_feedback from clineMessages)
-		const conversationPrompts = clineMessages
-			?.filter((message) => message.type === "say" && message.say === "user_feedback" && message.text?.trim())
-			.map((message) => message.text!)
-
-		// If we have conversation messages, use those (newest first when navigating up)
-		if (conversationPrompts?.length) {
-			return conversationPrompts.slice(-MAX_PROMPT_HISTORY_SIZE).reverse()
-		}
-
-		// If we have clineMessages array (meaning we're in an active task), don't fall back to task history
-		// Only use task history when starting fresh (no active conversation)
-		if (clineMessages?.length) {
-			return []
+		if (taskPrompts) {
+			return taskPrompts
 		}
 
 		// Fall back to task history only when starting fresh (no active conversation)
@@ -68,11 +81,10 @@ export const usePromptHistory = ({
 			.filter((item) => item.task?.trim() && (!item.workspace || item.workspace === cwd))
 			.map((item) => item.task)
 			.slice(0, MAX_PROMPT_HISTORY_SIZE)
-	}, [clineMessages, taskHistory, cwd])
+	}, [taskPrompts, taskHistory, cwd])
 
-	// The host sends a new clineMessages array on every streamed token, so
-	// filteredPromptHistory is a new array each time even when the prompts are
-	// the same. Keep the previous array (and the navigation position) unless the
+	// filteredPromptHistory can be a new array with the same prompts (a state
+	// push resends taskHistory). Keep the previous array (and the navigation position) unless the
 	// prompts really changed: a new user prompt or another task. Adjusting state
 	// during render avoids the extra commit an effect would cause.
 	const [promptHistory, setPromptHistory] = useState<string[]>(filteredPromptHistory)

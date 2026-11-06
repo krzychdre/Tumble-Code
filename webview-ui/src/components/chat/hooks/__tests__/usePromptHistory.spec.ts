@@ -1,7 +1,11 @@
 import { act, renderHook } from "@testing-library/react"
-import type { ClineMessage, HistoryItem } from "@tumble-code/types"
+import type { ClineMessage, ExtensionMessage, HistoryItem } from "@tumble-code/types"
 
-import { usePromptHistory } from "../usePromptHistory"
+import { ExtensionStateContextProvider } from "@src/context/ExtensionStateContext"
+
+import { taskPromptsOf, usePromptHistory, useTaskPrompts } from "../usePromptHistory"
+
+vi.mock("@src/utils/vscode", () => ({ vscode: { postMessage: vi.fn() } }))
 
 type Props = Parameters<typeof usePromptHistory>[0]
 
@@ -40,7 +44,7 @@ const arrowDown = () => {
 
 describe("usePromptHistory", () => {
 	const baseProps = (clineMessages: ClineMessage[] | undefined, inputValue = ""): Props => ({
-		clineMessages,
+		taskPrompts: clineMessages && taskPromptsOf(clineMessages),
 		taskHistory: [] as HistoryItem[],
 		cwd: "/test/workspace",
 		inputValue,
@@ -173,7 +177,13 @@ describe("usePromptHistory", () => {
 		["nothing without a workspace", undefined, [task("First")], undefined, []],
 	])("offers %s", (_name, clineMessages, taskHistory, cwd, expected) => {
 		const { result } = renderHook(() =>
-			usePromptHistory({ clineMessages, taskHistory, cwd, inputValue: "", setInputValue: vi.fn() }),
+			usePromptHistory({
+				taskPrompts: clineMessages && taskPromptsOf(clineMessages),
+				taskHistory,
+				cwd,
+				inputValue: "",
+				setInputValue: vi.fn(),
+			}),
 		)
 
 		expect(result.current.promptHistory).toEqual(expected)
@@ -204,5 +214,34 @@ describe("usePromptHistory", () => {
 		})
 
 		expect(setInputValue.mock.calls).toEqual([["Third prompt"], ["Second prompt"], ["Third prompt"]])
+	})
+})
+
+describe("useTaskPrompts", () => {
+	it("re-renders on a new user prompt, not on a streamed token", () => {
+		const push = (clineMessages: ClineMessage[], clineMessagesSeq: number) =>
+			act(() => {
+				const message: ExtensionMessage = { type: "state", state: { clineMessages, clineMessagesSeq } as never }
+				window.dispatchEvent(new MessageEvent("message", { data: message }))
+			})
+		let renders = 0
+		const { result } = renderHook(
+			() => {
+				renders++
+				return useTaskPrompts()
+			},
+			{ wrapper: ExtensionStateContextProvider },
+		)
+		push(streamingMessages("H"), 1)
+		expect(result.current).toEqual(["Third prompt", "Second prompt", "First prompt"])
+		const afterFirstPush = renders
+
+		push(streamingMessages("He"), 2)
+		push(streamingMessages("Hel"), 3)
+		expect(renders).toBe(afterFirstPush)
+
+		push([...streamingMessages("Hello"), feedback("Fourth prompt", 5000)], 4)
+		expect(renders).toBe(afterFirstPush + 1)
+		expect(result.current?.[0]).toBe("Fourth prompt")
 	})
 })

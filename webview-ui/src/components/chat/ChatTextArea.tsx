@@ -18,7 +18,7 @@ import { ComposerActionButtons } from "./ComposerActionButtons"
 import { ComposerToolbar } from "./ComposerToolbar"
 import { useHighlightLayer } from "./hooks/useHighlightLayer"
 import { useMentionMenu } from "./hooks/useMentionMenu"
-import { usePromptHistory } from "./hooks/usePromptHistory"
+import { usePromptHistory, useTaskPrompts } from "./hooks/usePromptHistory"
 import { onExtensionMessage } from "@src/utils/extensionBus"
 
 interface ChatTextAreaProps {
@@ -76,7 +76,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		const customModes = useExtensionSelector((s) => s.customModes)
 		const cwd = useExtensionSelector((s) => s.cwd)
 		const taskHistory = useExtensionSelector((s) => s.taskHistory)
-		const clineMessages = useExtensionSelector((s) => s.clineMessages)
+		const taskPrompts = useTaskPrompts()
 		const commands = useExtensionSelector((s) => s.commands)
 		const enterBehavior = useExtensionSelector((s) => s.enterBehavior)
 
@@ -124,7 +124,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 
 		// Use custom hook for prompt history navigation
 		const { handleHistoryNavigation, resetHistoryNavigation, resetOnInputChange } = usePromptHistory({
-			clineMessages,
+			taskPrompts,
 			taskHistory,
 			cwd,
 			inputValue,
