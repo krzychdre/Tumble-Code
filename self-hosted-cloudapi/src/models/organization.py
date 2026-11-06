@@ -1,6 +1,6 @@
 """Organization and Membership models."""
 
-from sqlalchemy import Column, String, Boolean, ForeignKey, Text
+from sqlalchemy import Column, String, Boolean, ForeignKey, Index, Text
 from sqlalchemy.orm import relationship
 
 from src.models.base import Base, TimestampMixin, generate_id
@@ -32,6 +32,9 @@ class Membership(Base, TimestampMixin):
     """Organization membership model."""
 
     __tablename__ = "memberships"
+    __table_args__ = (
+        Index("uq_memberships_user_org", "user_id", "organization_id", unique=True),
+    )
 
     id = Column(String, primary_key=True, default=lambda: generate_id("mem_"))
     user_id = Column(

@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 
 from src.models.user import User, Session, ClientToken, Ticket
@@ -137,29 +137,24 @@ async def validate_ticket(
     db: AsyncSession,
     code: str,
 ) -> Optional[Session]:
-    """Validate a ticket and return the associated session. Marks ticket as used."""
-    result = await db.execute(
-        select(Ticket).where(Ticket.code == code, Ticket.used.is_(False))
+    """Redeem a ticket and return its session; None when unknown, used or expired.
+
+    One conditional UPDATE, so of two concurrent redemptions only one finds
+    the ticket unused.
+    """
+    session_id = await db.scalar(
+        update(Ticket)
+        .where(
+            Ticket.code == code,
+            Ticket.used.is_(False),
+            Ticket.expires_at > datetime.now(timezone.utc),
+        )
+        .values(used=True)
+        .returning(Ticket.session_id)
     )
-    ticket = result.scalar_one_or_none()
-
-    if ticket is None:
+    if session_id is None:
         return None
-
-    # SQLite's aiosqlite driver returns naive datetimes even for columns
-    # declared as DateTime(timezone=True). Coerce to UTC before comparing so
-    # the same code works on Postgres (aware) and SQLite (naive).
-    expires_at = ticket.expires_at
-    if expires_at is not None and expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
-    if expires_at < datetime.now(timezone.utc):
-        return None
-
-    ticket.used = True
-    await db.flush()
-
-    result = await db.execute(select(Session).where(Session.id == ticket.session_id))
-    return result.scalar_one_or_none()
+    return await db.scalar(select(Session).where(Session.id == session_id))
 
 
 async def validate_client_token(
