@@ -14,8 +14,7 @@ import { ExtensionStateContextProvider, useExtensionSelector } from "./context/E
 import ChatView, { ChatViewRef } from "./components/chat/ChatView"
 import SubagentTranscriptView from "./components/chat/SubagentTranscriptView"
 import { SubagentTranscriptContext } from "./components/chat/SubagentTranscriptContext"
-import HistoryView from "./components/history/HistoryView"
-import SettingsView, { SettingsViewRef } from "./components/settings/SettingsView"
+import type { SettingsViewRef } from "./components/settings/SettingsView"
 import WelcomeView from "./components/welcome/WelcomeViewProvider"
 import { CheckpointRestoreDialog } from "./components/chat/CheckpointRestoreDialog"
 import { DeleteMessageDialog, EditMessageDialog } from "./components/chat/MessageModificationConfirmationDialog"
@@ -26,10 +25,11 @@ import { useAutoApproveFrameAccent } from "./hooks/useAutoApproveFrameAccent"
 import { TooltipProvider } from "./components/ui/tooltip"
 import { STANDARD_TOOLTIP_DELAY } from "./components/ui/standard-tooltip"
 
-// The Marketplace and Cloud views are off the chat critical path: each becomes
-// its own chunk fetched on first open (P4). The chat view itself, Settings and
-// History stay eager (Settings is the welcome-gate recovery path). lazyTab
-// turns a chunk lost to a reinstall under a running window into a reload notice.
+// The tabs other than chat are off the chat critical path: each becomes its own
+// chunk fetched on first open. lazyTab turns a chunk lost to a reinstall under a
+// running window into a reload notice.
+const HistoryView = lazyTab(() => import("./components/history/HistoryView"))
+const SettingsView = lazyTab(() => import("./components/settings/SettingsView"))
 const MarketplaceView = lazyTab(() =>
 	import("./components/marketplace/MarketplaceView").then((module) => ({ default: module.MarketplaceView })),
 )
@@ -264,7 +264,11 @@ const App = () => {
 		<WelcomeView />
 	) : (
 		<SubagentTranscriptContext.Provider value={openSubagentTranscript}>
-			{tab === "history" && <HistoryView onDone={() => switchTab("chat")} />}
+			{tab === "history" && (
+				<Suspense fallback={<TabLoadingFallback />}>
+					<HistoryView onDone={() => switchTab("chat")} />
+				</Suspense>
+			)}
 			{tab === "subagent" && subagentTranscript && (
 				<SubagentTranscriptView
 					key={subagentTranscript.taskId}
@@ -273,7 +277,9 @@ const App = () => {
 				/>
 			)}
 			{tab === "settings" && (
-				<SettingsView ref={settingsRef} onDone={() => setTab("chat")} targetSection={currentSection} />
+				<Suspense fallback={<TabLoadingFallback />}>
+					<SettingsView ref={settingsRef} onDone={() => setTab("chat")} targetSection={currentSection} />
+				</Suspense>
 			)}
 			{tab === "marketplace" && (
 				<Suspense fallback={<TabLoadingFallback />}>

@@ -1,5 +1,5 @@
 /**
- * P4: the Marketplace and Cloud views are React.lazy chunks — their module
+ * The Marketplace, Cloud, Settings and History views are React.lazy chunks: their module
  * factories must not run while the app sits on the chat tab, and must run
  * exactly once when the tab opens. The mock factories double as fetch
  * counters (same pattern as MarkdownBlock.spec.tsx's importCounts).
@@ -15,7 +15,7 @@ import { render, screen, act, cleanup } from "@/utils/test-utils"
 import AppWithProviders from "../App"
 
 const { importCounts } = vi.hoisted(() => ({
-	importCounts: { marketplace: 0, cloud: 0 },
+	importCounts: { marketplace: 0, cloud: 0, settings: 0, history: 0 },
 }))
 
 vi.mock("@src/utils/vscode", () => ({
@@ -36,12 +36,15 @@ vi.mock("@src/components/chat/ChatView", () => ({
 	},
 }))
 
-vi.mock("@src/components/settings/SettingsView", () => ({
-	__esModule: true,
-	default: function SettingsView() {
-		return <div data-testid="settings-view">Settings View</div>
-	},
-}))
+vi.mock("@src/components/settings/SettingsView", () => {
+	importCounts.settings++
+	return {
+		__esModule: true,
+		default: function SettingsView() {
+			return <div data-testid="settings-view">Settings View</div>
+		},
+	}
+})
 
 vi.mock("@src/components/welcome/WelcomeViewProvider", () => ({
 	__esModule: true,
@@ -50,12 +53,15 @@ vi.mock("@src/components/welcome/WelcomeViewProvider", () => ({
 	},
 }))
 
-vi.mock("@src/components/history/HistoryView", () => ({
-	__esModule: true,
-	default: function HistoryView() {
-		return <div data-testid="history-view">History View</div>
-	},
-}))
+vi.mock("@src/components/history/HistoryView", () => {
+	importCounts.history++
+	return {
+		__esModule: true,
+		default: function HistoryView() {
+			return <div data-testid="history-view">History View</div>
+		},
+	}
+})
 
 vi.mock("@src/components/marketplace/MarketplaceView", () => {
 	importCounts.marketplace++
@@ -123,6 +129,8 @@ describe("App lazy tabs (P4)", () => {
 		vi.clearAllMocks()
 		importCounts.marketplace = 0
 		importCounts.cloud = 0
+		importCounts.settings = 0
+		importCounts.history = 0
 		window.removeEventListener("message", () => {})
 		mockUseExtensionState.mockReturnValue({ ...hydratedState })
 	})
@@ -135,6 +143,8 @@ describe("App lazy tabs (P4)", () => {
 	it.each([
 		{ tab: "marketplace" as const, view: "marketplace-view" },
 		{ tab: "cloud" as const, view: "cloud-view" },
+		{ tab: "settings" as const, view: "settings-view" },
+		{ tab: "history" as const, view: "history-view" },
 	])("fetches the $tab chunk only when its tab opens", async ({ tab, view }) => {
 		render(<AppWithProviders />)
 		expect(screen.getByTestId("chat-view")).toBeInTheDocument()
