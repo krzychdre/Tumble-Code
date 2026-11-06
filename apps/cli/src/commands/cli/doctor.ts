@@ -187,7 +187,10 @@ export function formatDoctorReport(results: DoctorCheckResult[]): string {
 	return `${lines.join("\n")}\n\n${summary}\n`
 }
 
-/** Run the checks in order, print the report, and return the exit code. */
+/**
+ * Run the checks at the same time (the ripgrep and cloud probes wait up to
+ * 5 and 3 seconds), print the report in the order given, and return the exit code.
+ */
 export async function runDoctor({
 	checks,
 	write = (text) => process.stdout.write(text),
@@ -195,15 +198,15 @@ export async function runDoctor({
 	checks: DoctorCheck[]
 	write?: (text: string) => void
 }): Promise<number> {
-	const results: DoctorCheckResult[] = []
-
-	for (const [index, check] of checks.entries()) {
-		try {
-			results.push(await check())
-		} catch (error) {
-			results.push({ name: `check ${index + 1}`, status: "fail", detail: `crashed: ${errorText(error)}` })
-		}
-	}
+	const results = await Promise.all(
+		checks.map(async (check, index): Promise<DoctorCheckResult> => {
+			try {
+				return await check()
+			} catch (error) {
+				return { name: `check ${index + 1}`, status: "fail", detail: `crashed: ${errorText(error)}` }
+			}
+		}),
+	)
 
 	write(formatDoctorReport(results))
 	return results.some((result) => result.status === "fail") ? 1 : 0
