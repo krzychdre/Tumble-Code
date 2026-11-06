@@ -37,7 +37,7 @@ sign-in server) with its own PostgreSQL. Authentik is configured automatically f
 ([`authentik/blueprints/tumble-code.yaml`](authentik/blueprints/tumble-code.yaml)).
 
 **1. Check the prerequisites.** Docker with the Compose plugin (`docker compose version`), git and openssl. Ports
-8085 (API and web panel), 9000 and 9443 (Authentik) and 5544 (Authentik's database) must be free. Authentik asks for
+8085 (API and web panel), 9000 and 9443 (Authentik) and 5544 (Authentik's database, on loopback only) must be free. Authentik asks for
 at least 2 CPU cores and 2 GB of RAM.
 
 **2. Get the code.**

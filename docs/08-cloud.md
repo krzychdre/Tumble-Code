@@ -176,7 +176,7 @@ failed sweep is rolled back whole without affecting the others. The loop starts 
   legacy (stamp the baseline, then upgrade) or managed (upgrade), then Alembic applies the migrations.
 - `Dockerfile`: Python 3.13 slim, `uv sync --frozen`, non-root user. `docker-entrypoint.sh` migrates, then starts
   uvicorn with `--timeout-graceful-shutdown 25`: on SIGTERM in-flight requests finish for up to 25 s before the
-  process exits (raise Docker's stop timeout above the 10 s default to give it room).
+  process exits (the compose file sets `stop_grace_period: 30s` to give it room).
 - `docker-compose.yml`: API, PostgreSQL, Authentik server and worker with their database, and a blueprint that
   provisions the OIDC application. The API container has a healthcheck on `/health/ready`, which runs `SELECT 1`
   on the database and answers 503 when it is down; `/health` stays liveness-only (no DB, cheap). The DB engine is

@@ -74,6 +74,9 @@ services:
       auth_server:
         condition: service_healthy
     restart: unless-stopped
+    # Above uvicorn's --timeout-graceful-shutdown 25 (docker-entrypoint.sh):
+    # the 10 s default SIGKILLs the drain and engine.dispose().
+    stop_grace_period: 30s
 
   postgres:
     # Minor pinned, so an update is a reviewed change instead of whatever the
@@ -111,9 +114,10 @@ services:
       start_period: 20s
     ports:
       # Host port remapped 5432 -> 5544 to avoid colliding with other local
-      # Postgres instances. Internal port stays 5432 (auth_server/worker reach it
-      # as auth_db:5432). Override AUTH_DB_PORT to coexist with another stack.
-      - "${AUTH_DB_PORT:-5544}:5432"
+      # Postgres instances, on loopback only: nothing off this machine needs
+      # Authentik's database. Internal port stays 5432 (auth_server/worker reach
+      # it as auth_db:5432). Override AUTH_DB_PORT to coexist with another stack.
+      - "127.0.0.1:${AUTH_DB_PORT:-5544}:5432"
     volumes:
       - ./.vol/auth/postgres:/var/lib/postgresql/data
     restart: unless-stopped
