@@ -230,6 +230,7 @@
 	const PANEL_URL_RE = /^\/(app|shared|static)\//
 	const SCHEME_RE = /^[a-zA-Z][a-zA-Z0-9+.-]*:/
 	const DRIVE_RE = /^[a-zA-Z]:[\\/]/
+	const REMOTE_RE = /^\s*(https?:)?\/\//i
 	const IMAGE_RETRY_MS = 3000
 
 	function localImagePath(src) {
@@ -243,17 +244,29 @@
 		}
 	}
 
-	// Rewrites the local <img> of a rendered (already sanitized) body. Works on
-	// an inert <template>, so no image loads from the old src; the new src is
-	// built from encoded parts, and the path is kept in data-local-path for the
+	// Rewrites the <img> of a rendered (already sanitized) body. Works on an
+	// inert <template>, so no image loads from the old src. A remote image
+	// becomes a link (the CSP's img-src refuses other hosts, which would
+	// otherwise learn who reads the page). A local one gets a src built from
+	// encoded parts, and its path is kept in data-local-path for the
 	// placeholder below.
-	function localImages(html, base, ts) {
-		if (!html || !base || ts == null || html.indexOf("<img") === -1) return html
+	function bodyImages(html, base, ts) {
+		if (!html || html.indexOf("<img") === -1) return html
 		const t = document.createElement("template")
 		t.innerHTML = html
 		let changed = false
 		t.content.querySelectorAll("img").forEach(function (img) {
-			const path = localImagePath(img.getAttribute("src"))
+			const src = img.getAttribute("src") || ""
+			if (REMOTE_RE.test(src)) {
+				const link = document.createElement("a")
+				link.setAttribute("href", src)
+				link.textContent = img.getAttribute("alt") || src
+				img.replaceWith(link)
+				changed = true
+				return
+			}
+			if (!base || ts == null) return
+			const path = localImagePath(src)
 			if (path == null) return
 			img.setAttribute(
 				"src",
@@ -1021,7 +1034,7 @@
 			if (key != null && key === firstKey && info.kind === "text") {
 				info = { role: "user", label: "You", body: info.body, kind: info.kind }
 			}
-			info.body = localImages(info.body, imageBase, ts)
+			info.body = bodyImages(info.body, imageBase, ts)
 			// A row is "running" while its message streams (partial) or, for an API
 			// request, until it reports a cost. The in-place upsert of the final
 			// message clears it automatically. Initial history replay (opts.history)

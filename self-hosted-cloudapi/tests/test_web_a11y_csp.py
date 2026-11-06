@@ -277,8 +277,8 @@ async def test_panel_pages_carry_a_strict_csp(rendered):
             "'self'" in policy["connect-src"]
             and "ws://testserver" in policy["connect-src"]
         ), path
-        # Attachments are data: URLs.
-        assert "data:" in policy["img-src"], path
+        # Attachments are data: URLs; no remote host learns who reads a page.
+        assert policy["img-src"] == ["'self'", "data:"], path
         for directive, sources in policy.items():
             assert "'unsafe-eval'" not in sources, (path, directive)
             if directive != "style-src-attr":
