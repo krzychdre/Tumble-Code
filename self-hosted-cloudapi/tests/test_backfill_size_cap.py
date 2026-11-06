@@ -1,5 +1,5 @@
 """POST /api/events/backfill refuses an upload above BACKFILL_MAX_BYTES (CAPI-M12),
-and POST /api/events an event above it.
+and POST /api/events an event above MAX_EVENT_BYTES.
 
 The route used to read the whole upload into memory, however large, and parse
 it on the event loop. It now answers 413 above the cap: straight from the
@@ -69,9 +69,12 @@ async def test_upload_under_the_cap_is_stored(client, db_session, small_cap):
     assert resp.json() == {"status": "ok"}
 
 
-async def test_an_event_over_the_cap_is_413(client, db_session, small_cap):
+async def test_an_event_over_the_cap_is_413(client, db_session, monkeypatch):
     """POST /api/events reads a single event, which had no cap: one request
     with a 100 MB model id took a gigabyte of the API's memory."""
+    from src.routers import events
+
+    monkeypatch.setattr(events, "MAX_EVENT_BYTES", LIMIT)
     await _seed_user(db_session)
     _override_current_user(client.app)
     event = {"type": "LLM Completion", "properties": {"modelId": "m" * LIMIT}}
@@ -80,6 +83,79 @@ async def test_an_event_over_the_cap_is_413(client, db_session, small_cap):
 
     assert resp.status_code == 413
     assert (await db_session.execute(select(TelemetryEvent))).first() is None
+
+
+def _scope(path: str, content_type: str, body: bytes) -> dict:
+    return {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": "POST",
+        "scheme": "http",
+        "path": path,
+        "raw_path": path.encode(),
+        "query_string": b"",
+        "root_path": "",
+        "headers": [
+            (b"host", b"testserver"),
+            (b"content-type", content_type.encode()),
+            (b"content-length", str(len(body)).encode()),
+        ],
+        "client": ("testclient", 50000),
+        "server": ("testserver", 80),
+    }
+
+
+async def _send_raw(app, scope: dict, body: bytes) -> tuple[int, int]:
+    """The response status and how many times the app read the body."""
+    body_reads = 0
+
+    async def receive():
+        nonlocal body_reads
+        body_reads += 1
+        return {"type": "http.request", "body": body, "more_body": False}
+
+    sent = []
+
+    async def send(message):
+        sent.append(message)
+
+    await app(scope, receive, send)
+    start = next(m for m in sent if m["type"] == "http.response.start")
+    return start["status"], body_reads
+
+
+async def test_an_anonymous_event_is_refused_before_its_body_is_read(client):
+    """The route is outside the per-IP limit, so the Bearer check comes first:
+    a declared body parameter would be read and parsed before it."""
+    body = json.dumps({"type": "LLM Completion", "properties": {}}).encode()
+
+    status, body_reads = await _send_raw(
+        client.app, _scope("/api/events", "application/json", body), body
+    )
+
+    assert status == 401
+    assert body_reads == 0
+
+
+async def test_a_backfill_waits_for_the_upload_gate(
+    client, db_session, monkeypatch, no_backfill
+):
+    """A backfill is parsed inside the same gate as an LLM exchange: one
+    already in flight for the user turns the next away instead of holding a
+    second 50 MiB upload in memory."""
+    from src.routers.upload_gate import parse_gate
+
+    monkeypatch.setattr(settings, "llm_exchange_parse_wait_seconds", 0)
+    await _seed_user(db_session)
+    _override_current_user(client.app)
+    files, data = _backfill_files("task-gated", _big_messages(100))
+
+    async with parse_gate.slot("user_test", capacity=1, per_user=1, wait_seconds=0):
+        resp = client.post("/api/events/backfill", files=files, data=data)
+
+    assert resp.status_code == 429
+    assert no_backfill == []
 
 
 async def test_declared_length_over_the_cap_is_413(
@@ -101,40 +177,11 @@ async def test_declared_length_over_the_cap_is_refused_before_reading_the_body(
     _override_current_user(client.app)
     body, content_type = _multipart("task-big", _big_messages(LIMIT * 2))
 
-    scope = {
-        "type": "http",
-        "asgi": {"version": "3.0"},
-        "http_version": "1.1",
-        "method": "POST",
-        "scheme": "http",
-        "path": "/api/events/backfill",
-        "raw_path": b"/api/events/backfill",
-        "query_string": b"",
-        "root_path": "",
-        "headers": [
-            (b"host", b"testserver"),
-            (b"content-type", content_type.encode()),
-            (b"content-length", str(len(body)).encode()),
-        ],
-        "client": ("testclient", 50000),
-        "server": ("testserver", 80),
-    }
-    body_reads = 0
+    status, body_reads = await _send_raw(
+        client.app, _scope("/api/events/backfill", content_type, body), body
+    )
 
-    async def receive():
-        nonlocal body_reads
-        body_reads += 1
-        return {"type": "http.request", "body": body, "more_body": False}
-
-    sent = []
-
-    async def send(message):
-        sent.append(message)
-
-    await client.app(scope, receive, send)
-
-    start = next(m for m in sent if m["type"] == "http.response.start")
-    assert start["status"] == 413
+    assert status == 413
     assert body_reads == 0
     assert no_backfill == []
 

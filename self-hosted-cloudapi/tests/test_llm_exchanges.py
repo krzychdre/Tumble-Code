@@ -454,7 +454,7 @@ async def test_a_delta_whose_base_is_gone_asks_for_a_full_snapshot(authed, db_se
 async def test_the_parse_gate_lets_capacity_uploads_in_at_once_and_queues_the_rest():
     import anyio
 
-    from src.routers.llm_exchanges import ParseGate
+    from src.routers.upload_gate import ParseGate
 
     gate = ParseGate()
     inside = 0
@@ -479,7 +479,7 @@ async def test_the_parse_gate_lets_capacity_uploads_in_at_once_and_queues_the_re
 async def test_the_parse_gate_answers_429_for_a_user_and_503_when_full():
     from fastapi import HTTPException
 
-    from src.routers.llm_exchanges import ParseGate
+    from src.routers.upload_gate import ParseGate
 
     gate = ParseGate()
     limits = {"capacity": 2, "per_user": 1, "wait_seconds": 0}
@@ -503,10 +503,11 @@ async def test_an_upload_past_the_parse_limit_is_refused_with_retry_after(
     authed, db_session, session_factory, monkeypatch
 ):
     from config.settings import settings as app_settings
-    from src.routers.llm_exchanges import parse_gate
+    from src.routers.upload_gate import parse_gate
 
     await _record_on(db_session)
     monkeypatch.setattr(app_settings, "llm_exchange_parse_wait_seconds", 0)
+    monkeypatch.setattr(app_settings, "llm_exchange_parse_concurrency", 2)
     limits = {
         "capacity": app_settings.llm_exchange_parse_concurrency,
         "per_user": app_settings.llm_exchange_parse_per_user,

@@ -9,7 +9,8 @@ import json
 
 import anyio
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.routing import APIRoute
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
 from starlette.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +25,7 @@ from src.services.telemetry_service import (
     backfill_messages,
 )
 from src.realtime.hub import registry
+from src.routers.upload_gate import upload_slot
 from config.settings import settings
 
 
@@ -59,22 +61,11 @@ def capped_request(request: Request, limit: int) -> Request:
     return Request(request.scope, receive)
 
 
-class _CappedRoute(APIRoute):
-    """A route whose request body is refused with 413 above
-    ``BACKFILL_MAX_BYTES``, before it is read whole and parsed: a single
-    event is one message of a conversation at most, and an upload the whole
-    conversation."""
+# Largest single event, in bytes. An event is one message of a conversation:
+# the largest of 336 827 real ones measured 5 156 172 bytes.
+MAX_EVENT_BYTES = 16 * 1024 * 1024
 
-    def get_route_handler(self):
-        handler = super().get_route_handler()
-
-        async def capped_handler(request: Request):
-            return await handler(capped_request(request, settings.backfill_max_bytes))
-
-        return capped_handler
-
-
-router = APIRouter(prefix="/api", tags=["events"], route_class=_CappedRoute)
+router = APIRouter(prefix="/api", tags=["events"])
 
 
 def _backfill_client_kind(properties) -> str | None:
@@ -115,14 +106,34 @@ def _parse_backfill_upload(content: bytes) -> list:
 @router.post("/events")
 @not_rate_limited
 async def record_event_endpoint(
-    body: TelemetryEventRequest,
+    request: Request,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Record a telemetry event. Refused with 413 above ``BACKFILL_MAX_BYTES``
-    (``_CappedRoute``)."""
+    """Record a telemetry event. Refused with 413 above ``MAX_EVENT_BYTES``.
+
+    The body is read by hand rather than declared as a parameter: FastAPI
+    reads and parses a declared body before the Bearer check runs, so an
+    anonymous caller could have this unthrottled route parse it.
+    """
     if not settings.telemetry_enabled:
         return {"status": "ignored"}
+
+    raw = await capped_request(request, MAX_EVENT_BYTES).body()
+    try:
+        # json.loads, as FastAPI does: pydantic's own parser refuses the lone
+        # surrogates a JavaScript string can carry.
+        data = json.loads(raw)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Body is not valid JSON"
+        )
+    try:
+        body = TelemetryEventRequest.model_validate(data)
+    except ValidationError as exc:
+        raise RequestValidationError(
+            exc.errors(include_url=False, include_context=False)
+        )
 
     await record_event(
         db=db,
@@ -147,24 +158,25 @@ async def backfill_events_endpoint(
     - properties: JSON string
     - file: task.json file
 
-    Refused with 413 above ``BACKFILL_MAX_BYTES`` (``_CappedRoute``).
+    Refused with 413 above ``BACKFILL_MAX_BYTES``; read and parsed inside an
+    ``upload_slot``.
     """
     if not settings.telemetry_enabled:
         return {"status": "ignored"}
 
-    form = await request.form()
+    user_id = current_user["user_id"]
+    async with upload_slot(user_id):
+        form = await capped_request(request, settings.backfill_max_bytes).form()
+        file = form.get("file")
+        messages = []
+        if file:
+            content = await file.read()
+            messages = await anyio.to_thread.run_sync(_parse_backfill_upload, content)
     task_id = form.get("taskId", "")
-    file = form.get("file")
-
-    messages = []
-    if file:
-        content = await file.read()
-        messages = await anyio.to_thread.run_sync(_parse_backfill_upload, content)
 
     # Project/worktree root: prefer the explicit client field (works even when the
     # bridge is offline); fall back to the live registered instance for older
     # clients that don't send it.
-    user_id = current_user["user_id"]
     workspace_path = form.get("workspacePath") or None
     if not workspace_path:
         workspace_path = (registry.instance(user_id) or {}).get("workspacePath")

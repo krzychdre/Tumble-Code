@@ -14,6 +14,7 @@ run script.
 import hashlib
 from typing import Optional
 
+import anyio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -39,17 +40,23 @@ def sniff_image_mime(head: bytes) -> Optional[str]:
     return None
 
 
+def _sha256(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
 async def store_task_image(
     db: AsyncSession, task_id: str, message_ts: int, path: str, mime: str, data: bytes
 ) -> None:
     """Insert the image, or replace the one stored for the same (task, ts, path)."""
+    # Off the event loop: 10 MB take tens of milliseconds to hash.
+    sha256 = await anyio.to_thread.run_sync(_sha256, data)
     values = {
         "task_id": task_id,
         "message_ts": message_ts,
         "path": path,
         "mime": mime,
         "size": len(data),
-        "sha256": hashlib.sha256(data).hexdigest(),
+        "sha256": sha256,
         "data": data,
     }
     insert = dialect_insert(db)

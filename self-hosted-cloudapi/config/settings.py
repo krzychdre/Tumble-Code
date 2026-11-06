@@ -307,19 +307,20 @@ class Settings(BaseSettings):
         ge=1,
         description="Largest accepted task backfill upload, in bytes",
     )
-    # LLM exchange uploads (POST /api/llm-exchanges and its outcome) read and
-    # parsed at once: one is up to 128 MiB of JSON once inflated, several times
-    # that as Python objects. In all, and per user; a request waits up to
+    # Large uploads (LLM exchanges and their outcomes, task backfills) read and
+    # parsed at once: an exchange is up to 128 MiB of JSON once inflated, a
+    # backfill up to BACKFILL_MAX_BYTES, several times that as Python objects.
+    # In all, and per user; a request waits up to
     # LLM_EXCHANGE_PARSE_WAIT_SECONDS for its turn, then gets 503 (or 429 when
-    # its user is the one with uploads in flight), which the extension retries.
+    # its user is the one with uploads in flight). See routers/upload_gate.py.
     llm_exchange_parse_concurrency: int = Field(
-        2, ge=1, description="LLM exchange uploads parsed at once"
+        1, ge=1, description="Large uploads parsed at once"
     )
     llm_exchange_parse_per_user: int = Field(
-        1, ge=1, description="LLM exchange uploads parsed at once for one user"
+        1, ge=1, description="Large uploads parsed at once for one user"
     )
     llm_exchange_parse_wait_seconds: float = Field(
-        20.0, ge=0, description="Seconds an LLM exchange upload waits for its turn"
+        20.0, ge=0, description="Seconds a large upload waits for its turn"
     )
 
     # Task sharing. With no organizations configured (self-hosted single-tenant

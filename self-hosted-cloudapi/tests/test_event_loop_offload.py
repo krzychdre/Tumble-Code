@@ -14,6 +14,7 @@ import pytest
 
 from src.auth.web_session import get_web_user_optional
 from src.models.task import Task
+from src.services import task_images
 from tests.web_helpers import (
     _add_message,
     _backfill_files,
@@ -164,5 +165,26 @@ async def test_an_error_report_row_is_built_off_the_loop(
     resp = client.post("/api/error-reports", json=report)
 
     assert resp.status_code == 200
+    assert len(calls) == 1
+    assert calls[0]["on_loop"] is False
+
+
+async def test_an_uploaded_image_is_hashed_off_the_loop(
+    client, db_session, monkeypatch
+):
+    calls = _spy(monkeypatch, task_images, "_sha256")
+    await _seed_user(db_session)
+    db_session.add(Task(id="t-hash", user_id="user_test", title="Hash"))
+    await db_session.commit()
+    _override_current_user(client.app)
+    png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
+
+    resp = client.post(
+        "/api/tasks/t-hash/images",
+        data={"messageTs": "5", "path": "x.png"},
+        files={"file": ("x.png", png, "image/png")},
+    )
+
+    assert resp.status_code == 204
     assert len(calls) == 1
     assert calls[0]["on_loop"] is False
