@@ -9,16 +9,8 @@
 
 const mockRun = vi.hoisted(() => vi.fn())
 
-vi.mock("@/commands/index.js", () => ({
-	run: mockRun,
-	loginToOpenAiCodex: vi.fn(),
-	logoutFromOpenAiCodex: vi.fn(),
-	getOpenAiCodexAuthStatus: vi.fn(),
-	listCommands: vi.fn(),
-	listModes: vi.fn(),
-	listSessions: vi.fn(),
-	upgrade: vi.fn(),
-}))
+vi.mock("@/commands/cli/run.js", () => ({ run: mockRun }))
+vi.mock("@/lib/utils/react-production.js", () => ({ loadReactProductionBuilds: async () => {} }))
 
 async function parseArgs(args: string[]): Promise<Record<string, unknown>> {
 	const originalArgv = process.argv
@@ -28,11 +20,12 @@ async function parseArgs(args: string[]): Promise<Record<string, unknown>> {
 		vi.resetModules()
 		mockRun.mockClear()
 		await import("../index.js")
+		// The run action imports its module before it calls run().
+		await vi.waitFor(() => expect(mockRun).toHaveBeenCalledTimes(1))
 	} finally {
 		process.argv = originalArgv
 	}
 
-	expect(mockRun).toHaveBeenCalledTimes(1)
 	return mockRun.mock.calls[0]![1] as Record<string, unknown>
 }
 

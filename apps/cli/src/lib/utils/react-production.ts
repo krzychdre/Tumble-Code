@@ -24,8 +24,8 @@
  * Loading ink is what loads `react-reconciler` and `scheduler`, resolved the
  * way ink resolves them.
  *
- * Must run before anything imports React, which is why `index.ts` loads the
- * rest of the CLI with a dynamic import after awaiting this.
+ * Must run before anything imports React, which is why `main.ts` imports the
+ * run command with a dynamic import after awaiting this.
  */
 export async function loadReactProductionBuilds(): Promise<void> {
 	const inherited = process.env.NODE_ENV
