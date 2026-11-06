@@ -301,6 +301,13 @@ describe("isToolAllowedForMode with an edit fileRegex", () => {
 		["apply_diff", "architect", { path: "a.py", diff: "- a\n+ b" }, undefined, "(Markdown files only)"],
 		["write_to_file", "docs-editor", { path: "a.js", content: "x" }, undefined, "(Documentation files only)"],
 		["apply_patch", "markdown-editor", { patch: patch("a.js") }, ["apply_patch"], "Got: a.js"],
+		[
+			"apply_patch",
+			"markdown-editor",
+			{ patch: patch("a.md").replace("@@", "*** Move to: evil.ts\n@@") },
+			["apply_patch"],
+			"Got: evil.ts",
+		],
 		["search_replace", "markdown-editor", replace("a.js"), ["search_replace"], "Got: a.js"],
 		["edit_file", "architect", replace("a.js"), ["edit_file"], "Got: a.js"],
 		// An invalid pattern matches nothing rather than crashing the validation.
