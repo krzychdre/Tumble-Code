@@ -46,6 +46,7 @@ describe("ChatTextArea - lockApiConfigAcrossModes toggle", () => {
 		openedTabs: [],
 		apiConfiguration: { apiProvider: "anthropic" },
 		taskHistory: [],
+		clineMessages: [],
 		cwd: "/test/workspace",
 		listApiConfigMeta: [{ id: "default", name: "Default", modelId: "claude-3" }],
 		currentApiConfigName: "Default",
