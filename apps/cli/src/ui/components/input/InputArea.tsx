@@ -9,6 +9,7 @@ import type { AutocompleteInputHandle } from "../autocomplete/AutocompleteInput.
 import InputFooter from "./InputFooter.js"
 import type { Toast } from "../../hooks/useToast.js"
 import type { CloudStatus } from "../../types.js"
+import type { PermissionMode } from "../../../lib/utils/permissions.js"
 
 export interface InputAreaProps {
 	/** Called when the user submits text (Enter without picker open) */
@@ -33,6 +34,7 @@ export interface InputAreaProps {
 	accentPrompt?: boolean
 	// Footer data
 	mode?: string
+	permissionMode?: PermissionMode
 	model?: string
 	contextPercent?: number | null
 	/** Tokens in the context now (footer, next to the percentage) */
@@ -69,6 +71,7 @@ function InputArea({
 	inputRef,
 	accentPrompt = false,
 	mode,
+	permissionMode,
 	model,
 	contextPercent,
 	contextTokens,
@@ -106,6 +109,7 @@ function InputArea({
 				toast={toast}
 				exitHint={exitHint}
 				mode={mode}
+				permissionMode={permissionMode}
 				model={model}
 				contextPercent={contextPercent}
 				contextTokens={contextTokens}

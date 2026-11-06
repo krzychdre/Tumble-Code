@@ -1641,28 +1641,27 @@ describe("run clears the screen when the interactive UI starts", () => {
 	})
 })
 
-describe("run reports a failed print run on stderr with the debug log hint", () => {
+describe("run print mode on stderr", () => {
 	let tempDir: string
 
 	beforeEach(() => {
 		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-run-crash-test-"))
 		mockGetConfigDir.mockReturnValue(tempDir)
+		vi.stubEnv("OPENROUTER_API_KEY", "test-key")
 	})
 
 	afterEach(() => {
 		mockHost.runTaskError = undefined
 		vi.restoreAllMocks()
+		vi.unstubAllEnvs()
 		mockGetConfigDir.mockReset()
 		fs.rmSync(tempDir, { recursive: true, force: true })
 	})
 
-	// While the extension host is alive, console.error goes into the debug log
-	// (extension-host.ts setupQuietMode), so the report must go straight to
-	// process.stderr to reach the terminal of a run without --debug.
-	it("writes the error and the --debug hint with process.stderr.write, not console.error", async () => {
-		mockHost.runTaskError = new Error("task loop exploded")
+	/** A print run with stdout and stderr captured. */
+	async function runPrintCapturingOutput(flags: Partial<FlagOptions>) {
 		const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true)
-		vi.spyOn(process.stdout, "write").mockImplementation(((
+		const stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation(((
 			_chunk: unknown,
 			encodingOrCallback?: unknown,
 			callback?: unknown,
@@ -1674,13 +1673,37 @@ describe("run reports a failed print run on stderr with the debug log hint", () 
 		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
 		await saveSettings({ provider: "openrouter" })
 
-		await run("hello", baseFlags({ print: true }))
+		await run("hello", baseFlags({ print: true, ...flags }))
 
-		const written = stderrSpy.mock.calls.map(([chunk]) => String(chunk)).join("")
+		const chunks = (spy: typeof stderrSpy | typeof stdoutSpy) => spy.mock.calls.map(([chunk]) => String(chunk))
+		return { stderr: chunks(stderrSpy), stdout: chunks(stdoutSpy), exitSpy }
+	}
+
+	// While the extension host is alive, console.error goes into the debug log
+	// (extension-host.ts setupQuietMode), so the report must go straight to
+	// process.stderr to reach the terminal of a run without --debug.
+	it("writes the error and the --debug hint with process.stderr.write, not console.error", async () => {
+		mockHost.runTaskError = new Error("task loop exploded")
+
+		const { stderr, exitSpy } = await runPrintCapturingOutput({})
+
+		const written = stderr.join("")
 		expect(written).toContain("task loop exploded")
 		expect(written).toContain("--debug")
 		expect(written).toContain("cli-debug.log")
 		expect(exitSpy).toHaveBeenCalledWith(1)
+	})
+
+	it.each([
+		[{}, "[permissions] allow: actions run without approval\n"],
+		[{ requireApproval: true }, "[permissions] ask: actions wait for approval\n"],
+		[{ outputFormat: "stream-json" as const }, "[permissions] allow: actions run without approval\n"],
+	])("starts the run with one permissions line on stderr, flags %o", async (flags, line) => {
+		const { stderr, stdout } = await runPrintCapturingOutput(flags)
+
+		expect(stderr[0]).toBe(line)
+		expect(stderr.filter((chunk) => chunk.startsWith("[permissions]"))).toHaveLength(1)
+		expect(stdout.join("")).not.toContain("[permissions]")
 	})
 })
 

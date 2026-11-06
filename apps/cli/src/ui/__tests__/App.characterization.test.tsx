@@ -48,6 +48,12 @@ vi.mock("../components/TranscriptStatic.js", async (importOriginal) => {
 	}
 })
 
+// The prompt history lives in ~/.roo; a submitted line must not land there.
+vi.mock("../../lib/storage/history.js", () => ({
+	loadHistory: async () => [],
+	addToHistory: async (entry: string) => [entry],
+}))
+
 const WORKSPACE = path.resolve("/tmp/cli-app-characterization")
 const START = new Date("2026-01-01T12:00:00Z").getTime()
 
@@ -261,6 +267,20 @@ describe("App characterization (recorded message sequences)", () => {
 
 		expect(h.frames[0]!.frame).not.toContain("architect")
 		expect(h.frames.at(-1)!.frame).toContain("architect")
+		h.unmount()
+	})
+
+	it("shows the permissions mode in the footer and follows /permissions", async () => {
+		const h = await start({ nonInteractive: true, prompt: "" })
+		expect(h.frames[0]!.frame).toContain("permissions: allow")
+
+		await h.type("typed /perm", "/perm")
+		await h.type("accepted /permissions", "\r")
+		await h.type("typed ask", "ask")
+		await h.type("submitted /permissions ask", "\r")
+
+		expect(h.frames.at(-1)!.frame).toContain("permissions: ask")
+		expect(h.frames.at(-1)!.frame).not.toContain("permissions: allow")
 		h.unmount()
 	})
 
