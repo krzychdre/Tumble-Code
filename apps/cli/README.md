@@ -74,7 +74,8 @@ and whether the cloud API (`TUMBLE_CODE_API_URL`, default `https://app.tumblecod
 with 1 when a check fails. An unreachable cloud is only a warning: sessions run without it.
 
 After a crash the CLI prints the error, the path of the debug log (`~/.roo/cli-debug.log`) and, when the run had no
-`--debug`, a hint to run again with it so the log gets written.
+`--debug`, a hint to run again with it so the log gets written. The log is readable by you only; a `--debug` run that finds it
+larger than 10 MB moves it to `~/.roo/cli-debug.log.1` first.
 
 ### Uninstalling
 
