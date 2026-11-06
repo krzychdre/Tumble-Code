@@ -50,8 +50,11 @@ from src.utils.content_disposition import attachment
 router = APIRouter(tags=["web"])
 
 DEFAULT_DATASET_PERIOD = "all"
-# The audit stops after this many samples: it is a check, not the export.
+# The audit stops after this many samples or tasks, whichever comes first: it
+# is a check, not the export, and a task that yields no clean sample still
+# costs its whole reconstruction.
 AUDIT_SAMPLE_LIMIT = 2000
+AUDIT_TASK_LIMIT = 500
 
 
 def _view(period: str, client: str) -> dict:
@@ -227,8 +230,9 @@ async def dataset_audit(
     since = period_start(options.period, zone=options.zone)
     samples = 0
     tasks = 0
-    truncated = False
-    for task_id in await task_ids(db, user_id, options):
+    ids = await task_ids(db, user_id, options)
+    truncated = len(ids) > AUDIT_TASK_LIMIT
+    for task_id in ids[:AUDIT_TASK_LIMIT]:
         exchanges = await load_task(db, user_id, task_id)
         found = await anyio.to_thread.run_sync(
             task_samples, exchanges, options, anonymizer, since
@@ -255,6 +259,7 @@ async def dataset_audit(
         tasks=tasks,
         truncated=truncated,
         limit=AUDIT_SAMPLE_LIMIT,
+        task_limit=AUDIT_TASK_LIMIT,
         export_query=request.url.query,
     )
 

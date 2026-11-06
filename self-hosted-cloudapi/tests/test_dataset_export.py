@@ -216,6 +216,16 @@ def test_the_audit_lists_the_replacements(recorded):
     assert "3 samples from 1 task" in resp.text
 
 
+def test_the_audit_stops_at_its_task_limit(recorded, monkeypatch):
+    from src.routers import web_dataset
+
+    monkeypatch.setattr(web_dataset, "AUDIT_TASK_LIMIT", 0)
+
+    resp = recorded.get("/app/dataset/audit", params={"format": "turns"})
+
+    assert "0 samples from 0 tasks (stopped early" in resp.text
+
+
 def test_the_task_report_reconstructs_every_request(recorded):
     resp = recorded.get("/app/dataset/tasks/task-contract.jsonl")
 
