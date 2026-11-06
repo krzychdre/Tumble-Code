@@ -9,10 +9,10 @@ and never moves afterwards.
 from unittest.mock import AsyncMock
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from src.auth.jwt_issuer import issue_session_token
-from src.models.organization import Organization
+from src.models.organization import Membership, Organization
 from src.models.task import Task
 from src.realtime import sio as sio_module
 from src.realtime.hub import registry
@@ -40,6 +40,8 @@ async def _seed(db_session):
     await _seed_user(db_session, USER)
     db_session.add(Organization(id=ORG, name="Acme"))
     db_session.add(Task(id="task-personal", user_id=USER))
+    await db_session.flush()
+    db_session.add(Membership(user_id=USER, organization_id=ORG))
     await db_session.commit()
 
 
@@ -79,3 +81,20 @@ async def test_backfilled_task_takes_the_token_org(client, db_session, session_f
 
     assert await _org_of(session_factory, "task-up") == ORG
     assert await _org_of(session_factory, "task-personal") is None
+
+
+async def test_a_removed_member_files_new_tasks_into_the_personal_space(
+    bridge, db_session, session_factory
+):
+    """The handshake token keeps its org claim for the socket's lifetime; a
+    user taken out of the organization since must not add tasks to it."""
+    await _seed(db_session)
+    token = issue_session_token(USER, ORG, expires_in=300)
+    assert await sio_module.connect("ext", {}, {"token": token}) is True
+    registry.register_extension("ext", USER)
+    await db_session.execute(delete(Membership))
+    await db_session.commit()
+
+    await sio_module.on_task_event("ext", _message_event("task-after-removal"))
+
+    assert await _org_of(session_factory, "task-after-removal") is None

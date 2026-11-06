@@ -20,6 +20,7 @@ from src.middleware.cors import setup_cors
 from src.middleware.csrf import CsrfOriginMiddleware
 from src.middleware.request_logging import RequestLoggingMiddleware
 from src.middleware.rate_limit import RateLimitMiddleware, limiter
+from src.services.auth_service import run_auth_purge_loop
 from src.services.organizations import run_organization_sync_loop
 from src.services.recall_cards import run_recall_loop
 from src.routers import (
@@ -113,11 +114,12 @@ async def lifespan(app: FastAPI):
 
     card_builder = asyncio.create_task(run_recall_loop())
     organization_sync = asyncio.create_task(run_organization_sync_loop())
+    auth_purge = asyncio.create_task(run_auth_purge_loop())
 
     yield
 
     # Shutdown
-    for loop_task in (sweeper, card_builder, organization_sync):
+    for loop_task in (sweeper, card_builder, organization_sync, auth_purge):
         if loop_task is None:
             continue
         loop_task.cancel()

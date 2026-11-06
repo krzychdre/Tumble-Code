@@ -26,7 +26,11 @@ async def share_task(
     user_id: str,
     visibility: str = "organization",
 ) -> ShareResponse:
-    """Share a task and return a share URL."""
+    """Share a task and return a share URL.
+
+    Sharing an already shared task rewrites its visibility and restarts its
+    expiry from the current policy.
+    """
     # Check if task exists
     result = await db.execute(select(Task).where(Task.id == task_id))
     task = result.scalar_one_or_none()

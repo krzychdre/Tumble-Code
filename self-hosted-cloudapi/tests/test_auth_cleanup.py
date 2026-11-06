@@ -5,13 +5,15 @@ Covers three hygiene fixes in the self-hosted cloud API's auth stack:
 * OAuth state rows are single-use: the callback consumes (deletes) the row it
   read, and a replayed state finds nothing.
 * Expired rows — OAuth state, login tickets, idle-expired client tokens — are
-  purged by the retention cycle, and only expired ones.
+  purged by their own hourly loop, retention sweep on or off, and only
+  expired ones.
 * ``POST /app/logout`` deactivates the session (so the next request with the
   same cookie is sent to the login page), and ``Session.expires_at`` is
   checked during cookie validation: a session whose expiry is in the past is
   treated as if it did not exist.
 """
 
+import asyncio
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, select
@@ -166,6 +168,28 @@ async def _seed_purge_fodder(db):
     )
     await db.commit()
     return session
+
+
+async def test_the_purge_loop_runs_with_the_retention_sweep_off(monkeypatch, tmp_path):
+    """RETENTION_SWEEP_ENABLED=false must not leave the auth tables growing."""
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    import src.database
+    from src import main as main_module
+
+    engine = create_async_engine(f"sqlite+aiosqlite:///{tmp_path / 'purge.db'}")
+    monkeypatch.setattr(src.database, "engine", engine)
+    monkeypatch.setattr(main_module.settings, "bridge_enabled", False)
+    monkeypatch.setattr(main_module.settings, "retention_sweep_enabled", False)
+    started = asyncio.Event()
+
+    async def fake_purge_loop():
+        started.set()
+
+    monkeypatch.setattr(main_module, "run_auth_purge_loop", fake_purge_loop)
+
+    async with main_module.lifespan(main_module.app):
+        await asyncio.wait_for(started.wait(), timeout=5)
 
 
 async def test_purge_removes_only_expired_rows(db_session):
