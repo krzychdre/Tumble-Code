@@ -10,10 +10,11 @@
  * Two checks: `assertPublicHttpUrl` on the hostname or literal IP of the URL,
  * and `blockedAddressReason` on every address the hostname resolves to (done by
  * WebFetchService before each request), so a public-looking name whose A record
- * is 127.0.0.1 (`127.0.0.1.nip.io`) is refused too. The address is not pinned
- * for the request itself: a hostile DNS server that answers differently a
- * moment later (rebinding) can still get through. Pinning needs a custom
- * dispatcher and belongs in a later pass.
+ * is 127.0.0.1 (`127.0.0.1.nip.io`) is refused too. In the CLI the request
+ * then connects to the vetted addresses (`sendPinned`). Inside VS Code it does
+ * not: the host's proxy-agent fetch patch drops a custom dispatcher, so `fetch`
+ * resolves the name again, and a hostile DNS server that answers differently a
+ * moment later (rebinding) can still get through there.
  */
 
 /** Host suffixes that always mean "not the public internet". */
