@@ -238,6 +238,35 @@ describe("runDoctor", () => {
 		expect(write).toHaveBeenCalled()
 	})
 
+	it("runs the checks at the same time and reports them in the order given", async () => {
+		const write = vi.fn()
+		let releaseSlow = () => {}
+		const slow = new Promise<void>((resolve) => (releaseSlow = resolve))
+		const started: string[] = []
+
+		const report = runDoctor({
+			checks: [
+				async () => {
+					started.push("slow")
+					await slow
+					return { name: "slow", status: "pass", detail: "" }
+				},
+				() => {
+					started.push("fast")
+					releaseSlow()
+					return { name: "fast", status: "pass", detail: "" }
+				},
+			],
+			write,
+		})
+
+		expect(await report).toBe(0)
+		expect(started).toEqual(["slow", "fast"])
+		const lines = String(write.mock.calls[0]![0]).split("\n")
+		expect(lines[0]).toContain("slow")
+		expect(lines[1]).toContain("fast")
+	})
+
 	it("turns a check that throws into a failed line instead of crashing", async () => {
 		const write = vi.fn()
 
