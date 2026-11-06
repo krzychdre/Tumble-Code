@@ -196,7 +196,7 @@ async def test_concurrent_share_requests_create_exactly_one_share_row(
             await s.execute(select(TaskShare).where(TaskShare.task_id == "task-race"))
         ).scalar_one()
         assert share.visibility == "public"
-        assert share.share_url == "http://testserver/shared/task-race"
+        assert share.share_url == f"http://testserver/shared/{share.share_token}"
         assert share.manage_url == "http://testserver/app/tasks/task-race"
 
 

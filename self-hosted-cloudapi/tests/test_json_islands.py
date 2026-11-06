@@ -76,8 +76,9 @@ async def _seed_hostile_task(session_factory, task_id: str, *, share: bool) -> N
             s.add(
                 TaskShare(
                     task_id=task_id,
+                    share_token=f"tok-{task_id}",
                     visibility="public",
-                    share_url=f"http://testserver/shared/{task_id}",
+                    share_url=f"http://testserver/shared/tok-{task_id}",
                 )
             )
         await _summarize(s, task_id)
@@ -99,7 +100,7 @@ async def test_shared_page_islands_survive_hostile_message_text(
     await _seed_user(db_session)
     await _seed_hostile_task(session_factory, "task-xss-share", share=True)
 
-    resp = client.get("/shared/task-xss-share")
+    resp = client.get("/shared/tok-task-xss-share")
 
     assert resp.status_code == 200
     _assert_islands_hold(resp.text)

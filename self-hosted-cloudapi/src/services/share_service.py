@@ -1,5 +1,6 @@
 """Task sharing service."""
 
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -28,8 +29,9 @@ async def share_task(
 ) -> ShareResponse:
     """Share a task and return a share URL.
 
-    Sharing an already shared task rewrites its visibility and restarts its
-    expiry from the current policy.
+    Sharing an already shared task rewrites its visibility, gives it a new
+    link (the old one stops working) and restarts its expiry from the
+    current policy.
     """
     # Check if task exists
     result = await db.execute(select(Task).where(Task.id == task_id))
@@ -49,7 +51,8 @@ async def share_task(
     # Absolute URLs so the link the extension copies to the clipboard is
     # directly openable in a browser.
     base = settings.api_base_url.rstrip("/")
-    share_url = f"{base}/shared/{task_id}"
+    share_token = secrets.token_urlsafe(32)
+    share_url = f"{base}/shared/{share_token}"
     manage_url = f"{base}/app/tasks/{task_id}"
     # Sharing again starts the organization's period afresh.
     expires_at = share_expiry(policy.expiration_days)
@@ -69,6 +72,7 @@ async def share_task(
         .values(
             task_id=task_id,
             visibility=visibility,
+            share_token=share_token,
             share_url=share_url,
             manage_url=manage_url,
             expires_at=expires_at,
@@ -79,14 +83,14 @@ async def share_task(
 
     if not created:
         # A share row already exists (sequential re-share, or a racing caller
-        # that lost the insert): refresh visibility and (legacy relative)
-        # URLs in place, exactly like the old existing-share branch. A plain
-        # UPDATE by task_id — no uniqueness decision left to race.
+        # that lost the insert): refresh visibility, token and URLs in place.
+        # A plain UPDATE by task_id: no uniqueness decision left to race.
         await db.execute(
             update(TaskShare)
             .where(TaskShare.task_id == task_id)
             .values(
                 visibility=visibility,
+                share_token=share_token,
                 share_url=share_url,
                 manage_url=manage_url,
                 expires_at=expires_at,

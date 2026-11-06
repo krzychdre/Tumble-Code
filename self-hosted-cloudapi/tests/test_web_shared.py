@@ -1,4 +1,4 @@
-"""The share-link page (/shared/{task_id}) honours the share's visibility."""
+"""The share-link page (/shared/{share_token}) honours the share's visibility."""
 
 from src.auth.web_session import get_web_user_optional
 from src.models.task import Task, TaskShare
@@ -23,14 +23,15 @@ async def test_shared_public_allows_anonymous(client, db_session, session_factor
         s.add(
             TaskShare(
                 task_id="task-pub",
+                share_token="tok-task-pub",
                 visibility="public",
-                share_url="http://testserver/shared/task-pub",
+                share_url="http://testserver/shared/tok-task-pub",
             )
         )
         await _summarize(s, "task-pub")
         await s.commit()
 
-    resp = client.get("/shared/task-pub")
+    resp = client.get("/shared/tok-task-pub")
     assert resp.status_code == 200
     assert "Build me a feature" in resp.text
 
@@ -39,10 +40,16 @@ async def test_shared_private_requires_login(client, db_session, session_factory
     await _seed_user(db_session)
     async with session_factory() as s:
         s.add(Task(id="task-priv", user_id="user_test"))
-        s.add(TaskShare(task_id="task-priv", visibility="organization"))
+        s.add(
+            TaskShare(
+                task_id="task-priv",
+                share_token="tok-task-priv",
+                visibility="organization",
+            )
+        )
         await s.commit()
 
-    resp = client.get("/shared/task-priv", follow_redirects=False)
+    resp = client.get("/shared/tok-task-priv", follow_redirects=False)
     assert resp.status_code == 303
     assert resp.headers["location"] == "/app/login"
 
@@ -75,7 +82,13 @@ async def test_shared_organization_visibility_blocks_other_org_user(
         s.add(Membership(user_id="viewer", organization_id="org-b", role="org:member"))
         s.add(Task(id="task-org-vis", user_id="owner", organization_id="org-a"))
         await _add_message(s, "task-org-vis", _msgs()[0])
-        s.add(TaskShare(task_id="task-org-vis", visibility="organization"))
+        s.add(
+            TaskShare(
+                task_id="task-org-vis",
+                share_token="tok-task-org-vis",
+                visibility="organization",
+            )
+        )
         await _summarize(s, "task-org-vis")
         await s.commit()
 
@@ -83,7 +96,7 @@ async def test_shared_organization_visibility_blocks_other_org_user(
 
     _override_web_user(app, user_id="viewer", email="viewer@example.com")
     try:
-        resp = client.get("/shared/task-org-vis")
+        resp = client.get("/shared/tok-task-org-vis")
     finally:
         app.dependency_overrides.pop(get_web_user_optional, None)
 
@@ -113,7 +126,13 @@ async def test_shared_organization_visibility_allows_same_org_user(
         )
         s.add(Task(id="task-org-same", user_id="owner", organization_id="org-shared"))
         await _add_message(s, "task-org-same", _msgs()[0])
-        s.add(TaskShare(task_id="task-org-same", visibility="organization"))
+        s.add(
+            TaskShare(
+                task_id="task-org-same",
+                share_token="tok-task-org-same",
+                visibility="organization",
+            )
+        )
         await _summarize(s, "task-org-same")
         await s.commit()
 
@@ -121,7 +140,7 @@ async def test_shared_organization_visibility_allows_same_org_user(
 
     _override_web_user(app, user_id="colleague", email="colleague@example.com")
     try:
-        resp = client.get("/shared/task-org-same")
+        resp = client.get("/shared/tok-task-org-same")
     finally:
         app.dependency_overrides.pop(get_web_user_optional, None)
 

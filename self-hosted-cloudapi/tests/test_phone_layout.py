@@ -564,8 +564,9 @@ async def _seed_hostile_text(session_factory):
         s.add(
             TaskShare(
                 task_id="run",
+                share_token="tok-run",
                 visibility="public",
-                share_url="http://testserver/shared/run",
+                share_url="http://testserver/shared/tok-run",
             )
         )
         s.add(_long_error_report())
@@ -648,7 +649,7 @@ async def _seed_hostile_text(session_factory):
         "/app/projects",
         "/app/projects?renamed=1",
         "/app/projects/prj_long",
-        "/shared/run",
+        "/shared/tok-run",
     ],
 )
 async def test_long_text_stays_inside_its_box(

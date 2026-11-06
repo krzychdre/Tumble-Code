@@ -1,4 +1,4 @@
-"""The public share-link target (/shared/{task_id}).
+"""The public share-link target (/shared/{share_token}).
 
 Who may look is decided by services/task_access; this route renders the
 answer. The page is the task page's template, read-only unless the viewer owns
@@ -31,20 +31,21 @@ from src.web.templating import templates
 router = APIRouter(tags=["web"])
 
 
-@router.get("/shared/{task_id}", response_class=HTMLResponse)
+@router.get("/shared/{share_token}", response_class=HTMLResponse)
 async def shared_task(
-    task_id: str,
+    share_token: str,
     request: Request,
     user: Optional[WebUser] = Depends(get_web_user_optional),
     db: AsyncSession = Depends(get_db),
 ):
     """Public share-link target. Anonymous when visibility=public, else requires login."""
-    access = await shared_view_access(db, task_id, user)
+    access = await shared_view_access(db, share_token, user)
     if access.verdict is ShareVerdict.LOGIN_REQUIRED:
         raise LoginRequired()
     if access.verdict is ShareVerdict.NOT_FOUND:
         return not_found_page(request, user)
     share, task, is_owner = access.share, access.task, access.is_owner
+    task_id = share.task_id
 
     live = bool(settings.bridge_enabled and is_owner)
 
@@ -77,14 +78,14 @@ async def shared_task(
                 if live
                 else json_for_script({})
             ),
-            "image_base": f"/shared/{task_id}/images",
+            "image_base": f"/shared/{share_token}/images",
         },
     )
 
 
-@router.get("/shared/{task_id}/images", response_class=Response)
+@router.get("/shared/{share_token}/images", response_class=Response)
 async def shared_task_image(
-    task_id: str,
+    share_token: str,
     ts: int = Query(..., ge=TS_MIN, le=TS_MAX),
     path: str = Query(...),
     user: Optional[WebUser] = Depends(get_web_user_optional),
@@ -95,9 +96,9 @@ async def shared_task_image(
     Same verdict as the page (services/task_access); a reader who may not see
     the task gets the same bare 404 as an image that was never uploaded.
     """
-    access = await shared_view_access(db, task_id, user)
+    access = await shared_view_access(db, share_token, user)
     if access.verdict is ShareVerdict.LOGIN_REQUIRED:
         raise LoginRequired()
     if access.verdict is not ShareVerdict.ALLOWED:
         return image_response(None)
-    return image_response(await load_task_image(db, task_id, ts, path))
+    return image_response(await load_task_image(db, access.share.task_id, ts, path))

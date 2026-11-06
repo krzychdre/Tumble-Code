@@ -199,7 +199,13 @@ async def test_a_session_cookie_does_not_travel_outside_the_allowlist(
     db_session.add(Session(id="sess_web", user_id="user_web", is_active=True))
     db_session.add(Task(id="task-private", user_id="user_web", title="Private run"))
     await db_session.flush()
-    db_session.add(TaskShare(task_id="task-private", visibility="organization"))
+    db_session.add(
+        TaskShare(
+            task_id="task-private",
+            share_token="tok-task-private",
+            visibility="organization",
+        )
+    )
     await db_session.commit()
     cookie = _serializer.dumps({"sid": "sess_web", "uid": "user_web"})
 
@@ -209,8 +215,8 @@ async def test_a_session_cookie_does_not_travel_outside_the_allowlist(
         return client
 
     allowlist(LAN)
-    inside = signed_in_from("192.168.50.20").get("/shared/task-private")
-    outside = signed_in_from("192.168.51.7").get("/shared/task-private")
+    inside = signed_in_from("192.168.50.20").get("/shared/tok-task-private")
+    outside = signed_in_from("192.168.51.7").get("/shared/tok-task-private")
 
     assert inside.status_code == 200 and "Private run" in inside.text
     assert outside.status_code == 303

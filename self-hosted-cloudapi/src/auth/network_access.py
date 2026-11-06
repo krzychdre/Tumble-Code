@@ -26,7 +26,7 @@ Everything under ``/app`` (the panel, its login and logout) answers 403 to a
 client outside the list. The session cookie is also ignored for such a client
 (``get_web_user_optional``) and refused on the live bridge, so a cookie obtained
 on an allowed network does not keep working from elsewhere. Public share links
-(``/shared/<id>``) stay public: they are meant for people outside, and a
+(``/shared/<token>``) stay public: they are meant for people outside, and a
 private share needs a sign-in, which is gated. The extension's API is not the
 panel and is not gated.
 

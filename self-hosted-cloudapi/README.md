@@ -11,8 +11,9 @@ The extension and the CLI work fully without it. Run it and sign in, and you als
   tree, filters, cost, tokens and duration, and shows each conversation the way the chat does.
 - **Remote control.** Open a task while it runs, from any machine or your phone, and follow it live: send it a
   message, approve or deny what it asks, switch auto-approval, stop it and resume it.
-- **Sharing.** "Share task" in the extension gives a read-only link, `/shared/<task id>`. Public links (anyone with
-  the URL, no sign-in) are allowed by default, which suits a single-user install; set
+- **Sharing.** "Share task" in the extension gives a read-only link, `/shared/<token>`, with a new random token
+  on every share, so a link stopped with "Stop sharing" stays dead when the task is shared again. Public links
+  (anyone with the URL, no sign-in) are allowed by default, which suits a single-user install; set
   `ALLOW_PUBLIC_TASK_SHARING=false` on a shared server to keep links to signed-in members. Sharing a task again
   restarts its organization's `task_share_expiration_days` period.
 - **Metrics.** Tokens, cost and time per model, mode and client (VS Code or CLI) over a period you choose, summed
@@ -253,7 +254,7 @@ docker compose exec auth_worker ak apply_blueprint custom/tumble-code.yaml
   set, everything under `/app` answers 403 to other clients, and their session
   cookie is ignored elsewhere too. Loopback and, in Docker, the host itself
   (it arrives from the compose network's gateway) are always allowed. Public
-  share links (`/shared/<id>`) stay public; the extension API is not affected.
+  share links (`/shared/<token>`) stay public; the extension API is not affected.
 - The startup log prints `Web panel open to: …` with the effective list.
 - Plain `http://` carries the extension's session token, the panel's session
   cookie and every synced task in clear text, readable and changeable by
@@ -469,7 +470,7 @@ In short:
   `/app/dataset/recording`, settings, the projects list at `/app/projects` with its filters in the query string
   (`q`, `space`, `recall`, `renamed`) and one project's page at `/app/projects/{id}`, and the read-only organizations at
   `/app/organizations`) and
-  `/shared/{task_id}` for shared tasks.
+  `/shared/{share_token}` for shared tasks.
 - Live bridge: socket.io at `/bridge/socket.io` (`BRIDGE_PATH`).
 - Health: `GET /health` (process alive), `GET /health/ready` (database reachable).
 

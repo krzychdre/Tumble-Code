@@ -959,6 +959,45 @@ def test_duplicate_memberships_keep_the_oldest_row(migrate_env):
             )
 
 
+def test_existing_shares_get_their_own_token_and_link(migrate_env):
+    """b5c6d7e8f9a0: every share row gets a random token, its stored link
+    moves to it, and the token is unique."""
+    db_file, run = migrate_env
+    _load_baseline(db_file)
+    _alembic(run, "stamp", SQLITE_START_REVISION)
+    _alembic(run, "upgrade", "a1c2e3f4b5d6")
+
+    with sqlite3.connect(db_file) as conn:
+        conn.execute(
+            "INSERT INTO users (id, authentik_id, email) VALUES ('u1', 'ak_1', 'a@b.c')"
+        )
+        conn.executemany(
+            "INSERT INTO tasks (id, user_id) VALUES (?, 'u1')", [("t1",), ("t2",)]
+        )
+        conn.executemany(
+            "INSERT INTO task_shares (id, task_id, visibility, share_url) "
+            "VALUES (?, ?, 'public', ?)",
+            [("s1", "t1", "http://host:8085/shared/t1"), ("s2", "t2", None)],
+        )
+
+    _alembic(run, "upgrade", "head")
+
+    with sqlite3.connect(db_file) as conn:
+        rows = dict(
+            conn.execute("SELECT task_id, share_token FROM task_shares").fetchall()
+        )
+        url = conn.execute(
+            "SELECT share_url FROM task_shares WHERE task_id = 't1'"
+        ).fetchone()[0]
+        assert len(rows["t1"]) == 43 and rows["t1"] != rows["t2"]
+        assert url == f"http://host:8085/shared/{rows['t1']}"
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "UPDATE task_shares SET share_token = ? WHERE task_id = 't2'",
+                (rows["t1"],),
+            )
+
+
 def test_a_fresh_database_downgrades_through_the_chain(migrate_env):
     """Every downgrade finds what it drops on a create_all database too: the
     model names each object the way its migration does (a7b8c9d0e1f2 drops

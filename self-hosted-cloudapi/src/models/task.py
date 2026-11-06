@@ -259,6 +259,9 @@ class TaskShare(Base):
         String, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True
     )
     visibility = Column(String, default="organization")
+    # The link's secret (/shared/{share_token}), new on every share, so a
+    # revoked link stays dead after a re-share.
+    share_token = Column(String, nullable=False)
     share_url = Column(String, nullable=True)
     manage_url = Column(String, nullable=True)
     expires_at = Column(DateTime(timezone=True), nullable=True)
@@ -273,7 +276,10 @@ class TaskShare(Base):
     # (not a UniqueConstraint) exactly like uq_task_messages_task_ts above, so a
     # fresh create_all database and a migrated one hold the same object, and the
     # service can upsert with ON CONFLICT naming index_elements.
-    __table_args__ = (Index("uq_task_shares_task_id", "task_id", unique=True),)
+    __table_args__ = (
+        Index("uq_task_shares_task_id", "task_id", unique=True),
+        Index("uq_task_shares_share_token", "share_token", unique=True),
+    )
 
     task = relationship("Task", back_populates="shares")
 

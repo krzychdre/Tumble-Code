@@ -284,14 +284,15 @@ async def test_shared_page_anonymous_never_renders_live_controls(
         s.add(
             TaskShare(
                 task_id="task-pub2",
+                share_token="tok-task-pub2",
                 visibility="public",
-                share_url="http://testserver/shared/task-pub2",
+                share_url="http://testserver/shared/tok-task-pub2",
             )
         )
         await _summarize(s, "task-pub2")
         await s.commit()
 
-    resp = client.get("/shared/task-pub2")
+    resp = client.get("/shared/tok-task-pub2")
     assert resp.status_code == 200
     body = resp.text
     assert 'id="live-controls"' not in body
@@ -316,8 +317,9 @@ async def test_shared_owner_gets_live_controls(
         s.add(
             TaskShare(
                 task_id="task-own-live",
+                share_token="tok-task-own-live",
                 visibility="public",
-                share_url="http://testserver/shared/task-own-live",
+                share_url="http://testserver/shared/tok-task-own-live",
             )
         )
         await _summarize(s, "task-own-live")
@@ -327,7 +329,7 @@ async def test_shared_owner_gets_live_controls(
 
     _override_web_user(app)  # logged in as "user_test" (the owner)
     try:
-        resp = client.get("/shared/task-own-live")
+        resp = client.get("/shared/tok-task-own-live")
     finally:
         app.dependency_overrides.pop(get_web_user_optional, None)
 
@@ -354,8 +356,9 @@ async def test_delete_task_removes_task_messages_and_share(
         s.add(
             TaskShare(
                 task_id="task-del",
+                share_token="tok-task-del",
                 visibility="public",
-                share_url="http://testserver/shared/task-del",
+                share_url="http://testserver/shared/tok-task-del",
             )
         )
         await _summarize(s, "task-del")
@@ -437,15 +440,16 @@ async def test_shared_link_404s_after_owner_deletes(
         s.add(
             TaskShare(
                 task_id="task-gone",
+                share_token="tok-task-gone",
                 visibility="public",
-                share_url="http://testserver/shared/task-gone",
+                share_url="http://testserver/shared/tok-task-gone",
             )
         )
         await _summarize(s, "task-gone")
         await s.commit()
 
     # Visible before delete.
-    assert client.get("/shared/task-gone").status_code == 200
+    assert client.get("/shared/tok-task-gone").status_code == 200
 
     from src.main import app
 
@@ -455,7 +459,7 @@ async def test_shared_link_404s_after_owner_deletes(
     finally:
         app.dependency_overrides.pop(get_web_user_optional, None)
 
-    assert client.get("/shared/task-gone").status_code == 404
+    assert client.get("/shared/tok-task-gone").status_code == 404
 
 
 async def test_shared_nonowner_stays_readonly(
@@ -474,8 +478,9 @@ async def test_shared_nonowner_stays_readonly(
         s.add(
             TaskShare(
                 task_id="task-other",
+                share_token="tok-task-other",
                 visibility="public",
-                share_url="http://testserver/shared/task-other",
+                share_url="http://testserver/shared/tok-task-other",
             )
         )
         await _summarize(s, "task-other")
@@ -485,7 +490,7 @@ async def test_shared_nonowner_stays_readonly(
 
     _override_web_user(app, user_id="intruder", email="intruder@example.com")
     try:
-        resp = client.get("/shared/task-other")
+        resp = client.get("/shared/tok-task-other")
     finally:
         app.dependency_overrides.pop(get_web_user_optional, None)
 

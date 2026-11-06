@@ -115,10 +115,10 @@ async def test_panel_and_shared_pages_send_no_referrer_to_other_origins(
         s.add(Task(id="t-ref", user_id="user_test"))
         await _add_message(s, "t-ref", _msgs()[0])
         await _summarize(s, "t-ref")
-        s.add(TaskShare(task_id="t-ref", visibility="public"))
+        s.add(TaskShare(task_id="t-ref", share_token="tok-t-ref", visibility="public"))
         await s.commit()
 
-    shared = client.get("/shared/t-ref")
+    shared = client.get("/shared/tok-t-ref")
     _override_web_user(client.app)
     try:
         pages = [client.get(p) for p in ("/app", "/app/tasks/t-ref", "/app/settings")]

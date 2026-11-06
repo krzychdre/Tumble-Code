@@ -39,8 +39,9 @@ async def _make_task(
         session.add(
             TaskShare(
                 task_id=task_id,
+                share_token=f"tok-{task_id}",
                 visibility="public",
-                share_url=f"http://testserver/shared/{task_id}",
+                share_url=f"http://testserver/shared/tok-{task_id}",
             )
         )
     await session.flush()
