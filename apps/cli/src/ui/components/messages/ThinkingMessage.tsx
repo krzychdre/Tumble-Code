@@ -4,7 +4,7 @@ import { Box, Text } from "ink"
 import { figures } from "../../figures.js"
 import * as theme from "../../theme.js"
 
-import { sanitizeContent } from "../primitives/ResultRow.js"
+import { sanitizeContent } from "../tools/utils.js"
 
 interface ThinkingMessageProps {
 	/** The reasoning text. Only ever shown in expanded mode. */

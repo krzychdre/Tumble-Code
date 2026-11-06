@@ -3,15 +3,7 @@ import { Box, Text } from "ink"
 
 import { figures } from "../../figures.js"
 import * as theme from "../../theme.js"
-
-/**
- * Sanitize content for terminal display by:
- * - Replacing tab characters with 4 spaces (tabs expand to variable widths in terminals)
- * - Stripping carriage returns that could cause display issues
- */
-export function sanitizeContent(text: string): string {
-	return text.replace(/\t/g, "    ").replace(/\r/g, "")
-}
+import { sanitizeContent } from "../tools/utils.js"
 
 /**
  * The faint `  ⎿  ` connector in front of a result body.

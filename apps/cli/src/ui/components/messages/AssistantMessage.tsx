@@ -4,7 +4,7 @@ import { Box } from "ink"
 import Markdown from "../Markdown.js"
 import Bullet from "../primitives/Bullet.js"
 
-import { sanitizeContent } from "../primitives/ResultRow.js"
+import { sanitizeContent } from "../tools/utils.js"
 
 interface AssistantMessageProps {
 	content: string

@@ -6,7 +6,7 @@ import { clampTail, hiddenLinesMarker } from "../utils/tailClamp.js"
 
 import ChatHistoryItem from "./ChatHistoryItem.js"
 import AssistantMessage from "./messages/AssistantMessage.js"
-import { sanitizeContent } from "./primitives/ResultRow.js"
+import { sanitizeContent } from "./tools/utils.js"
 
 interface DynamicTailMessageProps {
 	message: TUIMessage

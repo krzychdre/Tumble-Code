@@ -96,4 +96,13 @@ describe("TranscriptPrinter", () => {
 		expect(printer.view()).toMatchObject({ isLoading: true, isResumingTask: false })
 		expect(printer.nonInteractive()).toBe(true)
 	})
+
+	it("drops terminal controls from streamed text but keeps its colours", () => {
+		const { printer, output } = createPrinter()
+
+		printer.apply([add(row("1", "command_output", "\x1b[31mred\x1b[0m\x1b]52;c;cm0g\x07", true))])
+		printer.apply([add(row("1", "command_output", "\x1b[31mred\x1b[0m\x1b]52;c;cm0g\x07\x1b[2J done", false))])
+
+		expect(output()).toBe("\n[command output] \x1b[31mred\x1b[0m done\n")
+	})
 })

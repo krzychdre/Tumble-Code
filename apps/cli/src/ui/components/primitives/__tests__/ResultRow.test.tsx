@@ -51,4 +51,13 @@ describe("ResultRow", () => {
 		expect(rows[2]?.trim()).toBe("short")
 		expect(rows[3]?.trimEnd()).toMatch(/…$/)
 	})
+
+	it("shows a link's text without the OSC 8 wrapper that would hide its target", () => {
+		const output = render(
+			<ResultRow>{"see \x1b]8;;https://evil.example\x1b\\docs\x1b]8;;\x1b\\"}</ResultRow>,
+		).lastFrame()
+
+		expect(output).toContain("see docs")
+		expect(output).not.toContain("\x1b]")
+	})
 })

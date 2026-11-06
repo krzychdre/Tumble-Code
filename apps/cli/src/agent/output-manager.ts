@@ -6,7 +6,12 @@
  * the ask dispatcher and the host use the same writer for their own lines
  * (approval prompts, MCP failures). Disabled for the TUI, where ink owns the
  * terminal, and for JSON output.
+ *
+ * Everything it writes comes from the model, a command or an MCP server, so
+ * terminal controls other than colours are dropped first.
  */
+
+import { stripTerminalControls } from "@/lib/utils/terminal-text.js"
 
 export interface OutputManagerOptions {
 	/** When true, nothing is written (TUI and JSON output). */
@@ -33,18 +38,18 @@ export class OutputManager {
 	/** Write a line: the label, then the text after a space when there is one. */
 	output(label: string, text?: string): void {
 		if (this.disabled) return
-		this.stdout.write(text ? `${label} ${text}\n` : `${label}\n`)
+		this.stdout.write(stripTerminalControls(text ? `${label} ${text}\n` : `${label}\n`))
 	}
 
 	/** Write a line to stderr, formatted like `output`. */
 	outputError(label: string, text?: string): void {
 		if (this.disabled) return
-		this.stderr.write(text ? `${label} ${text}\n` : `${label}\n`)
+		this.stderr.write(stripTerminalControls(text ? `${label} ${text}\n` : `${label}\n`))
 	}
 
-	/** Write text as is (the pieces of a stream). */
+	/** Write text without a label or line break (the pieces of a stream). */
 	writeRaw(text: string): void {
 		if (this.disabled) return
-		this.stdout.write(text)
+		this.stdout.write(stripTerminalControls(text))
 	}
 }

@@ -3,7 +3,7 @@ import { Box, Text } from "ink"
 
 import * as theme from "../../theme.js"
 
-import { sanitizeContent } from "../primitives/ResultRow.js"
+import { sanitizeContent } from "../tools/utils.js"
 
 interface SystemMessageProps {
 	content: string

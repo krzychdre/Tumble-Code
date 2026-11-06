@@ -4,7 +4,7 @@ import { Box, Text } from "ink"
 import { figures } from "../../figures.js"
 import * as theme from "../../theme.js"
 
-import { sanitizeContent } from "../primitives/ResultRow.js"
+import { sanitizeContent } from "../tools/utils.js"
 
 const MAX_CONTENT_LENGTH = 10000
 const HEAD_TAIL_LENGTH = 5000
