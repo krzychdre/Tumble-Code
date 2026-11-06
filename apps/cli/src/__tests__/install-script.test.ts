@@ -47,6 +47,7 @@ function runInstaller(
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "tumble-install-"))
 	const binDir = path.join(dir, "bin")
 	const log = path.join(dir, "curl.log")
+	const argsLog = path.join(dir, "curl-args.log")
 	const npmLog = path.join(dir, "npm.log")
 	const installDir = path.join(dir, "install")
 	fs.mkdirSync(binDir)
@@ -62,6 +63,7 @@ function runInstaller(
 		[
 			"#!/bin/sh",
 			`for arg in "$@"; do case "$arg" in http*) echo "$arg" >> "${log}" ;; esac; done`,
+			`echo "$*" >> "${argsLog}"`,
 			'case "$*" in',
 			`  *api.github.com*) echo '{"tag_name":"v1.2.3"}' ;;`,
 			// The release's checksum file: the tarball's real hash, a wrong one
@@ -139,6 +141,7 @@ function runInstaller(
 		},
 	})
 	const urls = fs.existsSync(log) ? fs.readFileSync(log, "utf8").trim().split("\n") : []
+	const curlCalls = fs.existsSync(argsLog) ? fs.readFileSync(argsLog, "utf8").trim().split("\n") : []
 	const npmLogLines = fs.existsSync(npmLog) ? fs.readFileSync(npmLog, "utf8").trim().split("\n").filter(Boolean) : []
 	// Snapshot the target directory before the temp dir that contains it is removed.
 	const readInInstall = (name: string): string | null => {
@@ -156,7 +159,7 @@ function runInstaller(
 		binTumble: fs.existsSync(path.join(installDir, "bin", "tumble")),
 	}
 	fs.rmSync(dir, { recursive: true, force: true })
-	return { ...result, urls, npmLogLines, install }
+	return { ...result, urls, curlCalls, npmLogLines, install }
 }
 
 // DEF-C29: the installer fetched releases from the upstream Roo repository,
@@ -249,6 +252,17 @@ describe.skipIf(process.platform === "win32")("install.sh network hardening", ()
 		expect(status).toBe(0)
 		expect(stdout).toContain("npm cache")
 		expect(install.packageJson).not.toBeNull()
+	})
+
+	it("bounds the whole release lookup and checksum download, not only the connect", () => {
+		const { status, curlCalls } = runInstaller({}, { serveTarball: true })
+
+		expect(status).toBe(0)
+		const metadataCalls = curlCalls.filter((call) => call.includes("api.github.com") || call.includes(".sha256"))
+		expect(metadataCalls).toHaveLength(2)
+		for (const call of metadataCalls) {
+			expect(call).toContain("--max-time 30")
+		}
 	})
 
 	it("kills npm and reports a timeout instead of hanging when it stalls", () => {
