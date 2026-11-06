@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "child_process"
-import { existsSync, writeFileSync } from "fs"
+import { readFileSync } from "fs"
 
 if (process.env.BOOTSTRAP_IN_PROGRESS) {
 	console.log("⏭️  Bootstrap already in progress, continuing with normal installation...")
@@ -29,16 +29,6 @@ function runPnpmInstall(pnpmCommand) {
 	})
 }
 
-/**
- * Create a temporary package.json if it doesn't exist.
- */
-function ensurePackageJson() {
-	if (!existsSync("package.json")) {
-		console.log("📦 Creating temporary package.json...")
-		writeFileSync("package.json", JSON.stringify({ name: "temp", private: true }, null, 2))
-	}
-}
-
 try {
 	// Check if pnpm is installed globally.
 	const pnpmCheck = spawnSync("pnpm", ["-v"], { shell: true })
@@ -50,11 +40,12 @@ try {
 		pnpmInstall = runPnpmInstall("pnpm")
 	} else {
 		console.log("⚠️  Unable to find pnpm, installing it temporarily...")
-		ensurePackageJson()
 
-		console.log("📥 Installing pnpm locally...")
+		// "pnpm@<version>" from the root manifest; lifecycle scripts run in the repository root.
+		const { packageManager } = JSON.parse(readFileSync("package.json", "utf8"))
+		console.log(`📥 Installing ${packageManager} locally...`)
 
-		const npmInstall = spawnSync("npm", ["install", "--no-save", "pnpm"], {
+		const npmInstall = spawnSync("npm", ["install", "--no-save", packageManager], {
 			stdio: "inherit",
 			shell: true,
 		})
