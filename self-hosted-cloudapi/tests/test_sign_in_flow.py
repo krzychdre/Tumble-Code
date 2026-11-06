@@ -136,6 +136,24 @@ async def test_ticket_is_single_use(client, db_session):
     assert second.status_code == 401
 
 
+async def test_an_expired_ticket_is_refused(client, db_session):
+    _, session, _ = await _seed_user_session_ticket(db_session)
+    db_session.add(
+        Ticket(
+            code="expired_ticket",
+            session_id=session.id,
+            expires_at=datetime.now(timezone.utc) - timedelta(seconds=1),
+        )
+    )
+    await db_session.commit()
+
+    resp = client.post(
+        "/v1/client/sign_ins", data={"strategy": "ticket", "ticket": "expired_ticket"}
+    )
+
+    assert resp.status_code == 401
+
+
 async def _sign_in(client, db_session, authentik_id: str, ticket_code: str):
     """Seed a user with a session and a ticket, sign in, return (user id, session id, token).
 

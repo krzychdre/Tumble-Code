@@ -27,6 +27,7 @@ zero rows → 409).
 """
 
 import asyncio
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi import HTTPException
@@ -37,7 +38,8 @@ import src.models  # noqa: F401 — registers every table on Base.metadata
 from src.database import Base
 from src.models.settings import UserSettings
 from src.models.task import Task, TaskShare
-from src.models.user import User
+from src.models.user import Session, Ticket, User
+from src.services.auth_service import validate_ticket
 from src.schemas.settings import UserSettingsConfig
 from src.services.settings_service import update_user_settings
 from src.services.share_service import share_task
@@ -366,3 +368,37 @@ async def test_settings_update_without_version_always_succeeds(race_engine):
     assert first.version == 1
     assert second.version == 2
     assert second.settings.task_sync_enabled is False
+
+
+# --- Ticket: single-use redemption -------------------------------------------
+
+
+@pytest.mark.parametrize("parties", [2, 3])
+async def test_concurrent_ticket_redemptions_let_exactly_one_win(race_engine, parties):
+    """POST /v1/client/sign_ins with one ticket, N times at once: exactly one
+    caller gets the session, so one client token is minted. A select-then-
+    update redemption, paused after its read, hands it to all of them."""
+    await _seed(
+        race_engine,
+        User(id="user_test", authentik_id="ak_user_test", email="t@example.com"),
+        Session(id="sess_race", user_id="user_test"),
+        Ticket(
+            code="ticket-race",
+            session_id="sess_race",
+            expires_at=datetime.now(timezone.utc) + timedelta(minutes=5),
+        ),
+    )
+    pause = _PauseAfterFirstRead(Ticket, parties)
+
+    async def one():
+        async with _sessions(race_engine)() as s:
+            pause.wrap(s)
+            session = await validate_ticket(s, "ticket-race")
+            await s.commit()
+            return session
+
+    outcomes = await asyncio.wait_for(
+        asyncio.gather(*[one() for _ in range(parties)]), timeout=20
+    )
+
+    assert [o.id for o in outcomes if o is not None] == ["sess_race"]

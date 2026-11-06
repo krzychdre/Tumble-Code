@@ -918,6 +918,47 @@ def test_duplicate_project_names_are_renamed_like_new_ones(migrate_env):
             )
 
 
+def test_duplicate_memberships_keep_the_oldest_row(migrate_env):
+    """a1c2e3f4b5d6: of each (user, organization) pair the oldest membership
+    stays, then the pair is unique."""
+    db_file, run = migrate_env
+    _load_baseline(db_file)
+    _alembic(run, "stamp", SQLITE_START_REVISION)
+    _alembic(run, "upgrade", "f3c4d5e6a7b8")
+
+    with sqlite3.connect(db_file) as conn:
+        conn.executemany(
+            "INSERT INTO users (id, authentik_id, email) VALUES (?, ?, ?)",
+            [("u1", "ak_1", "a@b.c"), ("u2", "ak_2", "d@e.f")],
+        )
+        conn.executemany(
+            "INSERT INTO organizations (id, name) VALUES (?, ?)",
+            [("org1", "Acme"), ("org2", "Other")],
+        )
+        conn.executemany(
+            "INSERT INTO memberships (id, user_id, organization_id, created_at, "
+            "updated_at) VALUES (?, ?, ?, ?, ?)",
+            [
+                ("m3", "u1", "org1", "2026-10-03", "2026-10-03"),
+                ("m1", "u1", "org1", "2026-10-01", "2026-10-01"),
+                ("m2", "u1", "org1", "2026-10-01", "2026-10-01"),
+                ("m4", "u1", "org2", "2026-10-02", "2026-10-02"),
+                ("m5", "u2", "org1", "2026-10-02", "2026-10-02"),
+            ],
+        )
+
+    _alembic(run, "upgrade", "head")
+
+    with sqlite3.connect(db_file) as conn:
+        kept = {row[0] for row in conn.execute("SELECT id FROM memberships")}
+        assert kept == {"m1", "m4", "m5"}
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "INSERT INTO memberships (id, user_id, organization_id, created_at, "
+                "updated_at) VALUES ('m6', 'u1', 'org1', '2026-11-01', '2026-11-01')"
+            )
+
+
 def test_a_fresh_database_downgrades_through_the_chain(migrate_env):
     """Every downgrade finds what it drops on a create_all database too: the
     model names each object the way its migration does (a7b8c9d0e1f2 drops
