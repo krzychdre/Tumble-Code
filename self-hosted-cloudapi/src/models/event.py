@@ -34,6 +34,14 @@ class TelemetryEvent(Base):
             "event_type",
             "created_at",
         ),
+        # A retried event is stored once (services/telemetry_service.record_event).
+        # NULLs never conflict, so events from clients without an id all land.
+        Index(
+            "uq_telemetry_events_user_client_event",
+            "user_id",
+            "client_event_id",
+            unique=True,
+        ),
     )
 
     id = Column(String, primary_key=True, default=lambda: generate_id("evt_"))
@@ -78,6 +86,8 @@ class TelemetryEvent(Base):
     embedding_source = Column(String, nullable=True)
     completion_kind = Column(String, nullable=True)
     usage_reported = Column(Boolean, nullable=True)
+    # The id the client gave the event once, kept across its retries.
+    client_event_id = Column(String, nullable=True)
     properties = Column(Text, default="{}")
     created_at = Column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

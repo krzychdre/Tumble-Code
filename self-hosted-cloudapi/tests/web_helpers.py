@@ -14,7 +14,7 @@ from src.auth.web_session import get_web_user_optional, WebUser
 from src.models.user import User
 from src.models.task import TaskMessage
 from src.models.event import TelemetryEvent
-from src.services.telemetry_service import add_to_rollup, event_row
+from src.services.telemetry_service import add_to_rollup, event_values
 
 
 async def _seed_user(db_session, user_id="user_test", email="t@example.com"):
@@ -142,7 +142,7 @@ def _event_row(
     pages read the lifted columns, which a bare row leaves NULL. Store it
     with ``_store`` for the pages that read usage_rollup.
     """
-    event = event_row(user_id, None, event_type, props)
+    event = TelemetryEvent(**event_values(user_id, None, event_type, props))
     if created_at is not None:
         event.created_at = created_at
     return event
