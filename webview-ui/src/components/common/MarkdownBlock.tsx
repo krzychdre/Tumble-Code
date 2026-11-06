@@ -7,13 +7,14 @@ import remarkGfm from "remark-gfm"
 import { vscode } from "@src/utils/vscode"
 import {
 	type AlertType,
+	isFileLink,
 	markdownUrlTransform,
 	normalizeMathDelimiters,
 	remarkDisplayMathParagraphs,
 	remarkGithubAlerts,
 	remarkSingleDollarMath,
 } from "@src/utils/markdown"
-import { decodeFilePath, isWindowsAbsolutePath, toOpenFileLinkText } from "@src/utils/windows-file-links"
+import { decodeFilePath, toOpenFileLinkText } from "@src/utils/windows-file-links"
 
 import CodeBlock from "./CodeBlock"
 import MermaidBlock from "./MermaidBlock"
@@ -108,15 +109,8 @@ const MarkdownBlock = memo(({ markdown: rawMarkdown }: MarkdownBlockProps) => {
 			},
 			a: ({ href, children, ...props }: any) => {
 				const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-					// Only process file:// protocol or local file paths (including
-					// Windows drive/UNC paths, which contain no "://").
-					const isLocalPath =
-						href?.startsWith("file://") ||
-						href?.startsWith("/") ||
-						isWindowsAbsolutePath(href ?? "") ||
-						!href?.includes("://")
-
-					if (!isLocalPath) {
+					// Other links (web, mailto:, #fragment) are left to VS Code.
+					if (!isFileLink(href ?? "")) {
 						return
 					}
 

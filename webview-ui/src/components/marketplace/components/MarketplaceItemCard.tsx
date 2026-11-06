@@ -3,7 +3,7 @@ import type { MarketplaceItem, ExtensionMessage } from "@tumble-code/types"
 import { vscode } from "@/utils/vscode"
 import { ViewState } from "../MarketplaceViewStateManager"
 import { useAppTranslation } from "@/i18n/TranslationContext"
-import { isValidUrl } from "../../../utils/url"
+import { isOpenableExternalUrl } from "@tumble-code/core/browser"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { StandardTooltip } from "@/components/ui"
@@ -87,7 +87,7 @@ export const MarketplaceItemCard: React.FC<MarketplaceItemCardProps> = ({ item, 
 					<div className="flex gap-2 items-start">
 						<div>
 							<h3 className="text-base font-semibold text-vscode-foreground mt-0 mb-1 leading-none">
-								{item.type === "mcp" && item.url && isValidUrl(item.url) ? (
+								{item.type === "mcp" && item.url && isOpenableExternalUrl(item.url) ? (
 									<Button
 										variant="link"
 										className="p-0 h-auto text-base font-semibold text-vscode-foreground hover:underline"
@@ -254,7 +254,7 @@ const AuthorInfo: React.FC<AuthorInfoProps> = ({ item, typeLabel }) => {
 	const { t } = useAppTranslation()
 
 	const handleOpenAuthorUrl = () => {
-		if (item.authorUrl && isValidUrl(item.authorUrl)) {
+		if (item.authorUrl && isOpenableExternalUrl(item.authorUrl)) {
 			vscode.postMessage({ type: "openExternal", url: item.authorUrl })
 		}
 	}
@@ -263,7 +263,7 @@ const AuthorInfo: React.FC<AuthorInfoProps> = ({ item, typeLabel }) => {
 		return (
 			<p className="text-sm text-vscode-descriptionForeground my-0">
 				{typeLabel}{" "}
-				{item.authorUrl && isValidUrl(item.authorUrl) ? (
+				{item.authorUrl && isOpenableExternalUrl(item.authorUrl) ? (
 					<Button
 						variant="link"
 						className="p-0 h-auto text-sm text-vscode-textLink hover:underline"
