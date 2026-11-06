@@ -12,14 +12,14 @@
 		"clean": "rimraf .turbo"
 	},
 	"dependencies": {
-		"@tumble-code/types": "workspace:^",
-		"zod": "catalog:"
+		"@tumble-code/types": "workspace:^"
 	},
 	"devDependencies": {
 		"@tumble-code/config-eslint": "workspace:^",
 		"@tumble-code/config-typescript": "workspace:^",
 		"@tumble-code/config-vitest": "workspace:^",
 		"@types/node": "catalog:",
-		"vitest": "catalog:"
+		"vitest": "catalog:",
+		"zod": "catalog:"
 	}
 }

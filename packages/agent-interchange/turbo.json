@@ -1,0 +1,11 @@
+{
+	"$schema": "https://turbo.build/schema.json",
+	"extends": ["//"],
+	"tasks": {
+		// esbuild.mjs bundles @tumble-code/core sources, which the root build inputs do not
+		// hash; the build takes 0.2 s, so it is never cached.
+		"build": {
+			"cache": false
+		}
+	}
+}

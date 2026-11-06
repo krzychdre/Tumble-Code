@@ -24,7 +24,6 @@
 		"execa": "catalog:",
 		"ignore": "catalog:",
 		"json-stream-stringify": "^3.1.7",
-		"openai": "catalog:",
 		"proper-lockfile": "catalog:",
 		"zod": "catalog:"
 	},
@@ -34,6 +33,7 @@
 		"@tumble-code/config-vitest": "workspace:^",
 		"@types/node": "catalog:",
 		"@types/proper-lockfile": "^4.1.4",
+		"openai": "catalog:",
 		"vitest": "catalog:"
 	}
 }
