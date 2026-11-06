@@ -407,14 +407,13 @@ async def auth_callback(
     # Exchange authorization code for tokens. The browser followed the
     # authorization request's redirect URI to get here, so the host it arrived
     # on names that same redirect URI.
+    redirect_uri = front_channel(request.headers.get("host")).redirect_uri
     try:
         tokens = await exchange_code_for_tokens(
-            code,
-            state_store.code_verifier,
-            redirect_uri=front_channel(request.headers.get("host")).redirect_uri,
+            code, state_store.code_verifier, redirect_uri=redirect_uri
         )
     except Exception as e:
-        logger.error("Token exchange failed: %s", e)
+        logger.error("Token exchange failed (redirect_uri %s): %s", redirect_uri, e)
         return HTMLResponse(
             content=_auth_error_html(
                 "Token exchange failed.",

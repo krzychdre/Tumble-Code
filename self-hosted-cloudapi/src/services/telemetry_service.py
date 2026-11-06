@@ -35,6 +35,7 @@ from src.services.task_tree import (
     link_pending_children,
     record_relation,
 )
+from src.services.user_service import is_member_of
 from src.services.telemetry_vocab import (
     EMBEDDING_EVENT,
     LLM_COMPLETION_EVENT,
@@ -118,8 +119,11 @@ async def _get_or_create_task(
     """Return ``(task, created)``, creating the row for ``user_id`` when missing.
 
     A new row belongs to ``organization_id``, the organization active in the
-    client that sent the record (None for the personal space). A task never
-    moves to another organization, so an existing row keeps its own.
+    client that sent the record (None for the personal space), while the user
+    is still a member of it: the claim comes from a token checked when it was
+    issued, and a bridge socket keeps its token for as long as it stays
+    connected. A task never moves to another organization, so an existing row
+    keeps its own.
 
     ``client_kind`` is the client the caller knows the task comes from (a
     backfill says, a bridge message does not). A new row takes it, or else the
@@ -150,6 +154,10 @@ async def _get_or_create_task(
 
     if client_kind != CLIENT_CLI:
         client_kind = await _telemetry_client(db, task_id, user_id)
+    if organization_id is not None and not await is_member_of(
+        db, user_id, organization_id
+    ):
+        organization_id = None
 
     upsert_insert = dialect_insert(db)
     if upsert_insert is None:

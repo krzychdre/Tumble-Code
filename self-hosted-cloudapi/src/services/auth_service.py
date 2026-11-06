@@ -1,6 +1,8 @@
 """Authentication service - handles sign-in, session, and user management."""
 
+import asyncio
 import hashlib
+import logging
 import secrets
 import urllib.parse
 from datetime import datetime, timedelta, timezone
@@ -10,9 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 
+from src.database import async_session_factory
 from src.models.user import User, Session, ClientToken, Ticket
 from src.models.oauth import AuthentikStateStore
 from config.settings import settings
+
+logger = logging.getLogger(__name__)
 
 # A used token's expiry is rewritten at most once per this interval, so the
 # extension's refresh (about once a minute) does not write a row every time.
@@ -281,9 +286,8 @@ async def purge_expired_auth_rows(
     by configuration, and such rows must stay.
 
     Not per-user: these tables have no owner-facing retention policy and
-    expiry is intrinsic to each row, so this runs as one global sweep in the
-    retention cycle, outside the per-user savepoints — a failure here must
-    not poison (or be poisoned by) any user's retention round.
+    expiry is intrinsic to each row, so this runs in its own loop
+    (``run_auth_purge_loop``), whether or not the retention sweep is on.
     """
     now = now or datetime.now(timezone.utc)
     total = 0
@@ -309,3 +313,23 @@ async def purge_expired_auth_rows(
     if total:
         await db.flush()
     return total
+
+
+AUTH_PURGE_SECONDS = 3600
+
+
+async def run_auth_purge_loop() -> None:
+    """Purge expired auth rows now and then every ``AUTH_PURGE_SECONDS``,
+    forever; a failure is logged and the next tick tries again."""
+    while True:
+        try:
+            async with async_session_factory() as db:
+                purged = await purge_expired_auth_rows(db)
+                await db.commit()
+            if purged:
+                logger.info("[auth] purged %s expired auth row(s)", purged)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("[auth] purge failed; will retry next tick")
+        await asyncio.sleep(AUTH_PURGE_SECONDS)

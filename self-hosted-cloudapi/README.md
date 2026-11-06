@@ -11,7 +11,10 @@ The extension and the CLI work fully without it. Run it and sign in, and you als
   tree, filters, cost, tokens and duration, and shows each conversation the way the chat does.
 - **Remote control.** Open a task while it runs, from any machine or your phone, and follow it live: send it a
   message, approve or deny what it asks, switch auto-approval, stop it and resume it.
-- **Sharing.** "Share task" in the extension gives a read-only link, `/shared/<task id>`.
+- **Sharing.** "Share task" in the extension gives a read-only link, `/shared/<task id>`. Public links (anyone with
+  the URL, no sign-in) are allowed by default, which suits a single-user install; set
+  `ALLOW_PUBLIC_TASK_SHARING=false` on a shared server to keep links to signed-in members. Sharing a task again
+  restarts its organization's `task_share_expiration_days` period.
 - **Metrics.** Tokens, cost and time per model, mode and client (VS Code or CLI) over a period you choose, summed
   per project or per model, and narrowed to one project or model with one click. An organization's admin can switch
   to the organization's usage, from every member, summed and narrowed per user as well.
