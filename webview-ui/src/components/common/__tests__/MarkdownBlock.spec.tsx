@@ -400,6 +400,7 @@ describe("MarkdownBlock", () => {
 			],
 			["[README.md](README.md:6)", "README.md:6", { type: "openFile", text: "./README.md", values: { line: 6 } }],
 			["[f](src/a.ts:3)", "src/a.ts:3", { type: "openFile", text: "./src/a.ts", values: { line: 3 } }],
+			["[f](../docs/a.md)", "../docs/a.md", { type: "openFile", text: "./../docs/a.md", values: undefined }],
 			[
 				"[a](file:///C:/Users/test/app/a.ts)",
 				"file:///C:/Users/test/app/a.ts",
@@ -431,6 +432,16 @@ describe("MarkdownBlock", () => {
 			fireEvent.click(link)
 			expect(vscode.postMessage).toHaveBeenCalledWith(message)
 		})
+
+		it.each(["https://example.com/a", "mailto:a@b.c", "#section"])(
+			"leaves %s to VS Code instead of opening a file",
+			(url) => {
+				render(<MarkdownBlock markdown={`[x](${url})`} />)
+				fireEvent.click(screen.getByRole("link"))
+
+				expect(vscode.postMessage).not.toHaveBeenCalled()
+			},
+		)
 
 		it.each([
 			["https://example.com/a", "https://example.com/a"],

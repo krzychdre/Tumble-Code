@@ -136,10 +136,10 @@ describe("MarketplaceItemCard", () => {
 		})
 	})
 
-	it("does not render invalid author URLs", () => {
+	it.each(["invalid-url", "javascript:alert(1)"])("does not render the author URL %s as a link", (authorUrl) => {
 		const itemWithInvalidUrl: MarketplaceItem = {
 			...defaultItem,
-			authorUrl: "invalid-url",
+			authorUrl,
 		}
 
 		renderWithProviders(<MarketplaceItemCard {...defaultProps} item={itemWithInvalidUrl} />)

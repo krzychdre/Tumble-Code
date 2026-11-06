@@ -324,6 +324,23 @@ export function remarkDisplayMathParagraphs() {
 // slash. Without a slash the text before the colon reads as a URL scheme.
 const FILE_WITH_LINE = /^[^:/?#]+\.[^:/?#]*:\d+(-\d+)?$/
 
+const URL_SCHEME = /^[a-z][a-z\d+.-]*:/i
+
+// Links with a scheme of their own that still name a file.
+function isFileLinkWithScheme(url: string): boolean {
+	return /^file:/i.test(url) || FILE_WITH_LINE.test(url) || isWindowsAbsolutePath(url)
+}
+
+/**
+ * Whether a markdown link opens a file in the editor: a file: URL, a
+ * "name.ext:line" link, a Windows path, or a path without a scheme
+ * ("src/a.ts:12", "../docs/a.md", "/tmp/a.ts"). "#fragment", mailto: and web
+ * links are not files.
+ */
+export function isFileLink(href: string): boolean {
+	return isFileLinkWithScheme(href) || (href !== "" && !href.startsWith("#") && !URL_SCHEME.test(href))
+}
+
 /**
  * react-markdown's urlTransform, widened to the links MarkdownBlock opens in the
  * editor. The default keeps http(s), mailto, irc(s), xmpp and relative URLs and
@@ -341,5 +358,5 @@ export function markdownUrlTransform(url: string, key: string): string {
 		return safe
 	}
 
-	return /^file:/i.test(url) || FILE_WITH_LINE.test(url) || isWindowsAbsolutePath(url) ? url : ""
+	return isFileLinkWithScheme(url) ? url : ""
 }

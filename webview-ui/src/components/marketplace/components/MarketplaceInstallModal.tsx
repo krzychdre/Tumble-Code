@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react"
 import { MarketplaceItem, McpParameter, McpInstallationMethod, type ExtensionMessage } from "@tumble-code/types"
+import { isOpenableExternalUrl } from "@tumble-code/core/browser"
 import { vscode } from "@/utils/vscode"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import {
@@ -214,14 +215,13 @@ export const MarketplaceInstallModal: React.FC<MarketplaceInstallModalProps> = (
 					<DialogDescription>
 						{installationComplete ? (
 							t("marketplace:install.successDescription")
-						) : item.type === "mcp" && item.url ? (
-							<a
-								href={item.url}
-								target="_blank"
-								rel="noopener noreferrer"
-								className="text-primary hover:underline inline-flex items-center gap-1 focus-ring">
+						) : item.type === "mcp" && item.url && isOpenableExternalUrl(item.url) ? (
+							<Button
+								variant="link"
+								className="p-0 h-auto text-primary hover:underline"
+								onClick={() => vscode.postMessage({ type: "openExternal", url: item.url })}>
 								{t("marketplace:install.moreInfoMcp", { name: item.name })}
-							</a>
+							</Button>
 						) : null}
 					</DialogDescription>
 				</DialogHeader>

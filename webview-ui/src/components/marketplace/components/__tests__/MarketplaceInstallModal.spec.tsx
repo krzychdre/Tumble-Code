@@ -99,6 +99,25 @@ describe("MarketplaceInstallModal - Nested Parameters", () => {
 			: "npm install test-package",
 	})
 
+	it("opens the server page through the host", () => {
+		render(
+			<MarketplaceInstallModal item={createMockItem()} isOpen={true} onClose={mockOnClose} hasWorkspace={true} />,
+		)
+		fireEvent.click(screen.getByRole("button", { name: /marketplace:install.moreInfoMcp/ }))
+
+		expect(mockedVscode.postMessage).toHaveBeenCalledWith({
+			type: "openExternal",
+			url: "https://example.com/test-mcp",
+		})
+	})
+
+	it("offers no server page for a URL that is not http(s) or mailto", () => {
+		const item = { ...createMockItem(), url: "javascript:alert(1)" }
+		render(<MarketplaceInstallModal item={item} isOpen={true} onClose={mockOnClose} hasWorkspace={true} />)
+
+		expect(screen.queryByText(/marketplace:install.moreInfoMcp/)).not.toBeInTheDocument()
+	})
+
 	it("should display global parameters when no nested parameters exist", () => {
 		const item = createMockItem(false)
 		render(<MarketplaceInstallModal item={item} isOpen={true} onClose={mockOnClose} hasWorkspace={true} />)
