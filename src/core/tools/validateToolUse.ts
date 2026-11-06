@@ -84,11 +84,12 @@ const EDIT_OPERATION_PARAMS = [
 ] as const
 
 // Markers used in apply_patch format to identify file operations
-const PATCH_FILE_MARKERS = ["*** Add File: ", "*** Delete File: ", "*** Update File: "] as const
+const PATCH_FILE_MARKERS = ["*** Add File: ", "*** Delete File: ", "*** Update File: ", "*** Move to: "] as const
 
 /**
  * Extract file paths from apply_patch content.
- * The patch format uses markers like "*** Add File: path", "*** Delete File: path", "*** Update File: path"
+ * The patch format uses markers like "*** Add File: path", "*** Delete File: path", "*** Update File: path",
+ * and "*** Move to: path" for the destination of a renamed file
  * @param patchContent The patch content string
  * @returns Array of file paths found in the patch
  */
