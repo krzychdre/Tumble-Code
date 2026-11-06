@@ -1,12 +1,14 @@
 import { getToolPayloadKind, type ToolPayloadKind } from "@tumble-code/core/cli"
 
+import { stripTerminalControls } from "@/lib/utils/terminal-text.js"
+
 /**
- * Sanitize content for terminal display
- * - Replaces tabs with spaces
- * - Strips carriage returns
+ * Text from the transcript, ready for a row: tabs become 4 spaces (they
+ * expand to variable widths in a terminal), carriage returns and every
+ * terminal control except colours are dropped.
  */
 export function sanitizeContent(text: string): string {
-	return text.replace(/\t/g, "    ").replace(/\r/g, "")
+	return stripTerminalControls(text.replace(/\t/g, "    "))
 }
 
 /** Titles of the payload names that differ from their family's title. */
