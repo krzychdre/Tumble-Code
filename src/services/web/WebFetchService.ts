@@ -1,8 +1,10 @@
 import { promises as dns } from "dns"
+import { isIP, type LookupFunction } from "net"
 
 import TurndownService from "turndown"
+import { Agent, fetch as undiciFetch, type RequestInit as UndiciRequestInit } from "undici"
 
-import { WEB_TOOLS_DEFAULTS, type ResolvedWebToolsConfig } from "@tumble-code/types"
+import { readCliRuntimeEnv, WEB_TOOLS_DEFAULTS, type ResolvedWebToolsConfig } from "@tumble-code/types"
 
 import { assertPublicHttpUrl, blockedAddressReason, isIpLiteral } from "./addressGuard"
 
@@ -179,10 +181,52 @@ export type ResolveHost = (hostname: string) => Promise<string[]>
 const resolveWithSystemDns: ResolveHost = async (hostname) =>
 	(await dns.lookup(hostname, { all: true, verbatim: true })).map((entry) => entry.address)
 
+/**
+ * Sends one request hop. `addresses` are what the guard vetted for the URL's
+ * host: empty for an IP literal or a name that did not resolve.
+ */
+export type SendRequest = (url: string, init: RequestInit, addresses: string[]) => Promise<Response>
+
+/** VS Code: its proxy-agent fetch patch drops a custom dispatcher, so the name is resolved again. */
+const sendUnpinned: SendRequest = (url, init) => fetch(url, init)
+
+/** A `lookup` that answers with the vetted addresses and never asks DNS again. */
+function lookupFrom(addresses: string[]): LookupFunction {
+	return (hostname, options, callback) => {
+		if (addresses.length === 0) {
+			callback(Object.assign(new Error(`getaddrinfo ENOTFOUND ${hostname}`), { code: "ENOTFOUND" }), "", 0)
+			return
+		}
+		const entries = addresses.map((address) => ({ address, family: isIP(address) }))
+		if (options.all) {
+			callback(null, entries)
+		} else {
+			callback(null, entries[0].address, entries[0].family)
+		}
+	}
+}
+
+/**
+ * CLI: connects to the vetted addresses, so a DNS server that answers
+ * differently the second time (rebinding) cannot redirect the request. Host
+ * and TLS server name stay the URL's hostname.
+ */
+export const sendPinned: SendRequest = async (url, init, addresses) => {
+	const dispatcher = new Agent({ connect: { lookup: lookupFrom(addresses) } })
+	try {
+		const response = await undiciFetch(url, { ...(init as UndiciRequestInit), dispatcher })
+		return response as unknown as Response
+	} finally {
+		// Graceful: waits until the body has been read or cancelled.
+		void dispatcher.close()
+	}
+}
+
 export class WebFetchService {
 	constructor(
 		private readonly config: ResolvedWebToolsConfig,
 		private readonly resolveHost: ResolveHost = resolveWithSystemDns,
+		private readonly send: SendRequest = readCliRuntimeEnv(process.env).isCliRuntime ? sendPinned : sendUnpinned,
 	) {}
 
 	async fetch(rawUrl: string): Promise<WebFetchResult> {
@@ -287,24 +331,25 @@ export class WebFetchService {
 
 	/**
 	 * Rejects targets on the local machine or a private network, by name and by
-	 * every address the name resolves to. Rethrows the guard's reason as a
-	 * `WebFetchError` so the model gets corrective text. A name that does not
-	 * resolve is left to the request, which then fails on its own.
+	 * every address the name resolves to, and returns those vetted addresses.
+	 * Rethrows the guard's reason as a `WebFetchError` so the model gets
+	 * corrective text. A name that does not resolve gives no addresses and is
+	 * left to the request, which then fails on its own.
 	 */
-	private async assertAllowedTarget(parsed: URL): Promise<void> {
+	private async assertAllowedTarget(parsed: URL): Promise<string[]> {
 		const blocked = assertPublicHttpUrl(parsed)
 		if (blocked) {
 			throw refusal(parsed, blocked)
 		}
 		if (isIpLiteral(parsed.hostname)) {
-			return
+			return []
 		}
 
 		let addresses: string[]
 		try {
 			addresses = await this.resolveHost(parsed.hostname)
 		} catch {
-			return
+			return []
 		}
 		for (const address of addresses) {
 			const reason = blockedAddressReason(address)
@@ -312,6 +357,7 @@ export class WebFetchService {
 				throw refusal(parsed, `"${parsed.hostname}" resolves to ${address}, and ${reason}`)
 			}
 		}
+		return addresses
 	}
 
 	/**
@@ -326,15 +372,16 @@ export class WebFetchService {
 		let currentUrl = startUrl
 
 		for (let hop = 0; hop <= MAX_REDIRECT_HOPS; hop++) {
-			await this.assertAllowedTarget(new URL(currentUrl))
-			const response = await fetch(currentUrl, {
+			const addresses = await this.assertAllowedTarget(new URL(currentUrl))
+			const init: RequestInit = {
 				signal,
 				redirect: "manual",
 				headers: {
 					Accept: "text/html,application/xhtml+xml,text/plain;q=0.8,*/*;q=0.5",
 					"User-Agent": BROWSER_USER_AGENT,
 				},
-			})
+			}
+			const response = await this.send(currentUrl, init, addresses)
 
 			const location = REDIRECT_STATUSES.has(response.status) ? response.headers.get("location") : null
 
