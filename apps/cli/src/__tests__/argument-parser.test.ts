@@ -177,8 +177,6 @@ describe("CLI argument parser (commander characterization)", () => {
 			"/ext",
 			"-d",
 			"-a",
-			"-k",
-			"sk-1",
 			"--provider",
 			"openai",
 			"-m",
@@ -217,7 +215,6 @@ describe("CLI argument parser (commander characterization)", () => {
 				debug: true,
 				requireApproval: true,
 				resume: false,
-				apiKey: "sk-1",
 				provider: "openai",
 				model: "gpt-x",
 				baseUrl: "http://localhost:1/v1",
@@ -348,6 +345,21 @@ describe("CLI argument parser (commander characterization)", () => {
 			expect(result.exitCode).toBe(1)
 			expect(result.stderr).toContain(`unknown command '${args[1]}'`)
 		}
+	})
+
+	// Keys come from the environment or the settings file only: a key in argv
+	// is visible to every local user in the process list.
+	it.each([
+		["--api-key", "sk-1", "hi"],
+		["-k", "sk-1", "hi"],
+		["list", "modes", "--api-key", "sk-1"],
+	])("rejects the removed API key option: %s %s", async (...args) => {
+		const result = await parse(args)
+
+		expect(result.exitCode).toBe(1)
+		expect(result.stderr).toContain(`unknown option '${args.find((arg) => arg.startsWith("-"))}'`)
+		expect(mocks.run).not.toHaveBeenCalled()
+		expect(mocks.listModes).not.toHaveBeenCalled()
 	})
 
 	it("handles an unknown list subcommand", async () => {

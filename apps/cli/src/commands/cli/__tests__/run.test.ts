@@ -102,7 +102,6 @@ function baseFlags(overrides: Partial<FlagOptions> = {}): FlagOptions {
 		debug: false,
 		requireApproval: false,
 		exitOnError: false,
-		apiKey: "test-key",
 		provider: undefined,
 		model: undefined,
 		baseUrl: undefined,
@@ -153,6 +152,7 @@ describe("run provider requirements shared with the settings UI", () => {
 		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-run-requirements-test-"))
 		mockGetConfigDir.mockReturnValue(tempDir)
 		mockHost.lastOptions = undefined
+		vi.stubEnv("OPENAI_API_KEY", "test-key")
 		exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {
 			throw exitError
 		}) as unknown as typeof process.exit)
@@ -162,6 +162,7 @@ describe("run provider requirements shared with the settings UI", () => {
 	afterEach(() => {
 		exitSpy.mockRestore()
 		errorSpy.mockRestore()
+		vi.unstubAllEnvs()
 		mockGetConfigDir.mockReset()
 		fs.rmSync(tempDir, { recursive: true, force: true })
 	})
@@ -187,7 +188,8 @@ describe("run provider requirements shared with the settings UI", () => {
 	)
 
 	it("ollama passes an API key on to its settings", async () => {
-		await runToEnd({ provider: "ollama", model: "qwen3", apiKey: "ollama-key" })
+		vi.stubEnv("OLLAMA_API_KEY", "ollama-key")
+		await runToEnd({ provider: "ollama", model: "qwen3" })
 
 		expect(mockHost.lastOptions?.apiKey).toBe("ollama-key")
 		expect(mockHost.lastOptions?.modeProviderSettings?.base).toMatchObject({
@@ -198,7 +200,7 @@ describe("run provider requirements shared with the settings UI", () => {
 	})
 
 	it("ollama still runs without an API key", async () => {
-		await runToEnd({ provider: "ollama", model: "qwen3", apiKey: undefined })
+		await runToEnd({ provider: "ollama", model: "qwen3" })
 
 		expect(mockHost.lastOptions?.provider).toBe("ollama")
 		expect(mockHost.lastOptions?.apiKey).toBeUndefined()
@@ -223,7 +225,7 @@ describe("run OpenAI Codex OAuth configuration", () => {
 	it("runs keyless with the provider-specific default model", async () => {
 		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
 		try {
-			await run("hello", baseFlags({ provider: "openai-codex", apiKey: undefined }))
+			await run("hello", baseFlags({ provider: "openai-codex" }))
 			expect(mockHost.lastOptions?.provider).toBe("openai-codex")
 			expect(mockHost.lastOptions?.model).toBe("gpt-5.6-sol")
 		} finally {
@@ -238,9 +240,7 @@ describe("run OpenAI Codex OAuth configuration", () => {
 		}) as unknown as typeof process.exit)
 		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
 		try {
-			await expect(
-				run("hello", baseFlags({ provider: "openai-codex", apiKey: undefined, ephemeral: true })),
-			).rejects.toBe(exitError)
+			await expect(run("hello", baseFlags({ provider: "openai-codex", ephemeral: true }))).rejects.toBe(exitError)
 			expect(errorSpy).toHaveBeenCalledWith(
 				"[CLI] Error: --ephemeral cannot be used with the openai-codex provider.",
 			)
@@ -258,9 +258,7 @@ describe("run OpenAI Codex OAuth configuration", () => {
 		}) as unknown as typeof process.exit)
 		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
 		try {
-			await expect(run("hello", baseFlags({ provider: "openai-codex", apiKey: undefined }))).rejects.toBe(
-				exitError,
-			)
+			await expect(run("hello", baseFlags({ provider: "openai-codex" }))).rejects.toBe(exitError)
 			expect(errorSpy).toHaveBeenCalledWith("[CLI] Error: OpenAI Codex is not authenticated.")
 			expect(mockHost.lastOptions).toBeUndefined()
 		} finally {
@@ -502,9 +500,7 @@ describe("run baseUrl resolution", () => {
 			// xai has no base-url field at all (its schema has no base-url key).
 			expect(getBaseUrlField("xai")).toBeUndefined()
 
-			await expect(
-				run("hello", baseFlags({ provider: "xai", apiKey: "xai-key", baseUrl: "http://nope" })),
-			).rejects.toBe(exitError)
+			await expect(run("hello", baseFlags({ provider: "xai", baseUrl: "http://nope" }))).rejects.toBe(exitError)
 
 			expect(exitSpy).toHaveBeenCalledWith(1)
 			expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("does not support a base URL"))
@@ -673,7 +669,7 @@ describe("run API key from the settings file", () => {
 		process.env = { ...savedEnv }
 	})
 
-	it("a bare run needs no --api-key when the settings hold apiKey", async () => {
+	it("a bare run takes the key from the settings file", async () => {
 		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
 
 		try {
@@ -685,7 +681,7 @@ describe("run API key from the settings file", () => {
 				models: { "GLM-5.3-Flash-NVFP4": { reasoningEffort: "max" } },
 			})
 
-			await run("hello", baseFlags({ apiKey: undefined }))
+			await run("hello", baseFlags())
 
 			expect(exitSpy).not.toHaveBeenCalledWith(1)
 			expect(mockHost.lastOptions).toMatchObject({
@@ -707,7 +703,7 @@ describe("run API key from the settings file", () => {
 			process.env.LOCAL_LLM_KEY = "from-env"
 			await saveSettings({ provider: "openai", apiKeyEnv: "LOCAL_LLM_KEY" })
 
-			await run("hello", baseFlags({ apiKey: undefined }))
+			await run("hello", baseFlags())
 
 			expect(mockHost.lastOptions?.apiKey).toBe("from-env")
 		} finally {
@@ -722,7 +718,7 @@ describe("run API key from the settings file", () => {
 		try {
 			await saveSettings({ provider: "openai", apiKeyEnv: "LOCAL_LLM_KEY" })
 
-			await run("hello", baseFlags({ apiKey: undefined }))
+			await run("hello", baseFlags())
 
 			expect(exitSpy).toHaveBeenCalledWith(1)
 			expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("LOCAL_LLM_KEY"))
@@ -772,7 +768,7 @@ describe("run provider settings per mode", () => {
 		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
 
 		try {
-			await run("hello", baseFlags({ apiKey: undefined, ...flags })).catch((error) => {
+			await run("hello", baseFlags(flags)).catch((error) => {
 				if (error !== exitError) throw error
 			})
 			const outcome = exitSpy.mock.calls[0]?.[0] === 1 ? "failed" : "ran"
@@ -1134,7 +1130,7 @@ describe("run provider settings per mode", () => {
 		})
 
 		it.each([
-			[{ model: "Qwen3.8-27B" }, "--provider, --model, --base-url or --api-key"],
+			[{ model: "Qwen3.8-27B" }, "--provider, --model or --base-url"],
 			[{ ephemeral: true }, "--ephemeral"],
 		])("keeps the choice for the session only with %o", async (flags, reason) => {
 			await saveSettings(globalSettings)
@@ -1276,7 +1272,7 @@ describe("run context window per model", () => {
 		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
 
 		try {
-			await run("hello", baseFlags({ apiKey: undefined, ...flags })).catch((error) => {
+			await run("hello", baseFlags(flags)).catch((error) => {
 				if (error !== exitError) throw error
 			})
 			const outcome = exitSpy.mock.calls[0]?.[0] === 1 ? "failed" : "ran"
@@ -1419,9 +1415,11 @@ describe("run command execution timeout", () => {
 		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-run-command-timeout-test-"))
 		mockGetConfigDir.mockReturnValue(tempDir)
 		mockHost.lastOptions = undefined
+		vi.stubEnv("OPENROUTER_API_KEY", "test-key")
 	})
 
 	afterEach(() => {
+		vi.unstubAllEnvs()
 		mockGetConfigDir.mockReset()
 		fs.rmSync(tempDir, { recursive: true, force: true })
 	})

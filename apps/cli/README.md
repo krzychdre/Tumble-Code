@@ -203,8 +203,8 @@ Nothing else in the file changes. The file is read again right before the
 write, so an edit you made during the session is kept, and it is replaced
 atomically with its permissions (a `chmod 600` file stays `600`); it is
 written with tab indentation. `/model` with the model the mode already runs
-writes nothing. A run with `--provider`, `--model`, `--base-url` or
-`--api-key` (which ignores the file's mode models) and an `--ephemeral` run
+writes nothing. A run with `--provider`, `--model` or `--base-url` (which
+ignores the file's mode models) and an `--ephemeral` run
 switch for the session only and say so. When the write fails, the switch
 still holds for the session and the message names the error.
 
@@ -325,7 +325,6 @@ When the agent asks a followup question, a permission-bordered dialog renders th
 | `-e, --extension <path>`                | Path to the extension bundle directory                                                                                  | Auto-detected                                                                                                                 |
 | `-d, --debug`                           | Enable debug output (includes detailed debug information, prompts, paths, etc)                                          | `false`                                                                                                                       |
 | `-a, --require-approval`                | Require manual approval before actions execute                                                                          | `false`                                                                                                                       |
-| `-k, --api-key <key>`                   | API key for the LLM provider (keyless providers ignore it)                                                              | From env var                                                                                                                  |
 | `--provider <provider>`                 | API provider (anthropic, openrouter, ollama, gemini, etc.)                                                              | `openrouter`                                                                                                                  |
 | `-m, --model <model>`                   | Model to use (openrouter: `anthropic/claude-opus-5`; openai, ollama, lmstudio: required)                                | Provider default                                                                                                              |
 | `--base-url <url>`                      | Base URL override for the selected provider (when supported)                                                            | None                                                                                                                          |
@@ -495,7 +494,7 @@ without an entry use the top level.
   that provider's defaults unless it sets them (`ask` above).
 - Every entry is checked at startup, so a missing key or an invalid value fails
   immediately and names the mode.
-- Passing any of `--provider`, `--model`, `--base-url` or `--api-key` makes
+- Passing any of `--provider`, `--model` or `--base-url` makes
   that run use one configuration for every mode: the flags on top of the top
   level, with `modes` ignored. `--reasoning-effort` keeps the modes and sets
   the level for every model of the run.
@@ -538,7 +537,7 @@ effort and size:
   model; the error names both places. Errors about a listed mode name
   `models.<id>.modes`.
 - Like `modes`, the lists are ignored for a run given any of `--provider`,
-  `--model`, `--base-url` or `--api-key`.
+  `--model` or `--base-url`.
 - `/model` shows each model's modes next to its other settings, and
   `/model <id>` writes these lists when it saves a choice.
 
@@ -568,7 +567,7 @@ level and in `modes`.
 
 - The entry's connection applies wherever the model runs: the top level, a
   mode entry, `--model` and `/model`. It overrides the top level and the mode
-  entry; only the flags (`--provider`, `--base-url`, `--api-key`) override it.
+  entry; only the flags (`--provider`, `--base-url`) override it.
 - An entry that names only a `baseUrl` or a key keeps the provider of the
   level it runs in and inherits what it does not set (`Qwen3.8-4B` above keeps
   `openai` and the key `1111`). An entry that names a different provider
@@ -909,8 +908,10 @@ fails to start is reported once: a notice in the terminal interface, and a
 ## Environment Variables
 
 The CLI supports the same inference providers as the VS Code extension. For
-providers that need an API key, the CLI takes it from `--api-key`, then
-`apiKey`/`apiKeyEnv` in the settings file, then the environment variable below. Provider selection follows:
+providers that need an API key, the CLI takes it from `apiKey`/`apiKeyEnv` in
+the settings file, else from the environment variable below. There is no
+command-line option for the key, because every user of the machine can read a
+process's arguments. Provider selection follows:
 `--provider` flag > settings file > the CLI's own extension state > default
 (`openrouter`). Keyless providers (lmstudio, bedrock, qwen-code, vertex,
 openai-codex) run without any API key; OAuth-backed providers still require
@@ -1008,7 +1009,7 @@ rejected with a clear error.
 
 ```bash
 # Run directly from source (no build required)
-pnpm dev --provider openrouter --api-key $OPENROUTER_API_KEY --print "Hello"
+OPENROUTER_API_KEY=sk-or-v1-... pnpm dev --provider openrouter --print "Hello"
 
 # Run tests
 pnpm test

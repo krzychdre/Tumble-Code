@@ -216,12 +216,12 @@ describe("resolveProviderConfig", () => {
 			expect(resolved.apiKey).toBe("literal")
 		})
 
-		it("the --api-key flag wins over the settings key", () => {
+		it("a mode entry's key wins over the top-level key", () => {
 			const resolved = resolveProviderConfig({
-				layers: [{ provider: "openai", apiKey: "1111" }, { apiKey: "from-flag" }],
+				layers: [{ provider: "openai", apiKey: "1111" }, { apiKey: "from-mode" }],
 			})
 
-			expect(resolved.apiKey).toBe("from-flag")
+			expect(resolved.apiKey).toBe("from-mode")
 		})
 
 		it("the settings key wins over the provider's env var", () => {

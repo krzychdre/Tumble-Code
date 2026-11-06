@@ -48,7 +48,6 @@ Options:
   -e, --extension <path>                 Path to the extension bundle directory
   -d, --debug                            Enable debug output (includes detailed debug information) (default: false)
   -a, --require-approval                 Require manual approval for actions (default: false)
-  -k, --api-key <key>                    API key for the LLM provider
   --provider <provider>                  API provider (anthropic, openrouter, ollama, etc.)
   -m, --model <model>                    Model to use (defaults to the persisted/settings model, then the provider's default model)
   --base-url <url>                       Base URL override for the selected provider
@@ -170,8 +169,6 @@ Options:
   -w, --workspace <path>  Workspace directory path (defaults to current working
                           directory)
   -e, --extension <path>  Path to the extension bundle directory
-  -k, --api-key <key>     Anthropic API key for the extension the listing starts
-                          (not needed to list)
   --format <format>       Output format: "json" (default) or "text" (default:
                           "json")
   -d, --debug             Enable debug output (default: false)
@@ -188,8 +185,6 @@ Options:
   -w, --workspace <path>  Workspace directory path (defaults to current working
                           directory)
   -e, --extension <path>  Path to the extension bundle directory
-  -k, --api-key <key>     Anthropic API key for the extension the listing starts
-                          (not needed to list)
   --format <format>       Output format: "json" (default) or "text" (default:
                           "json")
   -d, --debug             Enable debug output (default: false)

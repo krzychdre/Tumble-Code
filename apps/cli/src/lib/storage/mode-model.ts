@@ -142,7 +142,7 @@ export function createModelChoiceSaver({
 		if (providerFlags) {
 			return {
 				outcome: "session-only",
-				reason: "this run was started with --provider, --model, --base-url or --api-key, which set one model for every mode",
+				reason: "this run was started with --provider, --model or --base-url, which set one model for every mode",
 			}
 		}
 
