@@ -85,6 +85,14 @@ describe("InputFooter", () => {
 			expect(frame).toContain("38%")
 		})
 
+		it.each(["allow", "ask"] as const)(
+			"renders the permissions mode %s between mode and model",
+			(permissionMode) => {
+				const { lastFrame } = render(<InputFooter mode="code" permissionMode={permissionMode} model="gpt-5" />)
+				expect(lastFrame()).toContain(`code · permissions: ${permissionMode} · gpt-5`)
+			},
+		)
+
 		it("renders cost when > 0", () => {
 			const { lastFrame } = render(<InputFooter cost={0.12} />)
 			const frame = lastFrame() ?? ""

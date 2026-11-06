@@ -60,6 +60,16 @@ export function getPermissionMode(nonInteractive: boolean): PermissionMode {
 	return nonInteractive ? "allow" : "ask"
 }
 
+const PERMISSION_MODE_EFFECTS: Record<PermissionMode, string> = {
+	allow: "actions run without approval",
+	ask: "actions wait for approval",
+}
+
+/** The line a print run starts with on stderr, e.g. `[permissions] allow: actions run without approval`. */
+export function describePermissionMode(mode: PermissionMode): string {
+	return `[permissions] ${mode}: ${PERMISSION_MODE_EFFECTS[mode]}`
+}
+
 export function getPermissionSettings(mode: PermissionMode): CliPermissionSettings {
 	const settings = mode === "allow" ? ALLOW_PERMISSION_SETTINGS : ASK_PERMISSION_SETTINGS
 

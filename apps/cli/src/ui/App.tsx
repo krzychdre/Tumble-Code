@@ -567,6 +567,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 						onPickerStateChange={handlePickerStateChange}
 						inputRef={showFollowupCustomInput ? followupAutocompleteRef : autocompleteRef}
 						mode={activeMode}
+						permissionMode={permissionMode}
 						model={activeModel}
 						contextPercent={contextPercent}
 						contextTokens={tokenUsage?.contextTokens}

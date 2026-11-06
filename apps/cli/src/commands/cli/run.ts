@@ -60,6 +60,7 @@ import { validateTerminalShellPath } from "@/lib/utils/shell.js"
 import { getDefaultExtensionPath } from "@/lib/utils/extension.js"
 import { isValidSessionId } from "@/lib/utils/session-id.js"
 import { VERSION } from "@/lib/utils/version.js"
+import { describePermissionMode, getPermissionMode } from "@/lib/utils/permissions.js"
 import { CLEAR_SCREEN } from "@/ui/utils/clearTerminal.js"
 
 import { ExtensionHost, ExtensionHostOptions } from "@/agent/index.js"
@@ -808,6 +809,9 @@ async function runPrint({
 	crashHintOptions,
 }: RunOptions): Promise<void> {
 	const useJsonOutput = outputFormat === "json" || outputFormat === "stream-json"
+
+	// stderr, so the json and stream-json output on stdout stays valid JSON.
+	process.stderr.write(`${describePermissionMode(getPermissionMode(extensionHostOptions.nonInteractive ?? false))}\n`)
 
 	extensionHostOptions.disableOutput = useJsonOutput
 	// Nobody answers an api_req_failed ask or cancels a retry in a print or JSON run that auto-approves.

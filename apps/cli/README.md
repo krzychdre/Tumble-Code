@@ -157,6 +157,12 @@ allow` or manual approval with `/permissions ask` without restarting the CLI.
 The command changes only the active session; startup flags and saved CLI
 settings still determine the initial mode of the next session.
 
+The footer below the input shows the approval mode (`permissions: allow` or
+`permissions: ask`) and follows `/permissions` at once. A `--print` run writes
+one line naming it on stderr before it starts, for example
+`[permissions] allow: actions run without approval`, so the `json` and
+`stream-json` output on stdout stays valid JSON.
+
 To change the model while the session runs, type `/model`: it opens a list
 of the models of `~/.roo/cli-settings.json` (their `models` entries, and the
 model in use when it has none), titled with the mode it changes, the one in
@@ -251,7 +257,7 @@ The interactive TUI uses a **print-and-forget transcript** model inspired by Cla
 ────────────────────────────────────────────────  ← input frame top border
  ❯ type your message…                             ← prompt char + input
 ────────────────────────────────────────────────  ← input frame bottom border
-  ? for shortcuts                  code · gpt-5 · 38%   ← footer: hints left, status right
+  ? for shortcuts   code · permissions: allow · gpt-5 · 38%   ← footer: hints left, status right
 ```
 
 | Glyph | Meaning                                                                                                |

@@ -1,6 +1,7 @@
 import { memo, type ReactNode } from "react"
 import { Box, Text } from "ink"
 
+import type { PermissionMode } from "../../../lib/utils/permissions.js"
 import * as theme from "../../theme.js"
 import type { Toast } from "../../hooks/useToast.js"
 import type { CloudStatus } from "../../types.js"
@@ -18,6 +19,8 @@ interface InputFooterProps {
 	exitHint?: string | null
 	/** Active mode slug (e.g. "code", "ask") */
 	mode?: string
+	/** The /permissions mode: "allow" runs actions without approval */
+	permissionMode?: PermissionMode
 	/** Active model id (e.g. "gpt-5") */
 	model?: string
 	/** Context window usage percent 0-100; null = unknown */
@@ -91,7 +94,7 @@ const DimDot = () => <Text dimColor>{" · "}</Text>
  *
  * Left side (priority order): toast (colored by kind) > exitHint (dim) >
  * "? for shortcuts" (dim). Right side: the cloud segment (signed-in runs
- * only), `{mode} · {model}` + the context
+ * only), `{mode} · permissions: {permissionMode} · {model}` + the context
  * gauge (when the percent is not null, with the tokens out of the window) + ` · {cost}` (when > 0). The gauge
  * owns its own colouring; see ContextGauge.
  */
@@ -99,6 +102,7 @@ function InputFooter({
 	toast,
 	exitHint,
 	mode,
+	permissionMode,
 	model,
 	contextPercent,
 	contextTokens,
@@ -130,6 +134,15 @@ function InputFooter({
 		rightParts.push(
 			<Text key="mode" dimColor>
 				{mode}
+			</Text>,
+		)
+		added = true
+	}
+	if (permissionMode) {
+		if (added) rightParts.push(<DimDot key="sep-permissions" />)
+		rightParts.push(
+			<Text key="permissions" dimColor>
+				permissions: {permissionMode}
 			</Text>,
 		)
 		added = true
