@@ -20,6 +20,10 @@ export const WINDOW_SHADE_SETTINGS = {
 // Tolerance in pixels for determining when a container is considered "at the bottom"
 export const SCROLL_SNAP_TOLERANCE = 20
 
+// A streaming block gets a new source on every token; Shiki re-tokenizes the
+// whole block, so it runs at most once per interval (the last source always wins).
+export const HIGHLIGHT_INTERVAL_MS = 150
+
 /*
 overflowX: auto + inner div with padding results in an issue where the top/left/bottom padding renders but the right padding inside does not count as overflow as the width of the element is not exceeded. Once the inner div is outside the boundaries of the parent it counts as overflow.
 https://stackoverflow.com/questions/60778406/why-is-padding-right-clipped-with-overflowscroll/77292459#77292459
@@ -47,6 +51,7 @@ const CodeBlock = memo(({ source, language }: CodeBlockProps) => {
 	const buttonPositionTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 	const collapseTimeout1Ref = useRef<NodeJS.Timeout | null>(null)
 	const collapseTimeout2Ref = useRef<NodeJS.Timeout | null>(null)
+	const lastHighlightAtRef = useRef(0)
 
 	// Syntax highlighting with cached Shiki instance and mounted state management
 	useEffect(() => {
@@ -121,14 +126,26 @@ const CodeBlock = memo(({ source, language }: CodeBlockProps) => {
 			}
 		}
 
-		highlight().catch((e) => {
-			console.error("[CodeBlock] Syntax highlighting error:", e, "\nStack trace:", e.stack)
-			if (isMountedRef.current) {
-				setHighlightedCode(fallback)
-			}
-		})
+		const run = () => {
+			lastHighlightAtRef.current = Date.now()
+			highlight().catch((e) => {
+				console.error("[CodeBlock] Syntax highlighting error:", e, "\nStack trace:", e.stack)
+				if (isMountedRef.current) {
+					setHighlightedCode(fallback)
+				}
+			})
+		}
+
+		let timer: ReturnType<typeof setTimeout> | undefined
+		const wait = lastHighlightAtRef.current + HIGHLIGHT_INTERVAL_MS - Date.now()
+		if (wait > 0) {
+			timer = setTimeout(run, wait)
+		} else {
+			run()
+		}
 
 		return () => {
+			clearTimeout(timer)
 			isMountedRef.current = false
 		}
 	}, [source, currentLanguage])

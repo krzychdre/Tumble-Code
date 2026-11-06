@@ -2,7 +2,8 @@
 
 import { render, screen, fireEvent, act } from "@/utils/test-utils"
 
-import CodeBlock from "../CodeBlock"
+import CodeBlock, { HIGHLIGHT_INTERVAL_MS } from "../CodeBlock"
+import { getHighlighter } from "../../../utils/highlighter"
 
 // Mock the translation context
 vi.mock("../../../i18n/TranslationContext", () => ({
@@ -216,6 +217,27 @@ describe("CodeBlock", () => {
 				fireEvent.click(copyButton)
 			})
 		}
+	})
+
+	it("re-highlights a streaming block at most once per interval and ends on the full source", async () => {
+		const highlighter = await getHighlighter("typescript", "github-dark")
+		vi.useFakeTimers()
+		let source = "a"
+		const { rerender } = render(<CodeBlock source={source} language="typescript" />)
+		// 20 tokens, 10 ms apart.
+		for (let i = 0; i < 20; i++) {
+			vi.advanceTimersByTime(10)
+			source += "b"
+			rerender(<CodeBlock source={source} language="typescript" />)
+		}
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(HIGHLIGHT_INTERVAL_MS)
+		})
+		vi.useRealTimers()
+
+		const highlighted = vi.mocked(highlighter.codeToHast).mock.calls.map(([code]) => code)
+		expect(highlighted).toHaveLength(3)
+		expect(highlighted.at(-1)).toBe(source)
 	})
 
 	// A block taller than the 500px window shade gets a toggle that lifts and restores the limit,

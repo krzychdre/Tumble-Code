@@ -35,7 +35,7 @@ import FileChangesPanel from "./FileChangesPanel"
 import SubagentsPanel from "./SubagentsPanel"
 import { useScrollLifecycle } from "@src/hooks/useScrollLifecycle"
 import { useStableCallback } from "@src/hooks/useStableCallback"
-import { EVER_VISIBLE_VIEWPORT, filterVisible, markEverVisible } from "./rows/filterVisible"
+import { filterVisible, markEverVisible } from "./rows/filterVisible"
 import { groupToolAsks } from "./rows/groupToolAsks"
 import { computeRowMeta } from "./rows/computeRowMeta"
 import { withCondensingRow } from "./rows/condensingRow"
@@ -244,22 +244,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		currentTaskItem,
 		subagents,
 	})
-
-	useEffect(() => {
-		const cleanupInterval = setInterval(() => {
-			const currentMessageIds = new Set(modifiedMessages.map((m: ClineMessage) => m.ts))
-			const viewportMessages = visibleMessages.slice(Math.max(0, visibleMessages.length - EVER_VISIBLE_VIEWPORT))
-			const viewportMessageIds = new Set(viewportMessages.map((m: ClineMessage) => m.ts))
-
-			everVisibleMessagesTs.forEach((_value: boolean, key: number) => {
-				if (!currentMessageIds.has(key) && !viewportMessageIds.has(key)) {
-					everVisibleMessagesTs.delete(key)
-				}
-			})
-		}, 60000)
-
-		return () => clearInterval(cleanupInterval)
-	}, [modifiedMessages, visibleMessages, everVisibleMessagesTs])
 
 	useDebounceEffect(
 		() => {
