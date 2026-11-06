@@ -10,7 +10,8 @@
 		"disconnect_servers_partial": "Ha fallat la desconnexió de {{count}} servidor(s) MCP. Comprova la sortida per més detalls.",
 		"toolNotFound": "L'eina '{{toolName}}' no existeix al servidor '{{serverName}}'. Eines disponibles: {{availableTools}}",
 		"serverNotFound": "El servidor MCP '{{serverName}}' no està configurat. Servidors disponibles: {{availableServers}}",
-		"toolDisabled": "L'eina '{{toolName}}' del servidor '{{serverName}}' està desactivada. Eines activades disponibles: {{availableTools}}"
+		"toolDisabled": "L'eina '{{toolName}}' del servidor '{{serverName}}' està desactivada. Eines activades disponibles: {{availableTools}}",
+		"command_not_found": "No es pot iniciar el servidor MCP: no s'ha trobat l'ordre \"{{command}}\". Instal·la-la i assegura't que és accessible a través del PATH, o indica'n la ruta completa."
 	},
 	"info": {
 		"server_restarting": "Reiniciant el servidor MCP {{serverName}}...",

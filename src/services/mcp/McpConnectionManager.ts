@@ -3,6 +3,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import { StdioClientTransport, getDefaultEnvironment } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js"
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js"
+import { ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js"
 import chokidar, { FSWatcher } from "chokidar"
 import delay from "delay"
 import deepEqual from "fast-deep-equal"
@@ -18,6 +19,17 @@ import { type McpConfigSource, type McpServerConfig, validateServerConfig } from
 import { logger } from "../../utils/logging"
 
 export type McpTransport = StdioClientTransport | SSEClientTransport | StreamableHTTPClientTransport
+
+/**
+ * The text the user reads for a failed server. A stdio command that cannot be
+ * started (spawn ENOENT) gets a hint instead of `spawn npx ENOENT`.
+ */
+function describeError(error: unknown, config: McpServerConfig): string {
+	if (config.type === "stdio" && (error as NodeJS.ErrnoException).code === "ENOENT") {
+		return t("mcp:errors.command_not_found", { command: config.command })
+	}
+	return error instanceof Error ? error.message : `${error}`
+}
 
 // Discriminated union for connection states
 export type ConnectedMcpConnection = {
@@ -229,6 +241,7 @@ export class McpConnectionManager {
 		// Set up file watchers for enabled servers
 		this.setupFileWatcher(name, config, source)
 
+		let configInjected = config
 		try {
 			const client = new Client(
 				{
@@ -241,7 +254,7 @@ export class McpConnectionManager {
 			)
 
 			// Inject variables to the config (environment, magic variables,...)
-			const configInjected = await this.injectConfigVariables(config)
+			configInjected = await this.injectConfigVariables(config)
 			const transport = await this.createTransport(name, source, configInjected)
 			if (this.abandonIfDisposed(name, source, transport)) {
 				return
@@ -290,7 +303,14 @@ export class McpConnectionManager {
 				this.connections.push(connection)
 			}
 			connection.server.status = "disconnected"
-			this.appendErrorMessage(connection, error instanceof Error ? error.message : `${error}`)
+			// A closed connection is a consequence: when the transport already said
+			// why (on Windows cross-spawn reports a missing command only once
+			// cmd.exe exits), that reason stays the visible error.
+			const closedAfterReason =
+				error instanceof McpError && error.code === ErrorCode.ConnectionClosed && connection.server.error
+			if (!closedAfterReason) {
+				this.appendErrorMessage(connection, describeError(error, configInjected))
+			}
 			throw error
 		}
 	}
@@ -305,22 +325,11 @@ export class McpConnectionManager {
 		let transport: SSEClientTransport | StreamableHTTPClientTransport
 
 		if (config.type === "stdio") {
-			// On Windows, wrap commands with cmd.exe to handle non-exe executables like npx.ps1
-			// This is necessary for node version managers (fnm, nvm-windows, volta) that implement
-			// commands as PowerShell scripts rather than executables.
-			// Note: This adds a small overhead as commands go through an additional shell layer.
-			const isWindows = process.platform === "win32"
-
-			// Check if command is already cmd.exe to avoid double-wrapping
-			const isAlreadyWrapped =
-				config.command.toLowerCase() === "cmd.exe" || config.command.toLowerCase() === "cmd"
-
-			const command = isWindows && !isAlreadyWrapped ? "cmd.exe" : config.command
-			const args = isWindows && !isAlreadyWrapped ? ["/c", config.command, ...(config.args || [])] : config.args
-
+			// The SDK spawns through cross-spawn, which on Windows finds `npx.cmd`
+			// through PATHEXT and escapes each argument for cmd.exe.
 			const stdioTransport = new StdioClientTransport({
-				command,
-				args,
+				command: config.command,
+				args: config.args,
 				cwd: config.cwd,
 				env: {
 					...getDefaultEnvironment(),
@@ -328,7 +337,7 @@ export class McpConnectionManager {
 				},
 				stderr: "pipe",
 			})
-			this.installTransportHandlers(stdioTransport, name, source, "")
+			this.installTransportHandlers(stdioTransport, name, source, config, "")
 			await this.startStdioTransport(stdioTransport, name, source)
 			return stdioTransport
 		} else if (config.type === "streamable-http") {
@@ -368,6 +377,7 @@ export class McpConnectionManager {
 			transport,
 			name,
 			source,
+			config,
 			config.type === "streamable-http" ? " (streamable-http)" : "",
 		)
 		return transport
@@ -378,6 +388,7 @@ export class McpConnectionManager {
 		transport: McpTransport,
 		name: string,
 		source: McpConfigSource,
+		config: McpServerConfig,
 		logSuffix: string,
 	): void {
 		transport.onerror = async (error) => {
@@ -385,7 +396,7 @@ export class McpConnectionManager {
 			const connection = this.findConnection(name, source)
 			if (connection) {
 				connection.server.status = "disconnected"
-				this.appendErrorMessage(connection, error instanceof Error ? error.message : `${error}`)
+				this.appendErrorMessage(connection, describeError(error, config))
 			}
 			await this.deps.notifyServerChanges()
 		}

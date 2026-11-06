@@ -1,4 +1,6 @@
 import type { Mock } from "vitest"
+import { Client } from "@modelcontextprotocol/sdk/client/index.js"
+import { ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js"
 
 import { McpConnectionManager, type McpConnectionManagerDeps } from "../McpConnectionManager"
 import type { McpServerConfig } from "../mcpConfigSchema"
@@ -9,8 +11,9 @@ vi.mock("vscode", () => ({
 	window: { showInformationMessage: vi.fn(), showErrorMessage: vi.fn(), showWarningMessage: vi.fn() },
 }))
 
+// Echo the key and its options, so a test can see what a message would say.
 vi.mock("../../../i18n", () => ({
-	t: (key: string) => key,
+	t: (key: string, options?: Record<string, unknown>) => (options ? `${key} ${JSON.stringify(options)}` : key),
 }))
 
 vi.mock("@modelcontextprotocol/sdk/client/stdio.js", () => ({
@@ -60,7 +63,6 @@ describe("McpConnectionManager", () => {
 			ctor.mockImplementation(function () {
 				return transport
 			})
-		const { Client } = await import("@modelcontextprotocol/sdk/client/index.js")
 		vi.mocked(Client).mockImplementation(function () {
 			return fakeClient() as any
 		})
@@ -237,33 +239,63 @@ describe("McpConnectionManager", () => {
 		}
 	})
 
-	describe("stdio command on each platform", () => {
+	describe("stdio command on Windows", () => {
 		const originalPlatform = Object.getOwnPropertyDescriptor(process, "platform")!
 		afterEach(() => Object.defineProperty(process, "platform", originalPlatform))
 
-		it.each([
-			["win32", "npx", ["-y", "pkg"], "cmd.exe", ["/c", "npx", "-y", "pkg"]],
-			["darwin", "npx", ["-y", "pkg"], "npx", ["-y", "pkg"]],
-			["win32", "cmd.exe", ["/c", "echo"], "cmd.exe", ["/c", "echo"]],
-			["win32", "CMD", ["/c", "echo"], "CMD", ["/c", "echo"]],
-		])("on %s runs %s %j as %s %j", async (platform, command, args, expectedCommand, expectedArgs) => {
-			Object.defineProperty(process, "platform", { value: platform, configurable: true })
+		it("hands the command and its args to the SDK unchanged, not through cmd.exe /c", async () => {
+			Object.defineProperty(process, "platform", { value: "win32", configurable: true })
 
 			await manager.createTransport("t", "global", {
 				type: "stdio",
-				command,
-				args,
+				command: "npx",
+				args: ["-y", "pkg", "a&b", "%PATH%"],
 				env: { FNM_DIR: "C:\\fnm" },
 			} as unknown as McpServerConfig)
 
 			expect(constructors.stdio).toHaveBeenCalledWith(
 				expect.objectContaining({
-					command: expectedCommand,
-					args: expectedArgs,
+					command: "npx",
+					args: ["-y", "pkg", "a&b", "%PATH%"],
 					env: { PATH: "/usr/bin", FNM_DIR: "C:\\fnm" },
 					stderr: "pipe",
 				}),
 			)
+		})
+	})
+
+	describe("a stdio command that cannot be found", () => {
+		const enoent = () => Object.assign(new Error("spawn npx ENOENT"), { code: "ENOENT" })
+		const npx = () => ({ type: "stdio", command: "npx", args: ["-y", "pkg"] }) as unknown as McpServerConfig
+
+		// Windows: cross-spawn starts cmd.exe, reports ENOENT when it exits, then the connect fails.
+		const connectFailingWith = (before: (() => Promise<void>) | undefined) =>
+			vi.mocked(Client).mockImplementation(function () {
+				return {
+					...fakeClient(),
+					connect: vi.fn(async () => {
+						await before?.()
+						throw new McpError(ErrorCode.ConnectionClosed, "Connection closed")
+					}),
+				} as any
+			})
+
+		it("keeps the hint visible when the connection then closes", async () => {
+			connectFailingWith(() => transport.onerror!(enoent()))
+
+			await expect(manager.connectToServer("t", npx(), "global")).rejects.toThrow("Connection closed")
+
+			const server = manager.findConnection("t", "global")!.server
+			expect(server.error).toBe('mcp:errors.command_not_found {"command":"npx"}')
+			expect(server.errorHistory!.map((entry) => entry.message)).toEqual([server.error])
+		})
+
+		it("still shows a closed connection when nothing said why", async () => {
+			connectFailingWith(undefined)
+
+			await expect(manager.connectToServer("t", npx(), "global")).rejects.toThrow("Connection closed")
+
+			expect(manager.findConnection("t", "global")!.server.error).toBe("MCP error -32000: Connection closed")
 		})
 	})
 

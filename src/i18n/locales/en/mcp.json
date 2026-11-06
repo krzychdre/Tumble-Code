@@ -10,7 +10,8 @@
 		"disconnect_servers_partial": "Failed to disconnect {{count}} MCP server(s). Check the output for details.",
 		"toolNotFound": "Tool '{{toolName}}' does not exist on server '{{serverName}}'. Available tools: {{availableTools}}",
 		"serverNotFound": "MCP server '{{serverName}}' is not configured. Available servers: {{availableServers}}",
-		"toolDisabled": "Tool '{{toolName}}' on server '{{serverName}}' is disabled. Available enabled tools: {{availableTools}}"
+		"toolDisabled": "Tool '{{toolName}}' on server '{{serverName}}' is disabled. Available enabled tools: {{availableTools}}",
+		"command_not_found": "Cannot start the MCP server: the command \"{{command}}\" was not found. Install it and make sure it is reachable through PATH, or give its full path."
 	},
 	"info": {
 		"server_restarting": "Restarting {{serverName}} MCP server...",

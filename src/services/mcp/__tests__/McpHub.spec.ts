@@ -301,8 +301,9 @@ describe("McpHub", () => {
 
 			const hub = await startHub()
 
+			const notFound = 'mcp:errors.command_not_found {"command":"/nonexistent/bin/xyz"}'
 			const [broken] = hub.connections
-			expect(broken.server).toMatchObject({ name: "broken", status: "disconnected", error: spawnError.message })
+			expect(broken.server).toMatchObject({ name: "broken", status: "disconnected", error: notFound })
 			expect(broken.server.disabled).toBeFalsy()
 			expect(JSON.parse(broken.server.config)).toMatchObject({ command: "/nonexistent/bin/xyz" })
 
@@ -310,7 +311,7 @@ describe("McpHub", () => {
 
 			expect(StdioClientTransport).toHaveBeenCalledTimes(2)
 			expect(serverKeys(hub)).toEqual(["global:broken"])
-			expect(hub.connections[0].server.error).toBe(spawnError.message)
+			expect(hub.connections[0].server.error).toBe(notFound)
 		})
 	})
 
@@ -668,8 +669,7 @@ describe("McpHub", () => {
 			])
 			expect(serverKeys(hub)).toEqual(["global:a"])
 			expect(StdioClientTransport).toHaveBeenCalledTimes(1)
-			// Windows launches it as `cmd.exe /c node a.js`.
-			expect(vi.mocked(StdioClientTransport).mock.calls[0][0].args).toContain("a.js")
+			expect(vi.mocked(StdioClientTransport).mock.calls[0][0].args).toEqual(["a.js"])
 		})
 
 		it("starts the servers on yes and does not ask again for the same launch settings", async () => {

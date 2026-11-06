@@ -10,7 +10,8 @@
 		"disconnect_servers_partial": "Error al desconectar {{count}} servidor(es) MCP. Revisa la salida para más detalles.",
 		"toolNotFound": "La herramienta '{{toolName}}' no existe en el servidor '{{serverName}}'. Herramientas disponibles: {{availableTools}}",
 		"serverNotFound": "El servidor MCP '{{serverName}}' no está configurado. Servidores disponibles: {{availableServers}}",
-		"toolDisabled": "La herramienta '{{toolName}}' del servidor '{{serverName}}' está desactivada. Herramientas activadas disponibles: {{availableTools}}"
+		"toolDisabled": "La herramienta '{{toolName}}' del servidor '{{serverName}}' está desactivada. Herramientas activadas disponibles: {{availableTools}}",
+		"command_not_found": "No se puede iniciar el servidor MCP: no se encontró el comando \"{{command}}\". Instálalo y asegúrate de que sea accesible a través del PATH, o indica su ruta completa."
 	},
 	"info": {
 		"server_restarting": "Reiniciando el servidor MCP {{serverName}}...",

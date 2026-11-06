@@ -10,7 +10,8 @@
 		"disconnect_servers_partial": "Nie udało się odłączyć {{count}} serwera(ów) MCP. Sprawdź dane wyjściowe, aby uzyskać szczegóły.",
 		"toolNotFound": "Narzędzie '{{toolName}}' nie istnieje na serwerze '{{serverName}}'. Dostępne narzędzia: {{availableTools}}",
 		"serverNotFound": "Serwer MCP '{{serverName}}' nie jest skonfigurowany. Dostępne serwery: {{availableServers}}",
-		"toolDisabled": "Narzędzie '{{toolName}}' na serwerze '{{serverName}}' jest wyłączone. Dostępne włączone narzędzia: {{availableTools}}"
+		"toolDisabled": "Narzędzie '{{toolName}}' na serwerze '{{serverName}}' jest wyłączone. Dostępne włączone narzędzia: {{availableTools}}",
+		"command_not_found": "Nie można uruchomić serwera MCP: nie znaleziono polecenia \"{{command}}\". Zainstaluj je i upewnij się, że jest dostępne przez PATH, albo podaj jego pełną ścieżkę."
 	},
 	"info": {
 		"server_restarting": "Ponowne uruchamianie serwera MCP {{serverName}}...",
