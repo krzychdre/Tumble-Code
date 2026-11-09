@@ -37,7 +37,7 @@
 		"debounce": "^3.0.0",
 		"diff": "catalog:",
 		"fzf": "catalog:",
-		"hast-util-to-jsx-runtime": "^2.3.6",
+		"hast-util-to-jsx-runtime": "^2.3.7",
 		"i18next": "catalog:",
 		"katex": "^0.19.1",
 		"lru-cache": "^11.5.3",
