@@ -26,6 +26,11 @@
 	"workspaces": {
 		"src": {
 			"entry": ["extension/api.ts"],
+			// @tumble-code/build resolves to its git-ignored dist/index.js, which CI never builds;
+			// without this mapping esbuild.mjs's imports stay invisible and every export reads as unused.
+			"paths": {
+				"@tumble-code/build": ["../packages/build/src/index.ts"],
+			},
 			"project": ["**/*.ts", "!**/__tests__/**"],
 			"ignoreDependencies": [
 				// Types for the "vscode" module that the extension host provides at runtime.
@@ -47,6 +52,12 @@
 		},
 		"webview-ui": {
 			"project": ["src/**/*.{ts,tsx}", "../src/shared/*.ts"],
+		},
+		"apps/vscode-nightly": {
+			// Same reason as the "paths" entry of "src".
+			"paths": {
+				"@tumble-code/build": ["../../packages/build/src/index.ts"],
+			},
 		},
 		"apps/cli": {
 			"project": ["src/**/*.ts", "src/**/*.tsx"],
