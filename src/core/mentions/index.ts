@@ -184,7 +184,7 @@ export async function parseMentions(
 		} else if (mention.startsWith("/")) {
 			// Clean path reference - no "see below" since we format like tool results
 			const mentionPath = mention.slice(1)
-			return mentionPath.endsWith("/") ? `'${mentionPath}'` : `'${mentionPath}'`
+			return `'${mentionPath}'`
 		} else if (mention === "problems") {
 			return `Workspace Problems (see below for diagnostics)`
 		} else if (mention === "git-changes") {
@@ -251,16 +251,12 @@ export async function parseMentions(
 	// Process valid command mentions using cached results
 	let slashCommandHelp = ""
 	for (const [commandName, command] of validCommands) {
-		try {
-			let commandOutput = ""
-			if (command.description) {
-				commandOutput += `Description: ${command.description}\n\n`
-			}
-			commandOutput += command.content
-			slashCommandHelp += `\n\n<command name="${commandName}">\n${commandOutput}\n</command>`
-		} catch (error) {
-			slashCommandHelp += `\n\n<command name="${commandName}">\nError loading command '${commandName}': ${error.message}\n</command>`
+		let commandOutput = ""
+		if (command.description) {
+			commandOutput += `Description: ${command.description}\n\n`
 		}
+		commandOutput += command.content
+		slashCommandHelp += `\n\n<command name="${commandName}">\n${commandOutput}\n</command>`
 	}
 
 	// The same text the skill tool returns when the model loads the skill itself.
@@ -283,7 +279,7 @@ export async function parseMentions(
 async function getFileOrFolderContentWithMetadata(
 	mentionPath: string,
 	cwd: string,
-	rooIgnoreController?: any,
+	rooIgnoreController?: RooIgnoreController,
 	showRooIgnoredFiles: boolean = false,
 	fileContextTracker?: FileContextTracker,
 ): Promise<MentionContentBlock> {
