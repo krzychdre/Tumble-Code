@@ -70,9 +70,9 @@ export const IndexingStatusBadge: React.FC<IndexingStatusBadgeProps> = ({ classN
 	const statusIconClass = useMemo(() => {
 		const statusClasses = {
 			Standby: "text-vscode-descriptionForeground",
-			Indexing: "text-vscode-charts-yellow animate-pulse",
+			Indexing: "text-vscode-charts-yellow animate-pulse-soft",
 			Indexed: "text-vscode-charts-green",
-			Stopping: "text-vscode-charts-yellow animate-pulse",
+			Stopping: "text-vscode-charts-yellow animate-pulse-soft",
 			Error: "text-vscode-charts-red",
 		}
 

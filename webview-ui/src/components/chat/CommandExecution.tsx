@@ -223,7 +223,7 @@ export const CommandExecution = ({
 					{status?.status === "started" && (
 						<StandardTooltip content={t("chat:commandExecution.running")}>
 							<div className="flex flex-row items-center gap-1.5 text-xs text-vscode-descriptionForeground shrink-0">
-								<div className="size-2 shrink-0 bg-[var(--status-running)] animate-pulse" />
+								<div className="size-2 shrink-0 bg-[var(--status-running)] animate-pulse-soft" />
 								<span>{t("chat:commandExecution.running")}</span>
 							</div>
 						</StandardTooltip>

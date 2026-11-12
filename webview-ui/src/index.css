@@ -1040,6 +1040,7 @@ input[cmdk-input]:focus {
 	}
 }
 
+/* Not a Tailwind-generated name; unlayered on purpose. */
 .animate-fade-in {
 	animation: fade-in 0.2s ease-out;
 }
@@ -1054,17 +1055,11 @@ input[cmdk-input]:focus {
 	}
 }
 
-.animate-pulse {
+.animate-pulse-soft {
 	animation: pulse 1.5s ease-in-out infinite;
 }
 
-/* Transition utilities */
-.transition-all {
-	transition-property: all;
-	transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-	transition-duration: 150ms;
-}
-
+/* Intentionally overrides Tailwind's transition-colors with a narrower property list. */
 .transition-colors {
 	transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
 	transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
