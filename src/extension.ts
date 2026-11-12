@@ -49,7 +49,7 @@ import {
 	registerTerminalActions,
 	CodeActionProvider,
 } from "./activate"
-import { initializeI18n } from "./i18n"
+import { changeLanguage } from "./i18n"
 
 /**
  * Built using https://github.com/microsoft/vscode-webview-ui-toolkit
@@ -205,7 +205,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	const cloudLogger = (...args: unknown[]) => logger.info(...args)
 
 	// Initialize i18n for internationalization support.
-	initializeI18n(context.globalState.get("language") ?? formatLanguage(vscode.env.language))
+	changeLanguage(context.globalState.get("language") ?? formatLanguage(vscode.env.language))
 
 	// Initialize terminal shell execution handlers.
 	TerminalRegistry.initialize()

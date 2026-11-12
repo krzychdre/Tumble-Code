@@ -1,5 +1,7 @@
 import i18next from "i18next"
 
+import { logger } from "../utils/logging"
+
 // Build translations object
 const translations: Record<string, Record<string, any>> = {}
 
@@ -8,67 +10,37 @@ const isTestEnv = process.env.NODE_ENV === "test"
 
 // Load translations based on environment
 if (!isTestEnv) {
-	try {
-		// Deferred CJS requires so a bundler never pulls Node builtins into a
-		// browser-facing bundle graph.
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		const fs = require("fs") as typeof import("fs")
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		const path = require("path") as typeof import("path")
+	// Deferred CJS requires so a bundler never pulls Node builtins into a
+	// browser-facing bundle graph.
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	const fs = require("fs") as typeof import("fs")
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	const path = require("path") as typeof import("path")
 
-		const localesDir = path.join(__dirname, "i18n", "locales")
+	const localesDir = path.join(__dirname, "i18n", "locales")
 
-		try {
-			// Find all language directories
-			const languageDirs = fs.readdirSync(localesDir, { withFileTypes: true })
-
-			const languages = languageDirs
-				.filter(
-					(dirent: { isDirectory: () => boolean; name: string }) =>
-						dirent.isDirectory() && !dirent.name.startsWith("."),
-				)
-				.map((dirent: { name: string }) => dirent.name)
-
-			// Process each language
-			languages.forEach((language: string) => {
-				const langPath = path.join(localesDir, language)
-
-				// Find all JSON files in the language directory
-				const files = fs
-					.readdirSync(langPath, { withFileTypes: true })
-					.filter(
-						(dirent: { isFile: () => boolean; name: string }) =>
-							dirent.isFile() && dirent.name.endsWith(".json") && !dirent.name.startsWith("."),
-					)
-					.map((dirent: { name: string }) => dirent.name)
-
-				// Initialize language in translations object
-				if (!translations[language]) {
-					translations[language] = {}
-				}
-
-				// Process each namespace file
-				files.forEach((file: string) => {
-					const namespace = path.basename(file, ".json")
-					const filePath = path.join(langPath, file)
-
-					try {
-						// Read and parse the JSON file
-						const content = fs.readFileSync(filePath, "utf8")
-						translations[language][namespace] = JSON.parse(content)
-					} catch (error) {
-						console.error(`Error loading translation file ${filePath}:`, error)
-					}
-				})
-			})
-
-			console.log(`Loaded translations for languages: ${Object.keys(translations).join(", ")}`)
-		} catch (dirError) {
-			console.error(`Error processing directory ${localesDir}:`, dirError)
+	for (const languageDir of fs.readdirSync(localesDir, { withFileTypes: true })) {
+		if (!languageDir.isDirectory() || languageDir.name.startsWith(".")) {
+			continue
 		}
-	} catch (error) {
-		console.error("Error loading translations:", error)
+		const language = languageDir.name
+		translations[language] = {}
+
+		for (const file of fs.readdirSync(path.join(localesDir, language), { withFileTypes: true })) {
+			if (!file.isFile() || !file.name.endsWith(".json") || file.name.startsWith(".")) {
+				continue
+			}
+			const namespace = path.basename(file.name, ".json")
+			const filePath = path.join(localesDir, language, file.name)
+			try {
+				translations[language][namespace] = JSON.parse(fs.readFileSync(filePath, "utf8"))
+			} catch (error) {
+				logger.error(`Error loading translation file ${filePath}:`, error)
+			}
+		}
 	}
+
+	logger.info(`Loaded translations for languages: ${Object.keys(translations).join(", ")}`)
 }
 
 // Initialize i18next with configuration

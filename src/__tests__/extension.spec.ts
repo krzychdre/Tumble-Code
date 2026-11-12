@@ -176,7 +176,7 @@ vi.mock("../activate", () => ({
 }))
 
 vi.mock("../i18n", () => ({
-	initializeI18n: vi.fn(),
+	changeLanguage: vi.fn(),
 	t: vi.fn((key) => key),
 }))
 

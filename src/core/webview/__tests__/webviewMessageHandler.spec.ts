@@ -480,6 +480,24 @@ describe("webviewMessageHandler - terminalProfile", () => {
 	})
 })
 
+describe("webviewMessageHandler - plain terminal settings", () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+	})
+
+	it("routes a table setting into the matching Terminal setter and persists it", async () => {
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateSettings",
+			updatedSettings: { terminalCommandDelay: 250 },
+		})
+
+		expect(Terminal.getCommandDelay()).toBe(250)
+		expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith("terminalCommandDelay", 250)
+
+		Terminal.setCommandDelay(0)
+	})
+})
+
 describe("webviewMessageHandler - requestTerminalProfiles", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()

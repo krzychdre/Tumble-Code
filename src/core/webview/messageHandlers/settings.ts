@@ -11,7 +11,7 @@ import {
 	getCustomSoundSettingKey,
 	selectAndStoreCustomSound,
 } from "../../../integrations/misc/custom-sounds"
-import { Terminal } from "../../../integrations/terminal/Terminal"
+import { Terminal, TERMINAL_SETTERS } from "../../../integrations/terminal/Terminal"
 import { TerminalRegistry } from "../../../integrations/terminal/TerminalRegistry"
 import { Package } from "../../../shared/package"
 import { sanitizeCommandList } from "../../auto-approval/sanitizeCommandList"
@@ -37,37 +37,9 @@ export const settingsHandlers: DomainHandlerMap<"settings"> = {
 					await vscode.workspace
 						.getConfiguration(Package.name)
 						.update(key, newValue, vscode.ConfigurationTarget.Global)
-				} else if (key === "terminalShellIntegrationTimeout") {
+				} else if (key in TERMINAL_SETTERS) {
 					if (value !== undefined) {
-						Terminal.setShellIntegrationTimeout(value as number)
-					}
-				} else if (key === "terminalShellIntegrationDisabled") {
-					if (value !== undefined) {
-						Terminal.setShellIntegrationDisabled(value as boolean)
-					}
-				} else if (key === "terminalCommandDelay") {
-					if (value !== undefined) {
-						Terminal.setCommandDelay(value as number)
-					}
-				} else if (key === "terminalPowershellCounter") {
-					if (value !== undefined) {
-						Terminal.setPowershellCounter(value as boolean)
-					}
-				} else if (key === "terminalZshClearEolMark") {
-					if (value !== undefined) {
-						Terminal.setTerminalZshClearEolMark(value as boolean)
-					}
-				} else if (key === "terminalZshOhMy") {
-					if (value !== undefined) {
-						Terminal.setTerminalZshOhMy(value as boolean)
-					}
-				} else if (key === "terminalZshP10k") {
-					if (value !== undefined) {
-						Terminal.setTerminalZshP10k(value as boolean)
-					}
-				} else if (key === "terminalZdotdir") {
-					if (value !== undefined) {
-						Terminal.setTerminalZdotdir(value as boolean)
+						TERMINAL_SETTERS[key](value)
 					}
 				} else if (key === "terminalProfile") {
 					const previousProfile = Terminal.getTerminalProfile()
@@ -216,22 +188,11 @@ export const settingsHandlers: DomainHandlerMap<"settings"> = {
 		const { setting } = message
 
 		if (setting) {
-			try {
-				await provider.postMessageToWebview({
-					type: "vsCodeSetting",
-					setting,
-					value: vscode.workspace.getConfiguration().get(setting),
-				})
-			} catch (error) {
-				logger.error(`Failed to get VSCode setting ${message.setting}:`, error)
-
-				await provider.postMessageToWebview({
-					type: "vsCodeSetting",
-					setting,
-					error: `Failed to get setting: ${error.message}`,
-					value: undefined,
-				})
-			}
+			await provider.postMessageToWebview({
+				type: "vsCodeSetting",
+				setting,
+				value: vscode.workspace.getConfiguration().get(setting),
+			})
 		}
 	},
 
@@ -313,7 +274,6 @@ export const settingsHandlers: DomainHandlerMap<"settings"> = {
 					list: updatedList,
 				})
 			} catch (error) {
-				// Fail silently as per Bruno's comment - it's OK to fail silently in this case
 				logger.warn(`Failed to dismiss upsell: ${error instanceof Error ? error.message : String(error)}`)
 			}
 		}

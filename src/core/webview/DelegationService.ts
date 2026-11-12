@@ -418,13 +418,6 @@ export class DelegationService {
 				return false
 			}
 
-			if (!Array.isArray(parentApiMessages)) {
-				logger.warn(
-					`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} API messages is not an array`,
-				)
-				return false
-			}
-
 			// Same backward scan as complete().
 			const lastNewTask = findLastNewTaskToolUse(parentApiMessages)
 
@@ -518,10 +511,6 @@ export class DelegationService {
 
 		// 2) Inject synthetic records: UI subtask_result and update API tool_result
 		const ts = Date.now()
-
-		// Defensive: ensure arrays
-		if (!Array.isArray(parentClineMessages)) parentClineMessages = []
-		if (!Array.isArray(parentApiMessages)) parentApiMessages = []
 
 		const subtaskUiMessage: ClineMessage = {
 			type: "say",

@@ -591,3 +591,17 @@ export class Terminal extends BaseTerminal {
 		return { shellPath: pathValue, shellArgs, env }
 	}
 }
+
+// The terminal settings whose value goes straight into the matching Terminal
+// setter, keyed by the setting name. terminalProfile (whose change discards
+// idle terminals) and execaShellPath stay bespoke at their call sites.
+export const TERMINAL_SETTERS: Record<string, (value: unknown) => void> = {
+	terminalShellIntegrationTimeout: (value) => Terminal.setShellIntegrationTimeout(value as number),
+	terminalShellIntegrationDisabled: (value) => Terminal.setShellIntegrationDisabled(value as boolean),
+	terminalCommandDelay: (value) => Terminal.setCommandDelay(value as number),
+	terminalPowershellCounter: (value) => Terminal.setPowershellCounter(value as boolean),
+	terminalZshClearEolMark: (value) => Terminal.setTerminalZshClearEolMark(value as boolean),
+	terminalZshOhMy: (value) => Terminal.setTerminalZshOhMy(value as boolean),
+	terminalZshP10k: (value) => Terminal.setTerminalZshP10k(value as boolean),
+	terminalZdotdir: (value) => Terminal.setTerminalZdotdir(value as boolean),
+}
