@@ -15,7 +15,6 @@ import { getToolActionApprovalCategory } from "./tools"
 import { isMcpToolAlwaysAllowed } from "./mcp"
 import { getCommandDecision } from "./commands"
 import { getModeBySlug } from "../../shared/modes"
-import { logger } from "../../utils/logging"
 
 // We have auto-approval actions for different categories.
 export type AutoApprovalState =
@@ -87,15 +86,7 @@ export async function checkAutoApproval({
 			// review. This covers both the mode-exit gate (switchMode/newTask)
 			// and the post-save plan review pause (reviewPlan).
 			if (mode === "bypass" && ask === "tool" && state.alwaysApprovePlan !== true) {
-				let tool: ClineSayTool | undefined
-
-				try {
-					tool = JSON.parse(text || "{}")
-				} catch {
-					tool = undefined
-				}
-
-				const category = getToolActionApprovalCategory(tool)
+				const category = getToolActionApprovalCategory(parseAskPayload<ClineSayTool>(text))
 
 				if ((category === "modeSwitch" || category === "subtask") && isPlanApprovalRequired(state)) {
 					return { decision: "ask" }
@@ -112,14 +103,8 @@ export async function checkAutoApproval({
 		if (ask === "followup") {
 			// Bypass keeps questions interactive (semi-auto); autonomous answers them.
 			if (mode === "autonomous") {
-				let answer: string | undefined
-
-				try {
-					// Skip blank, missing or non-string answers (weak models emit them).
-					answer = firstUsableSuggestion((JSON.parse(text || "{}") as FollowUpData).suggest)?.answer
-				} catch {
-					answer = undefined
-				}
+				// Skip blank, missing or non-string answers (weak models emit them).
+				const answer = firstUsableSuggestion(parseAskPayload<FollowUpData>(text)?.suggest)?.answer
 
 				const timeout =
 					typeof state.followupAutoApproveTimeoutMs === "number" && state.followupAutoApproveTimeoutMs > 0
@@ -141,25 +126,21 @@ export async function checkAutoApproval({
 
 	if (ask === "followup") {
 		if (state.alwaysAllowFollowupQuestions === true) {
-			try {
-				// Pick the first suggestion with a usable answer: a blank or missing one would
-				// answer the question with no content once the timeout fires.
-				const suggestion = firstUsableSuggestion((JSON.parse(text || "{}") as FollowUpData).suggest)
+			// Pick the first suggestion with a usable answer: a blank or missing one would
+			// answer the question with no content once the timeout fires.
+			const suggestion = firstUsableSuggestion(parseAskPayload<FollowUpData>(text)?.suggest)
 
-				if (
-					suggestion &&
-					typeof state.followupAutoApproveTimeoutMs === "number" &&
-					state.followupAutoApproveTimeoutMs > 0
-				) {
-					return {
-						decision: "timeout",
-						timeout: state.followupAutoApproveTimeoutMs,
-						fn: () => ({ askResponse: "messageResponse", text: suggestion.answer }),
-					}
-				} else {
-					return { decision: "ask" }
+			if (
+				suggestion &&
+				typeof state.followupAutoApproveTimeoutMs === "number" &&
+				state.followupAutoApproveTimeoutMs > 0
+			) {
+				return {
+					decision: "timeout",
+					timeout: state.followupAutoApproveTimeoutMs,
+					fn: () => ({ askResponse: "messageResponse", text: suggestion.answer }),
 				}
-			} catch (error) {
+			} else {
 				return { decision: "ask" }
 			}
 		} else {
@@ -172,18 +153,14 @@ export async function checkAutoApproval({
 			return { decision: "ask" }
 		}
 
-		try {
-			const mcpServerUse = JSON.parse(text) as McpServerUse
+		const mcpServerUse = parseAskPayload<McpServerUse>(text)
 
-			if (mcpServerUse.type === "use_mcp_tool") {
-				return state.alwaysAllowMcp === true && isMcpToolAlwaysAllowed(mcpServerUse, state.mcpServers)
-					? { decision: "approve" }
-					: { decision: "ask" }
-			} else if (mcpServerUse.type === "access_mcp_resource") {
-				return state.alwaysAllowMcp === true ? { decision: "approve" } : { decision: "ask" }
-			}
-		} catch (error) {
-			return { decision: "ask" }
+		if (mcpServerUse?.type === "use_mcp_tool") {
+			return state.alwaysAllowMcp === true && isMcpToolAlwaysAllowed(mcpServerUse, state.mcpServers)
+				? { decision: "approve" }
+				: { decision: "ask" }
+		} else if (mcpServerUse?.type === "access_mcp_resource") {
+			return state.alwaysAllowMcp === true ? { decision: "approve" } : { decision: "ask" }
 		}
 
 		return { decision: "ask" }
@@ -214,13 +191,7 @@ export async function checkAutoApproval({
 	}
 
 	if (ask === "tool") {
-		let tool: ClineSayTool | undefined
-
-		try {
-			tool = JSON.parse(text || "{}")
-		} catch (error) {
-			logger.error("Failed to parse tool:", error)
-		}
+		const tool = parseAskPayload<ClineSayTool>(text)
 
 		if (!tool) {
 			return { decision: "ask" }
@@ -278,6 +249,18 @@ export async function checkAutoApproval({
 	}
 
 	return { decision: "ask" }
+}
+
+/**
+ * The say text is model-produced, so malformed JSON is a real failure:
+ * return undefined and let the caller fall back to asking the user.
+ */
+function parseAskPayload<T>(text: string | undefined): T | undefined {
+	try {
+		return JSON.parse(text || "{}") as T
+	} catch {
+		return undefined
+	}
 }
 
 /**

@@ -130,22 +130,9 @@ export async function presentAssistantMessage(task: Task) {
 		return
 	}
 
-	let block: any
-	try {
-		// Performance optimization: Use shallow copy instead of deep clone.
-		// The block is used read-only throughout this function - we never mutate its properties.
-		// We only need to protect against the reference changing during streaming, not nested mutations.
-		// This provides 80-90% reduction in cloning overhead (5-100ms saved per block).
-		block = { ...task.assistantMessageContent[task.currentStreamingContentIndex] }
-	} catch (error) {
-		logger.error(`ERROR cloning block:`, error)
-		logger.error(
-			`Block content:`,
-			JSON.stringify(task.assistantMessageContent[task.currentStreamingContentIndex], null, 2),
-		)
-		task.presentAssistantMessageLocked = false
-		return
-	}
+	// Shallow copy: the block is read-only here, this only protects against the
+	// array entry being replaced while streaming continues.
+	const block = { ...task.assistantMessageContent[task.currentStreamingContentIndex] }
 
 	// A complete tool call is watched while it runs, so a failure becomes one error report
 	// (only while error reporting is active; see core/diagnostics/ErrorReporter.ts).
@@ -157,13 +144,13 @@ export async function presentAssistantMessage(task: Task) {
 	try {
 		switch (block.type) {
 			case "mcp_tool_use":
-				await presentMcpToolUse(task, block as McpToolUse)
+				await presentMcpToolUse(task, block)
 				break
 			case "text":
 				await presentText(task, block)
 				break
 			case "tool_use":
-				await presentToolUse(task, block as ToolUse)
+				await presentToolUse(task, block)
 				break
 		}
 	} finally {
