@@ -65,10 +65,8 @@ describe("RetryQueue", () => {
 	})
 
 	describe("queue and storage", () => {
-		it("persists and announces an enqueued request", async () => {
+		it("persists an enqueued request", async () => {
 			const queue = makeQueue()
-			const queued = vi.fn()
-			queue.on("request-queued", queued)
 
 			await queue.enqueue("https://api.example.com/a", { method: "POST" }, "telemetry", "op")
 
@@ -79,7 +77,6 @@ describe("RetryQueue", () => {
 				operation: "op",
 				retryCount: 0,
 			})
-			expect(queued).toHaveBeenCalledWith(request)
 		})
 
 		it("evicts the oldest request when full", async () => {
@@ -158,17 +155,14 @@ describe("RetryQueue", () => {
 			})
 		})
 
-		it("clears, stores the empty queue and announces it", async () => {
+		it("clears the queue and stores the empty list", async () => {
 			const queue = makeQueue()
-			const cleared = vi.fn()
-			queue.on("queue-cleared", cleared)
 			await queue.enqueue("https://api.example.com/a", { method: "POST" }, "telemetry")
 
 			queue.clear()
 
 			expect(queue.getStats().totalQueued).toBe(0)
 			expect(storage.data.get(STORAGE_KEY)).toEqual([])
-			expect(cleared).toHaveBeenCalledTimes(1)
 		})
 	})
 
@@ -199,8 +193,6 @@ describe("RetryQueue", () => {
 				stored("a", "https://api.example.com/a", 1),
 			])
 			const queue = makeQueue()
-			const delivered = vi.fn()
-			queue.on("request-retry-success", delivered)
 
 			await queue.retryAll()
 
@@ -208,7 +200,6 @@ describe("RetryQueue", () => {
 				"https://api.example.com/a",
 				"https://api.example.com/b",
 			])
-			expect(delivered).toHaveBeenCalledTimes(2)
 			expect(queue.getStats().totalQueued).toBe(0)
 			expect(storage.data.get(STORAGE_KEY)).toEqual([])
 		})
@@ -253,17 +244,12 @@ describe("RetryQueue", () => {
 			["a server error", () => fetchMock.mockResolvedValueOnce(response(503)), "Server error: 503 status 503"],
 		])("keeps a request after %s and counts the failure", async (_name, fail, lastError) => {
 			const queue = makeQueue()
-			const failed = vi.fn()
-			queue.on("request-retry-failed", failed)
 			await queue.enqueue("https://api.example.com/a", { method: "POST" }, "telemetry")
 
 			fail()
 			await queue.retryAll()
 
-			expect(failed).toHaveBeenCalledWith(
-				expect.objectContaining({ retryCount: 1, lastError }),
-				expect.any(Error),
-			)
+			expect(storage.data.get(STORAGE_KEY)).toMatchObject([{ retryCount: 1, lastError }])
 			expect(queue.getStats().totalQueued).toBe(1)
 
 			await queue.retryAll()
@@ -293,8 +279,6 @@ describe("RetryQueue", () => {
 		])("discards a request after %i failures (maxRetries %s)", async (failures, maxRetries) => {
 			fetchMock.mockRejectedValue(new Error("Network error"))
 			const queue = makeQueue(maxRetries === undefined ? {} : { maxRetries })
-			const exceeded = vi.fn()
-			queue.on("request-max-retries-exceeded", exceeded)
 			await queue.enqueue("https://api.example.com/a", { method: "POST" }, "telemetry")
 
 			for (let i = 1; i < failures; i++) {
@@ -304,7 +288,6 @@ describe("RetryQueue", () => {
 
 			await queue.retryAll()
 			expect(queue.getStats().totalQueued).toBe(0)
-			expect(exceeded).toHaveBeenCalledWith(expect.objectContaining({ retryCount: failures }), expect.any(Error))
 		})
 
 		it("never discards with maxRetries 0", async () => {

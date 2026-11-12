@@ -1,5 +1,3 @@
-import type { ExtensionContext } from "vscode"
-
 import { StaticTokenAuthService } from "../StaticTokenAuthService.js"
 
 /** An unsigned JWT; the service only decodes it, it never verifies the signature. */
@@ -8,7 +6,6 @@ function makeJWT(claims: Record<string, unknown>): string {
 	return `${b64url({ alg: "none", typ: "JWT" })}.${b64url(claims)}.`
 }
 
-const context = {} as ExtensionContext
 const nowSeconds = () => Math.floor(Date.now() / 1000)
 
 describe("StaticTokenAuthService", () => {
@@ -16,7 +13,7 @@ describe("StaticTokenAuthService", () => {
 	const services: StaticTokenAuthService[] = []
 
 	const makeService = (token: string) => {
-		const service = new StaticTokenAuthService(context, token, log)
+		const service = new StaticTokenAuthService(token, log)
 		services.push(service)
 		return service
 	}

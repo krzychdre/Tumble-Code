@@ -1,7 +1,5 @@
-import { EventEmitter } from "events"
-
 import { backoffDelayMs } from "@tumble-code/core/backoff"
-import type { QueuedRequest, QueueStats, RetryQueueConfig, RetryQueueEvents, RetryQueueStorage } from "./types.js"
+import type { QueuedRequest, QueueStats, RetryQueueConfig, RetryQueueStorage } from "./types.js"
 
 type AuthHeaderProvider = () => Record<string, string> | undefined
 
@@ -33,7 +31,7 @@ function hasCredentials(options: RequestInit | undefined): boolean {
 	return found
 }
 
-export class RetryQueue extends EventEmitter<RetryQueueEvents> {
+export class RetryQueue {
 	private queue: Map<string, QueuedRequest> = new Map()
 	private storage: RetryQueueStorage
 	private config: RetryQueueConfig
@@ -53,7 +51,6 @@ export class RetryQueue extends EventEmitter<RetryQueueEvents> {
 		log?: (...args: unknown[]) => void,
 		authHeaderProvider?: AuthHeaderProvider,
 	) {
-		super()
 		this.storage = storage
 		this.log = log || console.log
 		this.authHeaderProvider = authHeaderProvider
@@ -133,7 +130,6 @@ export class RetryQueue extends EventEmitter<RetryQueueEvents> {
 		this.queue.set(request.id, request)
 		await this.persistQueue()
 
-		this.emit("request-queued", request)
 		this.log(`[RetryQueue] Queued request: ${url}`)
 	}
 
@@ -208,7 +204,6 @@ export class RetryQueue extends EventEmitter<RetryQueueEvents> {
 					}
 
 					this.queue.delete(request.id)
-					this.emit("request-retry-success", request)
 				} catch (error) {
 					request.retryCount++
 					request.lastError = error instanceof Error ? error.message : String(error)
@@ -219,7 +214,6 @@ export class RetryQueue extends EventEmitter<RetryQueueEvents> {
 							`[RetryQueue] Max retries (${this.config.maxRetries}) reached for request: ${request.url}`,
 						)
 						this.queue.delete(request.id)
-						this.emit("request-max-retries-exceeded", request, error as Error)
 					} else {
 						// Per-item exponential backoff with equal jitter (R11):
 						// only this request waits; the others stay on their own
@@ -232,7 +226,6 @@ export class RetryQueue extends EventEmitter<RetryQueueEvents> {
 								random: this.config.random,
 							})
 						this.queue.set(request.id, request)
-						this.emit("request-retry-failed", request, error as Error)
 					}
 				}
 			}
@@ -342,7 +335,6 @@ export class RetryQueue extends EventEmitter<RetryQueueEvents> {
 		this.persistQueue().catch((error) => {
 			this.log("[RetryQueue] Failed to persist after clear:", error)
 		})
-		this.emit("queue-cleared")
 	}
 
 	/**
@@ -393,6 +385,5 @@ export class RetryQueue extends EventEmitter<RetryQueueEvents> {
 		if (this.retryTimer) {
 			clearInterval(this.retryTimer)
 		}
-		this.removeAllListeners()
 	}
 }

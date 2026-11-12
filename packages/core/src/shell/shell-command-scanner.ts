@@ -191,9 +191,7 @@ class ShellScanner {
 			this.markUncertain(`\`${words[0].raw}\` statements are not analysed`)
 		}
 
-		if (words.length === 0 && command.heredocs.length === 0) {
-			this.commands.splice(this.commands.lastIndexOf(command), 1)
-		}
+		this.discardEmpty(command)
 		state.command = this.startCommand()
 	}
 

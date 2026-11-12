@@ -23,30 +23,14 @@ import type { StoredCustomTool, LoadResult } from "./types.js"
 import { serializeCustomTool } from "./serialize.js"
 import { runEsbuild, NODE_BUILTIN_MODULES, COMMONJS_REQUIRE_BANNER } from "./esbuild-runner.js"
 
-export interface RegistryOptions {
-	/** Directory for caching compiled TypeScript files. */
-	cacheDir?: string
-	/** Additional paths for resolving node modules (useful for tools outside node_modules). */
-	nodePaths?: string[]
-	/** Path to the extension root directory (for finding bundled esbuild binary in production). */
-	extensionPath?: string
-}
-
 export class CustomToolRegistry {
 	private tools = new Map<string, StoredCustomTool>()
 	private tsCache = new Map<string, string>()
-	private cacheDirOption?: string
 	private privateCacheDir?: string
-	private nodePaths: string[]
+	// The current working directory's node_modules.
+	private nodePaths = [path.join(process.cwd(), "node_modules")]
 	private extensionPath?: string
 	private lastLoaded: Map<string, number> = new Map()
-
-	constructor(options?: RegistryOptions) {
-		this.cacheDirOption = options?.cacheDir
-		// Default to current working directory's node_modules.
-		this.nodePaths = options?.nodePaths ?? [path.join(process.cwd(), "node_modules")]
-		this.extensionPath = options?.extensionPath
-	}
 
 	/**
 	 * Load all tools from a directory.
@@ -97,7 +81,7 @@ export class CustomToolRegistry {
 		return result
 	}
 
-	async loadFromDirectoryIfStale(toolDir: string): Promise<LoadResult> {
+	private async loadFromDirectoryIfStale(toolDir: string): Promise<LoadResult> {
 		if (!fs.existsSync(toolDir)) {
 			return { loaded: [], failed: [] }
 		}
@@ -154,28 +138,6 @@ export class CustomToolRegistry {
 	}
 
 	/**
-	 * Register a tool directly (without loading from file).
-	 */
-	register(definition: CustomToolDefinition, source?: string): void {
-		const { name: id } = definition
-		const validated = this.validate(id, definition)
-
-		if (!validated) {
-			throw new Error(`Invalid tool definition for '${id}'`)
-		}
-
-		const storedTool: StoredCustomTool = source ? { ...validated, source } : validated
-		this.tools.set(id, storedTool)
-	}
-
-	/**
-	 * Unregister a tool by ID.
-	 */
-	unregister(id: string): boolean {
-		return this.tools.delete(id)
-	}
-
-	/**
 	 * Get a tool by ID.
 	 */
 	get(id: string): CustomToolDefinition | undefined {
@@ -189,39 +151,16 @@ export class CustomToolRegistry {
 		return this.tools.has(id)
 	}
 
-	/**
-	 * Get all registered tool IDs.
-	 */
-	list(): string[] {
+	/** All registered tool IDs. */
+	private list(): string[] {
 		return Array.from(this.tools.keys())
-	}
-
-	/**
-	 * Get all registered tools.
-	 */
-	getAll(): CustomToolDefinition[] {
-		return Array.from(this.tools.values())
 	}
 
 	/**
 	 * Get all registered tools in the serialized format.
 	 */
 	getAllSerialized(): SerializedCustomToolDefinition[] {
-		return this.getAll().map(serializeCustomTool)
-	}
-
-	/**
-	 * Get the number of registered tools.
-	 */
-	get size(): number {
-		return this.tools.size
-	}
-
-	/**
-	 * Clear all registered tools.
-	 */
-	clear(): void {
-		this.tools.clear()
+		return Array.from(this.tools.values()).map(serializeCustomTool)
 	}
 
 	/**
@@ -232,51 +171,12 @@ export class CustomToolRegistry {
 		this.extensionPath = extensionPath
 	}
 
-	/**
-	 * Get the current extension path.
-	 */
-	getExtensionPath(): string | undefined {
-		return this.extensionPath
-	}
-
 	/** Where transpiled tools are written and then imported (see privateCacheDirectory). */
 	private get cacheDir(): string {
-		if (this.cacheDirOption) {
-			return this.cacheDirOption
-		}
 		this.privateCacheDir ??= privateCacheDirectory(
 			path.join(os.tmpdir(), process.getuid ? `tumble-tools-${process.getuid()}` : "tumble-tools"),
 		)
 		return this.privateCacheDir
-	}
-
-	/**
-	 * Clear the TypeScript compilation cache (both in-memory and on disk).
-	 * This removes all tool-specific subdirectories and their contents.
-	 */
-	clearCache(): void {
-		this.tsCache.clear()
-
-		const cacheDir = this.cacheDirOption ?? this.privateCacheDir
-		if (cacheDir && fs.existsSync(cacheDir)) {
-			try {
-				const entries = fs.readdirSync(cacheDir, { withFileTypes: true })
-				for (const entry of entries) {
-					const entryPath = path.join(cacheDir, entry.name)
-					if (entry.isDirectory()) {
-						// Remove tool-specific subdirectory and all its contents.
-						fs.rmSync(entryPath, { recursive: true, force: true })
-					} else if (entry.name.endsWith(".mjs")) {
-						// Also clean up any legacy flat .mjs files from older cache format.
-						fs.unlinkSync(entryPath)
-					}
-				}
-			} catch (error) {
-				console.error(
-					`[CustomToolRegistry] clearCache failed to clean disk cache: ${error instanceof Error ? error.message : String(error)}`,
-				)
-			}
-		}
 	}
 
 	/**

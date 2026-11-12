@@ -4,8 +4,6 @@ import * as fs from "fs/promises"
 import * as os from "os"
 import * as path from "path"
 
-import { customToolRegistry } from "@tumble-code/core"
-
 import { commandsAndSkillsHandlers } from "../messageHandlers/commandsAndSkills"
 
 describe("refreshCustomTools", () => {
@@ -21,7 +19,6 @@ describe("refreshCustomTools", () => {
 			`require("fs").writeFileSync(${JSON.stringify(path.join(cwd, "ran"))}, "yes"); module.exports = {}`,
 		)
 		posted = []
-		customToolRegistry.clear()
 	})
 
 	afterEach(async () => {
