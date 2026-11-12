@@ -1,6 +1,6 @@
 # Repetition guard stops polling that makes progress: measurement and fix
 
-**Status:** in progress on `fix/repetition-guard-result-aware`
+**Status:** done, merged as #1299
 
 **Related plans:** [`archive/2026-08/2026-08-24_deepseek-harness-inspirations.md`](archive/2026-08/2026-08-24_deepseek-harness-inspirations.md)
 (the first look at dsh). This plan started as a second look at two harnesses, dsh (DeepSeek Harness, head
