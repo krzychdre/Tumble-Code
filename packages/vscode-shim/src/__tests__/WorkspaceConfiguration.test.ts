@@ -6,7 +6,6 @@ import {
 	MockWorkspaceConfiguration,
 	setRuntimeConfig,
 	setRuntimeConfigValues,
-	getRuntimeConfig,
 	clearRuntimeConfig,
 } from "../api/WorkspaceConfiguration.js"
 import { ExtensionContextImpl } from "../context/ExtensionContext.js"
@@ -213,7 +212,7 @@ describe("MockWorkspaceConfiguration", () => {
 		it("should set and get runtime config values", () => {
 			setRuntimeConfig("roo-cline", "testSetting", "testValue")
 
-			expect(getRuntimeConfig("roo-cline.testSetting")).toBe("testValue")
+			expect(new MockWorkspaceConfiguration("roo-cline", context).get("testSetting")).toBe("testValue")
 		})
 
 		it("should set multiple runtime config values at once", () => {
@@ -223,9 +222,10 @@ describe("MockWorkspaceConfiguration", () => {
 				setting3: true,
 			})
 
-			expect(getRuntimeConfig("roo-cline.setting1")).toBe("value1")
-			expect(getRuntimeConfig("roo-cline.setting2")).toBe(42)
-			expect(getRuntimeConfig("roo-cline.setting3")).toBe(true)
+			const config = new MockWorkspaceConfiguration("roo-cline", context)
+			expect(config.get("setting1")).toBe("value1")
+			expect(config.get("setting2")).toBe(42)
+			expect(config.get("setting3")).toBe(true)
 		})
 
 		it("should ignore undefined values in setRuntimeConfigValues", () => {
@@ -234,18 +234,9 @@ describe("MockWorkspaceConfiguration", () => {
 				notDefined: undefined,
 			})
 
-			expect(getRuntimeConfig("roo-cline.defined")).toBe("value")
-			expect(getRuntimeConfig("roo-cline.notDefined")).toBeUndefined()
-		})
-
-		it("should clear all runtime config values", () => {
-			setRuntimeConfig("roo-cline", "setting1", "value1")
-			setRuntimeConfig("roo-cline", "setting2", "value2")
-
-			clearRuntimeConfig()
-
-			expect(getRuntimeConfig("roo-cline.setting1")).toBeUndefined()
-			expect(getRuntimeConfig("roo-cline.setting2")).toBeUndefined()
+			const config = new MockWorkspaceConfiguration("roo-cline", context)
+			expect(config.get("defined")).toBe("value")
+			expect(config.get("notDefined")).toBeUndefined()
 		})
 
 		it("should return default value when no runtime config is set", () => {

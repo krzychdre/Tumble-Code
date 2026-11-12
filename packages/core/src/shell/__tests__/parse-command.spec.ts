@@ -1,4 +1,6 @@
-import { findUnterminatedQuote, parseCommand } from "../parse-command.js"
+import { parseCommand } from "../parse-command.js"
+
+const findUnterminatedQuote = (command: string) => parseCommand(command).parseError
 
 describe("parseCommand", () => {
 	describe("basic chaining", () => {

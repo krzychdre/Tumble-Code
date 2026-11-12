@@ -10,6 +10,4 @@ export type {
 	BranchInfo,
 	CreateWorktreeOptions,
 	WorktreeIncludeStatus,
-	WorktreeListResponse,
-	WorktreeDefaultsResponse,
 } from "@tumble-code/types"

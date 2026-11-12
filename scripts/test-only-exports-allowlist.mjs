@@ -28,6 +28,7 @@ export const allowlist = [
 	"src/services/tree-sitter/index.ts: setMinComponentLines",
 	"src/utils/logging/index.ts: resetLoggerForTests",
 	"apps/cli/src/ui/graphics/inlineImages.ts: resetInlineImages",
+	"packages/vscode-shim/src/api/WorkspaceConfiguration.ts: clearRuntimeConfig",
 
 	// --- load-bearing public API / protocol contracts ---
 

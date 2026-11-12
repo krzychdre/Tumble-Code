@@ -9,5 +9,5 @@
 export * from "./types.js"
 
 // Services
-export { WorktreeService, worktreeService } from "./worktree-service.js"
-export { WorktreeIncludeService, worktreeIncludeService, type CopyProgressCallback } from "./worktree-include.js"
+export { worktreeService } from "./worktree-service.js"
+export { worktreeIncludeService, type CopyProgressCallback } from "./worktree-include.js"

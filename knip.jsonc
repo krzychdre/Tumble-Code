@@ -11,6 +11,8 @@
 		"scripts/**",
 		// Python service, not part of the pnpm workspace graph.
 		"self-hosted-cloudapi/**",
+		// The owner's local, git-ignored notes and scratch copies; absent in CI.
+		"private_docs/**",
 		// Agent skills and commands (Claude Code, Tumble); their scripts are run by hand, not imported.
 		".claude/**",
 		".roo/**",
@@ -49,27 +51,33 @@
 		"apps/cli": {
 			"project": ["src/**/*.ts", "src/**/*.tsx"],
 		},
+		// includeEntryExports in every package below: an index is a package entry, so knip would
+		// skip its exports. Every consumer lives in this monorepo, so an export nobody imports is
+		// dead code here.
 		"packages/core": {
 			"project": ["src/**/*.ts"],
+			"includeEntryExports": true,
 		},
 		"packages/vscode-shim": {
 			"project": ["src/**/*.ts"],
+			"includeEntryExports": true,
 		},
 		"packages/cloud": {
 			"project": ["src/**/*.ts"],
 			// Types for the "vscode" module that the extension host provides at runtime.
 			"ignoreDependencies": ["@types/vscode"],
+			"includeEntryExports": true,
 		},
 		"packages/telemetry": {
 			"project": ["src/**/*.ts"],
+			"includeEntryExports": true,
 		},
 		"packages/build": {
 			"project": ["src/**/*.ts"],
+			"includeEntryExports": true,
 		},
 		"packages/types": {
 			"project": ["src/**/*.ts"],
-			// The index is a package entry, so knip would skip its exports. Every consumer lives in
-			// this workspace, so an export nobody imports is dead code here.
 			"includeEntryExports": true,
 		},
 	},
