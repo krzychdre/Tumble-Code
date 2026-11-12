@@ -83,6 +83,7 @@ describe("TaskHeader", () => {
 		contextTokens: 200,
 		buttonsDisabled: false,
 		handleCondenseContext: vi.fn(),
+		todos: [],
 	}
 
 	const queryClient = new QueryClient()

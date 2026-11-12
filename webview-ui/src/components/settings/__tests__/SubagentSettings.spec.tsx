@@ -1,25 +1,16 @@
-import { fireEvent, render, screen } from "@testing-library/react"
+import { fireEvent, screen } from "@testing-library/react"
 
 import { MAX_PARALLEL_TASKS_MAX_CONCURRENCY, PARALLEL_TASKS_NO_LIMIT } from "@tumble-code/types"
 
 import type { CachedSettings } from "../schema"
-import { SettingsDraftProvider } from "../SettingsDraftContext"
-import { createSettingsDraftStore } from "../settingsDraftStore"
 import { SubagentSettings } from "../SubagentSettings"
+import { renderWithSettingsDraft } from "./settingsDraftTestUtils"
 
 vi.mock("@/i18n/TranslationContext", () => ({
 	useAppTranslation: () => ({ t: (key: string) => key }),
 }))
 
-const renderTab = (initial: Partial<CachedSettings>) => {
-	const store = createSettingsDraftStore(initial as CachedSettings)
-	render(
-		<SettingsDraftProvider value={store}>
-			<SubagentSettings />
-		</SettingsDraftProvider>,
-	)
-	return store
-}
+const renderTab = (initial: Partial<CachedSettings>) => renderWithSettingsDraft(<SubagentSettings />, initial).store
 
 const concurrencyThumb = () => screen.getByTestId("subagents-max-concurrency-slider").querySelector('[role="slider"]')!
 

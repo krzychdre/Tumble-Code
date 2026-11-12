@@ -314,7 +314,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		}
 
 		if (wasAnyRowExpandedByUser) {
-			enterUserBrowsingHistory("row-expansion")
+			enterUserBrowsingHistory()
 		}
 
 		prevExpandedRowsRef.current = expandedRows

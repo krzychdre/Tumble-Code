@@ -1,6 +1,6 @@
 import axios from "axios"
 import { z } from "zod"
-import { useQuery, UseQueryOptions } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 
 // Define schema for OpenRouter key response
 const openRouterKeyInfoSchema = z.object({
@@ -47,13 +47,11 @@ async function getOpenRouterKeyInfo(apiKey?: string, baseUrl?: string) {
 	}
 }
 
-type UseOpenRouterKeyInfoOptions = Omit<UseQueryOptions<OpenRouterKeyInfo | null>, "queryKey" | "queryFn">
-export const useOpenRouterKeyInfo = (apiKey?: string, baseUrl?: string, options?: UseOpenRouterKeyInfoOptions) => {
+export const useOpenRouterKeyInfo = (apiKey?: string, baseUrl?: string) => {
 	return useQuery<OpenRouterKeyInfo | null>({
 		queryKey: ["openrouter-key-info", apiKey, baseUrl],
 		queryFn: () => getOpenRouterKeyInfo(apiKey, baseUrl),
 		staleTime: 30 * 1000, // 30 seconds
 		enabled: !!apiKey,
-		...options,
 	})
 }

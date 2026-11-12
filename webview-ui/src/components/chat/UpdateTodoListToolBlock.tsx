@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useId } from "react"
 
+import type { TodoStatus } from "@tumble-code/types"
+
 import { cn } from "@/lib/utils"
 
 import { ToolUseBlock, ToolUseBlockHeader } from "../common/ToolUseBlock"
@@ -7,10 +9,12 @@ import MarkdownBlock from "../common/MarkdownBlock"
 import { BlockTimestamp } from "./BlockTimestamp"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 
+// The host's todos carry a zod TodoStatus, but the edit UI also produces ""
+// (its "not started" option), which the host normalizes to "pending".
 interface TodoItem {
 	id?: string
 	content: string
-	status?: "completed" | "in_progress" | string
+	status?: TodoStatus | ""
 }
 
 /**
@@ -167,7 +171,7 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 	}
 
 	// Change status
-	const handleStatusChange = (id: string, status: string) => {
+	const handleStatusChange = (id: string, status: TodoStatus | "") => {
 		const newTodos = editTodos.map((todo) => (todo.id === id ? { ...todo, status } : todo))
 		setEditTodos(newTodos)
 		onChange?.(newTodos)
@@ -298,7 +302,9 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 										{isEditing && (
 											<select
 												value={todo.status || ""}
-												onChange={(e) => handleStatusChange(todo.id!, e.target.value)}
+												onChange={(e) =>
+													handleStatusChange(todo.id!, e.target.value as TodoStatus | "")
+												}
 												className="mr-1.5 h-[22px] border border-solid border-input-frame hover:border-input-frame-hover rounded-control bg-vscode-input-background text-vscode-input-foreground text-xs px-1 focus-ring">
 												{STATUS_OPTIONS.map((opt) => (
 													<option key={opt.value} value={opt.value}>

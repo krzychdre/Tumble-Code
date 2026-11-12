@@ -23,12 +23,6 @@ export interface TooManyToolsInfo {
  * Used by TooManyToolsWarning components in both chat and MCP settings views.
  *
  * @returns Tool count information and localized messages
- *
- * @example
- * const { isOverThreshold, title, message } = useTooManyTools()
- * if (isOverThreshold) {
- *   // Show warning
- * }
  */
 export function useTooManyTools(): TooManyToolsInfo {
 	const { t } = useAppTranslation()

@@ -25,8 +25,6 @@ const HYDRATION_RETRY_WINDOW_MS = 160
 
 export type ScrollPhase = "HYDRATING_PINNED_TO_BOTTOM" | "ANCHORED_FOLLOWING" | "USER_BROWSING_HISTORY"
 
-export type ScrollFollowDisengageSource = "wheel-up" | "row-expansion" | "keyboard-nav-up" | "pointer-scroll-up"
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -59,7 +57,7 @@ export interface UseScrollLifecycleReturn {
 	showScrollToBottom: boolean
 	handleRowHeightChange: (isTaller: boolean) => void
 	handleScrollToBottomClick: () => void
-	enterUserBrowsingHistory: (source: ScrollFollowDisengageSource) => void
+	enterUserBrowsingHistory: () => void
 	followOutputCallback: () => "auto" | false
 	atBottomStateChangeCallback: (isAtBottom: boolean) => void
 	scrollToBottomAuto: () => void
@@ -121,16 +119,13 @@ export function useScrollLifecycle({
 		setShowScrollToBottom(false)
 	}, [transitionScrollPhase])
 
-	const enterUserBrowsingHistory = useCallback(
-		(_source: ScrollFollowDisengageSource) => {
-			transitionScrollPhase("USER_BROWSING_HISTORY")
-			// Always show the scroll-to-bottom CTA when the user explicitly
-			// disengages. If they happen to still be at the physical bottom,
-			// the next Virtuoso atBottomStateChange(true) will hide it.
-			setShowScrollToBottom(true)
-		},
-		[transitionScrollPhase],
-	)
+	const enterUserBrowsingHistory = useCallback(() => {
+		transitionScrollPhase("USER_BROWSING_HISTORY")
+		// Always show the scroll-to-bottom CTA when the user explicitly
+		// disengages. If they happen to still be at the physical bottom,
+		// the next Virtuoso atBottomStateChange(true) will hide it.
+		setShowScrollToBottom(true)
+	}, [transitionScrollPhase])
 
 	const cancelReanchorFrame = useCallback(() => {
 		if (reanchorAnimationFrameRef.current !== null) {
@@ -320,7 +315,7 @@ export function useScrollLifecycle({
 			}
 
 			if (currentPhase === "ANCHORED_FOLLOWING" && !isAtBottom && pointerScrollActiveRef.current) {
-				enterUserBrowsingHistory("pointer-scroll-up")
+				enterUserBrowsingHistory()
 				return
 			}
 
@@ -343,7 +338,7 @@ export function useScrollLifecycle({
 		(event: Event) => {
 			const wheelEvent = event as WheelEvent
 			if (wheelEvent.deltaY < 0 && scrollContainerRef.current?.contains(wheelEvent.target as Node)) {
-				enterUserBrowsingHistory("wheel-up")
+				enterUserBrowsingHistory()
 			}
 		},
 		[enterUserBrowsingHistory, scrollContainerRef],
@@ -404,7 +399,7 @@ export function useScrollLifecycle({
 			pointerScrollLastTopRef.current = currentTop
 
 			if (previousTop !== null && currentTop < previousTop) {
-				enterUserBrowsingHistory("pointer-scroll-up")
+				enterUserBrowsingHistory()
 			}
 		},
 		[enterUserBrowsingHistory, scrollContainerRef],
@@ -446,7 +441,7 @@ export function useScrollLifecycle({
 				keyEvent.target instanceof Node && !!scrollContainerRef.current?.contains(keyEvent.target)
 
 			if (focusInsideChat || eventTargetInsideChat || activeElement === document.body) {
-				enterUserBrowsingHistory("keyboard-nav-up")
+				enterUserBrowsingHistory()
 			}
 		},
 		[enterUserBrowsingHistory, hasTask, isHidden, scrollContainerRef],

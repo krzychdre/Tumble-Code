@@ -4,6 +4,8 @@
 
 import { render, screen, fireEvent } from "@/utils/test-utils"
 
+import type { TodoItem } from "@tumble-code/types"
+
 import { TodoListDisplay } from "../TodoListDisplay"
 
 vi.mock("react-i18next", () => ({
@@ -13,7 +15,7 @@ vi.mock("react-i18next", () => ({
 	initReactI18next: { type: "3rdParty", init: () => {} },
 }))
 
-const todos = [
+const todos: TodoItem[] = [
 	{ id: "1", content: "one", status: "completed" },
 	{ id: "2", content: "two", status: "completed" },
 	{ id: "3", content: "three", status: "completed" },
@@ -64,7 +66,7 @@ describe("TodoListDisplay header", () => {
 	})
 
 	it("labels a fully done list through i18n and fills the bar", () => {
-		const done = todos.map((todo) => ({ ...todo, status: "completed" }))
+		const done: TodoItem[] = todos.map((todo) => ({ ...todo, status: "completed" }))
 		render(<TodoListDisplay todos={done} />)
 
 		expect(screen.getByRole("button", { expanded: false })).toHaveTextContent('chat:todo.complete:{"total":7}')

@@ -7,7 +7,7 @@ interface CheckpointNavigationOptions {
 	checkpointIndices: number[]
 	taskTs: number | undefined
 	virtuosoRef: React.RefObject<VirtuosoHandle | null>
-	enterUserBrowsingHistory: (reason: "keyboard-nav-up") => void
+	enterUserBrowsingHistory: () => void
 	handleScrollToBottomClick: () => void
 }
 
@@ -47,7 +47,7 @@ export function useCheckpointNavigation({
 		const nextCheckpointIndex = checkpointIndices[nextCursor]
 		checkpointJumpCursorRef.current = nextCursor
 
-		enterUserBrowsingHistory("keyboard-nav-up")
+		enterUserBrowsingHistory()
 		virtuosoRef.current?.scrollToIndex({
 			index: nextCheckpointIndex,
 			align: "center",

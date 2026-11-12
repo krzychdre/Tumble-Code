@@ -20,8 +20,6 @@ import {
 } from "@tumble-code/types"
 
 import { useOpenRouterModelProviders } from "./useOpenRouterModelProviders"
-import { useLmStudioModels } from "./useLmStudioModels"
-import { useOllamaModels } from "./useOllamaModels"
 import { useProviderModels } from "./useProviderModels"
 import {
 	getProviderModelSource,
@@ -99,8 +97,8 @@ export const useSelectedModel = (apiConfiguration?: ProviderSettings) => {
 	const providerModelsError = Boolean(providerModels.error)
 
 	const openRouterModelProviders = useOpenRouterModelProviders(openRouterModelId)
-	const lmStudioModels = useLmStudioModels(lmStudioModelId)
-	const ollamaModels = useOllamaModels(ollamaModelId)
+	const lmStudioModels = useProviderModels(lmStudioModelId ? "lmstudio" : undefined)
+	const ollamaModels = useProviderModels(ollamaModelId ? "ollama" : undefined)
 
 	// Compute readiness only for the data actually needed for the selected provider
 	const needRouterModels = Boolean(dynamicProvider)
@@ -109,15 +107,12 @@ export const useSelectedModel = (apiConfiguration?: ProviderSettings) => {
 	const needOllama = typeof ollamaModelId !== "undefined"
 
 	const hasValidRouterData =
-		needRouterModels && dynamicProvider
-			? dynamicModels !== undefined && typeof dynamicModels === "object" && !providerModels.isLoading
-			: true
+		needRouterModels && dynamicProvider ? dynamicModels !== undefined && !providerModels.isLoading : true
 
+	// LM Studio and Ollama lists only fill in the selected model's info; the id
+	// resolves without them, so readiness does not wait for them.
 	const isReady =
-		(!needLmStudio || typeof lmStudioModels.data !== "undefined") &&
-		(!needOllama || typeof ollamaModels.data !== "undefined") &&
-		hasValidRouterData &&
-		(!needOpenRouterProviders || typeof openRouterModelProviders.data !== "undefined")
+		hasValidRouterData && (!needOpenRouterProviders || typeof openRouterModelProviders.data !== "undefined")
 
 	const { id, info } =
 		apiConfiguration && isReady && activeProvider
@@ -128,21 +123,21 @@ export const useSelectedModel = (apiConfiguration?: ProviderSettings) => {
 						...(dynamicProvider && dynamicModels ? { [dynamicProvider]: dynamicModels } : {}),
 					} as RouterModels,
 					openRouterModelProviders: (openRouterModelProviders.data || {}) as Record<string, ModelInfo>,
-					lmStudioModels: (lmStudioModels.data || undefined) as ModelRecord | undefined,
-					ollamaModels: (ollamaModels.data || undefined) as ModelRecord | undefined,
+					lmStudioModels: lmStudioModels.models,
+					ollamaModels: ollamaModels.models,
 				})
 			: { id: getProviderDefaultModelId(activeProvider ?? "anthropic"), info: undefined }
 
 	const isLoading =
 		(needRouterModels && providerModels.isLoading) ||
 		(needOpenRouterProviders && openRouterModelProviders.isLoading) ||
-		(needLmStudio && lmStudioModels!.isLoading) ||
-		(needOllama && ollamaModels!.isLoading)
+		(needLmStudio && lmStudioModels.isLoading) ||
+		(needOllama && ollamaModels.isLoading)
 	const isError =
 		(needRouterModels && providerModelsError) ||
 		(needOpenRouterProviders && openRouterModelProviders.isError) ||
-		(needLmStudio && lmStudioModels!.isError) ||
-		(needOllama && ollamaModels!.isError)
+		(needLmStudio && Boolean(lmStudioModels.error)) ||
+		(needOllama && Boolean(ollamaModels.error))
 
 	return {
 		provider,
