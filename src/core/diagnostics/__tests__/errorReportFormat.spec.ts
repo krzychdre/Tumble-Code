@@ -57,7 +57,7 @@ describe("isContextOverflowError", () => {
 		[401, "maximum context length is not your problem, the key is invalid"],
 		[undefined, "OpenAI completion error: Connection error."],
 		[500, "Internal server error"],
-		[undefined, "Roo tried to use apply_diff without value for required parameter 'path'. Retrying..."],
+		[undefined, "Tumble tried to use apply_diff without value for required parameter 'path'. Retrying..."],
 	])("does not flag status %s: %s", (status, message) => {
 		expect(isContextOverflowError(statusError(status, message))).toBe(false)
 	})

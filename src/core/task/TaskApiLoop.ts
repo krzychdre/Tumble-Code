@@ -42,7 +42,7 @@ import { RooIgnoreController } from "../ignore/RooIgnoreController"
 import { AutoApprovalHandler } from "../auto-approval"
 import { presentAssistantMessage } from "../assistant-message"
 import { type AssistantMessageContent } from "../assistant-message"
-import { ApiRequestBuilder, type ToolsArrayResult } from "./ApiRequestBuilder"
+import { ApiRequestBuilder } from "./ApiRequestBuilder"
 import { type DiffViewProvider } from "../../integrations/editor/DiffViewProvider"
 import { type ToolRepetitionDetector } from "../tools/ToolRepetitionDetector"
 import { RetryHandler, apiErrorDisplayText, isRateLimitError, setLastGlobalApiRequestTime } from "./RetryHandler"
@@ -701,7 +701,7 @@ export class TaskApiLoop {
 			"api_req_started",
 			JSON.stringify({
 				apiProtocol,
-			}),
+			} satisfies ClineApiReqInfo),
 		)
 
 		// Process user content mentions and environment details
@@ -738,14 +738,7 @@ export class TaskApiLoop {
 			})
 		}
 
-		// Update API request message
 		const lastApiReqIndex = findLastIndex(this.access.clineMessages, (m) => m.say === "api_req_started")
-		this.access.clineMessages[lastApiReqIndex].text = JSON.stringify({
-			apiProtocol,
-		} satisfies ClineApiReqInfo)
-
-		await this.access.history.saveClineMessages()
-		await this.access.providerRef.deref()?.postStateToWebviewWithoutTaskHistory()
 
 		try {
 			// Reset streaming state
@@ -784,8 +777,9 @@ export class TaskApiLoop {
 				this.access.currentRequestAbortController = undefined
 			}
 		} catch (error) {
-			// This should never happen since attemptApiRequest is wrapped in try/catch
-			// but we handle it to avoid unhandled promise rejection
+			// Reachable when processStream rejects outside its own error
+			// handling: an aborted ask, or resetStreamingState failing on IO.
+			logger.error(`[Task#${this.access.taskId}] API request cycle failed:`, error)
 			return "return_true"
 		}
 	}
@@ -1606,7 +1600,12 @@ export class TaskApiLoop {
 
 		// Build tools array
 		const modelInfo = this.access.api.getModel().info
-		const { allTools, allowedFunctionNames } = await this.buildToolsArray(state, apiConfiguration, mode, modelInfo)
+		const { allTools, allowedFunctionNames } = await this.apiRequestBuilder.buildToolsArray(
+			state,
+			apiConfiguration,
+			mode,
+			modelInfo,
+		)
 		// With allowedFunctionNames the provider gets every tool but may call only these.
 		this.lastRequestToolsMode = mode
 		this.lastRequestToolNames =
@@ -1775,18 +1774,5 @@ export class TaskApiLoop {
 			lastMessageTokens,
 			customCondensingPrompt,
 		})
-	}
-
-	/**
-	 * Build tools array for API request.
-	 * Delegates to ApiRequestBuilder.
-	 */
-	private async buildToolsArray(
-		state: ProviderState | undefined,
-		apiConfiguration: ProviderSettings | undefined,
-		mode: string | undefined,
-		modelInfo: ModelInfo,
-	): Promise<ToolsArrayResult> {
-		return this.apiRequestBuilder.buildToolsArray(state, apiConfiguration, mode, modelInfo)
 	}
 }

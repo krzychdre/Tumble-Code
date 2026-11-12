@@ -23,6 +23,10 @@ const repoRoot = path.resolve(__dirname, "..", "..")
 
 const OLD_BRAND = "Roo Code"
 
+// User-visible text may also name the old brand as "Roo" alone
+// ("Roo tried to use ..."), not only as "Roo Code".
+const BANNED_STRINGS = [OLD_BRAND, "Roo tried"]
+
 // Files that name the old product on purpose.
 const ALLOWED_FILES = new Set([
 	// The one-shot import of a previous Roo Code installation's settings.
@@ -82,7 +86,7 @@ function literalOffenders(): string[] {
 				.split("\n")
 				.forEach((line, index) => {
 					for (const literal of line.match(STRING_LITERAL) ?? []) {
-						if (literal.includes(OLD_BRAND)) {
+						if (BANNED_STRINGS.some((banned) => literal.includes(banned))) {
 							offenders.push(`${relative}:${index + 1}: ${literal}`)
 						}
 					}
@@ -96,7 +100,7 @@ function jsonValueOffenders(file: string, allowKey?: RegExp): string[] {
 	const offenders: string[] = []
 	const visit = (value: unknown, key: string) => {
 		if (typeof value === "string") {
-			if (value.includes(OLD_BRAND) && !(allowKey && allowKey.test(key))) {
+			if (BANNED_STRINGS.some((banned) => value.includes(banned)) && !(allowKey && allowKey.test(key))) {
 				offenders.push(`${toPosix(file)}: ${key}`)
 			}
 		} else if (value && typeof value === "object") {

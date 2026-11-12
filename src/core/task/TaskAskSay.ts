@@ -400,37 +400,35 @@ export class TaskAskSay {
 		if (isStatusMutable) {
 			const statusMutationTimeout = 2_000
 
-			if (isInteractiveAsk(type)) {
+			const statusMutation:
+				| {
+						field: "interactiveAsk" | "resumableAsk" | "idleAsk"
+						event: TumbleCodeEventName
+						postInteractionRequired?: boolean
+				  }
+				| undefined = isInteractiveAsk(type)
+				? {
+						field: "interactiveAsk",
+						event: TumbleCodeEventName.TaskInteractive,
+						postInteractionRequired: true,
+					}
+				: isResumableAsk(type)
+					? { field: "resumableAsk", event: TumbleCodeEventName.TaskResumable }
+					: isIdleAsk(type)
+						? { field: "idleAsk", event: TumbleCodeEventName.TaskIdle }
+						: undefined
+
+			if (statusMutation) {
 				timeouts.push(
 					setTimeout(() => {
 						const message = this.access.history.findMessageByTimestamp(askTs)
 
 						if (message) {
-							this.access.interactiveAsk = message
-							this.access.emit(TumbleCodeEventName.TaskInteractive, this.access.taskId)
-							provider?.postMessageToWebview({ type: "interactionRequired" })
-						}
-					}, statusMutationTimeout),
-				)
-			} else if (isResumableAsk(type)) {
-				timeouts.push(
-					setTimeout(() => {
-						const message = this.access.history.findMessageByTimestamp(askTs)
-
-						if (message) {
-							this.access.resumableAsk = message
-							this.access.emit(TumbleCodeEventName.TaskResumable, this.access.taskId)
-						}
-					}, statusMutationTimeout),
-				)
-			} else if (isIdleAsk(type)) {
-				timeouts.push(
-					setTimeout(() => {
-						const message = this.access.history.findMessageByTimestamp(askTs)
-
-						if (message) {
-							this.access.idleAsk = message
-							this.access.emit(TumbleCodeEventName.TaskIdle, this.access.taskId)
+							this.access[statusMutation.field] = message
+							this.access.emit(statusMutation.event, this.access.taskId)
+							if (statusMutation.postInteractionRequired) {
+								provider?.postMessageToWebview({ type: "interactionRequired" })
+							}
 						}
 					}, statusMutationTimeout),
 				)
@@ -738,7 +736,7 @@ export class TaskAskSay {
 		noteToolCallKind(this.access, "invalid_tool_call")
 		await this.say(
 			"error",
-			`Roo tried to use ${toolName}${
+			`Tumble tried to use ${toolName}${
 				relPath ? ` for '${relPath.toPosix()}'` : ""
 			} without value for required parameter '${paramName}'. Retrying...`,
 		)

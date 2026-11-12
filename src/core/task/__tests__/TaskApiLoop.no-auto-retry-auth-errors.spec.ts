@@ -61,7 +61,10 @@ function makeLoop(failure: Error, autoApprovalEnabled = true, failures = 1) {
 	const loop = new TaskApiLoop(access)
 	vi.spyOn(loop, "getSystemPrompt").mockResolvedValue("system prompt")
 	vi.spyOn((loop as any).retryHandler, "maybeWaitForProviderRateLimit").mockResolvedValue(undefined)
-	vi.spyOn(loop as any, "buildToolsArray").mockResolvedValue({ allTools: [], allowedFunctionNames: undefined })
+	vi.spyOn((loop as any).apiRequestBuilder, "buildToolsArray").mockResolvedValue({
+		allTools: [],
+		allowedFunctionNames: undefined,
+	})
 	const backoff = vi.spyOn((loop as any).retryHandler, "backoffAndAnnounce").mockResolvedValue(undefined)
 	return { loop, access, createMessage, backoff }
 }

@@ -656,7 +656,7 @@ export class TaskMessageLog {
 
 			return true
 		} catch (error) {
-			logger.error("Failed to save Roo messages:", error)
+			logger.error("Failed to save task messages:", error)
 			return false
 		}
 	}

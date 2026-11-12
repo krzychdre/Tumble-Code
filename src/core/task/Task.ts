@@ -152,9 +152,6 @@ import { type UpdateApiReqMsgFn, type AbortStreamFn, type TokenSnapshot } from "
 import { noteToolFailure } from "../diagnostics/ErrorReporter"
 import { flushExchanges } from "../dataset/ExchangeRecorder"
 
-const MAX_EXPONENTIAL_BACKOFF_SECONDS = 600 // 10 minutes
-const DEFAULT_USAGE_COLLECTION_TIMEOUT_MS = 5000 // 5 seconds
-
 export interface TaskOptions extends CreateTaskOptions {
 	provider: ClineProvider
 	apiConfiguration: ProviderSettings
@@ -887,8 +884,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	didToolFailInCurrentTurn = false
 	didCompleteReadingStream = false
 	_started = false
-	// No streaming parser is required.
-	assistantMessageParser?: undefined
 	providerProfileChangeListener?: (config: { name: string; provider?: string }) => void
 
 	// Native tool call streaming state (track which index each tool is at)
@@ -1064,8 +1059,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			this.taskApiConfigReady = Promise.resolve()
 			TelemetryService.instance.capture(TelemetryEventName.TASK_CREATED, { taskId: this.taskId })
 		}
-
-		this.assistantMessageParser = undefined
 
 		this.messageQueueService = new MessageQueueService()
 
@@ -1438,10 +1431,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		} else if (terminalOperation === "abort") {
 			this.terminalProcess?.abort()
 		}
-	}
-
-	private async getFilesReadByRooSafely(context: string): Promise<string[] | undefined> {
-		return this.contextManager.getFilesReadByRooSafely(context)
 	}
 
 	public async condenseContext(): Promise<void> {
