@@ -56,9 +56,6 @@ export function MarketplaceView({ stateManager, onDone, targetTab }: Marketplace
 		[state.allItems],
 	)
 
-	// Memoize filtered tags
-	const filteredTags = useMemo(() => allTags, [allTags])
-
 	return (
 		<TooltipProvider delayDuration={300}>
 			<Tab>
@@ -103,7 +100,7 @@ export function MarketplaceView({ stateManager, onDone, targetTab }: Marketplace
 						<MarketplaceListView
 							stateManager={stateManager}
 							allTags={allTags}
-							filteredTags={filteredTags}
+							filteredTags={allTags}
 							filterByType="mcp"
 						/>
 					)}
@@ -111,7 +108,7 @@ export function MarketplaceView({ stateManager, onDone, targetTab }: Marketplace
 						<MarketplaceListView
 							stateManager={stateManager}
 							allTags={allTags}
-							filteredTags={filteredTags}
+							filteredTags={allTags}
 							filterByType="mode"
 						/>
 					)}

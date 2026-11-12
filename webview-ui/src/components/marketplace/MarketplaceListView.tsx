@@ -7,7 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { X, ChevronsUpDown } from "lucide-react"
 import { MarketplaceItemCard } from "./components/MarketplaceItemCard"
-import { MarketplaceViewStateManager } from "./MarketplaceViewStateManager"
+import { filterItems, MarketplaceViewStateManager } from "./MarketplaceViewStateManager"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { useStateManager } from "./useStateManager"
 import { useExtensionState } from "@/context/ExtensionStateContext"
@@ -25,15 +25,22 @@ export function MarketplaceListView({ stateManager, allTags, filteredTags, filte
 	const { marketplaceInstalledMetadata, cloudUserInfo } = useExtensionState()
 	const [isTagPopoverOpen, setIsTagPopoverOpen] = React.useState(false)
 	const [tagSearch, setTagSearch] = React.useState("")
-	const allItems = state.displayItems || []
-	const organizationMcps = state.displayOrganizationMcps || []
 
 	// NOTE: installed metadata is already synchronized into the state manager via handleMessage("state"/"marketplaceData")
 	// in MarketplaceViewStateManager; avoid dispatching UPDATE_FILTERS here to prevent render loops.
 
+	const displayItems = React.useMemo(
+		() => filterItems(state.allItems, state.filters, state.installedMetadata),
+		[state.allItems, state.filters, state.installedMetadata],
+	)
+	const displayOrganizationMcps = React.useMemo(
+		() => filterItems(state.organizationMcps, state.filters, state.installedMetadata),
+		[state.organizationMcps, state.filters, state.installedMetadata],
+	)
+
 	// Filter items by type if specified
-	const items = filterByType ? allItems.filter((item) => item.type === filterByType) : allItems
-	const orgMcps = filterByType === "mcp" ? organizationMcps : []
+	const items = filterByType ? displayItems.filter((item) => item.type === filterByType) : displayItems
+	const orgMcps = filterByType === "mcp" ? displayOrganizationMcps : []
 
 	const isEmpty = items.length === 0 && orgMcps.length === 0
 
