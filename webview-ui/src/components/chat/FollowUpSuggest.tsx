@@ -143,7 +143,7 @@ export const FollowUpSuggest = ({
 						</Button>
 						{isFirstSuggestion && countdown !== null && !suggestionSelected && !isAnswered && (
 							<p className="border border-t-0 border-vscode-foreground/60 rounded-b-control text-vscode-descriptionForeground text-xs m-0 mt-1 px-3 pt-2 pb-2">
-								<Timer className="size-3 inline-block -mt-0.5 mr-1 animate-pulse" />
+								<Timer className="size-3 inline-block -mt-0.5 mr-1 animate-pulse-soft" />
 								{t("chat:followUpSuggest.timerPrefix", { seconds: countdown })}
 							</p>
 						)}

@@ -278,7 +278,7 @@ EOF`
 			)
 
 			// Dot absent before any status message
-			expect(document.querySelector(".animate-pulse")).not.toBeInTheDocument()
+			expect(document.querySelector(".animate-pulse-soft")).not.toBeInTheDocument()
 
 			await act(async () => {
 				// "started" schema requires executionId, status, command (pid optional)
@@ -286,7 +286,7 @@ EOF`
 			})
 
 			// Pulsing dot must appear after the started status arrives
-			expect(document.querySelector(".animate-pulse")).toBeInTheDocument()
+			expect(document.querySelector(".animate-pulse-soft")).toBeInTheDocument()
 		})
 
 		// In a subagent's transcript the abort would reach the open task's terminal.
@@ -322,7 +322,7 @@ EOF`
 			})
 
 			// Dot should remain absent -- wrong execution ID
-			expect(document.querySelector(".animate-pulse")).not.toBeInTheDocument()
+			expect(document.querySelector(".animate-pulse-soft")).not.toBeInTheDocument()
 		})
 
 		it("should remove the pulsing dot when status transitions to exited", async () => {
@@ -337,14 +337,14 @@ EOF`
 			})
 
 			// Dot present while running
-			expect(document.querySelector(".animate-pulse")).toBeInTheDocument()
+			expect(document.querySelector(".animate-pulse-soft")).toBeInTheDocument()
 
 			await act(async () => {
 				sendStatusMessage("exec-status-3", { status: "exited", exitCode: 0 })
 			})
 
 			// Pulsing dot removed after process exits
-			expect(document.querySelector(".animate-pulse")).not.toBeInTheDocument()
+			expect(document.querySelector(".animate-pulse-soft")).not.toBeInTheDocument()
 		})
 
 		it("should show the pulsing dot on mount when the started event was already sent (cache recovery)", async () => {
@@ -366,7 +366,7 @@ EOF`
 				sendStatusMessage(executionId, { status: "started", command: "npm start", pid: 5678 })
 			})
 
-			expect(document.querySelector(".animate-pulse")).toBeInTheDocument()
+			expect(document.querySelector(".animate-pulse-soft")).toBeInTheDocument()
 
 			// Unmount to simulate the component being destroyed.
 			unmount()
@@ -379,7 +379,7 @@ EOF`
 				</ExtensionStateWrapper>,
 			)
 
-			expect(document.querySelector(".animate-pulse")).toBeInTheDocument()
+			expect(document.querySelector(".animate-pulse-soft")).toBeInTheDocument()
 		})
 
 		it("should not show the pulsing dot on mount after the command has exited (cache cleared)", async () => {
@@ -396,14 +396,14 @@ EOF`
 				sendStatusMessage(executionId, { status: "started", command: "npm start", pid: 1234 })
 			})
 
-			expect(document.querySelector(".animate-pulse")).toBeInTheDocument()
+			expect(document.querySelector(".animate-pulse-soft")).toBeInTheDocument()
 
 			// Transition to exited -- cache entry must be deleted.
 			await act(async () => {
 				sendStatusMessage(executionId, { status: "exited", exitCode: 0 })
 			})
 
-			expect(document.querySelector(".animate-pulse")).not.toBeInTheDocument()
+			expect(document.querySelector(".animate-pulse-soft")).not.toBeInTheDocument()
 
 			unmount()
 
@@ -415,7 +415,7 @@ EOF`
 				</ExtensionStateWrapper>,
 			)
 
-			expect(document.querySelector(".animate-pulse")).not.toBeInTheDocument()
+			expect(document.querySelector(".animate-pulse-soft")).not.toBeInTheDocument()
 		})
 	})
 

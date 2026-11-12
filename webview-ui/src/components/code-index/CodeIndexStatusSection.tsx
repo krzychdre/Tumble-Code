@@ -31,7 +31,7 @@ export const CodeIndexStatusSection = ({ indexingStatus }: CodeIndexStatusSectio
 				<span
 					className={cn("inline-block w-3 h-3 mr-2 rounded-control", {
 						"bg-vscode-descriptionForeground": indexingStatus.systemStatus === "Standby",
-						"bg-[var(--status-running)] animate-pulse": indexingStatus.systemStatus === "Indexing",
+						"bg-[var(--status-running)] animate-pulse-soft": indexingStatus.systemStatus === "Indexing",
 						"bg-[var(--status-done)]": indexingStatus.systemStatus === "Indexed",
 						"bg-[var(--status-failed)]": indexingStatus.systemStatus === "Error",
 					})}

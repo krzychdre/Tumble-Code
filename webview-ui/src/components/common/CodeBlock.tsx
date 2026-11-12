@@ -20,6 +20,10 @@ export const WINDOW_SHADE_SETTINGS = {
 // Tolerance in pixels for determining when a container is considered "at the bottom"
 export const SCROLL_SNAP_TOLERANCE = 20
 
+// The chat's outer scroller is mounted by Virtuoso (ChatView), outside this
+// component. Query on each call: it can appear or disappear between calls.
+const getVirtuosoScroller = () => document.querySelector<HTMLElement>('[data-virtuoso-scroller="true"]')
+
 // A streaming block gets a new source on every token; Shiki re-tokenizes the
 // whole block, so it runs at most once per interval (the last source always wins).
 export const HIGHLIGHT_INTERVAL_MS = 150
@@ -44,7 +48,6 @@ const CodeBlock = memo(({ source, language }: CodeBlockProps) => {
 	const [showCollapseButton, setShowCollapseButton] = useState(true)
 	const codeBlockRef = useRef<HTMLDivElement>(null)
 	const preRef = useRef<HTMLDivElement>(null)
-	const copyButtonWrapperRef = useRef<HTMLDivElement>(null)
 	const { showCopyFeedback, copyWithFeedback } = useCopyToClipboard()
 	const { t } = useAppTranslation()
 	const isMountedRef = useRef(true)
@@ -209,44 +212,21 @@ const CodeBlock = memo(({ source, language }: CodeBlockProps) => {
 
 	const updateCodeBlockButtonPosition = useCallback((forceHide = false) => {
 		const codeBlock = codeBlockRef.current
-		const copyWrapper = copyButtonWrapperRef.current
 
 		if (!codeBlock) {
 			return
 		}
 
 		const rectCodeBlock = codeBlock.getBoundingClientRect()
-		const scrollContainer = document.querySelector('[data-virtuoso-scroller="true"]')
+		const scrollContainer = getVirtuosoScroller()
 
 		if (!scrollContainer) {
 			return
 		}
 
-		// Get wrapper height dynamically
-		let wrapperHeight
-
-		if (copyWrapper) {
-			const copyRect = copyWrapper.getBoundingClientRect()
-
-			// If height is 0 due to styling, estimate from children
-			if (copyRect.height > 0) {
-				wrapperHeight = copyRect.height
-			} else if (copyWrapper.children.length > 0) {
-				// Try to get height from the button inside
-				const buttonRect = copyWrapper.children[0].getBoundingClientRect()
-				const buttonStyle = window.getComputedStyle(copyWrapper.children[0] as Element)
-				const buttonPadding =
-					parseInt(buttonStyle.getPropertyValue("padding-top") || "0", 10) +
-					parseInt(buttonStyle.getPropertyValue("padding-bottom") || "0", 10)
-				wrapperHeight = buttonRect.height + buttonPadding
-			}
-		}
-
-		// If we still don't have a height, calculate from font size
-		if (!wrapperHeight) {
-			const fontSize = parseInt(window.getComputedStyle(document.body).getPropertyValue("font-size"), 10)
-			wrapperHeight = fontSize * 2.5 // Approximate button height based on font size
-		}
+		// Fixed by the code-block rules in index.css: 24px button height
+		// (.code-block-button) + 2 x 4px toolbar padding (.code-block-toolbar).
+		const wrapperHeight = 32
 
 		const scrollRect = scrollContainer.getBoundingClientRect()
 		const copyButtonEdge = 48
@@ -284,7 +264,7 @@ const CodeBlock = memo(({ source, language }: CodeBlockProps) => {
 		const handleScroll = () => updateCodeBlockButtonPosition()
 		const handleResize = () => updateCodeBlockButtonPosition()
 
-		const scrollContainer = document.querySelector('[data-virtuoso-scroller="true"]')
+		const scrollContainer = getVirtuosoScroller()
 		if (scrollContainer) {
 			scrollContainer.addEventListener("scroll", handleScroll)
 			window.addEventListener("resize", handleResize)
@@ -345,11 +325,6 @@ const CodeBlock = memo(({ source, language }: CodeBlockProps) => {
 	useEffect(() => {
 		if (!preRef.current) return
 
-		// Find the outer scrollable container
-		const getScrollContainer = () => {
-			return document.querySelector('[data-virtuoso-scroller="true"]') as HTMLElement
-		}
-
 		// Inertial scrolling implementation
 		let velocity = 0
 		let animationFrameId: number | null = null
@@ -358,7 +333,7 @@ const CodeBlock = memo(({ source, language }: CodeBlockProps) => {
 
 		// Animation function for inertial scrolling
 		const animate = () => {
-			const scrollContainer = getScrollContainer()
+			const scrollContainer = getVirtuosoScroller()
 			if (!scrollContainer) return
 
 			// Apply current velocity
@@ -389,7 +364,7 @@ const CodeBlock = memo(({ source, language }: CodeBlockProps) => {
 				return
 			}
 
-			const scrollContainer = getScrollContainer()
+			const scrollContainer = getVirtuosoScroller()
 			if (!scrollContainer) return
 
 			// Check if we're at the top or bottom of the inner container
@@ -482,7 +457,6 @@ const CodeBlock = memo(({ source, language }: CodeBlockProps) => {
 			{!isSelecting && (
 				<div
 					className="code-block-toolbar"
-					ref={copyButtonWrapperRef}
 					onMouseOver={() => updateCodeBlockButtonPosition()}
 					style={{ gap: 0 }}>
 					{showCollapseButton && (

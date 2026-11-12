@@ -204,7 +204,7 @@ export function MarketplaceListView({ stateManager, allTags, filteredTags, filte
 				<div className="flex flex-col items-center justify-center h-64 text-vscode-descriptionForeground animate-fade-in">
 					<Spinner className="mb-4" />
 					<p>{t("marketplace:items.refresh.refreshing")}</p>
-					<p className="text-sm mt-2 animate-pulse">{t("marketplace:items.refresh.mayTakeMoment")}</p>
+					<p className="text-sm mt-2 animate-pulse-soft">{t("marketplace:items.refresh.mayTakeMoment")}</p>
 				</div>
 			)}
 
