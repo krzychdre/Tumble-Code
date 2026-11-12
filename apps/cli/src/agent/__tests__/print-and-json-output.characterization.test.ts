@@ -257,7 +257,6 @@ function createHost(options: Partial<ExtensionHostOptions>): ExtensionHost {
 		ephemeral: false,
 		debug: false,
 		nonInteractive: true,
-		integrationTest: true,
 		...options,
 	})
 	;(host as unknown as { isReady: boolean }).isReady = true

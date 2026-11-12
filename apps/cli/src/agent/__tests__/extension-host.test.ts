@@ -245,7 +245,6 @@ describe("ExtensionHost", () => {
 				model: "test-model",
 				ephemeral: false,
 				debug: false,
-				integrationTest: true, // Set explicitly for testing
 			}
 
 			const host = new ExtensionHost(options)
@@ -255,7 +254,6 @@ describe("ExtensionHost", () => {
 			expect(storedOptions.mode).toBe(options.mode)
 			expect(storedOptions.workspacePath).toBe(options.workspacePath)
 			expect(storedOptions.extensionPath).toBe(options.extensionPath)
-			expect(storedOptions.integrationTest).toBe(true)
 		})
 
 		it("should be an EventEmitter instance", () => {
@@ -740,49 +738,25 @@ describe("ExtensionHost", () => {
 
 	describe("quiet mode", () => {
 		describe("setupQuietMode", () => {
-			it("should not modify console when integrationTest is true", () => {
-				// By default, constructor sets integrationTest = true
-				const host = createTestHost()
-				const originalLog = console.log
-
-				callPrivate(host, "setupQuietMode")
-
-				// Console should not be modified since integrationTest is true
-				expect(console.log).toBe(originalLog)
-			})
-
-			it("should suppress console when integrationTest is false", () => {
+			it("should suppress console when the host is created", () => {
 				// Capture the real console.log before any host is created
 				const originalLog = console.log
 
-				// Create host with integrationTest: true to prevent constructor from suppressing
-				const host = createTestHost({ integrationTest: true })
+				const host = createTestHost()
 
-				// Override integrationTest to false to test suppression
-				const options = getPrivate<ExtensionHostOptions>(host, "options")
-				options.integrationTest = false
-
-				callPrivate(host, "setupQuietMode")
-
-				// Console should be modified (suppressed)
+				// Console should be modified (suppressed) by the constructor
 				expect(console.log).not.toBe(originalLog)
 
 				// Restore for other tests
 				callPrivate(host, "restoreConsole")
+				expect(console.log).toBe(originalLog)
 			})
 
 			it("should redirect console.error away from the terminal when suppressing", () => {
 				// Capture the real console.error before any suppression
 				const originalError = console.error
 
-				// Create host with integrationTest: true to prevent constructor from suppressing
-				const host = createTestHost({ integrationTest: true })
-
-				// Override integrationTest to false
-				const options = getPrivate<ExtensionHostOptions>(host, "options")
-				options.integrationTest = false
-
-				callPrivate(host, "setupQuietMode")
+				const host = createTestHost()
 
 				// Raw stacks printed via console.error corrupt the TUI
 				// transcript — they must go to the file debug log instead.
@@ -800,14 +774,8 @@ describe("ExtensionHost", () => {
 				// Capture the real console.log before any host is created
 				const originalLog = console.log
 
-				// Create host with integrationTest: true to prevent constructor from suppressing
-				const host = createTestHost({ integrationTest: true })
+				const host = createTestHost()
 
-				// Override integrationTest to false to actually suppress
-				const options = getPrivate<ExtensionHostOptions>(host, "options")
-				options.integrationTest = false
-
-				callPrivate(host, "setupQuietMode")
 				callPrivate(host, "restoreConsole")
 
 				expect(console.log).toBe(originalLog)
@@ -815,6 +783,7 @@ describe("ExtensionHost", () => {
 
 			it("should handle case where console was not suppressed", () => {
 				const host = createTestHost()
+				callPrivate(host, "restoreConsole")
 
 				expect(() => {
 					callPrivate(host, "restoreConsole")
