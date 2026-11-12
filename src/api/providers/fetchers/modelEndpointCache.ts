@@ -55,7 +55,6 @@ export const getModelEndpoints = async ({
 	let modelProviders = memoryCache.get<ModelRecord>(key)
 
 	if (modelProviders) {
-		// console.log(`[getModelProviders] NodeCache hit for ${key} -> ${Object.keys(modelProviders).length}`)
 		return modelProviders
 	}
 
@@ -80,12 +79,10 @@ export const getModelEndpoints = async ({
 	}
 
 	if (Object.keys(modelProviders).length > 0) {
-		// console.log(`[getModelProviders] API fetch for ${key} -> ${Object.keys(modelProviders).length}`)
 		memoryCache.set(key, modelProviders)
 
 		try {
 			await writeModelEndpoints(key, modelProviders)
-			// console.log(`[getModelProviders] wrote ${key} endpoints to file cache`)
 		} catch (error) {
 			logger.error(`[getModelProviders] error writing ${key} endpoints to file cache`, error)
 		}
@@ -95,7 +92,6 @@ export const getModelEndpoints = async ({
 
 	try {
 		modelProviders = await readModelEndpoints(key)
-		// console.log(`[getModelProviders] read ${key} endpoints from file cache`)
 	} catch (error) {
 		logger.error(`[getModelProviders] error reading ${key} endpoints from file cache`, error)
 	}

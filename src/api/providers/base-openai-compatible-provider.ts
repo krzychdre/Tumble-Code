@@ -14,7 +14,6 @@ import { BaseProvider } from "./base-provider"
 import { handleProviderError } from "./utils/error-handler"
 import { createRequestAbortController } from "./utils/request-abort"
 import { openAiCompletionUsage, openAiUsageChunk } from "./utils/completion-usage"
-import { logger } from "../../utils/logging"
 import { wireCaptureFetch } from "./utils/wire-capture"
 
 /** Binary reasoning switch some OpenAI-compatible APIs (e.g. Z.ai) accept next to the standard params. */
@@ -192,14 +191,6 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 	}
 
 	protected processUsageMetrics(usage: any, modelInfo?: any): ApiStreamUsageChunk {
-		// Spike instrumentation: dump the provider's raw usage object so cache
-		// reporting can be verified endpoint-by-endpoint (e.g. whether Z.ai's
-		// coding plan returns prompt_tokens_details.cached_tokens). See
-		// ai_plans/archive/2026-07/2026-07-12_glm-agent-loop-efficiency-implementation.md (WS-6).
-		if (process.env.ROO_LOG_RAW_USAGE === "1") {
-			logger.info(`[${this.providerName}] raw usage: ${JSON.stringify(usage)}`)
-		}
-
 		return openAiUsageChunk(usage ?? {}, { modelInfo })
 	}
 
