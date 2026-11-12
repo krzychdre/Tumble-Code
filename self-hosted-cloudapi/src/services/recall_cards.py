@@ -12,7 +12,6 @@ project whose scope is ``none``, an excluded task and a task without a project
 get no card, and an old one is deleted.
 """
 
-import asyncio
 import json
 import logging
 import re
@@ -31,11 +30,12 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database import async_session_factory, dialect_insert
+from src.database import dialect_insert
 from src.models.project import SCOPE_NONE, Project
 from src.models.recall import RecallDirty, SessionCard
 from src.models.task import Task, TaskMessage
 from src.services.anonymizer import redact_secrets
+from src.services.periodic import run_periodic
 from src.services.recall_text import SIMPLE, document
 from src.services.session_quality import KIND_COMPLETION, KIND_COMPLETION_REPLY
 
@@ -263,18 +263,13 @@ def _text(message_data: str) -> str:
     return _UNSTORABLE.sub("", text) if isinstance(text, str) else ""
 
 
+async def _rebuild(db: AsyncSession) -> None:
+    count = await rebuild_due(db)
+    await db.commit()
+    if count:
+        logger.info("[recall] rebuilt %s session card(s)", count)
+
+
 async def run_recall_loop() -> None:
-    """Rebuild due cards every ``LOOP_SECONDS``, forever; a failure is logged
-    and the next tick tries again (as in services/retention_scheduler)."""
-    while True:
-        await asyncio.sleep(LOOP_SECONDS)
-        try:
-            async with async_session_factory() as db:
-                count = await rebuild_due(db)
-                await db.commit()
-            if count:
-                logger.info("[recall] rebuilt %s session card(s)", count)
-        except asyncio.CancelledError:
-            raise
-        except Exception:
-            logger.exception("[recall] card rebuild failed; will retry next tick")
+    """Rebuild due cards every ``LOOP_SECONDS``, forever."""
+    await run_periodic("recall", LOOP_SECONDS, _rebuild, sleep_first=True)
