@@ -36,6 +36,7 @@ function makeAccess(overrides: Partial<TaskStreamProcessorAccess> = {}): TaskStr
 		api: { getModel: () => ({ id: "claude-sonnet-4-5", info: {} }) } as any,
 		_taskMode: "code",
 		clineMessages: [apiReqMessage],
+		assistantMessageContent: [],
 		didFinishAbortingStream: false,
 		diffViewProvider: {
 			isEditing: true,

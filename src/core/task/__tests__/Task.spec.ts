@@ -512,7 +512,7 @@ describe("Task request cycle", () => {
 				.spyOn(task.contextManager, "manageContextIfNeeded")
 				.mockResolvedValue(undefined as any)
 			const buildTools = vi
-				.spyOn(task.apiLoop as any, "buildToolsArray")
+				.spyOn((task.apiLoop as any).apiRequestBuilder, "buildToolsArray")
 				.mockResolvedValue({ allTools: [], allowedFunctionNames: undefined })
 			return { task, createMessage, countTokens, manageContext, buildTools }
 		}
@@ -625,7 +625,7 @@ describe("Task request cycle", () => {
 			})
 			const task = requestTask()
 			vi.spyOn(task.api, "getModel").mockReturnValue(testModel({ contextWindow: CONTEXT_WINDOW }) as any)
-			vi.spyOn(task.apiLoop as any, "buildToolsArray").mockResolvedValue({
+			vi.spyOn((task.apiLoop as any).apiRequestBuilder, "buildToolsArray").mockResolvedValue({
 				allTools: [],
 				allowedFunctionNames: undefined,
 			})

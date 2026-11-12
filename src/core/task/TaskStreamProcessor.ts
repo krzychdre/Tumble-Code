@@ -609,7 +609,7 @@ export class TaskStreamProcessor {
 		// outlive resetStreamingState() for the next request, which clears them.
 		const ttftMs = this._firstChunkTs !== undefined ? Math.round(this._firstChunkTs - requestSentAt) : undefined
 		const reasoningChars = this._reasoningMessage.length
-		const toolCount = (access.assistantMessageContent ?? []).filter(
+		const toolCount = access.assistantMessageContent.filter(
 			(block) => block.type === "tool_use" || block.type === "mcp_tool_use",
 		).length
 		// Stated on the event: the telemetry provider is the sidebar, whose

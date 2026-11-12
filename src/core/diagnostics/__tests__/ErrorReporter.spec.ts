@@ -237,7 +237,7 @@ describe("signed in", () => {
 		noteToolCallKind(task, "invalid_tool_call")
 		noteToolFailure(
 			task,
-			"Roo tried to use apply_diff without value for required parameter 'path'. Retrying...",
+			"Tumble tried to use apply_diff without value for required parameter 'path'. Retrying...",
 			"error",
 		)
 		;(task.userMessageContent as unknown[]).push({
@@ -251,7 +251,7 @@ describe("signed in", () => {
 		expect(report).toMatchObject({
 			category: "invalid_tool_call",
 			toolName: "apply_diff",
-			errorMessage: "Roo tried to use apply_diff without value for required parameter 'path'. Retrying...",
+			errorMessage: "Tumble tried to use apply_diff without value for required parameter 'path'. Retrying...",
 			toolResult: '{"status":"error","message":"The tool execution failed"}',
 			response: {
 				stopReason: "tool_calls",

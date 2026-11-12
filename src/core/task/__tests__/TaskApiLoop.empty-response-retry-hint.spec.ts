@@ -58,7 +58,7 @@ function makeLoop(options: { autoApprovalEnabled?: boolean } = {}) {
 	vi.spyOn(loop, "getSystemPrompt").mockResolvedValue("system prompt")
 	vi.spyOn((loop as any).retryHandler, "maybeWaitForProviderRateLimit").mockResolvedValue(undefined)
 	vi.spyOn((loop as any).retryHandler, "backoffAndAnnounce").mockResolvedValue(undefined)
-	const buildToolsArray = vi.spyOn(loop as any, "buildToolsArray")
+	const buildToolsArray = vi.spyOn((loop as any).apiRequestBuilder, "buildToolsArray")
 	return { loop: loop as any, access, buildToolsArray }
 }
 

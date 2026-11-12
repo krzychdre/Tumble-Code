@@ -58,7 +58,7 @@ export async function readApiMessages({
 	// The Cline-era claude_messages.json is no longer read (deleted 2026-09-28,
 	// ai_plans/2026-09-28_delete-old-config-migrations.md).
 	logger.error(
-		`[Roo-Debug] readApiMessages: API conversation history file not found for taskId: ${taskId}. Expected at: ${filePath}`,
+		`readApiMessages: API conversation history file not found for taskId: ${taskId}. Expected at: ${filePath}`,
 	)
 	return []
 }

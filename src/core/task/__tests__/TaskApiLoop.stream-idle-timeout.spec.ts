@@ -123,7 +123,10 @@ describe("TaskApiLoop.attemptApiRequest first-chunk idle timeout (R5)", () => {
 		vi.spyOn(logger, "info").mockImplementation(() => {})
 		vi.spyOn(loop, "getSystemPrompt").mockResolvedValue("system prompt")
 		vi.spyOn((loop as any).retryHandler, "maybeWaitForProviderRateLimit").mockResolvedValue(undefined)
-		vi.spyOn(loop as any, "buildToolsArray").mockResolvedValue({ allTools: [], allowedFunctionNames: undefined })
+		vi.spyOn((loop as any).apiRequestBuilder, "buildToolsArray").mockResolvedValue({
+			allTools: [],
+			allowedFunctionNames: undefined,
+		})
 		// S3: the first-chunk error dispatch lives on RetryHandler; the loop
 		// calls it with a callback that re-enters attemptApiRequest.
 		const handleError = vi

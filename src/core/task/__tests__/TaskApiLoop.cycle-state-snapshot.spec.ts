@@ -120,8 +120,8 @@ function makeAccess(providerStateOverrides: () => Record<string, unknown> = () =
 		askSay: {
 			ask: vi.fn().mockResolvedValue({ response: "yesButtonClicked" }),
 			// The cycle appends rows to clineMessages itself; the say mock
-			// must record the api_req_started row so the loop can find and
-			// update it (executeApiRequestCycle:553).
+			// must record the api_req_started row so the loop can find its
+			// index for the stream closures (executeApiRequestCycle).
 			say: vi.fn(async (type: string) => {
 				if (type === "api_req_started") {
 					access.clineMessages.push({ type: "say", say: "api_req_started", ts: Date.now() })

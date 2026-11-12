@@ -45,7 +45,7 @@ function makeLoop(apiConfiguration: Record<string, unknown>) {
 	const loop = new TaskApiLoop(access)
 	vi.spyOn(loop, "getSystemPrompt").mockResolvedValue("system prompt")
 	vi.spyOn((loop as any).retryHandler, "maybeWaitForProviderRateLimit").mockResolvedValue(undefined)
-	vi.spyOn(loop as any, "buildToolsArray").mockResolvedValue({
+	vi.spyOn((loop as any).apiRequestBuilder, "buildToolsArray").mockResolvedValue({
 		allTools: [{ type: "function", function: { name: "read_file", parameters: {} } }],
 		allowedFunctionNames: undefined,
 	})
