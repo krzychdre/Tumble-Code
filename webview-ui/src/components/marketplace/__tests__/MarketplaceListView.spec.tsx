@@ -19,8 +19,6 @@ const mockTransition = vi.fn()
 const mockState: ViewState = {
 	allItems: [],
 	organizationMcps: [],
-	displayItems: [],
-	displayOrganizationMcps: [],
 	isFetching: false,
 	activeTab: "mcp",
 	filters: {
@@ -46,7 +44,6 @@ describe("MarketplaceListView", () => {
 		vi.clearAllMocks()
 		mockState.filters.tags = []
 		mockState.isFetching = false
-		mockState.displayItems = []
 	})
 
 	const renderWithProviders = (props = {}) =>

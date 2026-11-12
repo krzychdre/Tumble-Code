@@ -1,6 +1,7 @@
 import type { Mock } from "vitest"
-import { MarketplaceViewStateManager, ViewStateTransition } from "../MarketplaceViewStateManager"
-import { MarketplaceItem } from "@tumble-code/types"
+import { filterItems, MarketplaceViewStateManager } from "../MarketplaceViewStateManager"
+import { vscode } from "@/utils/vscode"
+import { MarketplaceInstalledMetadata, MarketplaceItem } from "@tumble-code/types"
 
 // Mock vscode module
 vi.mock("@/utils/vscode", () => ({
@@ -42,6 +43,13 @@ describe("MarketplaceViewStateManager", () => {
 		},
 	]
 
+	const noFilters = {
+		type: "",
+		search: "",
+		tags: [],
+		installed: "all" as const,
+	}
+
 	beforeEach(() => {
 		stateManager = new MarketplaceViewStateManager()
 		mockStateChangeHandler = vi.fn()
@@ -58,248 +66,148 @@ describe("MarketplaceViewStateManager", () => {
 			const state = stateManager.getState()
 
 			expect(state.allItems).toEqual([])
-			expect(state.displayItems).toEqual([])
+			expect(state.organizationMcps).toEqual([])
 			expect(state.isFetching).toBe(true)
 			expect(state.activeTab).toBe("mcp")
-			expect(state.filters).toEqual({
-				type: "",
-				search: "",
-				tags: [],
-				installed: "all",
-			})
-		})
-
-		it("should ensure displayItems is never undefined in getState", () => {
-			const state = stateManager.getState()
-
-			expect(state.displayItems).toBeDefined()
-			expect(Array.isArray(state.displayItems)).toBe(true)
+			expect(state.filters).toEqual(noFilters)
 		})
 	})
 
-	describe("displayItems initialization fix", () => {
-		it("should fall back to allItems when displayItems is undefined", () => {
-			// Simulate the scenario where displayItems might be undefined
-			const transition: ViewStateTransition = {
+	describe("loading items", () => {
+		it("should store items from FETCH_COMPLETE", () => {
+			stateManager.transition({
 				type: "FETCH_COMPLETE",
 				payload: { items: mockMarketplaceItems },
-			}
+			})
 
-			stateManager.transition(transition)
 			const state = stateManager.getState()
-
-			// Verify that displayItems is properly initialized with allItems when no filters are active
-			expect(state.displayItems).toEqual(mockMarketplaceItems)
 			expect(state.allItems).toEqual(mockMarketplaceItems)
+			expect(state.isFetching).toBe(false)
 		})
 
-		it("should ensure displayItems defaults to allItems when no filters are active", async () => {
-			// Handle message with marketplace items (simulating the fix scenario)
-			const message = {
+		it("should store items from a state message", () => {
+			stateManager.handleMessage({
 				type: "state",
-				state: {
-					marketplaceItems: mockMarketplaceItems,
-				},
-			}
+				state: { marketplaceItems: mockMarketplaceItems },
+			})
 
-			await stateManager.handleMessage(message)
 			const state = stateManager.getState()
-
-			// Verify the fix: displayItems should equal allItems when no filters are active
-			expect(state.displayItems).toEqual(mockMarketplaceItems)
 			expect(state.allItems).toEqual(mockMarketplaceItems)
-			expect(state.displayItems?.length).toBeGreaterThan(0)
+			expect(state.isFetching).toBe(false)
 		})
 
-		it("should prevent marketplace blanking by ensuring displayItems is never empty when allItems has content", async () => {
-			// This test specifically addresses the bug described in the PR
-			const message = {
-				type: "state",
-				state: {
-					marketplaceItems: mockMarketplaceItems,
-				},
-			}
+		it("should store items, organization mcps and installed metadata from a marketplaceData message", () => {
+			const installedMetadata: MarketplaceInstalledMetadata = { project: {}, global: {} }
 
-			await stateManager.handleMessage(message)
+			stateManager.handleMessage({
+				type: "marketplaceData",
+				marketplaceItems: mockMarketplaceItems,
+				organizationMcps: [mockMarketplaceItems[0]],
+				marketplaceInstalledMetadata: installedMetadata,
+			})
+
 			const state = stateManager.getState()
-
-			// The key fix: displayItems should never be empty when allItems has content and no filters are active
-			expect(state.allItems.length).toBeGreaterThan(0)
-			expect(state.displayItems?.length).toBeGreaterThan(0)
-			expect(state.displayItems).toEqual(state.allItems)
+			expect(state.allItems).toEqual(mockMarketplaceItems)
+			expect(state.organizationMcps).toEqual([mockMarketplaceItems[0]])
+			expect(state.installedMetadata).toEqual(installedMetadata)
+			expect(state.isFetching).toBe(false)
 		})
 	})
 
 	describe("state change notifications", () => {
-		it("should notify handlers when marketplace items are loaded", async () => {
-			const message = {
+		it("should notify handlers when marketplace items are loaded", () => {
+			stateManager.handleMessage({
 				type: "state",
-				state: {
-					marketplaceItems: mockMarketplaceItems,
-				},
-			}
-
-			await stateManager.handleMessage(message)
+				state: { marketplaceItems: mockMarketplaceItems },
+			})
 
 			expect(mockStateChangeHandler).toHaveBeenCalled()
 			const notifiedState = mockStateChangeHandler.mock.calls[0][0]
 			expect(notifiedState.allItems).toEqual(mockMarketplaceItems)
-			expect(notifiedState.displayItems).toEqual(mockMarketplaceItems)
 		})
 
-		it("should prevent infinite loops by properly handling initial state", async () => {
-			// Simulate multiple rapid state updates that could cause infinite loops
-			const message1 = {
+		it("should notify once per state message", () => {
+			stateManager.handleMessage({
 				type: "state",
-				state: {
-					marketplaceItems: [],
-				},
-			}
-
-			const message2 = {
+				state: { marketplaceItems: [] },
+			})
+			stateManager.handleMessage({
 				type: "state",
-				state: {
-					marketplaceItems: mockMarketplaceItems,
-				},
-			}
-
-			await stateManager.handleMessage(message1)
-			await stateManager.handleMessage(message2)
+				state: { marketplaceItems: mockMarketplaceItems },
+			})
 
 			// Should have been called twice, not infinitely
 			expect(mockStateChangeHandler).toHaveBeenCalledTimes(2)
 
 			const finalState = stateManager.getState()
-			expect(finalState.displayItems).toEqual(mockMarketplaceItems)
+			expect(finalState.allItems).toEqual(mockMarketplaceItems)
 		})
 	})
 
-	describe("filtering behavior", () => {
-		beforeEach(async () => {
-			// Set up initial state with items
-			const message = {
-				type: "state",
-				state: {
-					marketplaceItems: mockMarketplaceItems,
-				},
-			}
-			await stateManager.handleMessage(message)
-		})
-
-		it("should show all items when no filters are active", () => {
-			const state = stateManager.getState()
-
-			expect(stateManager.isFilterActive()).toBe(false)
-			expect(state.displayItems).toEqual(mockMarketplaceItems)
-		})
-
-		it("should filter items when filters are applied", async () => {
-			// First update the filters
-			const filterTransition: ViewStateTransition = {
-				type: "UPDATE_FILTERS",
-				payload: {
-					filters: { type: "mcp" },
-				},
-			}
-
-			await stateManager.transition(filterTransition)
-
-			// Then simulate a state message that would trigger filtering
-			const message = {
-				type: "state",
-				state: {
-					marketplaceItems: mockMarketplaceItems,
-				},
-			}
-			await stateManager.handleMessage(message)
-
-			const state = stateManager.getState()
-
-			expect(stateManager.isFilterActive()).toBe(true)
-			expect(state.displayItems?.length).toBe(2) // Only MCP items
-			expect(state.displayItems?.every((item) => item.type === "mcp")).toBe(true)
-		})
-
-		it("should restore all items when filters are cleared", async () => {
-			// First apply a filter
-			await stateManager.transition({
-				type: "UPDATE_FILTERS",
-				payload: { filters: { type: "mcp" } },
-			})
-
-			// Simulate state message with filter active
-			let message = {
-				type: "state",
-				state: {
-					marketplaceItems: mockMarketplaceItems,
-				},
-			}
-			await stateManager.handleMessage(message)
-
-			// Then clear the filter
-			await stateManager.transition({
-				type: "UPDATE_FILTERS",
-				payload: { filters: { type: "" } },
-			})
-
-			// Simulate state message with filter cleared
-			message = {
-				type: "state",
-				state: {
-					marketplaceItems: mockMarketplaceItems,
-				},
-			}
-			await stateManager.handleMessage(message)
-
-			const state = stateManager.getState()
-			expect(stateManager.isFilterActive()).toBe(false)
-			expect(state.displayItems).toEqual(mockMarketplaceItems)
-		})
-
-		it("should handle search filters correctly", async () => {
-			await stateManager.transition({
+	describe("filters", () => {
+		it("should merge partial filters into state and notify the extension", () => {
+			stateManager.transition({
 				type: "UPDATE_FILTERS",
 				payload: { filters: { search: "Mode" } },
 			})
 
-			// Simulate state message to trigger filtering
-			const message = {
-				type: "state",
-				state: {
-					marketplaceItems: mockMarketplaceItems,
-				},
-			}
-			await stateManager.handleMessage(message)
+			expect(stateManager.getState().filters).toEqual({ ...noFilters, search: "Mode" })
+			expect(vscode.postMessage).toHaveBeenCalledWith({
+				type: "filterMarketplaceItems",
+				filters: { ...noFilters, search: "Mode" },
+			})
+		})
+	})
 
-			const state = stateManager.getState()
-			expect(state.displayItems?.length).toBe(1)
-			expect(state.displayItems?.[0].name).toBe("Test Mode 1")
+	describe("filterItems", () => {
+		it("returns every item when no filter is set", () => {
+			expect(filterItems(mockMarketplaceItems, noFilters)).toEqual(mockMarketplaceItems)
 		})
 
-		it("should handle tag filters correctly", async () => {
-			await stateManager.transition({
-				type: "UPDATE_FILTERS",
-				payload: { filters: { tags: ["server"] } },
-			})
+		it("filters by type", () => {
+			const filtered = filterItems(mockMarketplaceItems, { ...noFilters, type: "mcp" })
 
-			// Simulate state message to trigger filtering
-			const message = {
-				type: "state",
-				state: {
-					marketplaceItems: mockMarketplaceItems,
-				},
+			expect(filtered).toHaveLength(2)
+			expect(filtered.every((item) => item.type === "mcp")).toBe(true)
+		})
+
+		it("filters by search across name and description", () => {
+			const filtered = filterItems(mockMarketplaceItems, { ...noFilters, search: "mode" })
+
+			expect(filtered.map((item) => item.id)).toEqual(["test-mode-1"])
+		})
+
+		it("filters by tag", () => {
+			const filtered = filterItems(mockMarketplaceItems, { ...noFilters, tags: ["server"] })
+
+			expect(filtered.map((item) => item.id)).toEqual(["test-mcp-2"])
+		})
+
+		it("filters by installed status", () => {
+			const installedMetadata: MarketplaceInstalledMetadata = {
+				project: { "test-mcp-1": { type: "mcp" } },
+				global: {},
 			}
-			await stateManager.handleMessage(message)
 
-			const state = stateManager.getState()
-			expect(state.displayItems?.length).toBe(1)
-			expect(state.displayItems?.[0].name).toBe("Test MCP Server 2")
+			const installed = filterItems(
+				mockMarketplaceItems,
+				{ ...noFilters, installed: "installed" },
+				installedMetadata,
+			)
+			expect(installed.map((item) => item.id)).toEqual(["test-mcp-1"])
+
+			const notInstalled = filterItems(
+				mockMarketplaceItems,
+				{ ...noFilters, installed: "not_installed" },
+				installedMetadata,
+			)
+			expect(notInstalled.map((item) => item.id)).toEqual(["test-mode-1", "test-mcp-2"])
 		})
 	})
 
 	describe("tab switching", () => {
-		it("should update active tab", async () => {
-			await stateManager.transition({
+		it("should update active tab", () => {
+			stateManager.transition({
 				type: "SET_ACTIVE_TAB",
 				payload: { tab: "mode" },
 			})
@@ -308,18 +216,13 @@ describe("MarketplaceViewStateManager", () => {
 			expect(state.activeTab).toBe("mode")
 		})
 
-		it("should preserve items when switching tabs", async () => {
-			// Load items first
-			const message = {
+		it("should preserve items when switching tabs", () => {
+			stateManager.handleMessage({
 				type: "state",
-				state: {
-					marketplaceItems: mockMarketplaceItems,
-				},
-			}
-			await stateManager.handleMessage(message)
+				state: { marketplaceItems: mockMarketplaceItems },
+			})
 
-			// Switch tab
-			await stateManager.transition({
+			stateManager.transition({
 				type: "SET_ACTIVE_TAB",
 				payload: { tab: "mode" },
 			})
@@ -327,33 +230,19 @@ describe("MarketplaceViewStateManager", () => {
 			const state = stateManager.getState()
 			expect(state.activeTab).toBe("mode")
 			expect(state.allItems).toEqual(mockMarketplaceItems)
-			expect(state.displayItems).toEqual(mockMarketplaceItems)
 		})
 	})
 
 	describe("error handling", () => {
-		it("should handle empty or invalid messages gracefully", async () => {
-			await stateManager.handleMessage(null)
-			await stateManager.handleMessage({})
-			await stateManager.handleMessage({ type: "invalidType" })
-
-			const state = stateManager.getState()
-			expect(state.allItems).toEqual([])
-			expect(state.displayItems).toEqual([])
-		})
-
-		it("should handle fetch errors", async () => {
+		it("should handle fetch errors", () => {
 			// First load some items
-			const message = {
+			stateManager.handleMessage({
 				type: "state",
-				state: {
-					marketplaceItems: mockMarketplaceItems,
-				},
-			}
-			await stateManager.handleMessage(message)
+				state: { marketplaceItems: mockMarketplaceItems },
+			})
 
 			// Then trigger an error
-			await stateManager.transition({ type: "FETCH_ERROR" })
+			stateManager.transition({ type: "FETCH_ERROR" })
 
 			const state = stateManager.getState()
 			expect(state.isFetching).toBe(false)
@@ -368,18 +257,14 @@ describe("MarketplaceViewStateManager", () => {
 			const state2 = stateManager.getState()
 
 			expect(state1.allItems).not.toBe(state2.allItems)
-			expect(state1.displayItems).not.toBe(state2.displayItems)
 			expect(state1.filters.tags).not.toBe(state2.filters.tags)
 		})
 
-		it("should not mutate original state when modifying returned state", async () => {
-			const message = {
+		it("should not mutate original state when modifying returned state", () => {
+			stateManager.handleMessage({
 				type: "state",
-				state: {
-					marketplaceItems: mockMarketplaceItems,
-				},
-			}
-			await stateManager.handleMessage(message)
+				state: { marketplaceItems: mockMarketplaceItems },
+			})
 
 			const state = stateManager.getState()
 			state.allItems.push({
