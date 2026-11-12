@@ -42,7 +42,7 @@ import { findLast } from "@tumble-code/core/browser"
 import { Mode } from "../../shared/modes"
 import { EMBEDDING_MODEL_PROFILES } from "../../shared/embeddingModels"
 
-import { Terminal } from "../../integrations/terminal/Terminal"
+import { Terminal, TERMINAL_SETTERS } from "../../integrations/terminal/Terminal"
 import { getCustomSoundsDir } from "../../integrations/misc/custom-sounds"
 import WorkspaceTracker from "../../integrations/workspace/WorkspaceTracker"
 
@@ -862,31 +862,13 @@ export class ClineProvider
 		const inTabMode = "onDidChangeViewState" in webviewView
 		panelRegistry.markActivated(this)
 
-		// Initialize out-of-scope variables that need to receive persistent
-		// global state values.
-		this.getState().then(
-			({
-				terminalShellIntegrationTimeout = Terminal.defaultShellIntegrationTimeout,
-				terminalShellIntegrationDisabled = SETTINGS_DEFAULTS.terminalShellIntegrationDisabled,
-				terminalCommandDelay = SETTINGS_DEFAULTS.terminalCommandDelay,
-				terminalZshClearEolMark = SETTINGS_DEFAULTS.terminalZshClearEolMark,
-				terminalZshOhMy = SETTINGS_DEFAULTS.terminalZshOhMy,
-				terminalZshP10k = SETTINGS_DEFAULTS.terminalZshP10k,
-				terminalPowershellCounter = SETTINGS_DEFAULTS.terminalPowershellCounter,
-				terminalZdotdir = SETTINGS_DEFAULTS.terminalZdotdir,
-				terminalProfile,
-			}) => {
-				Terminal.setShellIntegrationTimeout(terminalShellIntegrationTimeout)
-				Terminal.setShellIntegrationDisabled(terminalShellIntegrationDisabled)
-				Terminal.setCommandDelay(terminalCommandDelay)
-				Terminal.setTerminalZshClearEolMark(terminalZshClearEolMark)
-				Terminal.setTerminalZshOhMy(terminalZshOhMy)
-				Terminal.setTerminalZshP10k(terminalZshP10k)
-				Terminal.setPowershellCounter(terminalPowershellCounter)
-				Terminal.setTerminalZdotdir(terminalZdotdir)
-				Terminal.setTerminalProfile(terminalProfile)
-			},
-		)
+		// Hydrate the Terminal integration's process-wide settings from global state.
+		this.getState().then((state) => {
+			for (const [key, setValue] of Object.entries(TERMINAL_SETTERS)) {
+				setValue(state[key as keyof ProviderState])
+			}
+			Terminal.setTerminalProfile(state.terminalProfile)
+		})
 
 		// Set up webview options with proper resource roots
 		const resourceRoots = [this.contextProxy.extensionUri]
@@ -1488,48 +1470,39 @@ export class ClineProvider
 	}
 
 	/**
-	 * Fetches marketplace data on demand to avoid blocking main state updates
+	 * Fetches marketplace data on demand to avoid blocking main state updates.
+	 * Both fetches carry their own fallback payload, so the webview always
+	 * receives a marketplaceData message even when the marketplace is
+	 * unreachable.
 	 */
 	async fetchMarketplaceData() {
-		try {
-			const [marketplaceResult, marketplaceInstalledMetadata] = await Promise.all([
-				this.marketplaceManager.getMarketplaceItems().catch((error) => {
-					logger.error("Failed to fetch marketplace items:", error)
-					return { organizationMcps: [], marketplaceItems: [], errors: [error.message] }
-				}),
-				this.marketplaceManager.getInstallationMetadata().catch((error) => {
-					logger.error("Failed to fetch installation metadata:", error)
-					return { project: {}, global: {} } as MarketplaceInstalledMetadata
-				}),
-			])
+		const [marketplaceResult, marketplaceInstalledMetadata] = await Promise.all([
+			this.marketplaceManager.getMarketplaceItems().catch((error) => {
+				logger.error("Failed to fetch marketplace items:", error)
 
-			// Send marketplace data separately
-			this.postMessageToWebview({
-				type: "marketplaceData",
-				organizationMcps: marketplaceResult.organizationMcps || [],
-				marketplaceItems: marketplaceResult.marketplaceItems || [],
-				marketplaceInstalledMetadata: marketplaceInstalledMetadata || { project: {}, global: {} },
-				errors: marketplaceResult.errors,
-			})
-		} catch (error) {
-			logger.error("Failed to fetch marketplace data:", error)
+				// Show user-friendly error notification for network issues
+				if (error instanceof Error && error.message.includes("timeout")) {
+					vscode.window.showWarningMessage(
+						"Marketplace data could not be loaded due to network restrictions. Core functionality remains available.",
+					)
+				}
 
-			// Send empty data on error to prevent UI from hanging
-			this.postMessageToWebview({
-				type: "marketplaceData",
-				organizationMcps: [],
-				marketplaceItems: [],
-				marketplaceInstalledMetadata: { project: {}, global: {} },
-				errors: [error instanceof Error ? error.message : String(error)],
-			})
+				return { organizationMcps: [], marketplaceItems: [], errors: [error.message] }
+			}),
+			this.marketplaceManager.getInstallationMetadata().catch((error) => {
+				logger.error("Failed to fetch installation metadata:", error)
+				return { project: {}, global: {} } as MarketplaceInstalledMetadata
+			}),
+		])
 
-			// Show user-friendly error notification for network issues
-			if (error instanceof Error && error.message.includes("timeout")) {
-				vscode.window.showWarningMessage(
-					"Marketplace data could not be loaded due to network restrictions. Core functionality remains available.",
-				)
-			}
-		}
+		// Send marketplace data separately
+		this.postMessageToWebview({
+			type: "marketplaceData",
+			organizationMcps: marketplaceResult.organizationMcps || [],
+			marketplaceItems: marketplaceResult.marketplaceItems || [],
+			marketplaceInstalledMetadata: marketplaceInstalledMetadata || { project: {}, global: {} },
+			errors: marketplaceResult.errors,
+		})
 	}
 
 	getStateToPostToWebview(options?: { includeTaskHistory?: boolean }): Promise<ExtensionState>
@@ -1584,12 +1557,10 @@ export class ClineProvider
 
 	// ContextProxy
 
-	// @deprecated - Use `ContextProxy#setValue` instead.
 	private async updateGlobalState<K extends keyof GlobalState>(key: K, value: GlobalState[K]) {
 		await this.contextProxy.setValue(key, value)
 	}
 
-	// @deprecated - Use `ContextProxy#getValue` instead.
 	private getGlobalState<K extends keyof GlobalState>(key: K) {
 		return this.contextProxy.getValue(key)
 	}
@@ -2279,41 +2250,5 @@ export class ClineProvider
 		completionResultSummary: string
 	}): Promise<boolean> {
 		return this.delegation.complete(params)
-	}
-
-	/**
-	 * Convert a file path to a webview-accessible URI
-	 * This method safely converts file paths to URIs that can be loaded in the webview
-	 *
-	 * @param filePath - The absolute file path to convert
-	 * @returns The webview URI string, or the original file URI if conversion fails
-	 * @throws {Error} When webview is not available
-	 * @throws {TypeError} When file path is invalid
-	 */
-	public convertToWebviewUri(filePath: string): string {
-		try {
-			const fileUri = vscode.Uri.file(filePath)
-
-			// Check if we have a webview available
-			if (this.view?.webview) {
-				const webviewUri = this.view.webview.asWebviewUri(fileUri)
-				return webviewUri.toString()
-			}
-
-			// Specific error for no webview available
-			const error = new Error("No webview available for URI conversion")
-			logger.error(error.message)
-			// Fallback to file URI if no webview available
-			return fileUri.toString()
-		} catch (error) {
-			// More specific error handling
-			if (error instanceof TypeError) {
-				logger.error("Invalid file path provided for URI conversion:", error)
-			} else {
-				logger.error("Failed to convert to webview URI:", error)
-			}
-			// Return file URI as fallback
-			return vscode.Uri.file(filePath).toString()
-		}
 	}
 }

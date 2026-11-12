@@ -1,15 +1,6 @@
 import i18next from "./setup"
 
 /**
- * Initialize i18next with the specified language
- *
- * @param language The language code to use
- */
-export function initializeI18n(language: string): void {
-	i18next.changeLanguage(language)
-}
-
-/**
  * Change the current language
  *
  * @param language The language code to change to
