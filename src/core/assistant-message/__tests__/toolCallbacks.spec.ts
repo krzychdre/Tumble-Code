@@ -4,10 +4,25 @@ import { describe, it, expect, beforeEach, vi } from "vitest"
 
 import { formatResponse } from "../../prompts/responses"
 import { BaseTool } from "../../tools/BaseTool"
+import { ToolRepetitionDetector } from "../../tools/ToolRepetitionDetector"
 import { createToolCallbacks } from "../toolCallbacks"
 import { logger } from "../../../utils/logging"
+import type { McpToolUse, ToolUse } from "../../../shared/tools"
 
 vi.mock("../../task/Task")
+
+const toolUseBlock = (path = "a.ts") =>
+	({ type: "tool_use", name: "read_file", params: { path }, partial: false }) as ToolUse
+
+const mcpToolUseBlock = () =>
+	({
+		type: "mcp_tool_use",
+		name: "mcp_server_tool",
+		serverName: "server",
+		toolName: "tool",
+		arguments: {},
+		partial: false,
+	}) as McpToolUse
 
 /**
  * Unit tests for the one factory that builds the callbacks `presentAssistantMessage` hands
@@ -26,6 +41,7 @@ describe("createToolCallbacks", () => {
 			userMessageContent: [],
 			recordToolError: vi.fn(),
 			pushToolResultToUserContent: vi.fn(),
+			toolRepetitionDetector: new ToolRepetitionDetector(3),
 			askSay: {
 				ask: vi.fn().mockResolvedValue({ response: "yesButtonClicked" }),
 				say: vi.fn().mockResolvedValue(undefined),
@@ -35,7 +51,7 @@ describe("createToolCallbacks", () => {
 
 	it("records the result under the tool name it was given", () => {
 		const callbacks = createToolCallbacks(task, {
-			block: { type: "tool_use" },
+			block: toolUseBlock(),
 			toolCallId: "call_1",
 			toolName: "read_file",
 		})
@@ -50,7 +66,7 @@ describe("createToolCallbacks", () => {
 
 	it("reports through hasToolResult whether the block already delivered its result", () => {
 		const callbacks = createToolCallbacks(task, {
-			block: { type: "tool_use" },
+			block: toolUseBlock(),
 			toolCallId: "call_1",
 			toolName: "read_file",
 		})
@@ -62,7 +78,7 @@ describe("createToolCallbacks", () => {
 
 	it("pushes nothing when there is no tool call id, but still closes the block", () => {
 		const callbacks = createToolCallbacks(task, {
-			block: { type: "mcp_tool_use" },
+			block: mcpToolUseBlock(),
 			toolCallId: undefined,
 			toolName: "use_mcp_tool",
 		})
@@ -76,7 +92,7 @@ describe("createToolCallbacks", () => {
 
 	it("asks for the finish-subtask approval as a finishTask tool ask", async () => {
 		const callbacks = createToolCallbacks(task, {
-			block: { type: "tool_use" },
+			block: toolUseBlock(),
 			toolCallId: "call_1",
 			toolName: "attempt_completion",
 		})
@@ -92,8 +108,8 @@ describe("createToolCallbacks", () => {
 	})
 
 	it("keeps the callbacks of two blocks independent", () => {
-		const first = createToolCallbacks(task, { block: { type: "tool_use" }, toolCallId: "a", toolName: "x" })
-		const second = createToolCallbacks(task, { block: { type: "tool_use" }, toolCallId: "b", toolName: "y" })
+		const first = createToolCallbacks(task, { block: toolUseBlock(), toolCallId: "a", toolName: "x" })
+		const second = createToolCallbacks(task, { block: toolUseBlock(), toolCallId: "b", toolName: "y" })
 
 		first.pushToolResult("one")
 		second.pushToolResult(formatResponse.toolDenied())
@@ -101,6 +117,21 @@ describe("createToolCallbacks", () => {
 		expect(task.pushToolResultToUserContent).toHaveBeenCalledTimes(2)
 		expect(first.hasToolResult()).toBe(true)
 		expect(second.hasToolResult()).toBe(true)
+	})
+
+	it("reports the result of a tool_use block to the repetition detector", () => {
+		const block = toolUseBlock()
+
+		// The same call four times, every result new: without the report the fourth is stopped.
+		const allowed: boolean[] = []
+		for (let i = 0; i < 4; i++) {
+			allowed.push(task.toolRepetitionDetector.check(block).allowExecution)
+			createToolCallbacks(task, { block, toolCallId: `call_${i}`, toolName: "read_file" }).pushToolResult(
+				`out ${i}`,
+			)
+		}
+
+		expect(allowed).toEqual([true, true, true, true])
 	})
 
 	describe("the error a tool reports reaches the model without its stack trace", () => {
@@ -131,7 +162,7 @@ describe("createToolCallbacks", () => {
 			const error = new Error("ENOENT: no such file or directory, open 'missing.ts'")
 			error.stack = `Error: ${error.message}\n    at ThrowingTool.execute (/home/someone/project/src/core/tools/ReadFileTool.ts:42:13)`
 			const callbacks = createToolCallbacks(task, {
-				block: { type: "tool_use" },
+				block: toolUseBlock(),
 				toolCallId: "call_1",
 				toolName: "read_file",
 			})
@@ -158,7 +189,7 @@ describe("createToolCallbacks", () => {
 			const error = new Error("boom")
 			error.stack = "Error: boom\n    at somewhere (/home/someone/project/file.ts:1:1)"
 			const callbacks = createToolCallbacks(task, {
-				block: { type: "tool_use" },
+				block: toolUseBlock(),
 				toolCallId: "call_1",
 				toolName: "read_file",
 			})
@@ -179,7 +210,7 @@ describe("createToolCallbacks", () => {
 			cause.stack = "Error: connect ECONNREFUSED\n    at TCPConnectWrap.afterConnect (node:net:1:1)"
 			const error = new Error("fetch failed", { cause })
 			const callbacks = createToolCallbacks(task, {
-				block: { type: "tool_use" },
+				block: toolUseBlock(),
 				toolCallId: "call_1",
 				toolName: "read_file",
 			})
@@ -195,7 +226,7 @@ describe("createToolCallbacks", () => {
 
 		it("describes a thrown value without a message, still without a stack", async () => {
 			const callbacks = createToolCallbacks(task, {
-				block: { type: "tool_use" },
+				block: toolUseBlock(),
 				toolCallId: "call_1",
 				toolName: "read_file",
 			})
@@ -210,7 +241,7 @@ describe("createToolCallbacks", () => {
 
 		it("describes a thrown string as its JSON string, to the model and in the UI", async () => {
 			const callbacks = createToolCallbacks(task, {
-				block: { type: "tool_use" },
+				block: toolUseBlock(),
 				toolCallId: "call_1",
 				toolName: "read_file",
 			})

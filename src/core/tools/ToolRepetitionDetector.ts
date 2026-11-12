@@ -1,5 +1,5 @@
 import stringify from "safe-stable-stringify"
-import { ToolUse } from "../../shared/tools"
+import { ToolResponse, ToolUse } from "../../shared/tools"
 import { t } from "../../i18n"
 
 /**
@@ -8,6 +8,8 @@ import { t } from "../../i18n"
  */
 export class ToolRepetitionDetector {
 	private previousToolCallJson: string | null = null
+	// Result of the previous identical call.
+	private previousResultJson: string | null = null
 	private consecutiveIdenticalToolCallCount: number = 0
 	private readonly consecutiveIdenticalToolCallLimit: number
 	// The call stopped by the last trip, kept until a different call comes:
@@ -44,6 +46,7 @@ export class ToolRepetitionDetector {
 		// that calls it with nothing to wait for counts a mistake in the tool.
 		if (currentToolCallBlock.name === "wait_for_subagents") {
 			this.previousToolCallJson = null
+			this.previousResultJson = null
 			this.consecutiveIdenticalToolCallCount = 0
 			return { allowExecution: true }
 		}
@@ -60,6 +63,7 @@ export class ToolRepetitionDetector {
 		} else {
 			this.consecutiveIdenticalToolCallCount = 0 // Reset to 0 for a new tool
 			this.previousToolCallJson = currentToolCallJson
+			this.previousResultJson = null
 		}
 
 		// Check if limit is reached (0 means unlimited)
@@ -70,6 +74,7 @@ export class ToolRepetitionDetector {
 			// Reset counters to allow recovery if user guides the AI past this point
 			this.consecutiveIdenticalToolCallCount = 0
 			this.previousToolCallJson = null
+			this.previousResultJson = null
 			const repeatedTrip = this.lastTrippedToolCallJson === currentToolCallJson
 			this.lastTrippedToolCallJson = currentToolCallJson
 
@@ -86,6 +91,22 @@ export class ToolRepetitionDetector {
 
 		// Execution is allowed
 		return { allowExecution: true }
+	}
+
+	/**
+	 * What the call last passed to `check` returned. A repeat with a different
+	 * result than the one before is watching something change (a poll of a
+	 * running job), so the run of identical calls starts over.
+	 */
+	public recordResult(toolUse: ToolUse, result: ToolResponse): void {
+		if (this.serializeToolUse(toolUse) !== this.previousToolCallJson) {
+			return
+		}
+		const resultJson = stringify(result)
+		if (this.previousResultJson !== null && this.previousResultJson !== resultJson) {
+			this.consecutiveIdenticalToolCallCount = 0
+		}
+		this.previousResultJson = resultJson
 	}
 
 	/**

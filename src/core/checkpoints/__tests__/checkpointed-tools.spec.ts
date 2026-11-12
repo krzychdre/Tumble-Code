@@ -141,7 +141,7 @@ function makePresentTask(toolName: string) {
 		api: { getModel: () => ({ id: "test-model", info: {} }) },
 		recordToolUsage: vi.fn(),
 		recordToolError: vi.fn(),
-		toolRepetitionDetector: { check: vi.fn().mockReturnValue({ allowExecution: true }) },
+		toolRepetitionDetector: { check: vi.fn().mockReturnValue({ allowExecution: true }), recordResult: vi.fn() },
 		getTaskMode: vi.fn().mockResolvedValue("code"),
 		providerRef: {
 			deref: () => ({
