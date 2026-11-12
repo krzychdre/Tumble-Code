@@ -18,13 +18,14 @@
  * changed (the reducer returns `prev` itself otherwise), so no-op messages
  * never re-render anybody.
  */
-import type { ExtensionMessage, ExtensionState } from "@tumble-code/types"
+import type { ExtensionMessage } from "@tumble-code/types"
 
 import {
 	applyExtensionMessage,
 	createInitialExtensionStore,
 	updateExtensionState,
 	type ExtensionStore,
+	type StoredExtensionState,
 } from "./extensionStateReducer"
 
 export type StoreListener = () => void
@@ -71,7 +72,7 @@ export class ExtensionStoreClient<T, A> {
 	}
 
 	/** Local setter path for the context actions: touches `extensionState` only. */
-	updateExtensionState = (update: (prevState: ExtensionState) => ExtensionState): boolean => {
+	updateExtensionState = (update: (prevState: StoredExtensionState) => StoredExtensionState): boolean => {
 		return this.apply(updateExtensionState(this.store, update))
 	}
 

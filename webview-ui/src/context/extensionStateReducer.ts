@@ -7,11 +7,15 @@
  * nothing (so React skips the re-render). Side effects that belong to a
  * message (the host echo for `toggleAutoApprove`) live in
  * `ExtensionStateContextProvider`.
+ *
+ * The postMessage channel drops `undefined` values, so a key a push omits
+ * keeps its previous value, and the initial literal pins every key.
  */
 import {
 	type Command,
 	type ExtensionMessage,
 	type ExtensionState,
+	type Language,
 	type MarketplaceInstalledMetadata,
 	type MarketplaceItem,
 	type McpServer,
@@ -38,8 +42,28 @@ import { defaultModeSlug, defaultPrompts } from "@shared/modes"
  * push also carries `mcpServers` and marketplace fields, and those must not
  * overwrite the slices (see the "state" rows of the message table test).
  */
+/**
+ * The store's `ExtensionState`: every key the initial literal pins to a
+ * concrete value is always defined, because the postMessage channel drops
+ * `undefined` values, so no push can make one `undefined` again. Keys whose
+ * pinned default is itself `undefined` (the terminal profile, the api-config
+ * id overrides) keep their optional marker.
+ */
+export type StoredExtensionState = ExtensionState & {
+	allowedCommands: string[]
+	deniedCommands: string[]
+	language: Language
+	taskSyncEnabled: boolean
+	uiDensity: "comfortable" | "compact"
+	cloudIsAuthenticated: boolean
+	organizationSettingsVersion: number
+	profileThresholds: Record<string, number>
+	alwaysAllowFollowupQuestions: boolean
+	showWorktreesInHomeScreen: boolean
+}
+
 export interface ExtensionStore {
-	extensionState: ExtensionState
+	extensionState: StoredExtensionState
 	didHydrateState: boolean
 	showWelcome: boolean
 	filePaths: string[]
@@ -58,7 +82,7 @@ export interface ExtensionStore {
 }
 
 // A fresh object per provider mount, like the useState literal it replaces.
-const createInitialExtensionState = (): ExtensionState => ({
+const createInitialExtensionState = (): StoredExtensionState => ({
 	apiConfiguration: {},
 	version: "",
 	clineMessages: [],
@@ -151,6 +175,7 @@ const createInitialExtensionState = (): ExtensionState => ({
 	includeCurrentCost: true,
 	includeTaskHistoryInEnhance: true,
 	alwaysAllowFollowupQuestions: false,
+	showWorktreesInHomeScreen: true, // Default to showing worktree tasks on the home screen
 	lockApiConfigAcrossModes: false,
 })
 
@@ -172,13 +197,16 @@ export const createInitialExtensionStore = (): ExtensionStore => ({
 /** Applies `update` to `extensionState`; returns `prev` itself when `update` does. */
 export const updateExtensionState = (
 	prev: ExtensionStore,
-	update: (state: ExtensionState) => ExtensionState,
+	update: (state: StoredExtensionState) => StoredExtensionState,
 ): ExtensionStore => {
 	const extensionState = update(prev.extensionState)
 	return extensionState === prev.extensionState ? prev : { ...prev, extensionState }
 }
 
-export const mergeExtensionState = (prevState: ExtensionState, newState: Partial<ExtensionState>) => {
+export const mergeExtensionState = (
+	prevState: StoredExtensionState,
+	newState: Partial<ExtensionState>,
+): StoredExtensionState => {
 	const { customModePrompts: prevCustomModePrompts, experiments: prevExperiments, ...prevRest } = prevState
 
 	const {
@@ -210,13 +238,15 @@ export const mergeExtensionState = (prevState: ExtensionState, newState: Partial
 
 	// Note that we completely replace the previous apiConfiguration and customSupportPrompts objects
 	// with new ones since the state that is broadcast is the entire objects so merging is not necessary.
+	// The channel drops `undefined` values, so a key `newState` omits keeps its
+	// previous (defined) value; the spread type cannot express that.
 	return {
 		...rest,
 		apiConfiguration: apiConfiguration ?? prevState.apiConfiguration,
 		customModePrompts,
 		customSupportPrompts: customSupportPrompts ?? prevState.customSupportPrompts,
 		experiments,
-	}
+	} as StoredExtensionState
 }
 
 /**
@@ -255,7 +285,7 @@ export function applyExtensionMessage(prev: ExtensionStore, message: ExtensionMe
 			// The provider echoes the new value to the host after the commit.
 			return updateExtensionState(prev, (prevState) => ({
 				...prevState,
-				autoApprovalEnabled: !(prevState.autoApprovalEnabled ?? SETTINGS_DEFAULTS.autoApprovalEnabled),
+				autoApprovalEnabled: !prevState.autoApprovalEnabled,
 			}))
 		}
 		case "workspaceUpdated":

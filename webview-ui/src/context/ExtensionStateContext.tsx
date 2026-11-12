@@ -9,6 +9,7 @@ import {
 	type CloudOrganizationMembership,
 	type ExtensionMessage,
 	type ExtensionState,
+	type Language,
 	type AutoApprovalMode,
 	type MarketplaceInstalledMetadata,
 	type SkillMetadata,
@@ -21,7 +22,7 @@ import { Mode } from "@shared/modes"
 import { vscode } from "@src/utils/vscode"
 import { useAnyExtensionMessage } from "@src/utils/extensionBus"
 
-import type { ExtensionStore } from "./extensionStateReducer"
+import type { ExtensionStore, StoredExtensionState } from "./extensionStateReducer"
 import { mergeExtensionState } from "./extensionStateReducer"
 import { ExtensionStoreClient } from "./extensionStoreClient"
 import { ExtensionStateContext, ExtensionStoreContext } from "./extensionContexts"
@@ -71,7 +72,9 @@ export interface ExtensionStateContextType extends ExtensionState {
 	setAlwaysAllowModeSwitch: (value: boolean) => void
 	setAlwaysAllowSubtasks: (value: boolean) => void
 	setAlwaysApprovePlan: (value: boolean) => void
+	allowedCommands: string[]
 	setAllowedCommands: (value: string[]) => void
+	deniedCommands: string[]
 	setDeniedCommands: (value: string[]) => void
 	terminalShellIntegrationTimeout?: number
 	terminalShellIntegrationDisabled?: boolean
@@ -97,6 +100,8 @@ export interface ExtensionStateContextType extends ExtensionState {
 	pinnedApiConfigs?: Record<string, boolean>
 	togglePinnedApiConfig: (configName: string) => void
 	enterBehavior?: "send" | "newline"
+	uiDensity: "comfortable" | "compact"
+	language: Language
 	autoCondenseContext: boolean
 	autoCondenseContextPercent: number
 	includeDiagnosticMessages?: boolean
@@ -104,7 +109,7 @@ export interface ExtensionStateContextType extends ExtensionState {
 	setIncludeTaskHistoryInEnhance: (value: boolean) => void
 	showWorktreesInHomeScreen: boolean
 	setShowWorktreesInHomeScreen: (value: boolean) => void
-	skills?: SkillMetadata[]
+	skills: SkillMetadata[]
 }
 
 export { mergeExtensionState }
@@ -146,7 +151,8 @@ type ExtensionStateContextActions = Pick<
  * the provider's lifetime (P1: stable action identities).
  */
 const createActions = (client: Client): ExtensionStateContextActions => {
-	const setState = (update: (prevState: ExtensionState) => ExtensionState) => client.updateExtensionState(update)
+	const setState = (update: (prevState: StoredExtensionState) => StoredExtensionState) =>
+		client.updateExtensionState(update)
 
 	return {
 		setApiConfiguration: (value: ProviderSettings) =>
@@ -221,22 +227,7 @@ const buildContextValue = (store: ExtensionStore, client: Client): ExtensionStat
 	return {
 		...state,
 		...slices,
-		reasoningBlockCollapsed: state.reasoningBlockCollapsed ?? SETTINGS_DEFAULTS.reasoningBlockCollapsed,
-		soundVolume: state.soundVolume,
-		writeDelayMs: state.writeDelayMs,
-		cloudIsAuthenticated: state.cloudIsAuthenticated ?? false,
-		cloudOrganizations: state.cloudOrganizations ?? [],
-		organizationSettingsVersion: state.organizationSettingsVersion ?? -1,
-		profileThresholds: state.profileThresholds ?? {},
-		alwaysAllowFollowupQuestions:
-			state.alwaysAllowFollowupQuestions ?? SETTINGS_DEFAULTS.alwaysAllowFollowupQuestions,
-		taskSyncEnabled: state.taskSyncEnabled,
 		...client.actions,
-		enterBehavior: state.enterBehavior ?? SETTINGS_DEFAULTS.enterBehavior,
-		uiDensity: state.uiDensity ?? SETTINGS_DEFAULTS.uiDensity,
-		includeDiagnosticMessages: state.includeDiagnosticMessages,
-		maxDiagnosticMessages: state.maxDiagnosticMessages,
-		showWorktreesInHomeScreen: state.showWorktreesInHomeScreen ?? true,
 	}
 }
 
