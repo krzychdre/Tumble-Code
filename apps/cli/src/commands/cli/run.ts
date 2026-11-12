@@ -776,7 +776,7 @@ async function runTui({
 		// routed into the debug log by the host's quiet mode.
 		let crash: { error: unknown; source: string } | undefined
 
-		const disposeGuards = installProcessGuards({
+		installProcessGuards({
 			onCleanup: async () => {
 				instance.unmount()
 				// Give the unmount effects (host dispose, transcript
@@ -792,7 +792,6 @@ async function runTui({
 				debugLog(`[CLI] ${source}`, error instanceof Error ? error.stack || error.message : String(error))
 			},
 		})
-		void disposeGuards
 	} catch (error) {
 		process.stderr.write(formatCrashReport(error, { source: "starting the TUI", ...crashHintOptions }))
 		process.exit(1)

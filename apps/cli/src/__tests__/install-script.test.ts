@@ -58,7 +58,7 @@ type FakeGh = "verifies" | "fails" | "signedOut" | "tooOld"
  * build does - that the fake curl serves for download requests, so tests can
  * walk the installer all the way into the dependency-install step.
  */
-function createTarball(dir: string): string {
+function createTarball(dir: string, brokenBinary?: boolean): string {
 	const releaseName = "tumble-cli-release"
 	const root = path.join(dir, releaseName)
 	fs.mkdirSync(path.join(root, "bin"), { recursive: true })
@@ -66,7 +66,7 @@ function createTarball(dir: string): string {
 		path.join(root, "package.json"),
 		JSON.stringify({ name: "tumble-cli", version: "1.2.3", dependencies: { "left-pad": "1.3.0" } }),
 	)
-	fs.writeFileSync(path.join(root, "bin", "tumble"), "#!/bin/sh\necho 1.2.3\n")
+	fs.writeFileSync(path.join(root, "bin", "tumble"), brokenBinary ? "#!/bin/sh\nexit 1\n" : "#!/bin/sh\necho 1.2.3\n")
 	fs.writeFileSync(path.join(root, "bin", "rg"), "#!/bin/sh\n")
 	const tarball = path.join(dir, "tumble-cli-fake.tar.gz")
 	const result = spawnSync("tar", ["-czf", tarball, "-C", dir, releaseName])
@@ -87,7 +87,12 @@ function createTarball(dir: string): string {
  */
 function runInstaller(
 	env: Record<string, string> = {},
-	opts: { serveTarball?: boolean; target?: "previousInstall" | "unrelated" | "empty"; gh?: FakeGh } = {},
+	opts: {
+		serveTarball?: boolean
+		target?: "previousInstall" | "unrelated" | "empty"
+		gh?: FakeGh
+		brokenBinary?: boolean
+	} = {},
 ) {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "tumble-install-"))
 	const binDir = path.join(dir, "bin")
@@ -190,7 +195,7 @@ function runInstaller(
 		)
 	}
 
-	const runEnv = opts.serveTarball ? { ...env, TUMBLE_TARBALL: createTarball(dir) } : env
+	const runEnv = opts.serveTarball ? { ...env, TUMBLE_TARBALL: createTarball(dir, opts.brokenBinary) } : env
 
 	const result = spawnSync("sh", [INSTALL_SCRIPT], {
 		encoding: "utf8",
@@ -287,6 +292,13 @@ describe.skipIf(process.platform === "win32")("install.sh network hardening", ()
 			"npm install --omit=dev --no-audit --no-fund --loglevel=warn --prefer-offline",
 		])
 		expect(stdout).toContain("Installing dependencies...")
+	})
+
+	it("warns when the installed binary fails to start", () => {
+		const { status, stdout } = runInstaller({}, { serveTarball: true, brokenBinary: true })
+
+		expect(status).toBe(0)
+		expect(stdout).toContain("Installed binary failed to start")
 	})
 
 	it("refuses to replace a directory that is not an installation, before downloading anything", () => {

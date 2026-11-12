@@ -138,8 +138,9 @@ export class AskDispatcher {
 			} else if (isInteractiveAsk(ask)) {
 				await this.handleInteractiveAsk(ask, text)
 			} else {
+				// Every clineAsks value is classified above; this arm only fires on
+				// version skew against --extension bundles, so there is no handler.
 				debugLog("[AskDispatcher] Unknown ask type", { ask, ts })
-				await this.handleUnknownAsk(ask, text)
 			}
 		} catch {
 			// Re-allow handling on error
@@ -204,25 +205,6 @@ export class AskDispatcher {
 			case "use_mcp_server":
 				return this.handleMcpApproval(text)
 		}
-	}
-
-	/**
-	 * Handle unknown ask types.
-	 */
-	private async handleUnknownAsk(ask: ClineAsk, text: string): Promise<void> {
-		if (this.nonInteractive) {
-			if (text) {
-				this.outputManager.output(`\n[${ask}]`, text)
-			}
-			return
-		}
-
-		this.outputManager.output(`\n[${ask}]`)
-		if (text) {
-			this.outputManager.output(`  ${text}`)
-		}
-
-		await this.askYesNo("Approve? (y/n): ")
 	}
 
 	// ===========================================================================
@@ -463,13 +445,6 @@ export class AskDispatcher {
 	}
 
 	/**
-	 * Send a followup response (text answer) to the extension.
-	 */
-	private sendFollowupResponse(text: string): void {
-		this.sendMessage({ type: "askResponse", askResponse: "messageResponse", text })
-	}
-
-	/**
 	 * Send an approval response (yes/no) to the extension.
 	 */
 	private sendApprovalResponse(approved: boolean): void {
@@ -509,6 +484,6 @@ export class AskDispatcher {
 			this.sendMessage({ type: "mode", text: mode })
 		}
 
-		this.sendFollowupResponse(answer)
+		this.sendMessage({ type: "askResponse", askResponse: "messageResponse", text: answer })
 	}
 }

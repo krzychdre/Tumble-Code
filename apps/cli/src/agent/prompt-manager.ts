@@ -68,11 +68,6 @@ export class PromptManager {
 	private stdin: NodeJS.ReadStream
 	private stdout: NodeJS.WriteStream
 
-	/**
-	 * Track if a prompt is currently active.
-	 */
-	private isPrompting = false
-
 	constructor(options: PromptManagerOptions = {}) {
 		this.onBeforePrompt = options.onBeforePrompt
 		this.onAfterPrompt = options.onAfterPrompt
@@ -85,13 +80,6 @@ export class PromptManager {
 	// ===========================================================================
 
 	/**
-	 * Check if a prompt is currently active.
-	 */
-	isActive(): boolean {
-		return this.isPrompting
-	}
-
-	/**
 	 * Prompt for text input using readline.
 	 *
 	 * @param prompt - The prompt text to display
@@ -101,7 +89,6 @@ export class PromptManager {
 	async promptForInput(prompt: string): Promise<string> {
 		return new Promise((resolve, reject) => {
 			this.beforePrompt()
-			this.isPrompting = true
 
 			const rl = readline.createInterface({
 				input: this.stdin,
@@ -110,19 +97,16 @@ export class PromptManager {
 
 			rl.question(prompt, (answer) => {
 				rl.close()
-				this.isPrompting = false
 				this.afterPrompt()
 				resolve(answer)
 			})
 
 			rl.on("close", () => {
-				this.isPrompting = false
 				this.afterPrompt()
 			})
 
 			rl.on("error", (err) => {
 				rl.close()
-				this.isPrompting = false
 				this.afterPrompt()
 				reject(err)
 			})
@@ -139,7 +123,7 @@ export class PromptManager {
 	async promptForYesNo(prompt: string, defaultValue = false): Promise<boolean> {
 		const answer = await this.promptForInput(prompt)
 		const normalized = answer.trim().toLowerCase()
-		if (normalized === "" && defaultValue !== undefined) {
+		if (normalized === "") {
 			return defaultValue
 		}
 		return normalized === "y" || normalized === "yes"
@@ -157,7 +141,6 @@ export class PromptManager {
 	async promptWithTimeout(prompt: string, timeoutMs: number, defaultValue: string): Promise<TimedPromptResult> {
 		return new Promise((resolve) => {
 			this.beforePrompt()
-			this.isPrompting = true
 
 			// Track the original raw mode state to restore it later
 			const wasRaw = this.stdin.isRaw
@@ -196,7 +179,6 @@ export class PromptManager {
 				}
 
 				this.stdin.pause()
-				this.isPrompting = false
 				this.afterPrompt()
 			}
 
@@ -246,37 +228,6 @@ export class PromptManager {
 
 			this.stdin.on("data", onData)
 		})
-	}
-
-	/**
-	 * Prompt for yes/no with timeout.
-	 *
-	 * @param prompt - The prompt text to display
-	 * @param timeoutMs - Timeout in milliseconds
-	 * @param defaultValue - Default boolean value if timed out
-	 * @returns true for yes, false for no
-	 */
-	async promptForYesNoWithTimeout(prompt: string, timeoutMs: number, defaultValue: boolean): Promise<boolean> {
-		const result = await this.promptWithTimeout(prompt, timeoutMs, defaultValue ? "y" : "n")
-		const normalized = result.value.trim().toLowerCase()
-		if (result.timedOut || result.cancelled || normalized === "") {
-			return defaultValue
-		}
-		return normalized === "y" || normalized === "yes"
-	}
-
-	/**
-	 * Display a message on stdout (utility for prompting context).
-	 */
-	write(text: string): void {
-		this.stdout.write(text)
-	}
-
-	/**
-	 * Display a message with newline.
-	 */
-	writeLine(text: string): void {
-		this.stdout.write(text + "\n")
 	}
 
 	// ===========================================================================

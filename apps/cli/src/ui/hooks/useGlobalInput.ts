@@ -61,7 +61,6 @@ export function useGlobalInput({
 		showMcpPanel,
 		setShowMcpPanel,
 		showModelPicker,
-		showExitHint: _showExitHint,
 		setShowExitHint,
 		pendingExit,
 		setPendingExit,

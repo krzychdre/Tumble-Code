@@ -120,8 +120,12 @@ export function readVsCodeConfig(): VsCodeProviderConfig | undefined {
 	return config
 }
 
-/** The provider id from a v2 envelope (or its legacy flat apiConfigs). */
-function readEnvelopeProvider(secrets: Record<string, unknown> | undefined): string | undefined {
+/**
+ * The parsed `data` object of the provider-profiles envelope, or undefined
+ * when absent or malformed. The secrets file is written by another build, so
+ * the shape is not guaranteed.
+ */
+function readEnvelopeData(secrets: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
 	const envelope = secrets?.[PROVIDER_PROFILES_SECRETS_KEY]
 	if (typeof envelope !== "string" || !envelope) return undefined
 
@@ -132,58 +136,51 @@ function readEnvelopeProvider(secrets: Record<string, unknown> | undefined): str
 		const data = (parsed as { data?: unknown }).data
 		if (!data || typeof data !== "object" || Array.isArray(data)) return undefined
 
-		const profiles = data as {
-			currentApiConfigName?: string
-			apiConfigs?: Record<string, { provider?: { providerId?: string } }>
-		}
-
-		const current = profiles.currentApiConfigName
-		const apiConfigs = profiles.apiConfigs ?? {}
-		const currentConfig = current ? apiConfigs[current] : undefined
-
-		// v2 known profile shape: { provider: { providerId, config } }
-		if (currentConfig?.provider?.providerId) {
-			return currentConfig.provider.providerId
-		}
-
-		// v1 legacy flat shape: { apiProvider, ... }
-		if (currentConfig && "apiProvider" in currentConfig) {
-			return (currentConfig as { apiProvider?: string }).apiProvider
-		}
-
-		// Fall back to the first profile.
-		const first = Object.values(apiConfigs)[0]
-		if (first?.provider?.providerId) return first.provider.providerId
+		return data as Record<string, unknown>
 	} catch {
-		// fall through
+		return undefined
 	}
+}
+
+/** The provider id from a v2 envelope (or its legacy flat apiConfigs). */
+function readEnvelopeProvider(secrets: Record<string, unknown> | undefined): string | undefined {
+	const data = readEnvelopeData(secrets)
+	if (!data) return undefined
+
+	const current = data.currentApiConfigName as string | undefined
+	const apiConfigs = (data.apiConfigs ?? {}) as Record<string, { provider?: { providerId?: string } }>
+	const currentConfig = current ? apiConfigs[current] : undefined
+
+	// v2 known profile shape: { provider: { providerId, config } }
+	if (currentConfig?.provider?.providerId) {
+		return currentConfig.provider.providerId
+	}
+
+	// v1 legacy flat shape: { apiProvider, ... }
+	if (currentConfig && "apiProvider" in currentConfig) {
+		return (currentConfig as { apiProvider?: string }).apiProvider
+	}
+
+	// Fall back to the first profile.
+	const first = Object.values(apiConfigs)[0]
+	if (first?.provider?.providerId) return first.provider.providerId
 
 	return undefined
 }
 
 /** The active profile's provider config (v2) — {} when absent. */
 function readEnvelopeProfile(secrets: Record<string, unknown> | undefined): Record<string, unknown> {
-	const envelope = secrets?.[PROVIDER_PROFILES_SECRETS_KEY]
-	if (typeof envelope !== "string" || !envelope) return {}
+	const data = readEnvelopeData(secrets)
+	if (!data) return {}
 
-	try {
-		const parsed: unknown = JSON.parse(envelope)
-		if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {}
-
-		const data = (parsed as { data?: { currentApiConfigName?: string; apiConfigs?: Record<string, unknown> } }).data
-		if (!data || typeof data !== "object" || Array.isArray(data)) return {}
-
-		const current = data.currentApiConfigName
-		const apiConfigs = data.apiConfigs ?? {}
-		const currentConfig = current ? (apiConfigs[current] as Record<string, unknown> | undefined) : undefined
-		if (currentConfig?.provider && typeof currentConfig.provider === "object") {
-			const provider = currentConfig.provider as { config?: Record<string, unknown> }
-			return provider.config ?? {}
-		}
-		if (currentConfig && "apiProvider" in currentConfig) return currentConfig
-	} catch {
-		// fall through
+	const current = data.currentApiConfigName as string | undefined
+	const apiConfigs = (data.apiConfigs ?? {}) as Record<string, unknown>
+	const currentConfig = current ? (apiConfigs[current] as Record<string, unknown> | undefined) : undefined
+	if (currentConfig?.provider && typeof currentConfig.provider === "object") {
+		const provider = currentConfig.provider as { config?: Record<string, unknown> }
+		return provider.config ?? {}
 	}
+	if (currentConfig && "apiProvider" in currentConfig) return currentConfig
 
 	return {}
 }
@@ -199,25 +196,21 @@ function readEnvelopeProfile(secrets: Record<string, unknown> | undefined): Reco
  * @param keyField the provider-specific key settings field (from getApiKeyField)
  */
 function readEnvelopeSecret(secrets: Record<string, unknown> | undefined, keyField: string): string | undefined {
-	const envelope = secrets?.[PROVIDER_PROFILES_SECRETS_KEY]
-	if (typeof envelope !== "string" || !envelope) return undefined
+	const data = readEnvelopeData(secrets)
+	if (!data) return undefined
+
+	const current = data.currentApiConfigName as string | undefined
+	const apiConfigs = (data.apiConfigs ?? {}) as Record<string, unknown>
+	const currentConfig = current ? (apiConfigs[current] as { id?: string } | undefined) : undefined
+	const profileId = currentConfig?.id
+	if (!profileId) return undefined
+
+	// v2 secrets shape: { apiKey, openRouterApiKey, ... } per profile id,
+	// stored under `roo_cline_config_provider_profile_secrets_v2`.
+	const envelopeValue = secrets?.["roo_cline_config_provider_profile_secrets_v2"]
+	if (typeof envelopeValue !== "string") return undefined
 
 	try {
-		const parsed: unknown = JSON.parse(envelope)
-		if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return undefined
-		const data = (parsed as { data?: { currentApiConfigName?: string; apiConfigs?: Record<string, unknown> } }).data
-		if (!data || typeof data !== "object") return undefined
-
-		const current = data.currentApiConfigName
-		const currentConfig = current ? (data.apiConfigs?.[current] as { id?: string } | undefined) : undefined
-		const profileId = currentConfig?.id
-		if (!profileId) return undefined
-
-		// v2 secrets shape: { apiKey, openRouterApiKey, ... } per profile id,
-		// stored under `roo_cline_config_provider_profile_secrets_v2`.
-		const secretStoreKey = "roo_cline_config_provider_profile_secrets_v2"
-		const envelopeValue = secrets[secretStoreKey]
-		if (typeof envelopeValue !== "string") return undefined
 		const secretMap = JSON.parse(envelopeValue) as Record<string, Record<string, unknown>>
 		const profileSecrets = secretMap[profileId] ?? {}
 		const value = profileSecrets[keyField]
