@@ -148,6 +148,8 @@ export class McpConfigStore {
 		if (!config || typeof config !== "object") {
 			throw new Error("Invalid config structure")
 		}
+		// A user-edited file may lack the section; entries can then be added to the empty one.
+		config.mcpServers ??= {}
 		return { path: filePath, config }
 	}
 

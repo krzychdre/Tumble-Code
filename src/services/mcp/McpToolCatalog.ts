@@ -243,14 +243,10 @@ export class McpToolCatalog {
 		const connection = this.deps.findConnection(serverName, source)
 
 		if (!connection) {
-			throw new Error(`Server ${serverName} with source ${source} not found`)
+			throw new Error(`Server ${serverName}${source ? ` with source ${source}` : ""} not found`)
 		}
 
 		const { path: configPath, config } = await this.deps.configStore.readForUpdate(source)
-
-		if (!config.mcpServers) {
-			config.mcpServers = {}
-		}
 
 		if (!config.mcpServers[serverName]) {
 			config.mcpServers[serverName] = {

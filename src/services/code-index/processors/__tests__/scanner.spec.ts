@@ -40,6 +40,9 @@ vi.mock("vscode", () => ({
 				fsPath: "/mock/workspace",
 			},
 		}),
+		getConfiguration: () => ({
+			get: (_key: string, defaultValue: number) => defaultValue,
+		}),
 		fs: {
 			readFile: vi.fn().mockResolvedValue(Buffer.from("test content")),
 		},

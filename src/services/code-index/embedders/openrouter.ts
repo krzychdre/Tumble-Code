@@ -4,7 +4,7 @@ import { getDefaultModelId } from "../../../shared/embeddingModels"
 import { t } from "../../../i18n"
 import { handleProviderError } from "../../../api/providers/utils/error-handler"
 import { APP_ATTRIBUTION_HEADERS } from "../../../api/providers/constants"
-import { BaseHttpEmbedder, EmbedBatchResult, decodeEmbedding } from "./base-http-embedder"
+import { BaseHttpEmbedder, EmbedBatchResult, decodeEmbedding, openAiEmbeddingUsage } from "./base-http-embedder"
 
 // Default provider name when no specific provider is selected
 export const OPENROUTER_DEFAULT_PROVIDER_NAME = "[default]"
@@ -103,10 +103,7 @@ export class OpenRouterEmbedder extends BaseHttpEmbedder {
 
 		return {
 			embeddings: (response?.data ?? []).map((item) => decodeEmbedding(item.embedding)),
-			usage: {
-				promptTokens: response?.usage?.prompt_tokens || 0,
-				totalTokens: response?.usage?.total_tokens || 0,
-			},
+			usage: openAiEmbeddingUsage(response?.usage),
 		}
 	}
 }

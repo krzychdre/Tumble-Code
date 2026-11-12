@@ -3,7 +3,7 @@ import { ApiHandlerOptions } from "@tumble-code/core/browser"
 import { EmbedderInfo } from "../interfaces"
 import { t } from "../../../i18n"
 import { handleProviderError } from "../../../api/providers/utils/error-handler"
-import { BaseHttpEmbedder, EmbedBatchResult } from "./base-http-embedder"
+import { BaseHttpEmbedder, EmbedBatchResult, openAiEmbeddingUsage } from "./base-http-embedder"
 
 /** Rate-limit key for the OpenAI embeddings endpoint (the client always uses the SDK default). */
 const OPENAI_ENDPOINT = "https://api.openai.com/v1"
@@ -61,10 +61,7 @@ export class OpenAiEmbedder extends BaseHttpEmbedder {
 
 		return {
 			embeddings: (response?.data ?? []).map((item) => item.embedding),
-			usage: {
-				promptTokens: response?.usage?.prompt_tokens || 0,
-				totalTokens: response?.usage?.total_tokens || 0,
-			},
+			usage: openAiEmbeddingUsage(response?.usage),
 		}
 	}
 }
