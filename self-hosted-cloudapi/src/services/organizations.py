@@ -33,9 +33,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.auth.authentik import fetch_groups
-from src.database import async_session_factory
 from src.models.organization import Membership, Organization
 from src.models.user import User
+from src.services.periodic import run_periodic
 from src.utils.pagination import paginate
 
 logger = logging.getLogger(__name__)
@@ -220,14 +220,7 @@ async def reconcile_organizations(
 
 
 async def run_organization_sync_loop() -> None:
-    """Sync now and then every ``SYNC_SECONDS``, forever; a failure is logged
-    and the next tick tries again (as in services/retention_scheduler)."""
-    while True:
-        try:
-            async with async_session_factory() as db:
-                await sync_organizations(db)
-        except asyncio.CancelledError:
-            raise
-        except Exception:
-            logger.exception("[organizations] sync failed; will retry next tick")
-        await asyncio.sleep(SYNC_SECONDS)
+    """Sync now and then every ``SYNC_SECONDS``, forever."""
+    await run_periodic(
+        "organizations", SYNC_SECONDS, sync_organizations, sleep_first=False
+    )

@@ -1,6 +1,5 @@
 """Authentication service - handles sign-in, session, and user management."""
 
-import asyncio
 import hashlib
 import logging
 import secrets
@@ -12,9 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 
-from src.database import async_session_factory
 from src.models.user import User, Session, ClientToken, Ticket
 from src.models.oauth import AuthentikStateStore
+from src.services.periodic import run_periodic
 from config.settings import settings
 
 logger = logging.getLogger(__name__)
@@ -318,18 +317,14 @@ async def purge_expired_auth_rows(
 AUTH_PURGE_SECONDS = 3600
 
 
+async def _purge(db: AsyncSession) -> None:
+    purged = await purge_expired_auth_rows(db)
+    await db.commit()
+    if purged:
+        logger.info("[auth] purged %s expired auth row(s)", purged)
+
+
 async def run_auth_purge_loop() -> None:
     """Purge expired auth rows now and then every ``AUTH_PURGE_SECONDS``,
-    forever; a failure is logged and the next tick tries again."""
-    while True:
-        try:
-            async with async_session_factory() as db:
-                purged = await purge_expired_auth_rows(db)
-                await db.commit()
-            if purged:
-                logger.info("[auth] purged %s expired auth row(s)", purged)
-        except asyncio.CancelledError:
-            raise
-        except Exception:
-            logger.exception("[auth] purge failed; will retry next tick")
-        await asyncio.sleep(AUTH_PURGE_SECONDS)
+    forever."""
+    await run_periodic("auth", AUTH_PURGE_SECONDS, _purge, sleep_first=False)
