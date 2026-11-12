@@ -6,8 +6,10 @@ import type {
 	AskApproval,
 	AskFinishSubTaskApproval,
 	HandleError,
+	McpToolUse,
 	PushToolResult,
 	ToolResponse,
+	ToolUse,
 } from "../../shared/tools"
 
 import { serializeThrown } from "../../utils/errors"
@@ -106,8 +108,11 @@ function messageOf(value: unknown): string | undefined {
 }
 
 export interface ToolCallbackOptions {
-	/** The block being executed. Only its kind is read, to label the duplicate-result warning. */
-	block: { type: "tool_use" | "mcp_tool_use" }
+	/**
+	 * The block being executed. Its kind labels the duplicate-result warning, and a
+	 * `tool_use` block reports its result to the repetition detector.
+	 */
+	block: ToolUse | McpToolUse
 	/**
 	 * The provider's id for this tool call, echoed back as `tool_use_id`. A `tool_use` block
 	 * always has one (the dispatcher rejects it earlier otherwise); an `mcp_tool_use` block may
@@ -146,6 +151,10 @@ export function createToolCallbacks(task: Task, { block, toolCallId, toolName }:
 		if (hasToolResult) {
 			logger.warn(`[presentAssistantMessage] Skipping duplicate tool_result for ${duplicateLabel}: ${toolCallId}`)
 			return
+		}
+
+		if (block.type === "tool_use") {
+			task.toolRepetitionDetector.recordResult(block, content)
 		}
 
 		let resultContent: string

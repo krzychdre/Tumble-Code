@@ -43,6 +43,7 @@ function makeTask() {
 				log.push("repetitionCheck")
 				return { allowExecution: true }
 			}),
+			recordResult: vi.fn(),
 		},
 		checkpointSave: vi.fn(async () => void log.push("checkpointSave")),
 		providerRef: {

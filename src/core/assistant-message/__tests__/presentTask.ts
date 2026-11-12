@@ -27,7 +27,10 @@ export function makePresentTask(overrides: Record<string, unknown> = {}): any {
 		api: { getModel: () => ({ id: "test-model", info: {} }) },
 		recordToolUsage: vi.fn(),
 		recordToolError: vi.fn(),
-		toolRepetitionDetector: { check: vi.fn().mockReturnValue({ allowExecution: true }) },
+		toolRepetitionDetector: {
+			check: vi.fn().mockReturnValue({ allowExecution: true }),
+			recordResult: vi.fn(),
+		},
 		getTaskMode: vi.fn().mockResolvedValue("code"),
 		checkpointSave: vi.fn().mockResolvedValue(undefined),
 		providerRef: {

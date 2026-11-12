@@ -1,6 +1,6 @@
 import type { ToolName } from "@tumble-code/types"
 
-import type { ToolUse } from "../../../shared/tools"
+import type { ToolResponse, ToolUse } from "../../../shared/tools"
 
 import { ToolRepetitionDetector } from "../ToolRepetitionDetector"
 
@@ -136,6 +136,66 @@ describe("ToolRepetitionDetector", () => {
 			expect(detector.check(createToolUse("read_file")).allowExecution).toBe(true)
 			expect(detector.check(createToolUse("read_file")).allowExecution).toBe(true)
 			expect(detector.check(createToolUse("read_file")).allowExecution).toBe(false)
+		})
+	})
+
+	describe("recordResult", () => {
+		const call = createToolUse("execute_command", { command: "sleep 300; tail -1 build.log" })
+
+		/** Whether each check of the same call was allowed, given the result of every call that ran. */
+		const run = (results: ToolResponse[]): boolean[] => {
+			const detector = new ToolRepetitionDetector(3)
+			const flags: boolean[] = []
+			for (const result of results) {
+				const { allowExecution } = detector.check(call)
+				flags.push(allowExecution)
+				if (allowExecution) {
+					detector.recordResult(call, result)
+				}
+			}
+			return flags
+		}
+
+		const screenshot = (data: string): ToolResponse => [
+			{ type: "text", text: "shot" },
+			{ type: "image", source: { type: "base64", media_type: "image/png", data } },
+		]
+
+		it.each([
+			["every result different", ["a", "b", "c", "d", "e", "f"], [true, true, true, true, true, true]],
+			["every result identical", ["a", "a", "a", "a"], [true, true, true, false]],
+			[
+				"the run restarts when the result changes",
+				["a", "a", "b", "b", "b", "b"],
+				[true, true, true, true, true, false],
+			],
+			[
+				"an image that changes counts as a different result",
+				[screenshot("1"), screenshot("2"), screenshot("3"), screenshot("4")],
+				[true, true, true, true],
+			],
+		])("%s", (_, results, expected) => {
+			expect(run(results)).toEqual(expected)
+		})
+
+		it("ignores a result recorded for another call", () => {
+			const detector = new ToolRepetitionDetector(3)
+			const flags: boolean[] = []
+			const poll = (result: string) => {
+				const { allowExecution } = detector.check(call)
+				flags.push(allowExecution)
+				if (allowExecution) {
+					detector.recordResult(call, result)
+				}
+			}
+
+			poll("a")
+			detector.recordResult(createToolUse("read_file", { path: "b.ts" }), "zzz")
+			poll("a")
+			poll("a")
+			poll("a")
+
+			expect(flags).toEqual([true, true, true, false])
 		})
 	})
 })
