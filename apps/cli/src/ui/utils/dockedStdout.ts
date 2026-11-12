@@ -25,6 +25,8 @@
  * Only string chunks are tracked; ink never writes buffers.
  */
 
+import { wrapStreamWrite } from "./wrapStreamWrite.js"
+
 const ESC = "\x1b"
 const INERT_CHUNKS = new Set([
 	ESC + "[?2026h", // begin synchronized update
@@ -166,20 +168,5 @@ export function createDockedStdout<T extends NodeJS.WriteStream>(stream: T): T {
 		return chunk
 	}
 
-	const write = (chunk: unknown, ...rest: unknown[]): boolean => {
-		const data = typeof chunk === "string" ? dock(chunk) : chunk
-		return (stream.write as (...args: unknown[]) => boolean)(data, ...rest)
-	}
-
-	return new Proxy(stream, {
-		get(target, property) {
-			if (property === "write") {
-				return write
-			}
-			// Methods must run against the real stream (event emitter state,
-			// `columns`/`rows` getters), not against the proxy.
-			const value = Reflect.get(target, property, target)
-			return typeof value === "function" ? value.bind(target) : value
-		},
-	})
+	return wrapStreamWrite(stream, dock)
 }

@@ -343,32 +343,7 @@ export function useAutocompletePicker<T extends AutocompleteItem>(
 			const results = refreshFn(query)
 
 			// Handle both sync and async search results
-			if (results instanceof Promise) {
-				results.then((asyncResults) => {
-					setState((prev) => {
-						// Only update if still the same trigger
-						if (prev.activeTrigger?.id !== activeTrigger.id) {
-							return prev
-						}
-
-						// Only update if results actually changed to avoid unnecessary re-renders
-						if (
-							prev.results.length === asyncResults.length &&
-							prev.results.every((r, i) => r.key === asyncResults[i]?.key)
-						) {
-							return { ...prev, isLoading: false }
-						}
-
-						return {
-							...prev,
-							results: asyncResults,
-							// Preserve selectedIndex if within bounds, otherwise reset to 0
-							selectedIndex: prev.selectedIndex < asyncResults.length ? prev.selectedIndex : 0,
-							isLoading: false,
-						}
-					})
-				})
-			} else {
+			const apply = (next: T[]): void => {
 				setState((prev) => {
 					// Only update if still the same trigger
 					if (prev.activeTrigger?.id !== activeTrigger.id) {
@@ -376,21 +351,24 @@ export function useAutocompletePicker<T extends AutocompleteItem>(
 					}
 
 					// Only update if results actually changed to avoid unnecessary re-renders
-					if (
-						prev.results.length === results.length &&
-						prev.results.every((r, i) => r.key === results[i]?.key)
-					) {
+					if (prev.results.length === next.length && prev.results.every((r, i) => r.key === next[i]?.key)) {
 						return { ...prev, isLoading: false }
 					}
 
 					return {
 						...prev,
-						results,
+						results: next,
 						// Preserve selectedIndex if within bounds, otherwise reset to 0
-						selectedIndex: prev.selectedIndex < results.length ? prev.selectedIndex : 0,
+						selectedIndex: prev.selectedIndex < next.length ? prev.selectedIndex : 0,
 						isLoading: false,
 					}
 				})
+			}
+
+			if (results instanceof Promise) {
+				results.then(apply)
+			} else {
+				apply(results)
 			}
 		} catch (_error) {
 			// Silently fail on refresh errors.

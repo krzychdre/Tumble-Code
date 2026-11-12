@@ -1,7 +1,6 @@
 import { memo } from "react"
 
-import type { ToolData, TUIMessage } from "../types.js"
-import { extractToolData } from "../utils/tools.js"
+import type { TUIMessage } from "../types.js"
 
 import TodoDisplay from "./TodoDisplay.js"
 import { getToolRenderer } from "./tools/index.js"
@@ -22,25 +21,6 @@ interface ChatHistoryItemProps {
 	 * 2026-09-23 cli live block under ctrl+o).
 	 */
 	expanded?: boolean
-}
-
-/**
- * Try to parse raw JSON content into structured ToolData so legacy tool
- * messages (added without a pre-built toolData field) still render with
- * the correct specialized renderer and extracted path/badges.
- */
-function tryExtractToolData(content: string, toolName?: string): ToolData | null {
-	try {
-		const parsed = JSON.parse(content) as Record<string, unknown>
-		const data = extractToolData(parsed)
-		// Prefer the message-level toolName when the JSON lacks one
-		if (!data.tool || data.tool === "unknown") {
-			data.tool = toolName || "unknown"
-		}
-		return data
-	} catch {
-		return null
-	}
 }
 
 /**
@@ -80,22 +60,7 @@ function ChatHistoryItem({ message, expanded = false }: ChatHistoryItemProps) {
 				)
 			}
 
-			// Legacy fallback: try to extract toolData from raw JSON content,
-			// then route through the specialized renderer if extraction succeeds.
-			const extracted = tryExtractToolData(message.content, message.toolName)
-			if (extracted) {
-				const ToolRenderer = getToolRenderer(extracted.tool)
-				return (
-					<ToolRenderer
-						toolData={extracted}
-						rawContent={message.content}
-						message={message}
-						expanded={expanded}
-					/>
-				)
-			}
-
-			// Final fallback for non-JSON content
+			// The reducer attaches toolData to every tool row it ships
 			return (
 				<GenericTool
 					toolData={{ tool: message.toolName || "unknown", content: message.content }}

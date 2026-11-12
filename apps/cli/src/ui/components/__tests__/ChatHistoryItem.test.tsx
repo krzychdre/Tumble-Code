@@ -52,35 +52,18 @@ describe("ChatHistoryItem", () => {
 			expect(output).toContain("Run it")
 		})
 
-		it.each([
-			[
-				"structured toolData",
-				{ content: "raw", toolData: { tool: "execute_command", command: "cat f", output: commandOutput } },
-			],
-			[
-				"JSON content",
-				{ content: JSON.stringify({ tool: "execute_command", command: "cat f", output: commandOutput }) },
-			],
-		])("routes %s to its renderer and forwards expanded", (_name, fields) => {
-			const message = { role: "tool" as const, toolName: "execute_command", ...fields }
+		it("routes structured toolData to its renderer and forwards expanded", () => {
+			const message = {
+				role: "tool" as const,
+				toolName: "execute_command",
+				content: "raw",
+				toolData: { tool: "execute_command", command: "cat f", output: commandOutput },
+			}
 
 			expect(frame(message)).toContain("Bash(cat f)")
 			expect(frame(message)).toContain("+30 lines")
 			expect(frame(message, true)).toContain("line 30")
 			expect(frame(message, true)).not.toContain("+30 lines")
-		})
-
-		it.each([
-			["readFile", { path: "src/test.ts", content: "one\ntwo\nthree" }, ["Read", "src/test.ts", "⎿"]],
-			["listFilesRecursive", { path: "src/", content: "a\nb" }, ["List", "src/"]],
-			["searchFiles", {}, ["Search"]],
-			["readFile", { path: "/etc/hosts", isOutsideWorkspace: true, content: "x" }, ["outside workspace"]],
-		])("names the %s tool from JSON content", (tool, fields, expected) => {
-			const output = frame({ role: "tool", toolName: tool, content: JSON.stringify({ tool, ...fields }) })
-
-			for (const text of expected) {
-				expect(output).toContain(text)
-			}
 		})
 
 		it("renders attempt_completion's result", () => {
@@ -95,17 +78,19 @@ describe("ChatHistoryItem", () => {
 			expect(output).toContain(result)
 		})
 
-		it("takes the tool from the message when the JSON does not name it", () => {
-			expect(frame({ role: "tool", toolName: "searchFiles", content: JSON.stringify({ regex: "x" }) })).toContain(
-				"Search",
-			)
-		})
+		it("falls back to the generic row without toolData", () => {
+			const plain = frame({ role: "tool", toolName: "test_tool", content: "Output\r\nwith\rCR" }, true)
 
-		it("falls back to the generic row for content that is not JSON", () => {
-			const output = frame({ role: "tool", toolName: "test_tool", content: "Output\r\nwith\rCR" }, true)
+			expect(plain).toContain("test_tool")
+			expect(plain).not.toContain("\r")
 
-			expect(output).toContain("test_tool")
-			expect(output).not.toContain("\r")
+			// The same row shape whether the content parses as JSON or not:
+			// the generic row with the humanized tool name and the raw content
+			const json = frame({ role: "tool", toolName: "readFile", content: JSON.stringify({ path: "src/a.ts" }) })
+
+			expect(json).toContain("Read")
+			expect(json).toContain('{"path":"src/a.ts"}')
+			expect(json).not.toContain("Read(src/a.ts)")
 		})
 	})
 })

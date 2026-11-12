@@ -152,11 +152,6 @@ export interface ExtensionHostOptions {
 	 */
 	disableOutput?: boolean
 	/**
-	 * When true, don't suppress node warnings and console output since we're
-	 * running in an integration test and we want to see the output.
-	 */
-	integrationTest?: boolean
-	/**
 	 * Opens a URL the extension hands to `vscode.env.openExternal` (the cloud
 	 * sign-in page). Default: the platform's browser opener.
 	 */
@@ -396,8 +391,8 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 	// ==========================================================================
 
 	private setupQuietMode(): void {
-		// Skip if already set up or if integrationTest mode
-		if (this.originalConsole || this.options.integrationTest) {
+		// Skip if already set up
+		if (this.originalConsole) {
 			return
 		}
 
