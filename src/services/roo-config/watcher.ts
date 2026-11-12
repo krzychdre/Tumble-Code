@@ -32,6 +32,5 @@ export function registerRooDirectoryWatchers(): vscode.Disposable[] {
 		logger.warn(`[roo-config] Could not watch .roo directories; lookups refresh on a timer instead: ${error}`)
 	}
 
-	// Test doubles of the watcher API return undefined from the event hooks.
-	return disposables.filter((disposable) => typeof disposable?.dispose === "function")
+	return disposables
 }

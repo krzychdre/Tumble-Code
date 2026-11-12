@@ -3,26 +3,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { TumbleCodeEventName } from "@tumble-code/types"
 
-/* vscode mock for Task/Provider imports */
-vi.mock("vscode", () => {
-	const window = {
-		createTextEditorDecorationType: vi.fn(() => ({ dispose: vi.fn() })),
-		showErrorMessage: vi.fn(),
-		onDidChangeActiveTextEditor: vi.fn(() => ({ dispose: vi.fn() })),
-	}
-	const workspace = {
-		getConfiguration: vi.fn(() => ({
-			get: vi.fn((_key: string, defaultValue: any) => defaultValue),
-			update: vi.fn(),
-		})),
-		workspaceFolders: [],
-	}
-	const env = { machineId: "test-machine", uriScheme: "vscode", appName: "VSCode", language: "en", sessionId: "sess" }
-	const Uri = { file: (p: string) => ({ fsPath: p, toString: () => p }) }
-	const commands = { executeCommand: vi.fn() }
-	const ExtensionMode = { Development: 2 }
-	const version = "1.0.0-test"
-	return { window, workspace, env, Uri, commands, ExtensionMode, version }
+vi.mock("vscode", async () => {
+	const { vscodeModuleMock } = await import("./helpers/vscodeMock")
+	return vscodeModuleMock()
 })
 
 // Mock persistence BEFORE importing provider

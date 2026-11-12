@@ -145,32 +145,29 @@ export async function initializeNetworkProxy(context: vscode.ExtensionContext): 
 	)
 
 	// Listen for configuration changes to allow toggling proxy during a debug session.
-	// Guard for test environments where onDidChangeConfiguration may not be mocked.
-	if (typeof vscode.workspace.onDidChangeConfiguration === "function") {
-		context.subscriptions.push(
-			vscode.workspace.onDidChangeConfiguration((e) => {
-				if (
-					e.affectsConfiguration(`${Package.name}.debugProxy.enabled`) ||
-					e.affectsConfiguration(`${Package.name}.debugProxy.serverUrl`) ||
-					e.affectsConfiguration(`${Package.name}.debugProxy.tlsInsecure`)
-				) {
-					const newConfig = getProxyConfig()
+	context.subscriptions.push(
+		vscode.workspace.onDidChangeConfiguration((e) => {
+			if (
+				e.affectsConfiguration(`${Package.name}.debugProxy.enabled`) ||
+				e.affectsConfiguration(`${Package.name}.debugProxy.serverUrl`) ||
+				e.affectsConfiguration(`${Package.name}.debugProxy.tlsInsecure`)
+			) {
+				const newConfig = getProxyConfig()
 
-					if (newConfig.enabled) {
-						applyTlsVerificationOverride(newConfig)
-						configureGlobalProxy(newConfig)
-						configureUndiciProxy(newConfig)
-					} else {
-						// Proxy disabled - but we can't easily un-bootstrap global-agent or reset undici dispatcher safely.
-						// We *can* restore any global fetch patch immediately.
-						restoreGlobalFetchPatch()
-						restoreTlsVerificationOverride()
-						log("Debug proxy disabled. Restart VS Code to fully disable proxy routing.")
-					}
+				if (newConfig.enabled) {
+					applyTlsVerificationOverride(newConfig)
+					configureGlobalProxy(newConfig)
+					configureUndiciProxy(newConfig)
+				} else {
+					// Proxy disabled - but we can't easily un-bootstrap global-agent or reset undici dispatcher safely.
+					// We *can* restore any global fetch patch immediately.
+					restoreGlobalFetchPatch()
+					restoreTlsVerificationOverride()
+					log("Debug proxy disabled. Restart VS Code to fully disable proxy routing.")
 				}
-			}),
-		)
-	}
+			}
+		}),
+	)
 
 	// Ensure we restore any overrides when the extension unloads.
 	context.subscriptions.push({
@@ -304,10 +301,7 @@ async function configureUndiciProxy(config: ProxyConfig): Promise<void> {
 		// This patch is scoped to the extension lifecycle (restored on deactivate) and can be restored
 		// immediately if the proxy is disabled.
 		if (!fetchPatched) {
-			if (typeof globalThis.fetch === "function") {
-				originalFetch = globalThis.fetch
-			}
-
+			originalFetch = globalThis.fetch
 			globalThis.fetch = undiciFetch as unknown as typeof fetch
 			fetchPatched = true
 			log(`globalThis.fetch patched to undici.fetch (debug proxy mode)`)

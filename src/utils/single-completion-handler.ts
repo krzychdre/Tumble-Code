@@ -26,13 +26,6 @@ export async function singleCompletionWithUsage(
 	apiConfiguration: ProviderSettings,
 	promptText: string,
 ): Promise<CompletionResult> {
-	if (!promptText) {
-		throw new Error("No prompt text provided")
-	}
-	if (!apiConfiguration || !apiConfiguration.apiProvider) {
-		throw new Error("No valid API configuration provided")
-	}
-
 	const handler = buildApiHandler(apiConfiguration)
 
 	try {

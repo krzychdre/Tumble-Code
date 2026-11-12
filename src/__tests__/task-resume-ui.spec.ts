@@ -6,38 +6,22 @@ import { TaskSlot } from "../core/webview/TaskSlot"
 import { SubagentRegistry } from "../core/webview/SubagentRegistry"
 import { PendingEditOperations } from "../core/webview/PendingEditOperations"
 
-vi.mock("vscode", () => {
-	const window = {
-		createTextEditorDecorationType: vi.fn(() => ({ dispose: vi.fn() })),
-		showErrorMessage: vi.fn(),
-		showInformationMessage: vi.fn(),
-		showWarningMessage: vi.fn(),
-		onDidChangeActiveTextEditor: vi.fn(() => ({ dispose: vi.fn() })),
-	}
-	const workspace = {
-		getConfiguration: vi.fn(() => ({
-			get: vi.fn((_key: string, defaultValue: any) => defaultValue),
-			update: vi.fn(),
-		})),
-		workspaceFolders: [],
-		onDidChangeConfiguration: vi.fn(() => ({ dispose: vi.fn() })),
-		onDidSaveTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-		onDidChangeTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-		onDidOpenTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-		onDidCloseTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-	}
-	const env = {
-		machineId: "test-machine",
-		uriScheme: "vscode",
-		appName: "VSCode",
-		language: "en",
-		sessionId: "sess",
-	}
-	const Uri = { file: (p: string) => ({ fsPath: p, toString: () => p }) }
-	const commands = { executeCommand: vi.fn() }
-	const ExtensionMode = { Development: 2, Test: 3 }
-	const version = "1.0.0-test"
-	return { window, workspace, env, Uri, commands, ExtensionMode, version }
+vi.mock("vscode", async () => {
+	const { vscodeModuleMock } = await import("./helpers/vscodeMock")
+	return vscodeModuleMock({
+		window: {
+			showInformationMessage: vi.fn(),
+			showWarningMessage: vi.fn(),
+		},
+		workspace: {
+			onDidChangeConfiguration: vi.fn(() => ({ dispose: vi.fn() })),
+			onDidSaveTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
+			onDidChangeTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
+			onDidOpenTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
+			onDidCloseTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
+		},
+		ExtensionMode: { Development: 2, Test: 3 },
+	})
 })
 
 vi.mock("../core/task/Task", () => {

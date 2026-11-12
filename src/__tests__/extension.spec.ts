@@ -26,9 +26,9 @@ vi.mock("vscode", () => ({
 		}),
 		onDidChangeConfiguration: vi.fn().mockReturnValue({ dispose: vi.fn() }),
 		createFileSystemWatcher: vi.fn().mockReturnValue({
-			onDidCreate: vi.fn(),
-			onDidChange: vi.fn(),
-			onDidDelete: vi.fn(),
+			onDidCreate: vi.fn().mockReturnValue({ dispose: vi.fn() }),
+			onDidChange: vi.fn().mockReturnValue({ dispose: vi.fn() }),
+			onDidDelete: vi.fn().mockReturnValue({ dispose: vi.fn() }),
 			dispose: vi.fn(),
 		}),
 		onDidChangeWorkspaceFolders: vi.fn(),

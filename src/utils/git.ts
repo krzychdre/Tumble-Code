@@ -128,36 +128,31 @@ export async function getGitRepositoryInfo(workspaceRoot: string): Promise<GitRe
  * @returns The URL in HTTPS format, or the original URL if conversion is not possible
  */
 export function convertGitUrlToHttps(url: string): string {
-	try {
-		// Already HTTPS, just return it
-		if (url.startsWith("https://")) {
-			return url
-		}
-
-		// Handle SSH format: git@github.com:user/repo.git -> https://github.com/user/repo.git
-		if (url.startsWith("git@")) {
-			const match = url.match(/git@([^:]+):(.+)/)
-			if (match && match.length === 3) {
-				const [, host, path] = match
-				return `https://${host}/${path}`
-			}
-		}
-
-		// Handle SSH with protocol: ssh://git@github.com/user/repo.git -> https://github.com/user/repo.git
-		if (url.startsWith("ssh://")) {
-			const match = url.match(/ssh:\/\/(?:git@)?([^/]+)\/(.+)/)
-			if (match && match.length === 3) {
-				const [, host, path] = match
-				return `https://${host}/${path}`
-			}
-		}
-
-		// Return original URL if we can't convert it
-		return url
-	} catch {
-		// If parsing fails, return original
+	// Already HTTPS, just return it
+	if (url.startsWith("https://")) {
 		return url
 	}
+
+	// Handle SSH format: git@github.com:user/repo.git -> https://github.com/user/repo.git
+	if (url.startsWith("git@")) {
+		const match = url.match(/git@([^:]+):(.+)/)
+		if (match && match.length === 3) {
+			const [, host, path] = match
+			return `https://${host}/${path}`
+		}
+	}
+
+	// Handle SSH with protocol: ssh://git@github.com/user/repo.git -> https://github.com/user/repo.git
+	if (url.startsWith("ssh://")) {
+		const match = url.match(/ssh:\/\/(?:git@)?([^/]+)\/(.+)/)
+		if (match && match.length === 3) {
+			const [, host, path] = match
+			return `https://${host}/${path}`
+		}
+	}
+
+	// Return original URL if we can't convert it
+	return url
 }
 
 /**
@@ -195,28 +190,24 @@ export function sanitizeGitUrl(url: string): string {
  * @returns Repository name or undefined
  */
 export function extractRepositoryName(url: string): string {
-	try {
-		// Handle different URL formats
-		const patterns = [
-			// HTTPS: https://github.com/user/repo.git -> user/repo
-			/https:\/\/[^/]+\/([^/]+\/[^/]+?)(?:\.git)?$/,
-			// SSH: git@github.com:user/repo.git -> user/repo
-			/git@[^:]+:([^/]+\/[^/]+?)(?:\.git)?$/,
-			// SSH with user: ssh://git@github.com/user/repo.git -> user/repo
-			/ssh:\/\/[^/]+\/([^/]+\/[^/]+?)(?:\.git)?$/,
-		]
+	// Handle different URL formats
+	const patterns = [
+		// HTTPS: https://github.com/user/repo.git -> user/repo
+		/https:\/\/[^/]+\/([^/]+\/[^/]+?)(?:\.git)?$/,
+		// SSH: git@github.com:user/repo.git -> user/repo
+		/git@[^:]+:([^/]+\/[^/]+?)(?:\.git)?$/,
+		// SSH with user: ssh://git@github.com/user/repo.git -> user/repo
+		/ssh:\/\/[^/]+\/([^/]+\/[^/]+?)(?:\.git)?$/,
+	]
 
-		for (const pattern of patterns) {
-			const match = url.match(pattern)
-			if (match && match[1]) {
-				return match[1].replace(/\.git$/, "")
-			}
+	for (const pattern of patterns) {
+		const match = url.match(pattern)
+		if (match && match[1]) {
+			return match[1].replace(/\.git$/, "")
 		}
-
-		return ""
-	} catch {
-		return ""
 	}
+
+	return ""
 }
 
 /**

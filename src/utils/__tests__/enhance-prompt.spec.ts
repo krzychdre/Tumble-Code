@@ -78,16 +78,6 @@ describe("enhancePrompt", () => {
 		expect(dispose).toHaveBeenCalledTimes(1)
 	})
 
-	it("throws error for empty prompt input", async () => {
-		await expect(singleCompletionWithUsage(mockApiConfig, "")).rejects.toThrow("No prompt text provided")
-	})
-
-	it("throws error for missing API configuration", async () => {
-		await expect(singleCompletionWithUsage({} as ProviderSettings, "Test prompt")).rejects.toThrow(
-			"No valid API configuration provided",
-		)
-	})
-
 	it("throws error for API provider that does not support prompt enhancement", async () => {
 		;(buildApiHandler as any).mockReturnValue({
 			// No completePrompt method
