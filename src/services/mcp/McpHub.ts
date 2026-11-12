@@ -507,56 +507,57 @@ export class McpHub {
 		)
 	}
 
+	/** The connection for `serverName`; the error names the source when the caller gave one. */
+	private requireConnection(serverName: string, source?: McpConfigSource): McpConnection {
+		const connection = this.connectionManager.findConnection(serverName, source)
+		if (!connection) {
+			throw new Error(`Server ${serverName}${source ? ` with source ${source}` : ""} not found`)
+		}
+		return connection
+	}
+
+	/** The settings file a server lives in; a server without a recorded source is global. */
+	private serverSource(connection: McpConnection): McpConfigSource {
+		return connection.server.source || "global"
+	}
+
 	public async toggleServerDisabled(serverName: string, disabled: boolean, source?: McpConfigSource): Promise<void> {
 		try {
-			// Find the connection to determine if it's a global or project server
-			const connection = this.connectionManager.findConnection(serverName, source)
-			if (!connection) {
-				throw new Error(`Server ${serverName}${source ? ` with source ${source}` : ""} not found`)
-			}
-
-			const serverSource = connection.server.source || "global"
+			const connection = this.requireConnection(serverName, source)
+			const serverSource = this.serverSource(connection)
 			// Update the server config in the appropriate file
 			await this.updateServerConfig(serverName, { disabled }, serverSource)
 
 			// Update the connection object
-			if (connection) {
-				try {
-					connection.server.disabled = disabled
+			try {
+				connection.server.disabled = disabled
 
-					// If disabling a connected server, disconnect it
-					if (disabled && connection.server.status === "connected") {
-						// deleteConnection also closes the server's file watchers
-						await this.deleteConnection(serverName, serverSource)
-						// Re-add as a disabled connection
-						// Re-read config from file to get updated disabled state
-						const updatedConfig = await this.readServerConfigFromFile(serverName, serverSource)
-						await this.connectionManager.connectToServer(serverName, updatedConfig, serverSource)
-					} else if (!disabled && connection.server.status === "disconnected") {
-						// If enabling a disabled server, connect it
-						// Re-read config from file to get updated disabled state
-						const updatedConfig = await this.readServerConfigFromFile(serverName, serverSource)
-						if (
-							serverSource === "project" &&
-							!(await this.mayStartProjectServer(serverName, updatedConfig))
-						) {
-							connection.server.disabled = true
-							await this.notifyWebviewOfServerChanges()
-							return
-						}
-						await this.deleteConnection(serverName, serverSource)
-						// When re-enabling, file watchers will be set up in connectToServer
-						await this.connectionManager.connectToServer(serverName, updatedConfig, serverSource)
-					} else if (connection.server.status === "connected") {
-						// Only refresh capabilities if connected
-						Object.assign(
-							connection.server,
-							await this.toolCatalog.fetchCapabilities(serverName, serverSource),
-						)
+				// If disabling a connected server, disconnect it
+				if (disabled && connection.server.status === "connected") {
+					// deleteConnection also closes the server's file watchers
+					await this.deleteConnection(serverName, serverSource)
+					// Re-add as a disabled connection
+					// Re-read config from file to get updated disabled state
+					const updatedConfig = await this.readServerConfigFromFile(serverName, serverSource)
+					await this.connectionManager.connectToServer(serverName, updatedConfig, serverSource)
+				} else if (!disabled && connection.server.status === "disconnected") {
+					// If enabling a disabled server, connect it
+					// Re-read config from file to get updated disabled state
+					const updatedConfig = await this.readServerConfigFromFile(serverName, serverSource)
+					if (serverSource === "project" && !(await this.mayStartProjectServer(serverName, updatedConfig))) {
+						connection.server.disabled = true
+						await this.notifyWebviewOfServerChanges()
+						return
 					}
-				} catch (error) {
-					logger.error(`Failed to refresh capabilities for ${serverName}:`, error)
+					await this.deleteConnection(serverName, serverSource)
+					// When re-enabling, file watchers will be set up in connectToServer
+					await this.connectionManager.connectToServer(serverName, updatedConfig, serverSource)
+				} else if (connection.server.status === "connected") {
+					// Only refresh capabilities if connected
+					Object.assign(connection.server, await this.toolCatalog.fetchCapabilities(serverName, serverSource))
 				}
+			} catch (error) {
+				logger.error(`Failed to refresh capabilities for ${serverName}:`, error)
 			}
 
 			await this.notifyWebviewOfServerChanges()
@@ -588,10 +589,6 @@ export class McpHub {
 	): Promise<McpServerConfig> {
 		const { config } = await this.configStore.readForUpdate(source)
 
-		if (!config.mcpServers || typeof config.mcpServers !== "object") {
-			throw new Error("No mcpServers section in config")
-		}
-
 		if (!config.mcpServers[serverName]) {
 			throw new Error(`Server ${serverName} not found in config`)
 		}
@@ -612,10 +609,6 @@ export class McpHub {
 		source: McpConfigSource = "global",
 	): Promise<void> {
 		const { path: configPath, config } = await this.configStore.readForUpdate(source)
-
-		if (!config.mcpServers || typeof config.mcpServers !== "object") {
-			config.mcpServers = {}
-		}
 
 		if (!config.mcpServers[serverName]) {
 			config.mcpServers[serverName] = {}
@@ -640,14 +633,10 @@ export class McpHub {
 
 	public async updateServerTimeout(serverName: string, timeout: number, source?: McpConfigSource): Promise<void> {
 		try {
-			// Find the connection to determine if it's a global or project server
-			const connection = this.connectionManager.findConnection(serverName, source)
-			if (!connection) {
-				throw new Error(`Server ${serverName}${source ? ` with source ${source}` : ""} not found`)
-			}
+			const connection = this.requireConnection(serverName, source)
 
 			// Update the server config in the appropriate file
-			await this.updateServerConfig(serverName, { timeout }, connection.server.source || "global")
+			await this.updateServerConfig(serverName, { timeout }, this.serverSource(connection))
 
 			await this.notifyWebviewOfServerChanges()
 		} catch (error) {
@@ -658,18 +647,9 @@ export class McpHub {
 
 	public async deleteServer(serverName: string, source?: McpConfigSource): Promise<void> {
 		try {
-			// Find the connection to determine if it's a global or project server
-			const connection = this.connectionManager.findConnection(serverName, source)
-			if (!connection) {
-				throw new Error(`Server ${serverName}${source ? ` with source ${source}` : ""} not found`)
-			}
-
-			const serverSource = connection.server.source || "global"
+			const connection = this.requireConnection(serverName, source)
+			const serverSource = this.serverSource(connection)
 			const { path: configPath, config } = await this.configStore.readForUpdate(serverSource)
-
-			if (!config.mcpServers || typeof config.mcpServers !== "object") {
-				config.mcpServers = {}
-			}
 
 			// Remove the server from the settings
 			if (config.mcpServers[serverName]) {

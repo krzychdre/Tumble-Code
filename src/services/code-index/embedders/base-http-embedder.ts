@@ -60,6 +60,14 @@ export function decodeEmbedding(embedding: string | number[]): number[] {
 	return Array.from(new Float32Array(buffer.buffer, buffer.byteOffset, buffer.byteLength / 4))
 }
 
+/** Maps the snake_case usage of an OpenAI-style response onto the EmbedBatchResult usage. */
+export function openAiEmbeddingUsage(usage: { prompt_tokens?: number; total_tokens?: number } | undefined) {
+	return {
+		promptTokens: usage?.prompt_tokens || 0,
+		totalTokens: usage?.total_tokens || 0,
+	}
+}
+
 /**
  * Shared behavior of every code-index embedder. A subclass only says how one batch reaches
  * its backend (`embedBatch`); this class owns the rest, identically for all of them:

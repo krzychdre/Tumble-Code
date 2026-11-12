@@ -4,7 +4,7 @@ import { getDefaultModelId } from "../../../shared/embeddingModels"
 import { t } from "../../../i18n"
 import { HttpError } from "../shared/validation-helpers"
 import { handleProviderError } from "../../../api/providers/utils/error-handler"
-import { BaseHttpEmbedder, EmbedBatchResult, decodeEmbedding } from "./base-http-embedder"
+import { BaseHttpEmbedder, EmbedBatchResult, decodeEmbedding, openAiEmbeddingUsage } from "./base-http-embedder"
 import { getApiRequestTimeout } from "../../../api/providers/utils/timeout-config"
 
 interface EmbeddingItem {
@@ -108,10 +108,7 @@ export class OpenAICompatibleEmbedder extends BaseHttpEmbedder {
 
 		return {
 			embeddings: (response?.data ?? []).map((item) => decodeEmbedding(item.embedding)),
-			usage: {
-				promptTokens: response?.usage?.prompt_tokens || 0,
-				totalTokens: response?.usage?.total_tokens || 0,
-			},
+			usage: openAiEmbeddingUsage(response?.usage),
 		}
 	}
 

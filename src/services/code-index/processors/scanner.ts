@@ -34,6 +34,15 @@ import { Package } from "../../../shared/package"
 import { reportEmbeddingUsage } from "../embedding-usage"
 import { logger } from "../../../utils/logging"
 
+/** The batch accumulators and in-flight batches of one scan, guarded by the scan's mutex. */
+interface BatchState {
+	blocks: CodeBlock[]
+	texts: string[]
+	fileInfos: { filePath: string; fileHash: string; isNew: boolean }[]
+	pendingCount: number
+	active: Set<Promise<void>>
+}
+
 export class DirectoryScanner implements IDirectoryScanner {
 	private readonly batchSegmentThreshold: number
 
@@ -45,20 +54,12 @@ export class DirectoryScanner implements IDirectoryScanner {
 		private readonly ignoreInstance: Ignore,
 		batchSegmentThreshold?: number,
 	) {
-		// Get the configurable batch size from VSCode settings, fallback to default
-		// If not provided in constructor, try to get from VSCode settings
-		if (batchSegmentThreshold !== undefined) {
-			this.batchSegmentThreshold = batchSegmentThreshold
-		} else {
-			try {
-				this.batchSegmentThreshold = vscode.workspace
-					.getConfiguration(Package.name)
-					.get<number>("codeIndex.embeddingBatchSize", BATCH_SEGMENT_THRESHOLD)
-			} catch {
-				// In test environment, vscode.workspace might not be available
-				this.batchSegmentThreshold = BATCH_SEGMENT_THRESHOLD
-			}
-		}
+		// Without an explicit size, read the configurable one from VSCode settings
+		this.batchSegmentThreshold =
+			batchSegmentThreshold ??
+			vscode.workspace
+				.getConfiguration(Package.name)
+				.get<number>("codeIndex.embeddingBatchSize", BATCH_SEGMENT_THRESHOLD)
 	}
 
 	/**
@@ -121,12 +122,14 @@ export class DirectoryScanner implements IDirectoryScanner {
 		const batchLimiter = pLimit(BATCH_PROCESSING_CONCURRENCY) // Concurrency for batch processing
 		const mutex = new Mutex()
 
-		// Shared batch accumulators (protected by mutex)
-		let currentBatchBlocks: CodeBlock[] = []
-		let currentBatchTexts: string[] = []
-		let currentBatchFileInfos: { filePath: string; fileHash: string; isNew: boolean }[] = []
-		const activeBatchPromises = new Set<Promise<void>>()
-		let pendingBatchCount = 0
+		// Shared batch accumulators and in-flight batches (protected by mutex)
+		const batches: BatchState = {
+			blocks: [],
+			texts: [],
+			fileInfos: [],
+			pendingCount: 0,
+			active: new Set<Promise<void>>(),
+		}
 
 		// Initialize block counter
 		let totalBlockCount = 0
@@ -178,54 +181,31 @@ export class DirectoryScanner implements IDirectoryScanner {
 							if (trimmedContent) {
 								const release = await mutex.acquire()
 								try {
-									currentBatchBlocks.push(block)
-									currentBatchTexts.push(trimmedContent)
+									batches.blocks.push(block)
+									batches.texts.push(trimmedContent)
 									addedBlocksFromFile = true
 
-									// Check if batch threshold is met
 									// Check abort signal before dispatching batch
 									if (signal?.aborted) {
 										throw new DOMException("Indexing aborted", "AbortError")
 									}
 
-									if (currentBatchBlocks.length >= this.batchSegmentThreshold) {
+									if (batches.blocks.length >= this.batchSegmentThreshold) {
 										// Wait if we've reached the maximum pending batches
-										while (pendingBatchCount >= MAX_PENDING_BATCHES) {
+										while (batches.pendingCount >= MAX_PENDING_BATCHES) {
 											if (signal?.aborted) {
 												throw new DOMException("Indexing aborted", "AbortError")
 											}
-											await Promise.race(activeBatchPromises)
+											await Promise.race(batches.active)
 										}
 
-										// Copy current batch data and clear accumulators
-										const batchBlocks = [...currentBatchBlocks]
-										const batchTexts = [...currentBatchTexts]
-										const batchFileInfos = [...currentBatchFileInfos]
-										currentBatchBlocks = []
-										currentBatchTexts = []
-										currentBatchFileInfos = []
-
-										// Increment pending batch count
-										pendingBatchCount++
-
-										// Queue batch processing
-										const batchPromise = batchLimiter(() =>
-											this.processBatch(
-												batchBlocks,
-												batchTexts,
-												batchFileInfos,
-												scanWorkspace,
-												onError,
-												onBlocksIndexed,
-											),
+										this.dispatchBatch(
+											batches,
+											batchLimiter,
+											scanWorkspace,
+											onError,
+											onBlocksIndexed,
 										)
-										activeBatchPromises.add(batchPromise)
-
-										// Clean up completed promises to prevent memory accumulation
-										batchPromise.finally(() => {
-											activeBatchPromises.delete(batchPromise)
-											pendingBatchCount--
-										})
 									}
 								} finally {
 									release()
@@ -238,7 +218,7 @@ export class DirectoryScanner implements IDirectoryScanner {
 							const release = await mutex.acquire()
 							try {
 								totalBlockCount += fileBlockCount
-								currentBatchFileInfos.push({
+								batches.fileInfos.push({
 									filePath,
 									fileHash: currentFileHash,
 									isNew: isNewFile,
@@ -281,58 +261,25 @@ export class DirectoryScanner implements IDirectoryScanner {
 
 		// Check abort signal before processing remaining batch
 		if (signal?.aborted) {
-			return {
-				stats: {
-					processed: processedCount,
-					skipped: skippedCount,
-				},
-				totalBlockCount,
-			}
+			return this.scanResult(processedCount, skippedCount, totalBlockCount)
 		}
 
 		// Process any remaining items in batch
-		if (currentBatchBlocks.length > 0) {
+		if (batches.blocks.length > 0) {
 			const release = await mutex.acquire()
 			try {
-				// Copy current batch data and clear accumulators
-				const batchBlocks = [...currentBatchBlocks]
-				const batchTexts = [...currentBatchTexts]
-				const batchFileInfos = [...currentBatchFileInfos]
-				currentBatchBlocks = []
-				currentBatchTexts = []
-				currentBatchFileInfos = []
-
-				// Increment pending batch count for final batch
-				pendingBatchCount++
-
-				// Queue final batch processing
-				const batchPromise = batchLimiter(() =>
-					this.processBatch(batchBlocks, batchTexts, batchFileInfos, scanWorkspace, onError, onBlocksIndexed),
-				)
-				activeBatchPromises.add(batchPromise)
-
-				// Clean up completed promises to prevent memory accumulation
-				batchPromise.finally(() => {
-					activeBatchPromises.delete(batchPromise)
-					pendingBatchCount--
-				})
+				this.dispatchBatch(batches, batchLimiter, scanWorkspace, onError, onBlocksIndexed)
 			} finally {
 				release()
 			}
 		}
 
 		// Wait for all batch processing to complete
-		await Promise.all(activeBatchPromises)
+		await Promise.all(batches.active)
 
 		// Check abort signal before handling deleted files
 		if (signal?.aborted) {
-			return {
-				stats: {
-					processed: processedCount,
-					skipped: skippedCount,
-				},
-				totalBlockCount,
-			}
+			return this.scanResult(processedCount, skippedCount, totalBlockCount)
 		}
 
 		// Handle deleted files
@@ -381,6 +328,43 @@ export class DirectoryScanner implements IDirectoryScanner {
 			}
 		}
 
+		return this.scanResult(processedCount, skippedCount, totalBlockCount)
+	}
+
+	/**
+	 * Swaps the accumulated blocks, texts and file infos out and queues them as one
+	 * batch, tracked until it settles. Callers hold the mutex, so the swap is atomic.
+	 */
+	private dispatchBatch(
+		batches: BatchState,
+		batchLimiter: ReturnType<typeof pLimit>,
+		scanWorkspace: string,
+		onError?: (error: Error) => void,
+		onBlocksIndexed?: (indexedCount: number) => void,
+	): void {
+		const batchBlocks = batches.blocks
+		const batchTexts = batches.texts
+		const batchFileInfos = batches.fileInfos
+		batches.blocks = []
+		batches.texts = []
+		batches.fileInfos = []
+
+		batches.pendingCount++
+
+		const batchPromise = batchLimiter(() =>
+			this.processBatch(batchBlocks, batchTexts, batchFileInfos, scanWorkspace, onError, onBlocksIndexed),
+		)
+		batches.active.add(batchPromise)
+
+		// Clean up completed promises to prevent memory accumulation
+		batchPromise.finally(() => {
+			batches.active.delete(batchPromise)
+			batches.pendingCount--
+		})
+	}
+
+	/** The scan's result as it stands now; also the partial result of an aborted scan. */
+	private scanResult(processedCount: number, skippedCount: number, totalBlockCount: number) {
 		return {
 			stats: {
 				processed: processedCount,
