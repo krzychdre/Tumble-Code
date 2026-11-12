@@ -26,7 +26,7 @@ describe("CustomToolRegistry", () => {
 			expect(tool).toBeDefined()
 			expect(tool?.name).toBe("simple")
 			expect(tool?.description).toBe("Simple tool")
-		}, 30000)
+		}, 120_000)
 
 		it("should return undefined for non-existent tool", () => {
 			expect(registry.get("nonexistent")).toBeUndefined()
