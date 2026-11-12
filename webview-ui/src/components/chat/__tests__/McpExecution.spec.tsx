@@ -4,6 +4,8 @@ import React from "react"
 import { render, screen, fireEvent } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
+import type { ClineAskUseMcpServer } from "@tumble-code/types"
+
 import { McpExecution } from "../McpExecution"
 
 vi.mock("react-use", () => ({
@@ -42,6 +44,14 @@ vi.mock("../Markdown", () => ({
 	Markdown: ({ markdown }: { markdown: string }) => <div data-testid="markdown">{markdown}</div>,
 }))
 
+const ask = (overrides: Partial<ClineAskUseMcpServer> = {}): ClineAskUseMcpServer => ({
+	type: "use_mcp_tool",
+	serverName: "context7",
+	toolName: "query-docs",
+	arguments: "{}",
+	...overrides,
+})
+
 describe("McpExecution", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
@@ -49,38 +59,21 @@ describe("McpExecution", () => {
 
 	describe("concise header display", () => {
 		it("renders server name and tool name in the concise header", () => {
-			render(<McpExecution executionId="test-1" serverName="context7" toolName="query-docs" />)
+			render(<McpExecution executionId="test-1" useMcpServer={ask()} />)
 
 			expect(screen.getByTestId("mcp-server-name")).toHaveTextContent("context7")
 			expect(screen.getByTestId("mcp-tool-name")).toHaveTextContent("query-docs")
 		})
 
-		it("renders server name from useMcpServer when provided", () => {
-			render(
-				<McpExecution
-					executionId="test-1"
-					useMcpServer={{
-						type: "use_mcp_tool",
-						serverName: "my-server",
-						toolName: "my-tool",
-						arguments: "{}",
-					}}
-				/>,
-			)
-
-			expect(screen.getByTestId("mcp-server-name")).toHaveTextContent("my-server")
-			expect(screen.getByTestId("mcp-tool-name")).toHaveTextContent("my-tool")
-		})
-
 		it("renders only server name when tool name is not provided", () => {
-			render(<McpExecution executionId="test-1" serverName="context7" />)
+			render(<McpExecution executionId="test-1" useMcpServer={ask({ toolName: undefined })} />)
 
 			expect(screen.getByTestId("mcp-server-name")).toHaveTextContent("context7")
 			expect(screen.queryByTestId("mcp-tool-name")).not.toBeInTheDocument()
 		})
 
 		it("renders ChevronRight icon between server and tool names", () => {
-			render(<McpExecution executionId="test-1" serverName="context7" toolName="query-docs" />)
+			render(<McpExecution executionId="test-1" useMcpServer={ask()} />)
 
 			// The ChevronRight icon should be present when both server and tool names are shown
 			// Lucide icons have class "lucide-chevron-right" (singular)
@@ -90,7 +83,7 @@ describe("McpExecution", () => {
 		})
 
 		it("does not render ChevronRight when only server name is present", () => {
-			render(<McpExecution executionId="test-1" serverName="context7" />)
+			render(<McpExecution executionId="test-1" useMcpServer={ask({ toolName: undefined })} />)
 
 			const header = screen.getByTestId("mcp-execution-header")
 			const chevronRight = header.querySelector(".lucide-chevron-right")
@@ -103,9 +96,7 @@ describe("McpExecution", () => {
 			render(
 				<McpExecution
 					executionId="test-1"
-					serverName="context7"
-					toolName="query-docs"
-					text='{"query": "react hooks"}'
+					useMcpServer={ask({ arguments: '{"query": "react hooks"}' })}
 					isArguments={true}
 				/>,
 			)
@@ -117,9 +108,7 @@ describe("McpExecution", () => {
 			render(
 				<McpExecution
 					executionId="test-1"
-					serverName="context7"
-					toolName="query-docs"
-					text='{"query": "react hooks"}'
+					useMcpServer={ask({ arguments: '{"query": "react hooks"}' })}
 					isArguments={true}
 				/>,
 			)
@@ -133,9 +122,7 @@ describe("McpExecution", () => {
 			render(
 				<McpExecution
 					executionId="test-1"
-					serverName="context7"
-					toolName="query-docs"
-					text='{"query": "react hooks"}'
+					useMcpServer={ask({ arguments: '{"query": "react hooks"}' })}
 					isArguments={true}
 				/>,
 			)
@@ -152,9 +139,7 @@ describe("McpExecution", () => {
 			render(
 				<McpExecution
 					executionId="test-1"
-					serverName="context7"
-					toolName="query-docs"
-					text='{"query": "react hooks"}'
+					useMcpServer={ask({ arguments: '{"query": "react hooks"}' })}
 					isArguments={true}
 				/>,
 			)
@@ -165,16 +150,15 @@ describe("McpExecution", () => {
 			expect(codeBlocks.length).toBeGreaterThanOrEqual(1)
 		})
 
-		it("shows McpToolRow when details are expanded with useMcpServer", () => {
+		it("shows McpToolRow when details are expanded", () => {
 			render(
 				<McpExecution
 					executionId="test-1"
-					useMcpServer={{
-						type: "use_mcp_tool",
+					useMcpServer={ask({
 						serverName: "my-server",
 						toolName: "my-tool",
 						arguments: '{"key": "value"}',
-					}}
+					})}
 					server={{
 						tools: [{ name: "my-tool", description: "A useful tool", alwaysAllow: false }],
 						source: "global",
@@ -196,7 +180,7 @@ describe("McpExecution", () => {
 
 	describe("keyboard access", () => {
 		it("renders the header as a button that announces its expanded state", () => {
-			render(<McpExecution executionId="test-1" serverName="context7" toolName="query-docs" />)
+			render(<McpExecution executionId="test-1" useMcpServer={ask()} />)
 
 			const header = screen.getByTestId("mcp-execution-header")
 			expect(header.tagName).toBe("BUTTON")
@@ -213,9 +197,7 @@ describe("McpExecution", () => {
 			render(
 				<McpExecution
 					executionId="test-1"
-					serverName="context7"
-					toolName="query-docs"
-					text='{"query": "react hooks"}'
+					useMcpServer={ask({ arguments: '{"query": "react hooks"}' })}
 					isArguments={true}
 				/>,
 			)
@@ -236,9 +218,7 @@ describe("McpExecution", () => {
 			render(
 				<McpExecution
 					executionId="test-1"
-					serverName="context7"
-					toolName="query-docs"
-					text='{"query": "test"}'
+					useMcpServer={ask({ arguments: '{"query": "test"}' })}
 					isArguments={true}
 				/>,
 			)
@@ -249,20 +229,7 @@ describe("McpExecution", () => {
 		})
 
 		it("shows response header when response exists and details are expanded", () => {
-			render(
-				<McpExecution
-					executionId="test-1"
-					serverName="context7"
-					toolName="query-docs"
-					useMcpServer={{
-						type: "use_mcp_tool",
-						serverName: "context7",
-						toolName: "query-docs",
-						arguments: "{}",
-						response: "Some response text",
-					}}
-				/>,
-			)
+			render(<McpExecution executionId="test-1" useMcpServer={ask({ response: "Some response text" })} />)
 
 			fireEvent.click(screen.getByTestId("mcp-execution-header"))
 
@@ -272,21 +239,8 @@ describe("McpExecution", () => {
 	})
 
 	describe("hasResponse conditional rendering", () => {
-		it("shows response section when useMcpServer has response text", () => {
-			render(
-				<McpExecution
-					executionId="test-1"
-					serverName="context7"
-					toolName="query-docs"
-					useMcpServer={{
-						type: "use_mcp_tool",
-						serverName: "context7",
-						toolName: "query-docs",
-						arguments: "{}",
-						response: "Tool executed successfully",
-					}}
-				/>,
-			)
+		it("shows response section when the ask has response text", () => {
+			render(<McpExecution executionId="test-1" useMcpServer={ask({ response: "Tool executed successfully" })} />)
 
 			fireEvent.click(screen.getByTestId("mcp-execution-header"))
 
@@ -294,40 +248,15 @@ describe("McpExecution", () => {
 		})
 
 		it("hides response section when response is empty string", () => {
-			render(
-				<McpExecution
-					executionId="test-1"
-					serverName="context7"
-					toolName="query-docs"
-					useMcpServer={{
-						type: "use_mcp_tool",
-						serverName: "context7",
-						toolName: "query-docs",
-						arguments: "{}",
-						response: "",
-					}}
-				/>,
-			)
+			render(<McpExecution executionId="test-1" useMcpServer={ask({ response: "" })} />)
 
 			fireEvent.click(screen.getByTestId("mcp-execution-header"))
 
 			expect(screen.queryByTestId("mcp-response-header")).not.toBeInTheDocument()
 		})
 
-		it("hides response section when useMcpServer has no response property", () => {
-			render(
-				<McpExecution
-					executionId="test-1"
-					serverName="context7"
-					toolName="query-docs"
-					useMcpServer={{
-						type: "use_mcp_tool",
-						serverName: "context7",
-						toolName: "query-docs",
-						arguments: "{}",
-					}}
-				/>,
-			)
+		it("hides response section when the ask has no response property", () => {
+			render(<McpExecution executionId="test-1" useMcpServer={ask({ response: undefined })} />)
 
 			fireEvent.click(screen.getByTestId("mcp-execution-header"))
 
@@ -335,20 +264,7 @@ describe("McpExecution", () => {
 		})
 
 		it("response content is hidden by default within expanded details", () => {
-			render(
-				<McpExecution
-					executionId="test-1"
-					serverName="context7"
-					toolName="query-docs"
-					useMcpServer={{
-						type: "use_mcp_tool",
-						serverName: "context7",
-						toolName: "query-docs",
-						arguments: "{}",
-						response: "Response content here",
-					}}
-				/>,
-			)
+			render(<McpExecution executionId="test-1" useMcpServer={ask({ response: "Response content here" })} />)
 
 			fireEvent.click(screen.getByTestId("mcp-execution-header"))
 
@@ -359,20 +275,7 @@ describe("McpExecution", () => {
 		})
 
 		it("shows response content when response section is expanded", () => {
-			render(
-				<McpExecution
-					executionId="test-1"
-					serverName="context7"
-					toolName="query-docs"
-					useMcpServer={{
-						type: "use_mcp_tool",
-						serverName: "context7",
-						toolName: "query-docs",
-						arguments: "{}",
-						response: "Response content here",
-					}}
-				/>,
-			)
+			render(<McpExecution executionId="test-1" useMcpServer={ask({ response: "Response content here" })} />)
 
 			// First expand details
 			fireEvent.click(screen.getByTestId("mcp-execution-header"))
@@ -383,20 +286,7 @@ describe("McpExecution", () => {
 		})
 
 		it("response chevron rotates when toggled", () => {
-			render(
-				<McpExecution
-					executionId="test-1"
-					serverName="context7"
-					toolName="query-docs"
-					useMcpServer={{
-						type: "use_mcp_tool",
-						serverName: "context7",
-						toolName: "query-docs",
-						arguments: "{}",
-						response: "Some response",
-					}}
-				/>,
-			)
+			render(<McpExecution executionId="test-1" useMcpServer={ask({ response: "Some response" })} />)
 
 			fireEvent.click(screen.getByTestId("mcp-execution-header"))
 
@@ -414,7 +304,7 @@ describe("McpExecution", () => {
 
 	describe("chevron rotation", () => {
 		it("renders details chevron rotated -90deg when collapsed", () => {
-			render(<McpExecution executionId="test-1" serverName="context7" toolName="query-docs" />)
+			render(<McpExecution executionId="test-1" useMcpServer={ask()} />)
 
 			const chevron = screen.getByTestId("mcp-details-chevron")
 			expect(chevron).toHaveClass("-rotate-90")
@@ -422,7 +312,7 @@ describe("McpExecution", () => {
 		})
 
 		it("renders details chevron at 0deg when expanded", () => {
-			render(<McpExecution executionId="test-1" serverName="context7" toolName="query-docs" />)
+			render(<McpExecution executionId="test-1" useMcpServer={ask()} />)
 
 			fireEvent.click(screen.getByTestId("mcp-execution-header"))
 
@@ -432,24 +322,19 @@ describe("McpExecution", () => {
 		})
 	})
 
-	describe("fallback behavior without useMcpServer", () => {
-		it("shows McpToolRow from direct props when expanded and useMcpServer is absent", () => {
-			render(<McpExecution executionId="test-1" serverName="direct-server" toolName="direct-tool" />)
-
-			fireEvent.click(screen.getByTestId("mcp-execution-header"))
-
-			expect(screen.getByTestId("mcp-tool-row")).toBeInTheDocument()
-			expect(screen.getByTestId("mcp-tool-row-name")).toHaveTextContent("direct-tool")
-			expect(screen.getByTestId("mcp-tool-row-server")).toHaveTextContent("direct-server")
-		})
-	})
 	describe("props that change while the ask streams", () => {
 		it("shows the latest server, tool and arguments", () => {
 			const { rerender } = render(
-				<McpExecution executionId="test-1" serverName="first-server" toolName="first-tool" text='{"q":1}' />,
+				<McpExecution
+					executionId="test-1"
+					useMcpServer={ask({ serverName: "first-server", toolName: "first-tool", arguments: '{"q":1}' })}
+				/>,
 			)
 			rerender(
-				<McpExecution executionId="test-1" serverName="second-server" toolName="second-tool" text='{"q":2}' />,
+				<McpExecution
+					executionId="test-1"
+					useMcpServer={ask({ serverName: "second-server", toolName: "second-tool", arguments: '{"q":2}' })}
+				/>,
 			)
 
 			fireEvent.click(screen.getByTestId("mcp-execution-header"))
@@ -460,18 +345,13 @@ describe("McpExecution", () => {
 		})
 
 		it("shows the latest response from the ask", () => {
-			const ask = (response: string) => ({
-				type: "use_mcp_tool" as const,
-				serverName: "context7",
-				toolName: "query-docs",
-				arguments: "{}",
-				response,
-			})
-			const { rerender } = render(<McpExecution executionId="test-1" useMcpServer={ask("first answer")} />)
+			const { rerender } = render(
+				<McpExecution executionId="test-1" useMcpServer={ask({ response: "first answer" })} />,
+			)
 			fireEvent.click(screen.getByTestId("mcp-execution-header"))
 			fireEvent.click(screen.getByTestId("mcp-response-header"))
 
-			rerender(<McpExecution executionId="test-1" useMcpServer={ask("second answer")} />)
+			rerender(<McpExecution executionId="test-1" useMcpServer={ask({ response: "second answer" })} />)
 
 			expect(screen.getByTestId("markdown")).toHaveTextContent("second answer")
 		})

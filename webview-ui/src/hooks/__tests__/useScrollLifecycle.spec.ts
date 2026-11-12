@@ -75,7 +75,7 @@ describe("useScrollLifecycle", () => {
 				}),
 			{ initialProps: { taskTs: 1 as number | undefined } },
 		)
-		act(() => result.current.enterUserBrowsingHistory("pointer-scroll-up"))
+		act(() => result.current.enterUserBrowsingHistory())
 		expect(result.current.showScrollToBottom).toBe(true)
 
 		rerender({ taskTs: nextTaskTs })

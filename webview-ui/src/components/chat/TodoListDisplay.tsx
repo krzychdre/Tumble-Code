@@ -1,3 +1,5 @@
+import type { TodoItem } from "@tumble-code/types"
+
 import { cn } from "@/lib/utils"
 import { ArrowRight, Check, ListChecks, SquareDashed } from "lucide-react"
 import { useState, useRef, useMemo, useEffect, useId } from "react"
@@ -23,23 +25,23 @@ function getTodoIcon(status: TodoStatus | null) {
  * `<button>` with `aria-expanded` / `aria-controls`, and a thin progress bar
  * (same 3px track as the context bar, §2.4) sits next to the "3/7" count.
  */
-export function TodoListDisplay({ todos }: { todos: any[] }) {
+export function TodoListDisplay({ todos }: { todos: TodoItem[] }) {
 	const { t } = useTranslation()
 	const listId = useId()
 	const [isCollapsed, setIsCollapsed] = useState(true)
 	const ulRef = useRef<HTMLUListElement>(null)
 	const itemRefs = useRef<(HTMLLIElement | null)[]>([])
 	const scrollIndex = useMemo(() => {
-		const inProgressIdx = todos.findIndex((todo: any) => todo.status === "in_progress")
+		const inProgressIdx = todos.findIndex((todo) => todo.status === "in_progress")
 		if (inProgressIdx !== -1) return inProgressIdx
-		return todos.findIndex((todo: any) => todo.status !== "completed")
+		return todos.findIndex((todo) => todo.status !== "completed")
 	}, [todos])
 
 	// Find the most important todo to display when collapsed
 	const mostImportantTodo = useMemo(() => {
-		const inProgress = todos.find((todo: any) => todo.status === "in_progress")
+		const inProgress = todos.find((todo) => todo.status === "in_progress")
 		if (inProgress) return inProgress
-		return todos.find((todo: any) => todo.status !== "completed")
+		return todos.find((todo) => todo.status !== "completed")
 	}, [todos])
 	useEffect(() => {
 		if (isCollapsed) return
@@ -58,7 +60,7 @@ export function TodoListDisplay({ todos }: { todos: any[] }) {
 	if (!Array.isArray(todos) || todos.length === 0) return null
 
 	const totalCount = todos.length
-	const completedCount = todos.filter((todo: any) => todo.status === "completed").length
+	const completedCount = todos.filter((todo) => todo.status === "completed").length
 
 	const allCompleted = completedCount === totalCount && totalCount > 0
 	const progressLabel = t("chat:todo.partial", { completed: completedCount, total: totalCount })
@@ -107,8 +109,8 @@ export function TodoListDisplay({ todos }: { todos: any[] }) {
 					id={listId}
 					ref={ulRef}
 					className="list-none max-h-[300px] overflow-y-auto m-0 pt-2 pb-0 px-2.5 border-t border-frame cursor-default">
-					{todos.map((todo: any, idx: number) => {
-						const icon = getTodoIcon(todo.status as TodoStatus)
+					{todos.map((todo, idx: number) => {
+						const icon = getTodoIcon(todo.status)
 						return (
 							<li
 								key={todo.id || todo.content}

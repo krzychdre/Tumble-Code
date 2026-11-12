@@ -1,5 +1,7 @@
 import { render, screen, fireEvent } from "@/utils/test-utils"
 
+import type { TodoStatus } from "@tumble-code/types"
+
 import UpdateTodoListToolBlock from "../UpdateTodoListToolBlock"
 
 vi.mock("../../common/MarkdownBlock", () => ({
@@ -23,7 +25,9 @@ vi.mock("../BlockTimestamp", () => ({
 const MISSING_ON_CHANGE =
 	"UpdateTodoListToolBlock: onChange callback not passed, cannot notify model after todo changes!"
 
-const todos = [{ id: "1", content: "Write the spec", status: "in_progress" }]
+type BlockTodo = { id: string; content: string; status: TodoStatus | "" }
+
+const todos: BlockTodo[] = [{ id: "1", content: "Write the spec", status: "in_progress" }]
 
 describe("UpdateTodoListToolBlock onChange check", () => {
 	let warn: ReturnType<typeof vi.spyOn>
@@ -105,7 +109,7 @@ describe("UpdateTodoListToolBlock user-edit variant", () => {
 // radii). Every state is checked: read-only, user edit, editing, adding a
 // todo and the delete confirmation.
 describe("UpdateTodoListToolBlock styling", () => {
-	const mixed = [
+	const mixed: BlockTodo[] = [
 		{ id: "a", content: "Done thing", status: "completed" },
 		{ id: "b", content: "Current thing", status: "in_progress" },
 		{ id: "c", content: "Later thing", status: "" },

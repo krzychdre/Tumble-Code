@@ -12,7 +12,7 @@ import {
 } from "lucide-react"
 import prettyBytes from "pretty-bytes"
 
-import type { ClineMessage } from "@tumble-code/types"
+import type { ClineMessage, TodoItem } from "@tumble-code/types"
 
 import { getModelMaxOutputTokens } from "@tumble-code/core/browser"
 
@@ -90,7 +90,7 @@ export interface TaskHeaderProps {
 	contextTokens: number
 	buttonsDisabled: boolean
 	handleCondenseContext: (taskId: string) => void
-	todos?: any[]
+	todos: TodoItem[]
 }
 
 const TaskHeader = ({
@@ -140,8 +140,6 @@ const TaskHeader = ({
 			onClick={() => currentTaskItem && handleCondenseContext(currentTaskItem.id)}
 		/>
 	)
-
-	const hasTodos = todos && Array.isArray(todos) && todos.length > 0
 
 	// Determine if this is a subtask (has a parent)
 	const isSubtask = !!parentTaskId
@@ -416,7 +414,7 @@ const TaskHeader = ({
 				)}
 			</div>
 			{/* Todo list - always shown under the task card when todos exist; its own card. */}
-			{hasTodos && <TodoListDisplay todos={todos ?? (task as any)?.tool?.todos ?? []} />}
+			{todos.length > 0 && <TodoListDisplay todos={todos} />}
 		</div>
 	)
 }

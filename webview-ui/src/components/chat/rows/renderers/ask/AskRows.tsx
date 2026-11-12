@@ -122,9 +122,6 @@ export const UseMcpServerRow = ({ message, isLast, lastModifiedMessage }: RowRen
 				{useMcpServer.type === "use_mcp_tool" && (
 					<McpExecution
 						executionId={message.ts.toString()}
-						text={useMcpServer.arguments !== "{}" ? useMcpServer.arguments : undefined}
-						serverName={useMcpServer.serverName}
-						toolName={useMcpServer.toolName}
 						isArguments={true}
 						server={server}
 						useMcpServer={useMcpServer}

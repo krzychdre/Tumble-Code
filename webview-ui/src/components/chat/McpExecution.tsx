@@ -23,9 +23,6 @@ import { useExtensionMessage } from "@src/utils/extensionBus"
 
 interface McpExecutionProps {
 	executionId: string
-	text?: string
-	serverName?: string
-	toolName?: string
 	isArguments?: boolean
 	server?: {
 		tools?: Array<{
@@ -35,15 +32,12 @@ interface McpExecutionProps {
 		}>
 		source?: "global" | "project"
 	}
-	useMcpServer?: ClineAskUseMcpServer
+	useMcpServer: ClineAskUseMcpServer
 	alwaysAllowMcp?: boolean
 }
 
 export const McpExecution = ({
 	executionId,
-	text,
-	serverName: initialServerName,
-	toolName: initialToolName,
 	isArguments = false,
 	server,
 	useMcpServer,
@@ -53,19 +47,19 @@ export const McpExecution = ({
 
 	// State for tracking MCP response status
 	const [status, setStatus] = useState<McpExecutionStatus | null>(null)
-	const [responseText, setResponseText] = useState(useMcpServer?.response || "")
-	const [argumentsText, setArgumentsText] = useState(text || "")
-	const [serverName, setServerName] = useState(initialServerName)
-	const [toolName, setToolName] = useState(initialToolName)
+	const [responseText, setResponseText] = useState(useMcpServer.response || "")
+	// "{}" is the ask's placeholder for no arguments.
+	const [argumentsText, setArgumentsText] = useState(
+		useMcpServer.arguments && useMcpServer.arguments !== "{}" ? useMcpServer.arguments : "",
+	)
 
 	// Details section (arguments, tool description, response) collapsed by default
 	const [isDetailsExpanded, setIsDetailsExpanded] = useState(false)
 	// Response sub-section within details, also collapsed by default
 	const [isResponseExpanded, setIsResponseExpanded] = useState(false)
 
-	// Derive the display tool name from either useMcpServer or direct props
-	const displayToolName = useMcpServer?.toolName || toolName
-	const displayServerName = useMcpServer?.serverName || serverName
+	const displayToolName = useMcpServer.toolName
+	const displayServerName = useMcpServer.serverName
 
 	// Try to parse JSON and return both the result and formatted text
 	const tryParseJson = useCallback((text: string): { isJson: boolean; formatted: string } => {
@@ -100,34 +94,11 @@ export const McpExecution = ({
 
 	// Only parse arguments data when details are expanded, to avoid unnecessary work
 	const argumentsData = useMemo(() => {
-		if (!argumentsText || !isDetailsExpanded) {
-			return { isJson: false, formatted: argumentsText || "" }
+		if (!isDetailsExpanded) {
+			return { isJson: false, formatted: argumentsText }
 		}
-
-		// For arguments, we don't have a streaming status, so we check if it looks like complete JSON
-		const trimmed = argumentsText.trim()
-
-		// Basic check for complete JSON structure
-		if (
-			trimmed &&
-			((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]")))
-		) {
-			// Try to parse, but if it fails, return as-is
-			try {
-				const parsed = JSON.parse(trimmed)
-				return {
-					isJson: true,
-					formatted: JSON.stringify(parsed, null, 2),
-				}
-			} catch {
-				// JSON structure looks complete but is invalid, return as-is
-				return { isJson: false, formatted: argumentsText }
-			}
-		}
-
-		// For non-JSON or incomplete data, just return as-is
-		return { isJson: false, formatted: argumentsText }
-	}, [argumentsText, isDetailsExpanded])
+		return tryParseJson(argumentsText)
+	}, [argumentsText, isDetailsExpanded, tryParseJson])
 
 	const formattedResponseText = responseData.formatted
 	const formattedArgumentsText = argumentsData.formatted
@@ -174,22 +145,17 @@ export const McpExecution = ({
 
 	// Follow the ask while it streams. Arguments and names keep their last non-empty value; the response
 	// from the ask replaces streamed output whenever it changes.
-	if (text && text !== argumentsText) {
-		setArgumentsText(text)
+	const streamedArguments = useMcpServer.arguments && useMcpServer.arguments !== "{}" ? useMcpServer.arguments : ""
+	if (streamedArguments && streamedArguments !== argumentsText) {
+		setArgumentsText(streamedArguments)
 	}
-	const [askResponse, setAskResponse] = useState(useMcpServer?.response)
-	if (useMcpServer?.response && useMcpServer.response !== askResponse) {
+	const [askResponse, setAskResponse] = useState(useMcpServer.response)
+	if (useMcpServer.response && useMcpServer.response !== askResponse) {
 		setAskResponse(useMcpServer.response)
 		setResponseText(useMcpServer.response)
 	}
-	if (initialServerName && initialServerName !== serverName) {
-		setServerName(initialServerName)
-	}
-	if (initialToolName && initialToolName !== toolName) {
-		setToolName(initialToolName)
-	}
 
-	const hasArguments = !!(isArguments || useMcpServer?.arguments || argumentsText)
+	const hasArguments = !!(isArguments || useMcpServer.arguments || argumentsText)
 	const hasResponse = responseText.length > 0
 
 	return (
@@ -270,7 +236,7 @@ export const McpExecution = ({
 					}}
 					data-testid="mcp-details-content">
 					{/* Tool information section */}
-					{useMcpServer?.type === "use_mcp_tool" && (
+					{useMcpServer.type === "use_mcp_tool" && (
 						<div onClick={(e) => e.stopPropagation()}>
 							<McpToolRow
 								tool={{
@@ -289,28 +255,12 @@ export const McpExecution = ({
 							/>
 						</div>
 					)}
-					{!useMcpServer && toolName && serverName && (
-						<div onClick={(e) => e.stopPropagation()}>
-							<McpToolRow
-								tool={{
-									name: toolName || "",
-									description: "",
-									alwaysAllow: false,
-								}}
-								serverName={serverName}
-								serverSource={undefined}
-								alwaysAllowMcp={alwaysAllowMcp}
-								isInChatContext={true}
-							/>
-						</div>
-					)}
 
 					{/* Arguments section */}
 					{hasArguments && (
 						<div
 							className={cn({
-								"mt-1 pt-1":
-									!isArguments && (useMcpServer?.type === "use_mcp_tool" || (toolName && serverName)),
+								"mt-1 pt-1": !isArguments && useMcpServer.type === "use_mcp_tool",
 							})}>
 							<CodeBlock source={formattedArgumentsText} language="json" />
 						</div>
