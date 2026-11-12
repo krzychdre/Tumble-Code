@@ -437,10 +437,7 @@ Check your internet connection and run the installer again."
 setup_bin() {
     mkdir -p "$BIN_DIR"
     
-    # Remove old symlink if exists
-    if [ -L "$BIN_DIR/tumble" ] || [ -f "$BIN_DIR/tumble" ]; then
-        rm -f "$BIN_DIR/tumble"
-    fi
+    rm -f "$BIN_DIR/tumble"
     
     ln -sf "$INSTALL_DIR/bin/tumble" "$BIN_DIR/tumble"
     info "Created symlink: $BIN_DIR/tumble"
@@ -490,8 +487,9 @@ check_path() {
 verify_install() {
     if [ -x "$BIN_DIR/tumble" ]; then
         info "Verifying installation..."
-        # Just check if it runs without error
-        "$BIN_DIR/tumble" --version >/dev/null 2>&1 || true
+        if ! "$BIN_DIR/tumble" --version >/dev/null 2>&1; then
+            warn "Installed binary failed to start; see $INSTALL_DIR"
+        fi
     fi
 }
 

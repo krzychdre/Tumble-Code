@@ -54,6 +54,11 @@ export function usePickerHandlers({
 	const { isLoading, currentTaskId, setCurrentTaskId } = useCLIStore()
 	const { pickerState, setPickerState } = useUIStateStore()
 
+	const closeBothPickers = useCallback(() => {
+		autocompleteRef.current?.closePicker()
+		followupAutocompleteRef.current?.closePicker()
+	}, [autocompleteRef, followupAutocompleteRef])
+
 	/**
 	 * Handle picker state changes from AutocompleteInput
 	 */
@@ -80,8 +85,7 @@ export function usePickerHandlers({
 					showInfo(modeSwitchNotice(modeItem.name, getModelForMode?.(modeItem.slug)), 2000)
 				}
 
-				autocompleteRef.current?.closePicker()
-				followupAutocompleteRef.current?.closePicker()
+				closeBothPickers()
 			}
 			// Check if this is a history item selection.
 			else if (pickerState.activeTrigger?.id === "history" && item && typeof item === "object" && "id" in item) {
@@ -90,15 +94,13 @@ export function usePickerHandlers({
 				// Don't allow task switching while a task is in progress (loading).
 				if (isLoading) {
 					showInfo("Cannot switch tasks while task is in progress", 2000)
-					autocompleteRef.current?.closePicker()
-					followupAutocompleteRef.current?.closePicker()
+					closeBothPickers()
 					return
 				}
 
 				// If selecting the same task that's already loaded, just close the picker.
 				if (historyItem.id === currentTaskId) {
-					autocompleteRef.current?.closePicker()
-					followupAutocompleteRef.current?.closePicker()
+					closeBothPickers()
 					return
 				}
 
@@ -121,8 +123,7 @@ export function usePickerHandlers({
 				}
 
 				// Close the picker
-				autocompleteRef.current?.closePicker()
-				followupAutocompleteRef.current?.closePicker()
+				closeBothPickers()
 			} else {
 				// Handle other item selections normally
 				autocompleteRef.current?.handleItemSelect(item)
@@ -137,6 +138,7 @@ export function usePickerHandlers({
 			currentTaskId,
 			setCurrentTaskId,
 			sendToExtension,
+			closeBothPickers,
 			autocompleteRef,
 			followupAutocompleteRef,
 			resetTranscript,
@@ -146,10 +148,7 @@ export function usePickerHandlers({
 	/**
 	 * Handle picker close from external PickerSelect
 	 */
-	const handlePickerClose = useCallback(() => {
-		autocompleteRef.current?.closePicker()
-		followupAutocompleteRef.current?.closePicker()
-	}, [autocompleteRef, followupAutocompleteRef])
+	const handlePickerClose = closeBothPickers
 
 	/**
 	 * Handle picker index change from external PickerSelect
