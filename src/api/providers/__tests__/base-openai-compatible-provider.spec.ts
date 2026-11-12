@@ -3,7 +3,7 @@
 // streamChatCompletion's and pinned for this loop by chat-completions-characterization. This
 // spec covers what the base class adds: the client, the request params and cancellation.
 
-const mocks = vi.hoisted(() => ({ create: vi.fn(), logInfo: vi.fn() }))
+const mocks = vi.hoisted(() => ({ create: vi.fn() }))
 
 vi.mock("openai", async () => {
 	const { openAiModuleMock } = await import("./provider-test-helpers")
@@ -13,7 +13,6 @@ vi.mock("../utils/timeout-config", async (importOriginal) => ({
 	...(await importOriginal<typeof import("../utils/timeout-config")>()),
 	getApiRequestTimeout: vi.fn(() => 600_000),
 }))
-vi.mock("../../../utils/logging", () => ({ logger: { info: mocks.logInfo, error: vi.fn(), warn: vi.fn() } }))
 
 import OpenAI from "openai"
 
@@ -142,19 +141,6 @@ describe("streamed request", () => {
 		task.abort()
 		expect(first.requestOptions.signal.aborted).toBe(true)
 		expect(second.requestOptions.signal.aborted).toBe(false)
-	})
-
-	it("logs the raw usage only with ROO_LOG_RAW_USAGE=1", async () => {
-		await streamParamsOf(new TestProvider())
-		expect(mocks.logInfo).not.toHaveBeenCalled()
-
-		vi.stubEnv("ROO_LOG_RAW_USAGE", "1")
-		try {
-			await streamParamsOf(new TestProvider())
-		} finally {
-			vi.unstubAllEnvs()
-		}
-		expect(mocks.logInfo).toHaveBeenCalledWith(expect.stringMatching(/^\[TestProvider\] raw usage: \{/))
 	})
 
 	it("reports a rejected request as a provider error with its root cause and status", async () => {

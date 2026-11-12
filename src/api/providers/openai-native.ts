@@ -24,7 +24,12 @@ import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessage
 import { responsesApiCompletionUsage } from "./utils/completion-usage"
 import { handleProviderError } from "./utils/error-handler"
 import { ResponsesApiCore, type ResponsesApiErrorTexts } from "./responses-api/core"
-import { buildResponsesApiRequestBody, responsesApiUserAgent, toResponsesApiInput } from "./responses-api/request"
+import {
+	buildResponsesApiRequestBody,
+	responsesApiReasoning,
+	responsesApiUserAgent,
+	toResponsesApiInput,
+} from "./responses-api/request"
 import { wireCaptureFetch } from "./utils/wire-capture"
 
 export type OpenAiNativeModel = ReturnType<OpenAiNativeHandler["getModel"]>
@@ -302,8 +307,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 				],
 				stream: false, // Non-streaming for completePrompt
 				store: false, // Don't store prompt completions
-				// Only include encrypted reasoning content when reasoning effort is set
-				...(reasoningEffort ? { include: ["reasoning.encrypted_content"] } : {}),
+				...responsesApiReasoning(reasoningEffort, !!this.options.enableResponsesReasoningSummary),
 			}
 
 			// Include service tier if selected and supported
@@ -311,14 +315,6 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			const allowedTierNames = new Set(model.info.tiers?.map((t) => t.name).filter(Boolean) || [])
 			if (requestedTier && (requestedTier === "default" || allowedTierNames.has(requestedTier))) {
 				requestBody.service_tier = requestedTier
-			}
-
-			// Add reasoning if supported
-			if (reasoningEffort) {
-				requestBody.reasoning = {
-					effort: reasoningEffort,
-					...(this.options.enableResponsesReasoningSummary ? { summary: "auto" as const } : {}),
-				}
 			}
 
 			// Only include temperature if the model supports it

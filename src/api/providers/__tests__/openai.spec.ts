@@ -6,7 +6,7 @@
 // endpoint kind, the request body of each path, the GLM thinking switch, completePrompt,
 // cancellation and the model list.
 
-const mocks = vi.hoisted(() => ({ create: vi.fn(), logInfo: vi.fn() }))
+const mocks = vi.hoisted(() => ({ create: vi.fn() }))
 
 vi.mock("openai", () => {
 	const client = () => ({ chat: { completions: { create: mocks.create } } })
@@ -25,7 +25,6 @@ vi.mock("../utils/timeout-config", async (importOriginal) => ({
 	...(await importOriginal<typeof import("../utils/timeout-config")>()),
 	getApiRequestTimeout: vi.fn(() => 600_000),
 }))
-vi.mock("../../../utils/logging", () => ({ logger: { info: mocks.logInfo, error: vi.fn(), warn: vi.fn() } }))
 
 import OpenAI, { AzureOpenAI } from "openai"
 import axios from "axios"
@@ -379,19 +378,6 @@ describe("createMessage request", () => {
 			message: "OpenAI completion error: Rate limit exceeded",
 			status: 429,
 		})
-	})
-
-	it("logs the raw usage only with ROO_LOG_RAW_USAGE=1", async () => {
-		await drain(handlerFor().createMessage("s", []))
-		expect(mocks.logInfo).not.toHaveBeenCalled()
-
-		vi.stubEnv("ROO_LOG_RAW_USAGE", "1")
-		try {
-			await drain(handlerFor().createMessage("s", []))
-		} finally {
-			vi.unstubAllEnvs()
-		}
-		expect(mocks.logInfo).toHaveBeenCalledWith(expect.stringContaining('raw usage: {"prompt_tokens":10'))
 	})
 })
 

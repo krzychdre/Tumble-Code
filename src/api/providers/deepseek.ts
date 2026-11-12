@@ -2,7 +2,6 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
 import {
-	type ModelInfo,
 	deepSeekDefaultModelId,
 	deepSeekModelAliases,
 	DEEP_SEEK_DEFAULT_TEMPERATURE,
@@ -12,12 +11,11 @@ import {
 
 import type { ApiHandlerOptions } from "@tumble-code/core/browser"
 
-import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
+import { ApiStream } from "../transform/stream"
 import { getModelParams } from "../transform/model-params"
 import { convertToR1Format } from "../transform/r1-format"
 
 import { OpenAiHandler } from "./openai"
-import { openAiUsageChunk } from "./utils/completion-usage"
 import type { ApiHandlerCreateMessageMetadata } from "../index"
 
 // Custom interface for DeepSeek params to support thinking mode
@@ -154,15 +152,5 @@ export class DeepSeekHandler extends OpenAiHandler {
 		yield* this.streamUntilDone(stream, {
 			mapUsage: (usage) => this.processUsageMetrics(usage, modelInfo),
 		})
-	}
-
-	// DeepSeek reports its prompt cache at the top level of `usage`:
-	// prompt_cache_hit_tokens + prompt_cache_miss_tokens = prompt_tokens (both
-	// required), with the hit count optionally mirrored in
-	// prompt_tokens_details.cached_tokens; the shared reader knows both names.
-	// There are no cache writes: a miss is ordinary input at the input price.
-	// https://api-docs.deepseek.com/api/create-chat-completion
-	protected override processUsageMetrics(usage: any, modelInfo?: ModelInfo): ApiStreamUsageChunk {
-		return openAiUsageChunk(usage ?? {}, { modelInfo })
 	}
 }

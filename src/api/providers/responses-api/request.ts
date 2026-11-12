@@ -154,28 +154,42 @@ export interface ResponsesApiRequestBodyParams {
 }
 
 /**
+ * The reasoning fields of a Responses API request: `include` asks for the encrypted
+ * reasoning of the answer, `reasoning` sets the effort, and a summary is only sent
+ * together with an effort. Without an effort the object is empty, so spreading it
+ * changes nothing.
+ */
+export function responsesApiReasoning(
+	reasoningEffort: ReasoningEffortExtended | undefined,
+	reasoningSummary: boolean,
+): Record<string, any> {
+	if (!reasoningEffort) {
+		return {}
+	}
+
+	return {
+		include: ["reasoning.encrypted_content"],
+		reasoning: {
+			effort: reasoningEffort,
+			...(reasoningSummary ? { summary: "auto" as const } : {}),
+		},
+	}
+}
+
+/**
  * The streaming request body shared by OpenAI Native and Codex: stateless (`store: false`,
  * earlier reasoning comes back as encrypted items), the system prompt in `instructions`,
  * the tools in the Responses API shape and parallel tool calls on unless the task turns
  * them off.
  */
 export function buildResponsesApiRequestBody(params: ResponsesApiRequestBodyParams): Record<string, any> {
-	const { reasoningEffort } = params
 	return {
 		model: params.modelId,
 		input: params.input,
 		stream: true,
 		store: false,
 		instructions: params.instructions,
-		...(reasoningEffort ? { include: ["reasoning.encrypted_content"] } : {}),
-		...(reasoningEffort
-			? {
-					reasoning: {
-						effort: reasoningEffort,
-						...(params.reasoningSummary ? { summary: "auto" as const } : {}),
-					},
-				}
-			: {}),
+		...responsesApiReasoning(params.reasoningEffort, params.reasoningSummary),
 		...params.settings,
 		tools: toResponsesApiTools(params.metadata?.tools),
 		tool_choice: params.metadata?.tool_choice,

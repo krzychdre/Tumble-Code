@@ -26,7 +26,6 @@ import { handleProviderError } from "./utils/error-handler"
 import { createRequestAbortController } from "./utils/request-abort"
 import { openAiCompletionUsage, openAiUsageChunk } from "./utils/completion-usage"
 import { CONTROL_REQUEST_TIMEOUT_MS } from "./utils/timeout-config"
-import { logger } from "../../utils/logging"
 import { wireCaptureFetch } from "./utils/wire-capture"
 
 /**
@@ -320,14 +319,6 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 	}
 
 	protected processUsageMetrics(usage: any, modelInfo?: ModelInfo): ApiStreamUsageChunk {
-		// Spike instrumentation: dump the endpoint's raw usage object so cache
-		// reporting can be verified endpoint-by-endpoint (e.g. whether a local
-		// vLLM server reports prefix-cache hits). Mirrors the same switch in
-		// base-openai-compatible-provider.ts.
-		if (process.env.ROO_LOG_RAW_USAGE === "1") {
-			logger.info(`[openai-compatible] raw usage: ${JSON.stringify(usage)}`)
-		}
-
 		// Servers name the cache figures differently (nested under
 		// `prompt_tokens_details` or Anthropic-style at the top level); the shared
 		// reader knows every documented name, so this path and one-shot
