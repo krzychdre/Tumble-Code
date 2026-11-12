@@ -52,15 +52,6 @@ export function clearRuntimeConfig(): void {
 }
 
 /**
- * Get a runtime configuration value.
- * @param fullKey The full configuration key (e.g., "roo-cline.commandExecutionTimeout")
- * @returns The value or undefined if not set
- */
-export function getRuntimeConfig(fullKey: string): unknown {
-	return runtimeConfig.get(fullKey)
-}
-
-/**
  * Mock workspace configuration for CLI mode
  * Persists configuration to JSON files
  */

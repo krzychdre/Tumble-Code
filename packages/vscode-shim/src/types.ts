@@ -173,6 +173,7 @@ export type Event<T> = (listener: (e: T) => void, thisArgs?: unknown, disposable
 
 /**
  * File system file type enum
+ * @public members are read by the extension as vscode.FileType.*
  */
 export enum FileType {
 	Unknown = 0,
@@ -214,6 +215,7 @@ export enum ViewColumn {
 
 /**
  * UI Kind enum
+ * @public members are read by the extension as vscode.UIKind.*
  */
 export enum UIKind {
 	Desktop = 1,

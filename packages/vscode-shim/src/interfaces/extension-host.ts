@@ -21,11 +21,6 @@ export interface ExtensionHostEventMap {
 }
 
 /**
- * Allowed event names for ExtensionHost communication.
- */
-export type ExtensionHostEventName = keyof ExtensionHostEventMap
-
-/**
  * ExtensionHost interface for bridging the vscode-shim with the actual extension host.
  *
  * The ExtensionHost acts as a message broker between the extension and the CLI/webview,

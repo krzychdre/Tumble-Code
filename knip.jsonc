@@ -11,6 +11,8 @@
 		"scripts/**",
 		// Python service, not part of the pnpm workspace graph.
 		"self-hosted-cloudapi/**",
+		// The owner's local, git-ignored notes and scratch copies; absent in CI.
+		"private_docs/**",
 		// Agent skills and commands (Claude Code, Tumble); their scripts are run by hand, not imported.
 		".claude/**",
 		".roo/**",
@@ -24,6 +26,11 @@
 	"workspaces": {
 		"src": {
 			"entry": ["extension/api.ts"],
+			// @tumble-code/build resolves to its git-ignored dist/index.js, which CI never builds;
+			// without this mapping esbuild.mjs's imports stay invisible and every export reads as unused.
+			"paths": {
+				"@tumble-code/build": ["../packages/build/src/index.ts"],
+			},
 			"project": ["**/*.ts", "!**/__tests__/**"],
 			"ignoreDependencies": [
 				// Types for the "vscode" module that the extension host provides at runtime.
@@ -46,30 +53,42 @@
 		"webview-ui": {
 			"project": ["src/**/*.{ts,tsx}", "../src/shared/*.ts"],
 		},
+		"apps/vscode-nightly": {
+			// Same reason as the "paths" entry of "src".
+			"paths": {
+				"@tumble-code/build": ["../../packages/build/src/index.ts"],
+			},
+		},
 		"apps/cli": {
 			"project": ["src/**/*.ts", "src/**/*.tsx"],
 		},
+		// includeEntryExports in every package below: an index is a package entry, so knip would
+		// skip its exports. Every consumer lives in this monorepo, so an export nobody imports is
+		// dead code here.
 		"packages/core": {
 			"project": ["src/**/*.ts"],
+			"includeEntryExports": true,
 		},
 		"packages/vscode-shim": {
 			"project": ["src/**/*.ts"],
+			"includeEntryExports": true,
 		},
 		"packages/cloud": {
 			"project": ["src/**/*.ts"],
 			// Types for the "vscode" module that the extension host provides at runtime.
 			"ignoreDependencies": ["@types/vscode"],
+			"includeEntryExports": true,
 		},
 		"packages/telemetry": {
 			"project": ["src/**/*.ts"],
+			"includeEntryExports": true,
 		},
 		"packages/build": {
 			"project": ["src/**/*.ts"],
+			"includeEntryExports": true,
 		},
 		"packages/types": {
 			"project": ["src/**/*.ts"],
-			// The index is a package entry, so knip would skip its exports. Every consumer lives in
-			// this workspace, so an export nobody imports is dead code here.
 			"includeEntryExports": true,
 		},
 	},

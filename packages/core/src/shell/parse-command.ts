@@ -102,42 +102,6 @@ function unterminatedQuoteMessage(quoteType: QuoteType, openIndex: number, comma
 }
 
 /**
- * Scan a command string left-to-right with a small state machine and report the
- * first quoted region that is never closed, or `null` when every quoted region
- * is properly terminated.
- *
- * A regex cannot reliably answer "is this command well-quoted?" because quoting
- * is context-sensitive: a backslash escapes the next character outside single
- * quotes, `#` may begin a comment that should be ignored, and an apostrophe
- * inside double quotes (or vice versa) is literal text rather than a delimiter.
- * This walk mirrors how a POSIX shell tokenizes quoting so that legitimate
- * multi-line quoted arguments are accepted while genuinely unterminated quotes
- * (a shell syntax error) are detected.
- *
- * Rules implemented:
- * - Outside any quote, a backslash escapes the following character, so `\'` and
- *   `\"` are literal and do not open a region.
- * - Outside any quote, `#` begins a comment when it is at the start of the input
- *   or preceded by whitespace; the remainder of that line is ignored. A `#` that
- *   is attached to a word (e.g. `foo#bar`) is an ordinary character.
- * - Single quotes are opaque: no escapes apply, and the region ends only at the
- *   next `'`.
- * - Double quotes honor backslash escapes, so `\"` does not close the region.
- * - ANSI-C quoting ($'...') behaves like a single-quoted region for delimiter
- *   purposes but honors backslash escapes, so `\'` does not close it.
- * - Locale quoting ($"...") behaves like double quotes but is opened by `$"` so
- *   the leading `$` is part of the token (same pattern as ANSI-C).
- * - Heredoc (`<<WORD`, `<<'WORD'`, `<<"WORD"`, `<<\WORD`, `<<-WORD`) is a
- *   multi-line quoted region. The body extends from the character after the
- *   opener line's newline through the line that is exactly the terminator word
- *   (after stripping leading tabs for `<<-`). If no terminator line is found the
- *   heredoc is unterminated.
- */
-export function findUnterminatedQuote(command: string): UnterminatedQuote | null {
-	return scanTopLevelQuotes(command)
-}
-
-/**
  * Parse a heredoc delimiter word starting at position `start` in `command`.
  * The delimiter may be:
  * - Unquoted:        `EOF`     -- bare identifier characters
@@ -179,7 +143,7 @@ function parseHeredocDelimiter(command: string, start: number): { delimiter: str
 }
 
 /**
- * State-machine walk behind `findUnterminatedQuote`. Walks `command`
+ * State-machine walk that finds an unterminated quote. Walks `command`
  * left-to-right over every top-level quoted region (outside any other quote
  * and outside `#` comments) and returns a descriptor of the first region that
  * is never closed, or null.

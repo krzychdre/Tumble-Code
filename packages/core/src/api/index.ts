@@ -8,7 +8,5 @@ export {
 	GEMINI_25_PRO_MIN_THINKING_TOKENS,
 	getModelMaxOutputTokens,
 	getCompactOutputReservation,
-	COMPACT_MAX_OUTPUT_TOKENS,
-	COMPACT_OUTPUT_WINDOW_SHARE,
 } from "./model-options.js"
 export type { ApiHandlerOptions, FetchableModelSourceId, GetModelsOptions } from "./model-options.js"
