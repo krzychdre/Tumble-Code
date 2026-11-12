@@ -8,6 +8,7 @@ import {
 	mergeExtensionState,
 	type ExtensionStateContextType,
 } from "../ExtensionStateContext"
+import type { StoredExtensionState } from "../extensionStateReducer"
 
 let latest: ExtensionStateContextType
 const record = (state: ExtensionStateContextType) => {
@@ -52,8 +53,8 @@ describe("ExtensionStateContextProvider", () => {
 		}).toEqual({ terminalShellIntegrationTimeout: 30_000, soundEnabled: false, enableCheckpoints: true })
 	})
 
-	// buildContextValue fills these from SETTINGS_DEFAULTS while the state lacks them.
-	it("falls back to the defaults the read model fills in, and takes the pushed values", () => {
+	// createInitialExtensionState pins these defaults; a push that carries them wins.
+	it("starts at the pinned defaults and takes the pushed values", () => {
 		renderProvider()
 		expect({
 			alwaysAllowFollowupQuestions: latest.alwaysAllowFollowupQuestions,
@@ -134,7 +135,7 @@ describe("ExtensionStateContextProvider", () => {
 
 describe("mergeExtensionState", () => {
 	const merge = (prev: Partial<ExtensionState>, next: Partial<ExtensionState>) =>
-		mergeExtensionState(prev as ExtensionState, next)
+		mergeExtensionState(prev as StoredExtensionState, next)
 
 	// Decision 18: the host posts "" for a cleared profile or memory directory,
 	// and the merge must take it (a missing key would keep the old value).

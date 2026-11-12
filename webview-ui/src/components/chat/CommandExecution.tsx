@@ -55,8 +55,8 @@ export const CommandExecution = ({
 	onToggleExpand,
 }: CommandExecutionProps) => {
 	// P1: narrow slices.
-	const allowedCommands = useExtensionSelector((s) => s.allowedCommands) ?? []
-	const deniedCommands = useExtensionSelector((s) => s.deniedCommands) ?? []
+	const allowedCommands = useExtensionSelector((s) => s.allowedCommands)
+	const deniedCommands = useExtensionSelector((s) => s.deniedCommands)
 	const setAllowedCommands = useExtensionSelector((s) => s.setAllowedCommands)
 	const setDeniedCommands = useExtensionSelector((s) => s.setDeniedCommands)
 

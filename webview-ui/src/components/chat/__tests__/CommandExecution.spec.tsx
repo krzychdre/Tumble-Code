@@ -140,7 +140,7 @@ describe("CommandExecution", () => {
 		["denies a new command", ["npm"], ["rm"], "docker run", "Deny", ["npm"], ["rm", "docker run"]],
 		["un-denies a denied command", ["npm"], ["rm -rf"], "rm -rf", "Deny", ["npm"], []],
 		["moves an allowed command to denied", ["git push"], [], "git push", "Deny", [], ["git push"]],
-		["allows with no lists yet", undefined, undefined, "npm install", "Allow", ["npm install"], []],
+		["allows with empty lists", [], [], "npm install", "Allow", ["npm install"], []],
 	])("%s", (_name, allowedCommands, deniedCommands, text, button, newAllowed, newDenied) => {
 		mockSelectorState.current = { ...mockExtensionState, allowedCommands, deniedCommands }
 		renderExpanded(text)
