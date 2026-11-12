@@ -9,7 +9,6 @@ import {
 	errorReportSchema,
 	tumbleCodeTelemetryEventSchema,
 	TelemetryPropertiesProvider,
-	TelemetryEventSubscription,
 } from "@tumble-code/types"
 
 import { readFile } from "node:fs/promises"
@@ -46,34 +45,43 @@ function exceptionProperties(error: Error, additionalProperties?: Record<string,
 	}
 }
 
-abstract class BaseTelemetryClient implements TelemetryClient {
-	protected providerRef: WeakRef<TelemetryPropertiesProvider> | null = null
-	protected telemetryEnabled: boolean = false
+export class CloudTelemetryClient implements TelemetryClient {
+	private providerRef: WeakRef<TelemetryPropertiesProvider> | null = null
 
-	constructor(
-		public readonly subscription?: TelemetryEventSubscription,
-		protected readonly debug = false,
-	) {}
+	/** TASK_CONVERSATION_MESSAGE is excluded: its payload travels with the task sync instead. */
+	private readonly excludedEvents: readonly TelemetryEventName[] = [TelemetryEventName.TASK_CONVERSATION_MESSAGE]
 
-	protected isEventCapturable(eventName: TelemetryEventName): boolean {
-		if (!this.subscription) {
-			return true
-		}
-
-		return this.subscription.type === "include"
-			? this.subscription.events.includes(eventName)
-			: !this.subscription.events.includes(eventName)
-	}
+	private retryQueue: RetryQueue | null = null
 
 	/**
-	 * Determines if a specific property should be included in telemetry events
-	 * Override in subclasses to filter specific properties
+	 * `taskId|ts|path|mtimeMs|size` of every image already sent (or being
+	 * sent), oldest first. A changed file has a new key and is sent again.
 	 */
-	protected isPropertyCapturable(_propertyName: string): boolean {
+	private sentTaskImages = new Set<string>()
+
+	constructor(
+		private authService: AuthService,
+		private settingsService: SettingsService,
+		private secretValues: () => readonly string[],
+		retryQueue?: RetryQueue,
+	) {
+		this.retryQueue = retryQueue || null
+	}
+
+	private isEventCapturable(eventName: TelemetryEventName): boolean {
+		if (this.excludedEvents.includes(eventName)) {
+			return false
+		}
+
+		// Only record message telemetry if task sync is enabled
+		if (eventName === TelemetryEventName.TASK_MESSAGE) {
+			return this.settingsService.isTaskSyncEnabled()
+		}
+
 		return true
 	}
 
-	protected async getEventProperties(event: TelemetryEvent): Promise<TelemetryEvent["properties"]> {
+	private async getEventProperties(event: TelemetryEvent): Promise<TelemetryEvent["properties"]> {
 		let providerProperties: TelemetryEvent["properties"] = {}
 		const provider = this.providerRef?.deref()
 
@@ -94,50 +102,14 @@ abstract class BaseTelemetryClient implements TelemetryClient {
 
 		// Merge provider properties with event-specific properties.
 		// Event properties take precedence in case of conflicts.
-		const mergedProperties = {
+		return {
 			...providerProperties,
 			...(event.properties || {}),
 		}
-
-		// Filter out properties that shouldn't be captured by this client
-		return Object.fromEntries(Object.entries(mergedProperties).filter(([key]) => this.isPropertyCapturable(key)))
 	}
-
-	public abstract capture(event: TelemetryEvent): Promise<void>
-
-	public async captureException(_error: Error, _additionalProperties?: Record<string, unknown>): Promise<void> {}
 
 	public setProvider(provider: TelemetryPropertiesProvider): void {
 		this.providerRef = new WeakRef(provider)
-	}
-
-	public isTelemetryEnabled(): boolean {
-		return this.telemetryEnabled
-	}
-
-	public abstract shutdown(): Promise<void>
-}
-
-export class CloudTelemetryClient extends BaseTelemetryClient {
-	private retryQueue: RetryQueue | null = null
-
-	/**
-	 * `taskId|ts|path|mtimeMs|size` of every image already sent (or being
-	 * sent), oldest first. A changed file has a new key and is sent again.
-	 */
-	private sentTaskImages = new Set<string>()
-
-	constructor(
-		private authService: AuthService,
-		private settingsService: SettingsService,
-		private secretValues: () => readonly string[],
-		retryQueue?: RetryQueue,
-	) {
-		super({
-			type: "exclude",
-			events: [TelemetryEventName.TASK_CONVERSATION_MESSAGE],
-		})
-		this.retryQueue = retryQueue || null
 	}
 
 	/** POSTs `payload` as JSON, redacted (`redactSecrets`) before it is serialized. */
@@ -198,22 +170,14 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 		}
 	}
 
-	public override async capture(event: TelemetryEvent) {
+	public async capture(event: TelemetryEvent) {
 		if (!this.isTelemetryEnabled() || !this.isEventCapturable(event.event)) {
-			if (this.debug) {
-				console.info(`[TelemetryClient#capture] Skipping event: ${event.event}`)
-			}
-
 			return
 		}
 
 		const payload = {
 			type: event.event,
 			properties: await this.getEventProperties(event),
-		}
-
-		if (this.debug) {
-			console.info(`[TelemetryClient#capture] ${JSON.stringify(payload)}`)
 		}
 
 		const result = tumbleCodeTelemetryEventSchema.safeParse(payload)
@@ -249,7 +213,7 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 	 * can group it. The error's own primitive fields (provider, modelId,
 	 * taskId, ...) come along; the message and the stack are shortened.
 	 */
-	public override async captureException(error: Error, additionalProperties?: Record<string, unknown>) {
+	public async captureException(error: Error, additionalProperties?: Record<string, unknown>) {
 		await this.capture({
 			event: TelemetryEventName.EXCEPTION,
 			properties: exceptionProperties(error, additionalProperties),
@@ -288,9 +252,6 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 		}
 
 		if (!this.authService.isAuthenticated()) {
-			if (this.debug) {
-				console.info(`[TelemetryClient#backfillMessages] Skipping: Not authenticated`)
-			}
 			return
 		}
 
@@ -326,12 +287,6 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 					type: "application/json",
 				}),
 			)
-
-			if (this.debug) {
-				console.info(
-					`[TelemetryClient#backfillMessages] Uploading ${messages.length} messages for task ${taskId}`,
-				)
-			}
 
 			const url = `${getTumbleCodeApiUrl()}/api/events/backfill`
 			const fetchOptions: RequestInit = {
@@ -474,7 +429,7 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 		}
 	}
 
-	public override isTelemetryEnabled(): boolean {
+	public isTelemetryEnabled(): boolean {
 		// ROO_CODE_DISABLE_TELEMETRY is the former name, still honoured.
 		if (process.env.TUMBLE_CODE_DISABLE_TELEMETRY === "1" || process.env.ROO_CODE_DISABLE_TELEMETRY === "1") {
 			return false
@@ -483,20 +438,6 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 		return true
 	}
 
-	protected override isEventCapturable(eventName: TelemetryEventName): boolean {
-		// Ensure that this event type is supported by the telemetry client
-		if (!super.isEventCapturable(eventName)) {
-			return false
-		}
-
-		// Only record message telemetry if task sync is enabled
-		if (eventName === TelemetryEventName.TASK_MESSAGE) {
-			return this.settingsService.isTaskSyncEnabled()
-		}
-
-		// Other telemetry types are capturable at this point
-		return true
-	}
-
-	public override async shutdown() {}
+	// The TelemetryClient interface requires the method; the cloud client has nothing to release.
+	public async shutdown() {}
 }

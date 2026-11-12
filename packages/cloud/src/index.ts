@@ -5,13 +5,7 @@ export { CloudAPIError } from "./errors.js"
 export type { RecallFolder, RecallScope, RecallSearchResponse, RecallSession } from "./CloudAPI.js"
 
 export { RetryQueue } from "./retry-queue/index.js"
-export type {
-	QueuedRequest,
-	QueueStats,
-	RetryQueueConfig,
-	RetryQueueEvents,
-	RetryQueueStorage,
-} from "./retry-queue/index.js"
+export type { QueuedRequest, RetryQueueConfig, RetryQueueStorage } from "./retry-queue/index.js"
 
 export { BridgeOrchestrator, bridgeRetryDelayMs } from "./bridge/BridgeOrchestrator.js"
 export type { BridgeOrchestratorOptions, BridgeEventSource } from "./bridge/BridgeOrchestrator.js"

@@ -47,11 +47,3 @@ export interface RetryQueueConfig {
 	/** Random source in [0, 1) for the jitter; injectable for deterministic tests. */
 	random?: () => number
 }
-
-export interface RetryQueueEvents {
-	"request-queued": [request: QueuedRequest]
-	"request-retry-success": [request: QueuedRequest]
-	"request-retry-failed": [request: QueuedRequest, error: Error]
-	"request-max-retries-exceeded": [request: QueuedRequest, error: Error]
-	"queue-cleared": []
-}

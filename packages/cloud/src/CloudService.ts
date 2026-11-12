@@ -87,10 +87,6 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements Di
 
 	private _retryQueue: RetryQueue | null = null
 
-	public get retryQueue() {
-		return this._retryQueue
-	}
-
 	private _isCloudAgent = false
 
 	public get isCloudAgent() {
@@ -138,7 +134,7 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements Di
 			const { staticToken, staticOrgSettings } = resolveCloudEnvironment()
 
 			if (staticToken) {
-				this._authService = new StaticTokenAuthService(this.context, staticToken, this.log)
+				this._authService = new StaticTokenAuthService(staticToken, this.log)
 				this._isCloudAgent = true
 			} else {
 				this._authService = new WebAuthService(this.context, this.log)
@@ -227,23 +223,6 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements Di
 		this.ensureInitialized()
 		const userInfo = this.authService!.getUserInfo()
 		return userInfo?.organizationId || null
-	}
-
-	public getOrganizationName(): string | null {
-		this.ensureInitialized()
-		const userInfo = this.authService!.getUserInfo()
-		return userInfo?.organizationName || null
-	}
-
-	public getOrganizationRole(): string | null {
-		this.ensureInitialized()
-		const userInfo = this.authService!.getUserInfo()
-		return userInfo?.organizationRole || null
-	}
-
-	public hasStoredOrganizationId(): boolean {
-		this.ensureInitialized()
-		return this.authService!.getStoredOrganizationId() !== null
 	}
 
 	public getAuthState(): string {
@@ -525,21 +504,13 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements Di
 
 		// Handle different auth states
 		switch (newState) {
-			case "active-session": {
-				// Check if user changed (different user logged in)
-				const wasCleared = this._retryQueue.clearIfUserChanged(newUserId)
-
-				if (!wasCleared) {
-					// Same user or first login, resume the queue
-					this._retryQueue.resume()
-					this.log("[CloudService] Resuming retry queue for active session")
-				} else {
-					// Different user, queue was cleared, but we can resume processing
-					this._retryQueue.resume()
-					this.log("[CloudService] Retry queue cleared for new user, resuming processing")
-				}
+			case "active-session":
+				// Drops the queue first when a different user signed in, then
+				// resumes either way.
+				this._retryQueue.clearIfUserChanged(newUserId)
+				this._retryQueue.resume()
+				this.log("[CloudService] Resuming retry queue for active session")
 				break
-			}
 
 			case "logged-out":
 				// User is logged out, clear the queue. Unconditionally: when the

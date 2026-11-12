@@ -11,6 +11,7 @@ import { CloudSettingsService } from "../CloudSettingsService.js"
 import { CloudShareService } from "../CloudShareService.js"
 import { CloudTelemetryClient as TelemetryClient } from "../TelemetryClient.js"
 import { LlmExchangeClient } from "../LlmExchangeClient.js"
+import { RetryQueue } from "../retry-queue/index.js"
 
 vi.mock("vscode", () => ({
 	ExtensionContext: vi.fn(),
@@ -173,19 +174,34 @@ describe("CloudService", () => {
 
 	describe("retry queue on logout", () => {
 		it("drops queued requests on logout even when the user info never arrived", async () => {
-			const cloudService = await CloudService.createInstance(mockContext, () => [], vi.fn())
+			// A request persisted by an earlier session, read back through the
+			// workspace state the queue is built on.
+			vi.mocked(mockContext.workspaceState.get).mockImplementation((key: string) =>
+				key === "roo.retryQueue"
+					? [
+							{
+								id: "q1",
+								url: "https://cloud.example/api/events",
+								options: { method: "POST" },
+								timestamp: 1,
+								retryCount: 0,
+								type: "telemetry",
+							},
+						]
+					: undefined,
+			)
+			await CloudService.createInstance(mockContext, () => [], vi.fn())
 			const [, authStateListener] = mockAuthService.on.mock.calls.find(
 				([event]) => event === "auth-state-changed",
 			)!
 			// Signed in, but the user info (and so the queue's user id) never resolved.
 			mockAuthService.getUserInfo.mockReturnValue(undefined)
 			authStateListener({ state: "active-session", previousState: "attempting-session" })
-			await cloudService.retryQueue!.enqueue("https://cloud.example/api/events", { method: "POST" }, "telemetry")
-			expect(cloudService.retryQueue!.getStats().totalQueued).toBe(1)
+			expect(mockContext.workspaceState.update).not.toHaveBeenCalled()
 
 			authStateListener({ state: "logged-out", previousState: "active-session" })
 
-			expect(cloudService.retryQueue!.getStats().totalQueued).toBe(0)
+			expect(mockContext.workspaceState.update).toHaveBeenCalledWith("roo.retryQueue", [])
 		})
 	})
 
@@ -204,7 +220,7 @@ describe("CloudService", () => {
 				mockAuthService,
 				mockSettingsService,
 				secretValues,
-				cloudService.retryQueue,
+				expect.any(RetryQueue),
 			)
 			expect(LlmExchangeClient).toHaveBeenCalledWith(mockAuthService, secretValues, mockLog)
 			expect(cloudService.secretValues).toBe(secretValues)
@@ -288,50 +304,6 @@ describe("CloudService", () => {
 			expect(result).toBe(null)
 		})
 
-		it("should return organization name from user info", () => {
-			const mockUserInfo = {
-				name: "Test User",
-				email: "test@example.com",
-				organizationId: "org_123",
-				organizationName: "Test Org",
-				organizationRole: "admin",
-			}
-			mockAuthService.getUserInfo.mockReturnValue(mockUserInfo)
-
-			const result = cloudService.getOrganizationName()
-			expect(mockAuthService.getUserInfo).toHaveBeenCalled()
-			expect(result).toBe("Test Org")
-		})
-
-		it("should return null when no organization name available", () => {
-			mockAuthService.getUserInfo.mockReturnValue(null)
-
-			const result = cloudService.getOrganizationName()
-			expect(result).toBe(null)
-		})
-
-		it("should return organization role from user info", () => {
-			const mockUserInfo = {
-				name: "Test User",
-				email: "test@example.com",
-				organizationId: "org_123",
-				organizationName: "Test Org",
-				organizationRole: "admin",
-			}
-			mockAuthService.getUserInfo.mockReturnValue(mockUserInfo)
-
-			const result = cloudService.getOrganizationRole()
-			expect(mockAuthService.getUserInfo).toHaveBeenCalled()
-			expect(result).toBe("admin")
-		})
-
-		it("should return null when no organization role available", () => {
-			mockAuthService.getUserInfo.mockReturnValue(null)
-
-			const result = cloudService.getOrganizationRole()
-			expect(result).toBe(null)
-		})
-
 		it("should delegate getAuthState to AuthService", () => {
 			const result = cloudService.getAuthState()
 			expect(mockAuthService.getState).toHaveBeenCalled()
@@ -346,20 +318,6 @@ describe("CloudService", () => {
 		it("should delegate handleAuthCallback with organizationId to AuthService", async () => {
 			await cloudService.handleAuthCallback("code", "state", "org_123")
 			expect(mockAuthService.handleCallback).toHaveBeenCalledWith("code", "state", "org_123")
-		})
-
-		it("should return true when stored organization ID exists", () => {
-			mockAuthService.getStoredOrganizationId.mockReturnValue("org_789")
-
-			const result = cloudService.hasStoredOrganizationId()
-			expect(result).toBe(true)
-		})
-
-		it("should return false when no stored organization ID exists", () => {
-			mockAuthService.getStoredOrganizationId.mockReturnValue(null)
-
-			const result = cloudService.hasStoredOrganizationId()
-			expect(result).toBe(false)
 		})
 	})
 

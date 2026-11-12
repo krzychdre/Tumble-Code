@@ -1,7 +1,6 @@
 import EventEmitter from "events"
 
 import { jwtDecode } from "jwt-decode"
-import type { ExtensionContext } from "vscode"
 
 import type { JWTPayload, CloudUserInfo, AuthService, AuthServiceEvents, AuthState } from "@tumble-code/types"
 
@@ -13,7 +12,7 @@ export class StaticTokenAuthService extends EventEmitter<AuthServiceEvents> impl
 	private exp: number | null
 	private expiryTimer: ReturnType<typeof setTimeout> | null = null
 
-	constructor(context: ExtensionContext, token: string, log?: (...args: unknown[]) => void) {
+	constructor(token: string, log?: (...args: unknown[]) => void) {
 		super()
 
 		this.token = token

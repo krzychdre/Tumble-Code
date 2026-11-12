@@ -149,14 +149,9 @@ export class CloudSettingsService extends EventEmitter<SettingsServiceEvents> im
 				userChanged = true
 			}
 
-			// Emit a single event if either settings changed
+			// Emit a single event and cache the new settings when either changed
 			if (orgChanged || userChanged) {
 				this.emit("settings-updated", {} as Record<string, never>)
-			}
-
-			const hasChanges = orgChanged || userChanged
-
-			if (hasChanges) {
 				await this.cacheSettings()
 			}
 

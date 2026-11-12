@@ -106,15 +106,6 @@ export class RefreshTimer {
 	}
 
 	/**
-	 * Resets the backoff state and attempt count
-	 * Does not affect whether the timer is running
-	 */
-	public reset(): void {
-		this.currentBackoffMs = this.initialBackoffMs
-		this.attemptCount = 0
-	}
-
-	/**
 	 * Schedules the next attempt based on the success/failure of the current attempt
 	 *
 	 * @param wasSuccessful Whether the current attempt was successful

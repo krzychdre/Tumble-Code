@@ -178,33 +178,4 @@ describe("RefreshTimer", () => {
 		// Callback should only have been called once (the initial call)
 		expect(mockCallback).toHaveBeenCalledTimes(1)
 	})
-
-	it("should reset the backoff state", async () => {
-		mockCallback.mockResolvedValue(false)
-
-		refreshTimer = new RefreshTimer({
-			callback: mockCallback,
-			initialBackoffMs: 1000,
-		})
-
-		refreshTimer.start()
-
-		// Fast-forward through a few failures
-		await Promise.resolve()
-		vi.advanceTimersByTime(1000)
-
-		await Promise.resolve()
-		vi.advanceTimersByTime(2000)
-
-		// Reset the timer
-		refreshTimer.reset()
-
-		// Stop and restart to trigger a new execution
-		refreshTimer.stop()
-		refreshTimer.start()
-
-		await Promise.resolve()
-
-		// Backoff should be back to initial value (no way to verify without logger)
-	})
 })

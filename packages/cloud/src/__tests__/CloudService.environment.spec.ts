@@ -10,6 +10,8 @@ import { WebAuthService } from "../WebAuthService.js"
 import { StaticTokenAuthService } from "../StaticTokenAuthService.js"
 import { CloudSettingsService } from "../CloudSettingsService.js"
 import { StaticSettingsService } from "../StaticSettingsService.js"
+import { CloudTelemetryClient } from "../TelemetryClient.js"
+import type { RetryQueue } from "../retry-queue/index.js"
 
 vi.mock("vscode", () => ({}))
 vi.mock("../WebAuthService")
@@ -97,7 +99,7 @@ describe("CloudService environment resolution (characterization)", () => {
 
 		const service = await CloudService.createInstance(context, () => [], log)
 
-		expect(StaticTokenAuthService).toHaveBeenCalledWith(context, "job-token", log)
+		expect(StaticTokenAuthService).toHaveBeenCalledWith("job-token", log)
 		expect(WebAuthService).not.toHaveBeenCalled()
 		expect(service.isCloudAgent).toBe(true)
 	})
@@ -112,16 +114,18 @@ describe("CloudService environment resolution (characterization)", () => {
 	})
 
 	it("persists its retry queue in the workspace state under roo.retryQueue", async () => {
-		const service = await CloudService.createInstance(context, () => [], log)
+		await CloudService.createInstance(context, () => [], log)
 
 		expect(workspaceState.get).toHaveBeenCalledWith("roo.retryQueue")
 
-		await service.retryQueue!.enqueue("https://example.test/x", { method: "POST" }, "telemetry")
+		// The queue CloudService wired in is the telemetry client's fourth argument.
+		const retryQueue = vi.mocked(CloudTelemetryClient).mock.calls[0]![3] as RetryQueue
+		await retryQueue.enqueue("https://example.test/x", { method: "POST" }, "telemetry")
 
 		expect(workspaceState.update).toHaveBeenCalledWith(
 			"roo.retryQueue",
 			expect.arrayContaining([expect.objectContaining({ url: "https://example.test/x", type: "telemetry" })]),
 		)
-		service.retryQueue!.dispose()
+		retryQueue.dispose()
 	})
 })
