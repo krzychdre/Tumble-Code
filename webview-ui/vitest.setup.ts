@@ -30,3 +30,17 @@ Object.defineProperty(window, "matchMedia", {
 
 // Mock scrollIntoView which is not available in jsdom
 Element.prototype.scrollIntoView = vi.fn()
+
+// jsdom's Blob lacks stream(); Shiki 4.6 pipes its gzipped oniguruma wasm
+// through Blob.stream() + DecompressionStream, so without this the highlighter
+// never initializes and every render falls back to unhighlighted text.
+if (typeof Blob.prototype.stream !== "function") {
+	Blob.prototype.stream = function (this: Blob) {
+		return new ReadableStream({
+			start: async (controller) => {
+				controller.enqueue(new Uint8Array(await this.arrayBuffer()))
+				controller.close()
+			},
+		})
+	}
+}
