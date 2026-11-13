@@ -430,8 +430,7 @@ export class CloudTelemetryClient implements TelemetryClient {
 	}
 
 	public isTelemetryEnabled(): boolean {
-		// ROO_CODE_DISABLE_TELEMETRY is the former name, still honoured.
-		if (process.env.TUMBLE_CODE_DISABLE_TELEMETRY === "1" || process.env.ROO_CODE_DISABLE_TELEMETRY === "1") {
+		if (process.env.TUMBLE_CODE_DISABLE_TELEMETRY === "1") {
 			return false
 		}
 

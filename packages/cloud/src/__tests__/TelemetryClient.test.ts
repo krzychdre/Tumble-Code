@@ -269,15 +269,12 @@ describe("CloudTelemetryClient", () => {
 		})
 	})
 
-	it.each(["TUMBLE_CODE_DISABLE_TELEMETRY", "ROO_CODE_DISABLE_TELEMETRY"])(
-		"reports telemetry off when %s=1 (the second is the former name), on otherwise",
-		(name) => {
-			const client = makeClient(null)
-			expect(client.isTelemetryEnabled()).toBe(true)
-			vi.stubEnv(name, "1")
-			expect(client.isTelemetryEnabled()).toBe(false)
-		},
-	)
+	it("reports telemetry off when TUMBLE_CODE_DISABLE_TELEMETRY=1, on otherwise", () => {
+		const client = makeClient(null)
+		expect(client.isTelemetryEnabled()).toBe(true)
+		vi.stubEnv("TUMBLE_CODE_DISABLE_TELEMETRY", "1")
+		expect(client.isTelemetryEnabled()).toBe(false)
+	})
 
 	describe("backfillMessages", () => {
 		it("posts the messages as task.json with the merged properties, workspace path and a timeout", async () => {
@@ -320,7 +317,7 @@ describe("CloudTelemetryClient", () => {
 		it.each([
 			["signed out", () => authService.isAuthenticated.mockReturnValue(false)],
 			["without a session token", () => authService.getSessionToken.mockReturnValue(null)],
-			["with telemetry switched off", () => vi.stubEnv("ROO_CODE_DISABLE_TELEMETRY", "1")],
+			["with telemetry switched off", () => vi.stubEnv("TUMBLE_CODE_DISABLE_TELEMETRY", "1")],
 		])("sends nothing %s", async (_name, arrange) => {
 			arrange()
 

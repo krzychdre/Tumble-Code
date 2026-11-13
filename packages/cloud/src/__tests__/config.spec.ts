@@ -16,7 +16,7 @@ const arrange = ({ runtimeApi, runtimeClerk, env = {} }: Sources) => {
 
 describe("cloud config", () => {
 	beforeEach(() => {
-		for (const name of ["CLERK_BASE_URL", "TUMBLE_CODE_API_URL", "ROO_CODE_API_URL"]) {
+		for (const name of ["CLERK_BASE_URL", "TUMBLE_CODE_API_URL"]) {
 			vi.stubEnv(name, "")
 		}
 	})
@@ -29,12 +29,7 @@ describe("cloud config", () => {
 
 	it.each<[string, Sources, string]>([
 		["the production default", {}, "https://app.tumblecode.dev"],
-		["the former ROO_CODE_API_URL", { env: { ROO_CODE_API_URL: "https://legacy" } }, "https://legacy"],
-		[
-			"TUMBLE_CODE_API_URL over the former name",
-			{ env: { ROO_CODE_API_URL: "https://legacy", TUMBLE_CODE_API_URL: "https://env" } },
-			"https://env",
-		],
+		["TUMBLE_CODE_API_URL", { env: { TUMBLE_CODE_API_URL: "https://env" } }, "https://env"],
 		[
 			"the runtime override over the environment",
 			{ runtimeApi: "https://rt", env: { TUMBLE_CODE_API_URL: "https://env" } },

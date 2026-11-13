@@ -130,7 +130,7 @@ const states = new WeakMap<object, CaptureState>()
 
 /**
  * The cheap gate every entry point checks before doing anything: a cloud session exists
- * and telemetry is not switched off by TUMBLE_CODE_DISABLE_TELEMETRY / ROO_CODE_DISABLE_TELEMETRY.
+ * and telemetry is not switched off by TUMBLE_CODE_DISABLE_TELEMETRY.
  */
 export function isErrorReportingActive(): boolean {
 	try {
