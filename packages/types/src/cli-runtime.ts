@@ -17,6 +17,9 @@
  *    - `ROO_CLI_CLOUD_AUTH_ONLY`: set to "1" by `tumble auth cloud` around a
  *      headless `activate()`; the extension then only starts the cloud
  *      service and returns a `CliCloudAuthApi` (see below).
+ *    - `TUMBLE_CODE_API_URL` (with the former `ROO_CODE_API_URL` still read):
+ *      the cloud API base URL; self-hosted setups point it at their own
+ *      server. Both sides read it from the environment.
  *    - `ROO_MCP_SETTINGS_PATH`: set by the CLI `ExtensionHost` to the global MCP
  *      servers file (default `~/.roo/mcp.json`), read by the extension instead
  *      of `<globalStorage>/settings/mcp_settings.json`.
@@ -50,6 +53,8 @@ export const CLI_RUNTIME_ENV = {
 	runtime: "ROO_CLI_RUNTIME",
 	codexAuthOnly: "ROO_CLI_CODEX_AUTH_ONLY",
 	cloudAuthOnly: "ROO_CLI_CLOUD_AUTH_ONLY",
+	cloudApiUrl: "TUMBLE_CODE_API_URL",
+	cloudApiUrlLegacy: "ROO_CODE_API_URL",
 	mcpSettingsPath: "ROO_MCP_SETTINGS_PATH",
 	cliVersion: "ROO_CLI_VERSION",
 	display: "ROO_CLI_DISPLAY",
@@ -71,6 +76,8 @@ export interface CliRuntimeEnv {
 	codexAuthOnly: boolean
 	/** Activate only the cloud sign-in (`ROO_CLI_CLOUD_AUTH_ONLY === "1"`). */
 	cloudAuthOnly: boolean
+	/** Cloud API base URL: `TUMBLE_CODE_API_URL`, or the former `ROO_CODE_API_URL`. */
+	cloudApiUrl: string | undefined
 	/** Global MCP settings file override, trimmed. */
 	mcpSettingsPath: string | undefined
 	/** Version of the CLI package hosting the extension. */
@@ -96,6 +103,7 @@ export function readCliRuntimeEnv(env: Readonly<Record<string, string | undefine
 		isCliRuntime: env[CLI_RUNTIME_ENV.runtime] === "1",
 		codexAuthOnly: env[CLI_RUNTIME_ENV.codexAuthOnly] === "1",
 		cloudAuthOnly: env[CLI_RUNTIME_ENV.cloudAuthOnly] === "1",
+		cloudApiUrl: text(CLI_RUNTIME_ENV.cloudApiUrl) || text(CLI_RUNTIME_ENV.cloudApiUrlLegacy),
 		mcpSettingsPath: env[CLI_RUNTIME_ENV.mcpSettingsPath]?.trim() || undefined,
 		cliVersion: text(CLI_RUNTIME_ENV.cliVersion),
 		display: parseCliDisplay(env[CLI_RUNTIME_ENV.display]),
