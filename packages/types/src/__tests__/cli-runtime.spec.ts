@@ -19,6 +19,8 @@ describe("CLI runtime contract", () => {
 				runtime: "ROO_CLI_RUNTIME",
 				codexAuthOnly: "ROO_CLI_CODEX_AUTH_ONLY",
 				cloudAuthOnly: "ROO_CLI_CLOUD_AUTH_ONLY",
+				cloudApiUrl: "TUMBLE_CODE_API_URL",
+				cloudApiUrlLegacy: "ROO_CODE_API_URL",
 				mcpSettingsPath: "ROO_MCP_SETTINGS_PATH",
 				cliVersion: "ROO_CLI_VERSION",
 				display: "ROO_CLI_DISPLAY",
@@ -33,6 +35,8 @@ describe("CLI runtime contract", () => {
 				| "ROO_CLI_RUNTIME"
 				| "ROO_CLI_CODEX_AUTH_ONLY"
 				| "ROO_CLI_CLOUD_AUTH_ONLY"
+				| "TUMBLE_CODE_API_URL"
+				| "ROO_CODE_API_URL"
 				| "ROO_MCP_SETTINGS_PATH"
 				| "ROO_CLI_VERSION"
 				| "ROO_CLI_DISPLAY"
@@ -49,6 +53,7 @@ describe("CLI runtime contract", () => {
 				isCliRuntime: false,
 				codexAuthOnly: false,
 				cloudAuthOnly: false,
+				cloudApiUrl: undefined,
 				mcpSettingsPath: undefined,
 				cliVersion: undefined,
 				display: undefined,
@@ -63,6 +68,8 @@ describe("CLI runtime contract", () => {
 				ROO_CLI_RUNTIME: "1",
 				ROO_CLI_CODEX_AUTH_ONLY: "1",
 				ROO_CLI_CLOUD_AUTH_ONLY: "1",
+				TUMBLE_CODE_API_URL: "https://selfhosted.example",
+				ROO_CODE_API_URL: "https://legacy.example",
 				ROO_MCP_SETTINGS_PATH: "  /home/u/.roo/mcp.json  ",
 				ROO_CLI_VERSION: "0.2.0",
 				ROO_CLI_DISPLAY: "images",
@@ -75,6 +82,7 @@ describe("CLI runtime contract", () => {
 				isCliRuntime: true,
 				codexAuthOnly: true,
 				cloudAuthOnly: true,
+				cloudApiUrl: "https://selfhosted.example",
 				mcpSettingsPath: "/home/u/.roo/mcp.json",
 				cliVersion: "0.2.0",
 				display: "images",
@@ -96,6 +104,16 @@ describe("CLI runtime contract", () => {
 				codexAuthOnly: false,
 				cloudAuthOnly: false,
 			})
+		})
+
+		it("falls back to the former ROO_CODE_API_URL name for the cloud API URL", () => {
+			expect(readCliRuntimeEnv({ ROO_CODE_API_URL: "https://legacy.example" }).cloudApiUrl).toBe(
+				"https://legacy.example",
+			)
+			// An empty TUMBLE_CODE_API_URL counts as unset, like at the former call site.
+			expect(
+				readCliRuntimeEnv({ TUMBLE_CODE_API_URL: "", ROO_CODE_API_URL: "https://legacy.example" }).cloudApiUrl,
+			).toBe("https://legacy.example")
 		})
 
 		it("accepts only images and text as the display", () => {

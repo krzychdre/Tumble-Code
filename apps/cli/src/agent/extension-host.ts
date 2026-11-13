@@ -25,7 +25,13 @@ import type {
 	TumbleCodeSettings,
 	WebviewMessage,
 } from "@tumble-code/types"
-import { CLI_RUNTIME_ENV, type CliDisplay, clearCliRuntimeGlobals, setCliRuntimeGlobals } from "@tumble-code/types"
+import {
+	CLI_RUNTIME_ENV,
+	type CliDisplay,
+	clearCliRuntimeGlobals,
+	readCliRuntimeEnv,
+	setCliRuntimeGlobals,
+} from "@tumble-code/types"
 import {
 	createVSCodeAPI,
 	IExtensionHost,
@@ -605,8 +611,7 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 	 * URL is on screen.
 	 */
 	private async openExternalUrl(openedUrl: string): Promise<boolean> {
-		const cloudApiUrl =
-			this.options.cloudApiUrl ?? (process.env.TUMBLE_CODE_API_URL || process.env.ROO_CODE_API_URL)
+		const cloudApiUrl = this.options.cloudApiUrl ?? readCliRuntimeEnv(process.env).cloudApiUrl
 		const url = cloudApiUrl ? restoreCloudPort(openedUrl, cloudApiUrl) : openedUrl
 
 		this.emit("openExternalUrl", url)
