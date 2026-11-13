@@ -151,7 +151,7 @@ export class ExtensionClient {
 		this.emitter.removeAllListeners()
 	}
 
-	/** Direct access to the event emitter (tests emit through it). */
+	/** Direct access to the event emitter (tests emit through it; the host fails the run on ask-handler errors through it). */
 	getEmitter(): TypedEventEmitter {
 		return this.emitter
 	}

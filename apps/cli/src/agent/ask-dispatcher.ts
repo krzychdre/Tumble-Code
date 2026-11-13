@@ -142,9 +142,17 @@ export class AskDispatcher {
 				// version skew against --extension bundles, so there is no handler.
 				debugLog("[AskDispatcher] Unknown ask type", { ask, ts })
 			}
-		} catch {
+		} catch (error) {
 			// Re-allow handling on error
 			this.handledAsks.delete(ts)
+			debugLog("[AskDispatcher] Error handling ask", {
+				ask,
+				ts,
+				error: error instanceof Error ? error.message : String(error),
+			})
+			// The host fails the run on it; swallowing it here would leave the
+			// ask unanswered and the run waiting forever.
+			throw error
 		}
 	}
 

@@ -210,6 +210,31 @@ describe("AskDispatcher api_req_failed in non-interactive print mode", () => {
 	})
 })
 
+describe("AskDispatcher handler failures", () => {
+	// A swallowed handler error leaves the ask unanswered, and the host gets
+	// no new waitingForInput to retry with, so the run hangs; the dispatcher
+	// must reject and let the host fail the run.
+	it("rejects instead of vanishing, and does not mark the ask as handled", async () => {
+		const sent: WebviewMessage[] = []
+		const dispatcher = new AskDispatcher({
+			outputManager: {
+				output: () => {
+					throw new Error("output broken")
+				},
+			} as unknown as OutputManager,
+			promptManager: { promptForYesNo: vi.fn() } as unknown as PromptManager,
+			sendMessage: (message) => sent.push(message),
+			nonInteractive: false,
+		})
+		const ask: ClineMessage = { ts: 7, type: "ask", ask: "command", text: "ls", partial: false }
+
+		await expect(dispatcher.handleAsk(ask)).rejects.toThrow("output broken")
+		// The failed ask is not stuck as handled: it fails again, not silently.
+		await expect(dispatcher.handleAsk(ask)).rejects.toThrow("output broken")
+		expect(sent).toEqual([])
+	})
+})
+
 describe("AskDispatcher api_req_failed with --exit-on-error", () => {
 	it("leaves the ask to the host: no prompt, no answer, no exit of its own", async () => {
 		const sent: WebviewMessage[] = []
