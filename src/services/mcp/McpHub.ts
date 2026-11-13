@@ -26,7 +26,6 @@ export { type McpConnection } from "./McpConnectionManager"
 export interface McpHubProvider {
 	readonly cwd: string
 	readonly context: vscode.ExtensionContext
-	ensureMcpServersDirectoryExists(): Promise<string>
 	ensureSettingsDirectoryExists(): Promise<string>
 	getState(): Promise<{ mcpEnabled?: boolean }>
 	postMessageToWebview(message: ExtensionMessage): Promise<void>
@@ -290,15 +289,6 @@ export class McpHub {
 
 	getAllServers(): McpServer[] {
 		return this.connectionManager.getAllServers()
-	}
-
-	async getMcpServersPath(): Promise<string> {
-		const provider = this.liveProvider()
-		if (!provider) {
-			throw new Error("Provider not available")
-		}
-		const mcpServersPath = await provider.ensureMcpServersDirectoryExists()
-		return mcpServersPath
 	}
 
 	/** The global settings file; created with an empty server list when missing. */

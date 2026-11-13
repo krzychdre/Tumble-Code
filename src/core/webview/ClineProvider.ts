@@ -1,6 +1,3 @@
-import os from "os"
-import * as path from "path"
-import fs from "fs/promises"
 import EventEmitter from "events"
 
 import delay from "delay"
@@ -1222,29 +1219,6 @@ export class ClineProvider
 	}
 
 	// MCP
-
-	async ensureMcpServersDirectoryExists(): Promise<string> {
-		// Get platform-specific application data directory
-		let mcpServersDir: string
-		if (process.platform === "win32") {
-			// Windows: %APPDATA%\Roo-Code\MCP
-			mcpServersDir = path.join(os.homedir(), "AppData", "Roaming", "Roo-Code", "MCP")
-		} else if (process.platform === "darwin") {
-			// macOS: ~/Documents/Cline/MCP
-			mcpServersDir = path.join(os.homedir(), "Documents", "Cline", "MCP")
-		} else {
-			// Linux: ~/.local/share/Cline/MCP
-			mcpServersDir = path.join(os.homedir(), ".local", "share", "Roo-Code", "MCP")
-		}
-
-		try {
-			await fs.mkdir(mcpServersDir, { recursive: true })
-		} catch (error) {
-			// Fallback to a relative path if directory creation fails
-			return path.join(os.homedir(), ".roo-code", "mcp")
-		}
-		return mcpServersDir
-	}
 
 	async ensureSettingsDirectoryExists(): Promise<string> {
 		const { getSettingsDirectoryPath } = await import("../../utils/storage")
