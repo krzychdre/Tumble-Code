@@ -52,7 +52,7 @@ describe("getModel", () => {
 	})
 
 	it("reports the same model without building a handler", () => {
-		const options = { apiModelId: "gemini-3.5-flash" }
+		const options = { apiModelId: "gemini-4-hydrogen" }
 		const { id, info } = handlerFor(options).handler.getModel()
 		expect(resolveGeminiModel(options)).toEqual({ id, info })
 	})

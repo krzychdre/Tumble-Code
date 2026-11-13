@@ -1144,295 +1144,6 @@ exports[`Responses API handlers: replayed event fixtures > usage with only token
 }
 `;
 
-exports[`Responses API handlers: request bodies > codex: gpt-5.4 with default settings 1`] = `
-{
-  "input": [
-    {
-      "content": [
-        {
-          "text": "Read a.ts",
-          "type": "input_text",
-        },
-      ],
-      "role": "user",
-    },
-    {
-      "content": [
-        {
-          "text": "Reading the file.",
-          "type": "output_text",
-        },
-      ],
-      "role": "assistant",
-    },
-    {
-      "arguments": "{"path":"a.ts"}",
-      "call_id": "toolu_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx_5e8d19ce",
-      "name": "read_file",
-      "type": "function_call",
-    },
-    {
-      "content": [
-        {
-          "text": "Now explain it",
-          "type": "input_text",
-        },
-        {
-          "image_url": "data:image/png;base64,iVBORw0KGgo=",
-          "type": "input_image",
-        },
-      ],
-      "role": "user",
-    },
-    {
-      "call_id": "toolu_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx_5e8d19ce",
-      "output": "file body",
-      "type": "function_call_output",
-    },
-    {
-      "call_id": "toolu_2",
-      "output": "part onepart two",
-      "type": "function_call_output",
-    },
-    {
-      "call_id": "toolu_3",
-      "output": "",
-      "type": "function_call_output",
-    },
-    {
-      "encrypted_content": "enc_prev",
-      "id": "rs_prev",
-      "summary": [],
-      "type": "reasoning",
-    },
-    {
-      "content": [
-        {
-          "text": "It exports one function.",
-          "type": "output_text",
-        },
-      ],
-      "role": "assistant",
-    },
-  ],
-  "instructions": "You are a coder.",
-  "model": "gpt-5.4",
-  "parallel_tool_calls": true,
-  "store": false,
-  "stream": true,
-  "tool_choice": undefined,
-  "tools": [
-    {
-      "description": "Run a command",
-      "name": "execute_command",
-      "parameters": {
-        "additionalProperties": false,
-        "properties": {
-          "command": {
-            "type": "string",
-          },
-          "cwd": {
-            "type": [
-              "string",
-              "null",
-            ],
-          },
-          "env": {
-            "additionalProperties": false,
-            "properties": {
-              "name": {
-                "type": "string",
-              },
-            },
-            "required": [
-              "name",
-            ],
-            "type": "object",
-          },
-        },
-        "required": [
-          "command",
-          "cwd",
-          "env",
-        ],
-        "type": "object",
-      },
-      "strict": true,
-      "type": "function",
-    },
-    {
-      "description": "Search GitHub",
-      "name": "mcp--github--search",
-      "parameters": {
-        "additionalProperties": false,
-        "properties": {
-          "limit": {
-            "type": "number",
-          },
-          "query": {
-            "type": "string",
-          },
-        },
-        "required": [
-          "query",
-        ],
-        "type": "object",
-      },
-      "strict": false,
-      "type": "function",
-    },
-  ],
-}
-`;
-
-exports[`Responses API handlers: request bodies > codex: gpt-5.4 with effort high and summary off 1`] = `
-{
-  "include": [
-    "reasoning.encrypted_content",
-  ],
-  "input": [
-    {
-      "content": [
-        {
-          "text": "Read a.ts",
-          "type": "input_text",
-        },
-      ],
-      "role": "user",
-    },
-    {
-      "content": [
-        {
-          "text": "Reading the file.",
-          "type": "output_text",
-        },
-      ],
-      "role": "assistant",
-    },
-    {
-      "arguments": "{"path":"a.ts"}",
-      "call_id": "toolu_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx_5e8d19ce",
-      "name": "read_file",
-      "type": "function_call",
-    },
-    {
-      "content": [
-        {
-          "text": "Now explain it",
-          "type": "input_text",
-        },
-        {
-          "image_url": "data:image/png;base64,iVBORw0KGgo=",
-          "type": "input_image",
-        },
-      ],
-      "role": "user",
-    },
-    {
-      "call_id": "toolu_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx_5e8d19ce",
-      "output": "file body",
-      "type": "function_call_output",
-    },
-    {
-      "call_id": "toolu_2",
-      "output": "part onepart two",
-      "type": "function_call_output",
-    },
-    {
-      "call_id": "toolu_3",
-      "output": "",
-      "type": "function_call_output",
-    },
-    {
-      "encrypted_content": "enc_prev",
-      "id": "rs_prev",
-      "summary": [],
-      "type": "reasoning",
-    },
-    {
-      "content": [
-        {
-          "text": "It exports one function.",
-          "type": "output_text",
-        },
-      ],
-      "role": "assistant",
-    },
-  ],
-  "instructions": "You are a coder.",
-  "model": "gpt-5.4",
-  "parallel_tool_calls": true,
-  "reasoning": {
-    "effort": "high",
-    "summary": "auto",
-  },
-  "store": false,
-  "stream": true,
-  "tool_choice": undefined,
-  "tools": [
-    {
-      "description": "Run a command",
-      "name": "execute_command",
-      "parameters": {
-        "additionalProperties": false,
-        "properties": {
-          "command": {
-            "type": "string",
-          },
-          "cwd": {
-            "type": [
-              "string",
-              "null",
-            ],
-          },
-          "env": {
-            "additionalProperties": false,
-            "properties": {
-              "name": {
-                "type": "string",
-              },
-            },
-            "required": [
-              "name",
-            ],
-            "type": "object",
-          },
-        },
-        "required": [
-          "command",
-          "cwd",
-          "env",
-        ],
-        "type": "object",
-      },
-      "strict": true,
-      "type": "function",
-    },
-    {
-      "description": "Search GitHub",
-      "name": "mcp--github--search",
-      "parameters": {
-        "additionalProperties": false,
-        "properties": {
-          "limit": {
-            "type": "number",
-          },
-          "query": {
-            "type": "string",
-          },
-        },
-        "required": [
-          "query",
-        ],
-        "type": "object",
-      },
-      "strict": false,
-      "type": "function",
-    },
-  ],
-}
-`;
-
 exports[`Responses API handlers: request bodies > codex: gpt-5.6-sol with effort none 1`] = `
 {
   "input": [
@@ -1507,6 +1218,302 @@ exports[`Responses API handlers: request bodies > codex: gpt-5.6-sol with effort
   "instructions": "You are a coder.",
   "model": "gpt-5.6-sol",
   "parallel_tool_calls": true,
+  "store": false,
+  "stream": true,
+  "tool_choice": undefined,
+  "tools": [
+    {
+      "description": "Run a command",
+      "name": "execute_command",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "type": "string",
+          },
+          "cwd": {
+            "type": [
+              "string",
+              "null",
+            ],
+          },
+          "env": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "name",
+            ],
+            "type": "object",
+          },
+        },
+        "required": [
+          "command",
+          "cwd",
+          "env",
+        ],
+        "type": "object",
+      },
+      "strict": true,
+      "type": "function",
+    },
+    {
+      "description": "Search GitHub",
+      "name": "mcp--github--search",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "type": "number",
+          },
+          "query": {
+            "type": "string",
+          },
+        },
+        "required": [
+          "query",
+        ],
+        "type": "object",
+      },
+      "strict": false,
+      "type": "function",
+    },
+  ],
+}
+`;
+
+exports[`Responses API handlers: request bodies > codex: gpt-6.1-sol with default settings 1`] = `
+{
+  "include": [
+    "reasoning.encrypted_content",
+  ],
+  "input": [
+    {
+      "content": [
+        {
+          "text": "Read a.ts",
+          "type": "input_text",
+        },
+      ],
+      "role": "user",
+    },
+    {
+      "content": [
+        {
+          "text": "Reading the file.",
+          "type": "output_text",
+        },
+      ],
+      "role": "assistant",
+    },
+    {
+      "arguments": "{"path":"a.ts"}",
+      "call_id": "toolu_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx_5e8d19ce",
+      "name": "read_file",
+      "type": "function_call",
+    },
+    {
+      "content": [
+        {
+          "text": "Now explain it",
+          "type": "input_text",
+        },
+        {
+          "image_url": "data:image/png;base64,iVBORw0KGgo=",
+          "type": "input_image",
+        },
+      ],
+      "role": "user",
+    },
+    {
+      "call_id": "toolu_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx_5e8d19ce",
+      "output": "file body",
+      "type": "function_call_output",
+    },
+    {
+      "call_id": "toolu_2",
+      "output": "part onepart two",
+      "type": "function_call_output",
+    },
+    {
+      "call_id": "toolu_3",
+      "output": "",
+      "type": "function_call_output",
+    },
+    {
+      "encrypted_content": "enc_prev",
+      "id": "rs_prev",
+      "summary": [],
+      "type": "reasoning",
+    },
+    {
+      "content": [
+        {
+          "text": "It exports one function.",
+          "type": "output_text",
+        },
+      ],
+      "role": "assistant",
+    },
+  ],
+  "instructions": "You are a coder.",
+  "model": "gpt-6.1-sol",
+  "parallel_tool_calls": true,
+  "reasoning": {
+    "effort": "medium",
+    "summary": "auto",
+  },
+  "store": false,
+  "stream": true,
+  "tool_choice": undefined,
+  "tools": [
+    {
+      "description": "Run a command",
+      "name": "execute_command",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "type": "string",
+          },
+          "cwd": {
+            "type": [
+              "string",
+              "null",
+            ],
+          },
+          "env": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "name",
+            ],
+            "type": "object",
+          },
+        },
+        "required": [
+          "command",
+          "cwd",
+          "env",
+        ],
+        "type": "object",
+      },
+      "strict": true,
+      "type": "function",
+    },
+    {
+      "description": "Search GitHub",
+      "name": "mcp--github--search",
+      "parameters": {
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "type": "number",
+          },
+          "query": {
+            "type": "string",
+          },
+        },
+        "required": [
+          "query",
+        ],
+        "type": "object",
+      },
+      "strict": false,
+      "type": "function",
+    },
+  ],
+}
+`;
+
+exports[`Responses API handlers: request bodies > codex: gpt-6.1-terra with effort high and summary off 1`] = `
+{
+  "include": [
+    "reasoning.encrypted_content",
+  ],
+  "input": [
+    {
+      "content": [
+        {
+          "text": "Read a.ts",
+          "type": "input_text",
+        },
+      ],
+      "role": "user",
+    },
+    {
+      "content": [
+        {
+          "text": "Reading the file.",
+          "type": "output_text",
+        },
+      ],
+      "role": "assistant",
+    },
+    {
+      "arguments": "{"path":"a.ts"}",
+      "call_id": "toolu_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx_5e8d19ce",
+      "name": "read_file",
+      "type": "function_call",
+    },
+    {
+      "content": [
+        {
+          "text": "Now explain it",
+          "type": "input_text",
+        },
+        {
+          "image_url": "data:image/png;base64,iVBORw0KGgo=",
+          "type": "input_image",
+        },
+      ],
+      "role": "user",
+    },
+    {
+      "call_id": "toolu_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx_5e8d19ce",
+      "output": "file body",
+      "type": "function_call_output",
+    },
+    {
+      "call_id": "toolu_2",
+      "output": "part onepart two",
+      "type": "function_call_output",
+    },
+    {
+      "call_id": "toolu_3",
+      "output": "",
+      "type": "function_call_output",
+    },
+    {
+      "encrypted_content": "enc_prev",
+      "id": "rs_prev",
+      "summary": [],
+      "type": "reasoning",
+    },
+    {
+      "content": [
+        {
+          "text": "It exports one function.",
+          "type": "output_text",
+        },
+      ],
+      "role": "assistant",
+    },
+  ],
+  "instructions": "You are a coder.",
+  "model": "gpt-6.1-terra",
+  "parallel_tool_calls": true,
+  "reasoning": {
+    "effort": "high",
+    "summary": "auto",
+  },
   "store": false,
   "stream": true,
   "tool_choice": undefined,

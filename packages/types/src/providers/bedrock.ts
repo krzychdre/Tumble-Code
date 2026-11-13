@@ -6,7 +6,7 @@ import { claudeModels, oneMillionContextIds, withoutFields } from "./claude.js"
 
 export type BedrockModelId = keyof typeof bedrockModels
 
-export const bedrockDefaultModelId: BedrockModelId = "anthropic.claude-opus-5"
+export const bedrockDefaultModelId: BedrockModelId = "anthropic.claude-opus-5-5"
 
 // Info stand-in for a model id or custom ARN that is not in the table, before the handler's guess from
 // the model family. It is kept on Claude Sonnet 4.5 when the default moved to Opus 5: Opus 5 info would
@@ -100,8 +100,14 @@ export const bedrockModels = {
 	"anthropic.claude-opus-5": { ...claudeModels["opus-5"], ...BEDROCK_CLAUDE_CACHE_POINTS },
 	"anthropic.claude-sonnet-5-5": { ...claudeModels["sonnet-5-5"], ...BEDROCK_CLAUDE_CACHE_POINTS },
 	"anthropic.claude-sonnet-5": { ...claudeModels["sonnet-5"], ...BEDROCK_CLAUDE_CACHE_POINTS },
+	"anthropic.claude-fable-5-2": { ...claudeModels["fable-5-2"], ...BEDROCK_CLAUDE_CACHE_POINTS },
 	"anthropic.claude-fable-5-1": { ...claudeModels["fable-5-1"], ...BEDROCK_CLAUDE_CACHE_POINTS },
 	"anthropic.claude-fable-5": { ...claudeModels["fable-5"], ...BEDROCK_CLAUDE_CACHE_POINTS },
+	// The Mythos family is available only to organizations verified through
+	// Anthropic's verification programs (bedrock-runtime only).
+	"anthropic.claude-mythos-5-2": { ...claudeModels["mythos-5-2"], ...BEDROCK_CLAUDE_CACHE_POINTS },
+	"anthropic.claude-mythos-5-1": { ...claudeModels["mythos-5-1"], ...BEDROCK_CLAUDE_CACHE_POINTS },
+	"anthropic.claude-mythos-5": { ...claudeModels["mythos-5"], ...BEDROCK_CLAUDE_CACHE_POINTS },
 	"anthropic.claude-opus-4-5-20251101-v1:0": { ...claudeModels["opus-4-5"], ...BEDROCK_CLAUDE_CACHE_POINTS },
 	"anthropic.claude-opus-4-20250514-v1:0": { ...claudeModels["opus-4"], ...BEDROCK_CLAUDE_CACHE_POINTS },
 	"anthropic.claude-haiku-5-5": { ...claudeModels["haiku-5-5"], ...BEDROCK_CLAUDE_CACHE_POINTS },
@@ -364,7 +370,8 @@ export const BEDROCK_1M_CONTEXT_MODEL_IDS: readonly string[] = oneMillionContext
 // - Claude Opus 4.7
 // - Claude Sonnet 5 and 5.5
 // - Claude Opus 5 and 5.5
-// - Claude Fable 5 and 5.1 (cross-region inference only, can only be used through an inference profile)
+// - Claude Fable 5, 5.1 and 5.2 (cross-region inference only, can only be used through an inference profile)
+// - Claude Mythos 5, 5.1 and 5.2 (cross-region inference only, verification required)
 // - Claude Haiku 5.5
 export const BEDROCK_GLOBAL_INFERENCE_MODEL_IDS = [
 	"anthropic.claude-sonnet-4-20250514-v1:0",
@@ -379,8 +386,12 @@ export const BEDROCK_GLOBAL_INFERENCE_MODEL_IDS = [
 	"anthropic.claude-sonnet-5",
 	"anthropic.claude-opus-5",
 	"anthropic.claude-opus-5-5",
+	"anthropic.claude-fable-5-2",
 	"anthropic.claude-fable-5-1",
 	"anthropic.claude-fable-5",
+	"anthropic.claude-mythos-5-2",
+	"anthropic.claude-mythos-5-1",
+	"anthropic.claude-mythos-5",
 	"anthropic.claude-haiku-5-5",
 ] as const
 

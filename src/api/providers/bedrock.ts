@@ -169,7 +169,8 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 			baseModelId.includes("opus-4-7") ||
 			baseModelId.includes("opus-4-8") ||
 			baseModelId.includes("opus-5") || // also matches opus-5-5
-			baseModelId.includes("fable-5") || // also matches fable-5-1
+			baseModelId.includes("fable-5") || // also matches fable-5-1/5-2
+			baseModelId.includes("mythos-5") || // the Mythos family keeps the Fable contract
 			baseModelId.includes("sonnet-4-7") ||
 			baseModelId.includes("sonnet-4-8") ||
 			baseModelId.includes("sonnet-5") ||

@@ -134,7 +134,7 @@ function codexHandler(options: Partial<ApiHandlerOptions> = {}) {
 	vitest.spyOn(openAiCodexOAuthManager, "getAccountId").mockResolvedValue("acct_test")
 	// A 401 makes Codex refresh the token once; here the refresh fails (signed out).
 	vitest.spyOn(openAiCodexOAuthManager, "forceRefreshAccessToken").mockResolvedValue(null)
-	return new OpenAiCodexHandler({ apiModelId: "gpt-5.4", ...options })
+	return new OpenAiCodexHandler({ apiModelId: "gpt-6.1-sol", ...options })
 }
 
 function xaiHandler(options: Partial<ApiHandlerOptions> = {}) {
@@ -717,11 +717,11 @@ describe("Responses API handlers: request bodies", () => {
 	})
 
 	it.each([
-		["gpt-5.4 with default settings", {}],
+		["gpt-6.1-sol with default settings", {}],
 		["gpt-5.6-sol with effort none", { apiModelId: "gpt-5.6-sol", reasoningEffort: "none" }],
 		[
-			"gpt-5.4 with effort high and summary off",
-			{ reasoningEffort: "high", enableResponsesReasoningSummary: false },
+			"gpt-6.1-terra with effort high and summary off",
+			{ apiModelId: "gpt-6.1-terra", reasoningEffort: "high", enableResponsesReasoningSummary: false },
 		],
 	] as const)("codex: %s", async (_name, options) => {
 		expect(await requestBodyOf(codexHandler(options as Partial<ApiHandlerOptions>))).toMatchSnapshot()

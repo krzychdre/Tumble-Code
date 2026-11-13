@@ -14,18 +14,22 @@ import { resolveProviderModelSelection } from "../provider-model-selection.js"
 import type { ProviderName } from "../provider-settings.js"
 
 // Claude models Anthropic has retired: requests to them fail on every platform,
-// so no model table should offer them (Anthropic model list, 2026-09-25).
-const RETIRED_CLAUDE_ID = /claude-3[-.]|claude-opus-4[-.]1/
+// so no model table should offer them (Anthropic model list, 2026-11-13).
+const RETIRED_CLAUDE_ID = /claude-3[-.]/
 
-// Retired on the Claude API on 2026-06-15 (Anthropic model deprecations page, 2026-10-02). Bedrock and
-// Vertex set their own retirement schedules, so only the Anthropic table drops them.
-const RETIRED_ON_CLAUDE_API = ["claude-sonnet-4-20250514", "claude-opus-4-20250514"]
+// Retired on the Claude API (Anthropic model deprecations page, 2026-11-13). Bedrock and Vertex set their
+// own retirement schedules — Vertex still serves Opus 4.1 — so only the Anthropic table drops them.
+const RETIRED_ON_CLAUDE_API = ["claude-sonnet-4-20250514", "claude-opus-4-20250514", "claude-opus-4-1-20250805"]
 
 // One row per Claude model: its id on each platform (null where the platform no longer offers it) and the
 // limits Anthropic documents for it (models overview, context windows and model deprecations pages,
 // 2026-10-02). The model's limits are the same on every platform that serves it.
 const CLAUDE_MODEL_LIMITS = [
 	["claude-opus-5-5", "claude-opus-5-5", "anthropic.claude-opus-5-5", 128_000, 1_000_000],
+	["claude-fable-5-2", "claude-fable-5-2", "anthropic.claude-fable-5-2", 128_000, 1_000_000],
+	["claude-mythos-5-2", "claude-mythos-5-2", "anthropic.claude-mythos-5-2", 128_000, 1_000_000],
+	["claude-mythos-5-1", "claude-mythos-5-1", "anthropic.claude-mythos-5-1", 128_000, 1_000_000],
+	["claude-mythos-5", "claude-mythos-5", "anthropic.claude-mythos-5", 128_000, 1_000_000],
 	["claude-opus-5", "claude-opus-5", "anthropic.claude-opus-5", 128_000, 1_000_000],
 	["claude-sonnet-5-5", "claude-sonnet-5-5", "anthropic.claude-sonnet-5-5", 128_000, 1_000_000],
 	["claude-sonnet-5", "claude-sonnet-5", "anthropic.claude-sonnet-5", 128_000, 1_000_000],
@@ -52,6 +56,7 @@ const CLAUDE_MODEL_LIMITS = [
 	],
 	["claude-sonnet-4-5", "claude-sonnet-4-5@20250929", "anthropic.claude-sonnet-4-5-20250929-v1:0", 64_000, 200_000],
 	[null, "claude-sonnet-4@20250514", "anthropic.claude-sonnet-4-20250514-v1:0", 64_000, 200_000],
+	[null, "claude-opus-4-1@20250805", null, 32_000, 200_000],
 	[null, "claude-opus-4@20250514", "anthropic.claude-opus-4-20250514-v1:0", 32_000, 200_000],
 ] as const
 
@@ -96,6 +101,7 @@ describe("Claude model tables", () => {
 	it("drop the models retired on the Claude API from the Anthropic table only", () => {
 		expect(Object.keys(anthropicModels).filter((id) => RETIRED_ON_CLAUDE_API.includes(id))).toEqual([])
 		expect(vertexModels["claude-sonnet-4@20250514"]).toBeDefined()
+		expect(vertexModels["claude-opus-4-1@20250805"]).toBeDefined()
 		expect(bedrockModels["anthropic.claude-opus-4-20250514-v1:0"]).toBeDefined()
 	})
 
@@ -146,7 +152,7 @@ describe("Claude model tables", () => {
 			const entries = [
 				...(anthropicId === null ? [] : [(anthropicModels as Record<string, ModelInfo>)[anthropicId]]),
 				(vertexModels as Record<string, ModelInfo>)[vertexId],
-				(bedrockModels as Record<string, ModelInfo>)[bedrockId],
+				...(bedrockId === null ? [] : [(bedrockModels as Record<string, ModelInfo>)[bedrockId]]),
 			]
 
 			for (const info of entries) {

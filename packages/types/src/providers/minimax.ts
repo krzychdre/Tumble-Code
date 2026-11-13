@@ -5,9 +5,47 @@ import type { ModelInfo } from "../model.js"
 // https://platform.minimax.io/docs/guides/pricing-paygo
 // https://platform.minimax.io/docs/guides/pricing-tokenplan
 export type MinimaxModelId = keyof typeof minimaxModels
-export const minimaxDefaultModelId: MinimaxModelId = "MiniMax-M2.7"
+export const minimaxDefaultModelId: MinimaxModelId = "MiniMax-M3"
 
 export const minimaxModels = {
+	"MiniMax-M3": {
+		maxTokens: 16_384,
+		contextWindow: 1_000_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		includedTools: ["search_and_replace"],
+		excludedTools: ["apply_diff"],
+		preserveReasoning: true,
+		inputPrice: 0.3,
+		outputPrice: 1.2,
+		cacheReadsPrice: 0.06,
+		// Above 512k input tokens the whole request bills at double the standard
+		// rates, including cache reads; the pricing page lists no cache-write price.
+		longContextPricing: {
+			thresholdTokens: 512_000,
+			inputPriceMultiplier: 2,
+			outputPriceMultiplier: 2,
+			cacheReadsPriceMultiplier: 2,
+		},
+		description:
+			"MiniMax M3, MiniMax's frontier multimodal coding model with a 1M context window. See pricing at https://platform.minimax.io/docs/pricing/overview.",
+	},
+	"MiniMax-M3.1-Flash": {
+		maxTokens: 16_384,
+		contextWindow: 1_000_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		includedTools: ["search_and_replace"],
+		excludedTools: ["apply_diff"],
+		preserveReasoning: true,
+		inputPrice: 0.15,
+		outputPrice: 0.6,
+		cacheReadsPrice: 0.015,
+		supportsReasoningEffort: ["low", "medium", "high", "xhigh", "max"],
+		reasoningEffort: "max",
+		description:
+			"MiniMax M3.1 Flash, a fast multimodal coding model with a 1M context window and tunable thinking depth. See pricing at https://platform.minimax.io/docs/pricing/overview.",
+	},
 	"MiniMax-M2.5": {
 		maxTokens: 16_384,
 		contextWindow: 204_800,

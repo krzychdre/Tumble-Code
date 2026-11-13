@@ -193,6 +193,25 @@ export const claudeModels = {
 		supportsReasoningBinary: true,
 		supportsTemperature: false,
 	},
+	"fable-5-2": {
+		maxTokens: 128_000, // Overridden to 8k if `enableReasoningEffort` is false.
+		contextWindow: 1_000_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 8.0, // $8 per million input tokens
+		outputPrice: 40.0, // $40 per million output tokens
+		cacheWritesPrice: 10.0, // $10 per million tokens (1.25x input, 5-minute TTL)
+		cacheReadsPrice: 0.2, // $0.20 per million tokens
+		// Same always-on thinking contract as Fable 5.1. The 1h cache write is $16,
+		// which the catalog has no field for (the settings only use the 5m rate).
+		supportsReasoningBudget: true,
+		supportsReasoningEffort: ["low", "medium", "high", "xhigh", "max"],
+		reasoningEffort: "high",
+		supportsReasoningBinary: true,
+		supportsTemperature: false,
+		description:
+			"Claude Fable 5.2 is Anthropic's most capable model, for demanding reasoning and long-horizon agentic work.",
+	},
 	"fable-5-1": {
 		maxTokens: 128_000, // Overridden to 8k if `enableReasoningEffort` is false.
 		contextWindow: 1_000_000,
@@ -211,6 +230,57 @@ export const claudeModels = {
 		supportsTemperature: false,
 		description:
 			"Claude Fable 5.1 is Anthropic's most capable widely released model, succeeding Fable 5 with stronger long-running agentic coding and research.",
+	},
+	"mythos-5-2": {
+		maxTokens: 128_000, // Overridden to 8k if `enableReasoningEffort` is false.
+		contextWindow: 1_000_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 8.0, // $8 per million input tokens
+		outputPrice: 40.0, // $40 per million output tokens
+		cacheWritesPrice: 10.0, // $10 per million tokens (5-minute TTL; the 1h write is $16)
+		cacheReadsPrice: 0.2, // $0.20 per million tokens
+		supportsReasoningBudget: true,
+		supportsReasoningEffort: ["low", "medium", "high", "xhigh", "max"],
+		reasoningEffort: "high",
+		supportsReasoningBinary: true,
+		supportsTemperature: false,
+		description:
+			"Claude Mythos 5.2 has the same specifications and pricing as Claude Fable 5.2, and is available only to organizations verified through Anthropic's verification programs.",
+	},
+	"mythos-5-1": {
+		maxTokens: 128_000, // Overridden to 8k if `enableReasoningEffort` is false.
+		contextWindow: 1_000_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 10.0, // $10 per million input tokens
+		outputPrice: 50.0, // $50 per million output tokens
+		cacheWritesPrice: 12.5, // $12.50 per million tokens (5-minute TTL; the 1h write is $20)
+		cacheReadsPrice: 0.25, // $0.25 per million tokens
+		supportsReasoningBudget: true,
+		supportsReasoningEffort: ["low", "medium", "high", "xhigh", "max"],
+		reasoningEffort: "high",
+		supportsReasoningBinary: true,
+		supportsTemperature: false,
+		description:
+			"Claude Mythos 5.1 has the same specifications and pricing as Claude Fable 5.1, and is available only to organizations verified through Anthropic's verification programs.",
+	},
+	"mythos-5": {
+		maxTokens: 128_000, // Overridden to 8k if `enableReasoningEffort` is false.
+		contextWindow: 1_000_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 10.0, // $10 per million input tokens
+		outputPrice: 50.0, // $50 per million output tokens
+		cacheWritesPrice: 12.5, // $12.50 per million tokens (5-minute TTL; the 1h write is $20)
+		cacheReadsPrice: 1.0, // $1.00 per million tokens
+		supportsReasoningBudget: true,
+		supportsReasoningEffort: ["low", "medium", "high", "xhigh", "max"],
+		reasoningEffort: "high",
+		supportsReasoningBinary: true,
+		supportsTemperature: false,
+		description:
+			"Claude Mythos 5 has the same specifications and pricing as Claude Fable 5, and is available only to organizations verified through Anthropic's verification programs.",
 	},
 	"fable-5": {
 		maxTokens: 128_000, // Overridden to 8k if `enableReasoningEffort` is false.

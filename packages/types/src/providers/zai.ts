@@ -160,22 +160,6 @@ export const internationalZAiModels = {
 		description:
 			"GLM-5 is Zhipu's next-generation model with a 202k context window and built-in thinking capabilities. It delivers state-of-the-art reasoning, coding, and agentic performance.",
 	},
-	"glm-5-turbo": {
-		maxTokens: 131_072,
-		contextWindow: 200_000,
-		supportsImages: false,
-		supportsPromptCache: true,
-		supportsMaxTokens: true,
-		supportsReasoningEffort: ["disable", "medium"],
-		reasoningEffort: "medium",
-		preserveReasoning: true,
-		inputPrice: 1.2,
-		outputPrice: 4.0,
-		cacheWritesPrice: 0,
-		cacheReadsPrice: 0.24,
-		description:
-			"GLM-5-Turbo is a foundation model optimized for agent workflows, with a 200k context window and 128k max output. It is tuned for reliable tool calling, instruction following, and long-horizon task execution.",
-	},
 	"glm-5.1": {
 		maxTokens: 131_072,
 		contextWindow: 200_000,
@@ -225,6 +209,45 @@ export const internationalZAiModels = {
 		cacheReadsPrice: 0.26,
 		description:
 			"GLM-5.3 is Zhipu's flagship model, built on the GLM-5.2 base with post-training focused on complex software engineering and long-horizon agent tasks. It has a 1M context window, 128k max output, and always-on reasoning with low/high/max effort levels.",
+	},
+	"glm-5.3-flash": {
+		maxTokens: 131_072,
+		contextWindow: 1_000_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		supportsMaxTokens: true,
+		inputPrice: 0.15,
+		outputPrice: 0.5,
+		cacheWritesPrice: 0,
+		cacheReadsPrice: 0.03,
+		description:
+			"GLM-5.3-Flash is a high-speed variant of GLM-5.3 with a 1M context window and 128k max output, accepting image, video, file, and text input.",
+	},
+	"glm-5.3-flashx": {
+		maxTokens: 131_072,
+		contextWindow: 1_000_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		supportsMaxTokens: true,
+		inputPrice: 0.37,
+		outputPrice: 1.25,
+		cacheWritesPrice: 0,
+		cacheReadsPrice: 0.075,
+		description:
+			"GLM-5.3-FlashX is an ultra-fast variant of GLM-5.3 with a 1M context window and 128k max output, for high-throughput multimodal workloads.",
+	},
+	"glm-5.3-flashx-legal": {
+		maxTokens: 131_072,
+		contextWindow: 1_000_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		supportsMaxTokens: true,
+		inputPrice: 0.37,
+		outputPrice: 1.25,
+		cacheWritesPrice: 0,
+		cacheReadsPrice: 0.075,
+		description:
+			"GLM-5.3-FlashX-Legal is the legal-specialized variant of GLM-5.3-FlashX, at the same price, with a 1M context window and 128k max output.",
 	},
 	"glm-4.7-flash": {
 		maxTokens: 131_072,
@@ -278,6 +301,43 @@ export const internationalZAiModels = {
 		description:
 			"GLM-4.6V-FlashX is an ultra-fast multimodal vision model optimized for high-speed visual processing at low cost.",
 	},
+	"glm-4-32b-0414-128k": {
+		maxTokens: 16_384,
+		contextWindow: 131_072,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0.1,
+		outputPrice: 0.1,
+		cacheWritesPrice: 0,
+		cacheReadsPrice: 0,
+		description: "GLM-4-32B is a 32 billion parameter model with 128k context length, optimized for efficiency.",
+	},
+} as const satisfies Record<string, ModelInfo>
+
+// The mainland China endpoints serve the same models as the international ones (minus
+// GLM-4-32B) but bill in CNY, and a few report a 204,800-token context window instead of
+// 200,000. GLM-5-Turbo and GLM-5V-Turbo were dropped from the international price list
+// but the mainland endpoints still serve them, so their full records live below and the
+// mainland table derives from them like the international entries. Each mainland entry
+// is the base entry with only these fields replaced; the table order is the order the
+// mainland list is shown in.
+const mainlandOnlyZAiModels = {
+	"glm-5-turbo": {
+		maxTokens: 131_072,
+		contextWindow: 200_000,
+		supportsImages: false,
+		supportsPromptCache: true,
+		supportsMaxTokens: true,
+		supportsReasoningEffort: ["disable", "medium"],
+		reasoningEffort: "medium",
+		preserveReasoning: true,
+		inputPrice: 1.2,
+		outputPrice: 4.0,
+		cacheWritesPrice: 0,
+		cacheReadsPrice: 0.24,
+		description:
+			"GLM-5-Turbo is a foundation model optimized for agent workflows, with a 200k context window and 128k max output. It is tuned for reliable tool calling, instruction following, and long-horizon task execution.",
+	},
 	"glm-5v-turbo": {
 		maxTokens: 131_072,
 		contextWindow: 200_000,
@@ -294,30 +354,17 @@ export const internationalZAiModels = {
 		description:
 			"GLM-5V-Turbo is Z.AI's multimodal coding model, built for vision-based coding and GUI agent workflows. It accepts image, video, text, and file input, with a 200k context window and 128k max output.",
 	},
-	"glm-4-32b-0414-128k": {
-		maxTokens: 16_384,
-		contextWindow: 131_072,
-		supportsImages: false,
-		supportsPromptCache: false,
-		inputPrice: 0.1,
-		outputPrice: 0.1,
-		cacheWritesPrice: 0,
-		cacheReadsPrice: 0,
-		description: "GLM-4-32B is a 32 billion parameter model with 128k context length, optimized for efficiency.",
-	},
 } as const satisfies Record<string, ModelInfo>
 
-// The mainland China endpoints serve the same models as the international ones (minus
-// GLM-4-32B) but bill in CNY, and a few report a 204,800-token context window instead of
-// 200,000. Each mainland entry is the international entry with only these fields replaced;
-// the table order is the order the mainland list is shown in.
+const zaiModelRecords = { ...internationalZAiModels, ...mainlandOnlyZAiModels }
+
 const mainlandZAiOverrides = {
 	"glm-4.5": { inputPrice: 0.29, outputPrice: 1.14, cacheReadsPrice: 0.057 },
-	"glm-4.5-air": { inputPrice: 0.1, outputPrice: 0.6, cacheReadsPrice: 0.02 },
+	"glm-4.5-air": { inputPrice: 0.11, outputPrice: 0.29, cacheReadsPrice: 0.023 },
 	"glm-4.5-x": { inputPrice: 0.29, outputPrice: 1.14, cacheReadsPrice: 0.057 },
 	"glm-4.5-airx": { inputPrice: 0.1, outputPrice: 0.6, cacheReadsPrice: 0.02 },
 	"glm-4.5-flash": {},
-	"glm-4.5v": { inputPrice: 0.29, outputPrice: 0.93, cacheReadsPrice: 0.057 },
+	"glm-4.5v": { inputPrice: 0.29, outputPrice: 0.86, cacheReadsPrice: 0.057 },
 	"glm-4.6": { contextWindow: 204_800, inputPrice: 0.29, outputPrice: 1.14, cacheReadsPrice: 0.057 },
 	"glm-4.7": { contextWindow: 204_800, inputPrice: 0.29, outputPrice: 1.14, cacheReadsPrice: 0.057 },
 	"glm-5": { inputPrice: 0.57, outputPrice: 2.57, cacheReadsPrice: 0.14 },
@@ -325,15 +372,18 @@ const mainlandZAiOverrides = {
 	"glm-5.1": { contextWindow: 204_800, inputPrice: 0.86, outputPrice: 3.43, cacheReadsPrice: 0.19 },
 	"glm-5.2": { inputPrice: 1.14, outputPrice: 4.0, cacheReadsPrice: 0.29 },
 	"glm-5.3": { inputPrice: 1.14, outputPrice: 4.0, cacheReadsPrice: 0.29 },
+	"glm-5.3-flash": { inputPrice: 0.11, outputPrice: 0.4, cacheReadsPrice: 0.033 },
+	"glm-5.3-flashx": { inputPrice: 0.29, outputPrice: 1.0, cacheReadsPrice: 0.081 },
+	"glm-5.3-flashx-legal": { inputPrice: 0.29, outputPrice: 1.0, cacheReadsPrice: 0.081 },
 	"glm-4.7-flash": { contextWindow: 204_800 },
-	"glm-4.7-flashx": { contextWindow: 204_800, inputPrice: 0.035, outputPrice: 0.2, cacheReadsPrice: 0.005 },
-	"glm-4.6v": { inputPrice: 0.15, outputPrice: 0.45, cacheReadsPrice: 0.025 },
+	"glm-4.7-flashx": { contextWindow: 204_800, inputPrice: 0.07, outputPrice: 0.43, cacheReadsPrice: 0.014 },
+	"glm-4.6v": { inputPrice: 0.14, outputPrice: 0.43, cacheReadsPrice: 0.029 },
 	"glm-4.6v-flash": {},
 	"glm-4.6v-flashx": { inputPrice: 0.02, outputPrice: 0.2, cacheReadsPrice: 0.002 },
 	"glm-5v-turbo": { contextWindow: 204_800, inputPrice: 0.71, outputPrice: 3.14, cacheReadsPrice: 0.17 },
 } as const satisfies Partial<
 	Record<
-		InternationalZAiModelId,
+		keyof typeof zaiModelRecords,
 		Partial<Pick<ModelInfo, "contextWindow" | "inputPrice" | "outputPrice" | "cacheReadsPrice">>
 	>
 >
@@ -345,10 +395,10 @@ export const mainlandZAiDefaultModelId: MainlandZAiModelId = "glm-5.3"
 export const mainlandZAiModels = Object.fromEntries(
 	Object.entries(mainlandZAiOverrides).map(([id, override]) => [
 		id,
-		{ ...internationalZAiModels[id as MainlandZAiModelId], ...override },
+		{ ...zaiModelRecords[id as MainlandZAiModelId], ...override },
 	]),
 ) as {
-	readonly [K in MainlandZAiModelId]: Omit<(typeof internationalZAiModels)[K], keyof MainlandZAiOverrides[K]> &
+	readonly [K in MainlandZAiModelId]: Omit<(typeof zaiModelRecords)[K], keyof MainlandZAiOverrides[K]> &
 		MainlandZAiOverrides[K]
 } satisfies Record<string, ModelInfo>
 

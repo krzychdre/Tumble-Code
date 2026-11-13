@@ -1,7 +1,7 @@
 import type { ModelInfo } from "../model.js"
 
 // https://openrouter.ai/models?order=newest&supported_parameters=tools
-export const openRouterDefaultModelId = "anthropic/claude-opus-5"
+export const openRouterDefaultModelId = "anthropic/claude-opus-5.5"
 
 // The default model's info until the model list is fetched, in the shape
 // `parseOpenRouterModel` gives it once the list is there.
@@ -10,15 +10,15 @@ export const openRouterDefaultModelInfo: ModelInfo = {
 	contextWindow: 1_000_000,
 	supportsImages: true,
 	supportsPromptCache: true,
-	inputPrice: 5.0,
-	outputPrice: 25.0,
-	cacheWritesPrice: 6.25,
-	cacheReadsPrice: 0.5,
+	inputPrice: 4.0,
+	outputPrice: 20.0,
+	cacheWritesPrice: 5.0,
+	cacheReadsPrice: 0.2,
 	supportsReasoningBudget: true,
 	supportsReasoningBinary: true,
 	supportsTemperature: false,
 	description:
-		"Claude Opus 5 is Anthropic's model for complex agentic coding and enterprise work, strongest on deep reasoning and long-horizon tasks.",
+		"Claude Opus 5.5 succeeds Opus 5 for long-running agentic coding and knowledge work, at a lower price.",
 }
 
 // The info a model id gets when the fetched list does not have it (or the
@@ -53,6 +53,7 @@ export const OPEN_ROUTER_PROMPT_CACHING_MODELS = new Set([
 	"anthropic/claude-sonnet-5",
 	"anthropic/claude-opus-5",
 	"anthropic/claude-opus-5.5",
+	"anthropic/claude-fable-5.2",
 	"anthropic/claude-fable-5.1",
 	"anthropic/claude-fable-5",
 	"anthropic/claude-haiku-4.5",
@@ -87,6 +88,7 @@ export const OPEN_ROUTER_REASONING_BUDGET_MODELS = new Set([
 	"anthropic/claude-sonnet-5",
 	"anthropic/claude-opus-5",
 	"anthropic/claude-opus-5.5",
+	"anthropic/claude-fable-5.2",
 	"anthropic/claude-fable-5.1",
 	"anthropic/claude-fable-5",
 	"anthropic/claude-sonnet-4",
