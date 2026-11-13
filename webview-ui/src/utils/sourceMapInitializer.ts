@@ -91,52 +91,6 @@ export function exposeSourceMapsForDebugging(): void {
 			return await enhanceErrorWithSourceMaps(error)
 		}
 
-		// Add a global function to test source map functionality
-		;(window as any).__testSourceMaps = () => {
-			try {
-				// Intentionally cause an error
-				const obj: any = undefined
-				obj.nonExistentMethod()
-			} catch (e) {
-				if (e instanceof Error) {
-					console.log("Original error:", e)
-					;(window as any).__applySourceMaps(e).then((enhanced: Error) => {
-						console.log("Enhanced error:", enhanced)
-
-						// Log the source mapped stack if available
-						if ("sourceMappedStack" in enhanced) {
-							console.log("Source mapped stack:", enhanced.sourceMappedStack)
-						}
-
-						// Log the source mapped component stack if available
-						if ("sourceMappedComponentStack" in enhanced) {
-							console.log("Source mapped component stack:", enhanced.sourceMappedComponentStack)
-						}
-					})
-				}
-			}
-		}
-
-		// Add a global function to check if source maps are available for a script
-		;(window as any).__checkSourceMap = async (scriptUrl: string) => {
-			try {
-				const response = await fetch(`${scriptUrl}.map`)
-				if (response.ok) {
-					const sourceMap = await response.json()
-					const originalFileName =
-						sourceMap.sources && sourceMap.sources.length > 0 ? sourceMap.sources[0] : "unknown"
-					console.log(`Source map found for ${scriptUrl}. Original file: ${originalFileName}`)
-					return true
-				} else {
-					console.log(`No source map found for ${scriptUrl}`)
-					return false
-				}
-			} catch (e) {
-				console.error(`Error checking source map for ${scriptUrl}:`, e)
-				return false
-			}
-		}
-
 		console.debug("Source map debugging utilities exposed on window object")
 	} catch (e) {
 		console.error("Error exposing source maps for debugging:", e)
