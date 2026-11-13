@@ -3,7 +3,6 @@ import { backoffDelayMsNoJitter } from "@tumble-code/core"
 import {
 	QDRANT_CODE_BLOCK_NAMESPACE,
 	MAX_FILE_SIZE_BYTES,
-	BATCH_SEGMENT_THRESHOLD,
 	MAX_BATCH_RETRIES,
 	INITIAL_RETRY_DELAY_MS,
 } from "../constants"
@@ -27,7 +26,7 @@ import { isPathInIgnoredDirectory } from "../../glob/ignore-utils"
 import { TelemetryService } from "@tumble-code/telemetry"
 import { TelemetryEventName } from "@tumble-code/types"
 import { sanitizeErrorMessage } from "../shared/validation-helpers"
-import { Package } from "../../../shared/package"
+import { embeddingBatchSize } from "../shared/embedding-batch-size"
 import { reportEmbeddingUsage } from "../embedding-usage"
 import { logger } from "../../../utils/logging"
 
@@ -45,7 +44,8 @@ export class FileWatcher implements IFileWatcher {
 	private batchProcessDebounceTimer?: NodeJS.Timeout
 	private readonly BATCH_DEBOUNCE_DELAY_MS = 500
 	private readonly FILE_PROCESSING_CONCURRENCY_LIMIT = 10
-	private readonly batchSegmentThreshold: number
+	/** Test-only override; production reads the live setting on every batch pass. */
+	private readonly batchSegmentThreshold?: number
 
 	private readonly _onDidStartBatchProcessing = new vscode.EventEmitter<string[]>()
 	private readonly _onBatchProgressUpdate = new vscode.EventEmitter<{
@@ -93,20 +93,7 @@ export class FileWatcher implements IFileWatcher {
 		if (ignoreInstance) {
 			this.ignoreInstance = ignoreInstance
 		}
-		// Get the configurable batch size from VSCode settings, fallback to default
-		// If not provided in constructor, try to get from VSCode settings
-		if (batchSegmentThreshold !== undefined) {
-			this.batchSegmentThreshold = batchSegmentThreshold
-		} else {
-			try {
-				this.batchSegmentThreshold = vscode.workspace
-					.getConfiguration(Package.name)
-					.get<number>("codeIndex.embeddingBatchSize", BATCH_SEGMENT_THRESHOLD)
-			} catch {
-				// In test environment, vscode.workspace might not be available
-				this.batchSegmentThreshold = BATCH_SEGMENT_THRESHOLD
-			}
-		}
+		this.batchSegmentThreshold = batchSegmentThreshold
 	}
 
 	/**
@@ -423,8 +410,10 @@ export class FileWatcher implements IFileWatcher {
 	): Promise<Error | undefined> {
 		if (pointsForBatchUpsert.length > 0 && this.vectorStore && !overallBatchError) {
 			try {
-				for (let i = 0; i < pointsForBatchUpsert.length; i += this.batchSegmentThreshold) {
-					const batch = pointsForBatchUpsert.slice(i, i + this.batchSegmentThreshold)
+				// Read the configurable batch size per pass so mid-session settings changes apply
+				const batchSegmentThreshold = this.batchSegmentThreshold ?? embeddingBatchSize()
+				for (let i = 0; i < pointsForBatchUpsert.length; i += batchSegmentThreshold) {
+					const batch = pointsForBatchUpsert.slice(i, i + batchSegmentThreshold)
 					let retryCount = 0
 					let upsertError: Error | undefined
 

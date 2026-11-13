@@ -8,7 +8,6 @@ import { TelemetryEventName } from "@tumble-code/types"
 import { t } from "../../i18n"
 
 import { getDefaultModelId, getModelDimension, getModelQueryPrefix } from "../../shared/embeddingModels"
-import { Package } from "../../shared/package"
 
 import { RooIgnoreController } from "../../core/ignore/RooIgnoreController"
 
@@ -18,14 +17,6 @@ import { codeParser, DirectoryScanner, FileWatcher } from "./processors"
 import { ICodeParser, IEmbedder, IFileWatcher, IVectorStore } from "./interfaces"
 import { CodeIndexConfigManager } from "./config-manager"
 import { CacheManager } from "./cache-manager"
-import { BATCH_SEGMENT_THRESHOLD } from "./constants"
-
-/** The configurable number of code segments embedded per request. */
-function embeddingBatchSize(): number {
-	return vscode.workspace
-		.getConfiguration(Package.name)
-		.get<number>("codeIndex.embeddingBatchSize", BATCH_SEGMENT_THRESHOLD)
-}
 
 /**
  * Factory class responsible for creating and configuring code indexing service dependencies.
@@ -185,14 +176,7 @@ export class CodeIndexServiceFactory {
 		parser: ICodeParser,
 		ignoreInstance: Ignore,
 	): DirectoryScanner {
-		return new DirectoryScanner(
-			embedder,
-			vectorStore,
-			parser,
-			this.cacheManager,
-			ignoreInstance,
-			embeddingBatchSize(),
-		)
+		return new DirectoryScanner(embedder, vectorStore, parser, this.cacheManager, ignoreInstance)
 	}
 
 	/**
@@ -214,7 +198,6 @@ export class CodeIndexServiceFactory {
 			vectorStore,
 			ignoreInstance,
 			rooIgnoreController,
-			embeddingBatchSize(),
 		)
 	}
 
