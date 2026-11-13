@@ -18,7 +18,6 @@ import {
 	QDRANT_CODE_BLOCK_NAMESPACE,
 	MAX_FILE_SIZE_BYTES,
 	MAX_LIST_FILES_LIMIT_CODE_INDEX,
-	BATCH_SEGMENT_THRESHOLD,
 	MAX_BATCH_RETRIES,
 	INITIAL_RETRY_DELAY_MS,
 	PARSING_CONCURRENCY,
@@ -30,7 +29,7 @@ import { TelemetryService } from "@tumble-code/telemetry"
 import { TelemetryEventName } from "@tumble-code/types"
 import { backoffDelayMsNoJitter } from "@tumble-code/core"
 import { sanitizeErrorMessage } from "../shared/validation-helpers"
-import { Package } from "../../../shared/package"
+import { embeddingBatchSize } from "../shared/embedding-batch-size"
 import { reportEmbeddingUsage } from "../embedding-usage"
 import { logger } from "../../../utils/logging"
 
@@ -44,7 +43,8 @@ interface BatchState {
 }
 
 export class DirectoryScanner implements IDirectoryScanner {
-	private readonly batchSegmentThreshold: number
+	/** Test-only override; production reads the live setting on every scan. */
+	private readonly batchSegmentThreshold?: number
 
 	constructor(
 		private readonly embedder: IEmbedder,
@@ -54,12 +54,7 @@ export class DirectoryScanner implements IDirectoryScanner {
 		private readonly ignoreInstance: Ignore,
 		batchSegmentThreshold?: number,
 	) {
-		// Without an explicit size, read the configurable one from VSCode settings
-		this.batchSegmentThreshold =
-			batchSegmentThreshold ??
-			vscode.workspace
-				.getConfiguration(Package.name)
-				.get<number>("codeIndex.embeddingBatchSize", BATCH_SEGMENT_THRESHOLD)
+		this.batchSegmentThreshold = batchSegmentThreshold
 	}
 
 	/**
@@ -111,6 +106,9 @@ export class DirectoryScanner implements IDirectoryScanner {
 
 			return scannerExtensions.includes(ext) && !this.ignoreInstance.ignores(relativeFilePath)
 		})
+
+		// Read the configurable batch size per pass so mid-session settings changes apply
+		const batchSegmentThreshold = this.batchSegmentThreshold ?? embeddingBatchSize()
 
 		// Initialize tracking variables
 		const processedFiles = new Set<string>()
@@ -190,7 +188,7 @@ export class DirectoryScanner implements IDirectoryScanner {
 										throw new DOMException("Indexing aborted", "AbortError")
 									}
 
-									if (batches.blocks.length >= this.batchSegmentThreshold) {
+									if (batches.blocks.length >= batchSegmentThreshold) {
 										// Wait if we've reached the maximum pending batches
 										while (batches.pendingCount >= MAX_PENDING_BATCHES) {
 											if (signal?.aborted) {

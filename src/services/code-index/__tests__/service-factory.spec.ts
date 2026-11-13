@@ -168,7 +168,7 @@ describe("CodeIndexServiceFactory.createServices", () => {
 		).toThrow("embeddings:serviceFactory.codeIndexingNotConfigured")
 	})
 
-	it("builds the scanner and the file watcher with the configured batch size", () => {
+	it("does not freeze the batch size into the scanner and the file watcher", () => {
 		const get = vi.fn(() => 7)
 		vi.spyOn(vscode.workspace, "getConfiguration").mockReturnValue({ get } as any)
 
@@ -181,9 +181,10 @@ describe("CodeIndexServiceFactory.createServices", () => {
 
 		expect(services.scanner).toBeInstanceOf(DirectoryScanner)
 		expect(services.fileWatcher).toBeInstanceOf(FileWatcher)
-		expect(get).toHaveBeenCalledTimes(2)
-		expect(get).toHaveBeenCalledWith("codeIndex.embeddingBatchSize", expect.any(Number))
-		expect((services.scanner as any).batchSegmentThreshold).toBe(7)
-		expect((services.fileWatcher as any).batchSegmentThreshold).toBe(7)
+		// The scanner and the watcher read the setting per pass instead, so a mid-session
+		// settings change reaches them without recreating the services.
+		expect(get).not.toHaveBeenCalled()
+		expect((services.scanner as any).batchSegmentThreshold).toBeUndefined()
+		expect((services.fileWatcher as any).batchSegmentThreshold).toBeUndefined()
 	})
 })

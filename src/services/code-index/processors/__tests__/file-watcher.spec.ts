@@ -42,6 +42,9 @@ vi.mock("../../../glob/ignore-utils", () => ({
 vi.mock("vscode", () => ({
 	workspace: {
 		createFileSystemWatcher: vi.fn(),
+		getConfiguration: () => ({
+			get: (_key: string, defaultValue: number) => defaultValue,
+		}),
 		workspaceFolders: [
 			{
 				uri: {
@@ -443,6 +446,50 @@ describe("FileWatcher", () => {
 
 			expect(mockVectorStore.upsertPoints).not.toHaveBeenCalled()
 			expect(mockCacheManager.updateHash).not.toHaveBeenCalled()
+		})
+	})
+
+	describe("embedding batch size from settings", () => {
+		const filePath = "/mock/workspace/src/batch.ts"
+		const spies: Array<{ mockRestore: () => void }> = []
+
+		afterEach(() => {
+			spies.splice(0).forEach((spy) => spy.mockRestore())
+		})
+
+		const makeBlocks = (count: number): CodeBlock[] =>
+			Array.from({ length: count }, (_, i) => ({
+				file_path: filePath,
+				identifier: null,
+				type: "chunk",
+				start_line: i + 1,
+				end_line: i + 1,
+				content: `segment ${i}`,
+				fileHash: "file-hash",
+				segmentHash: `seg-${i}`,
+			}))
+
+		it("applies a mid-session settings change to the same watcher instance", async () => {
+			await fileWatcher.initialize()
+
+			const get = vi.fn(() => 2)
+			const configSpy = vi.spyOn(vscode.workspace, "getConfiguration")
+			configSpy.mockReturnValue({ get } as any)
+			spies.push(configSpy)
+
+			const upsertSizes = () => mockVectorStore.upsertPoints.mock.calls.map(([points]: [any[]]) => points.length)
+			const flushBatch = () => new Promise((resolve) => setTimeout(resolve, 600))
+
+			vi.mocked(codeParser.parseFile).mockResolvedValueOnce(makeBlocks(5))
+			await mockOnDidCreate({ fsPath: filePath })
+			await flushBatch()
+			expect(upsertSizes()).toEqual([2, 2, 1])
+
+			get.mockReturnValue(3)
+			vi.mocked(codeParser.parseFile).mockResolvedValueOnce(makeBlocks(5))
+			await mockOnDidCreate({ fsPath: filePath })
+			await flushBatch()
+			expect(upsertSizes().slice(3)).toEqual([3, 2])
 		})
 	})
 

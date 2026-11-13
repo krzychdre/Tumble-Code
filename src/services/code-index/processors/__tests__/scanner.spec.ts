@@ -1,5 +1,7 @@
 // npx vitest services/code-index/processors/__tests__/scanner.spec.ts
 
+import * as vscode from "vscode"
+
 import { DirectoryScanner } from "../scanner"
 import { stat } from "fs/promises"
 import { RooIgnoreController } from "../../../../core/ignore/RooIgnoreController"
@@ -181,6 +183,46 @@ describe("DirectoryScanner", () => {
 
 			await expect(scanner.scanDirectory("/test")).rejects.toThrow("filter failed")
 			expect(disposeSpy).toHaveBeenCalledTimes(1)
+		})
+	})
+
+	describe("embedding batch size from settings", () => {
+		const spies: Array<{ mockRestore: () => void }> = []
+
+		afterEach(() => {
+			spies.splice(0).forEach((spy) => spy.mockRestore())
+		})
+
+		it("applies a mid-session settings change to the same scanner instance", async () => {
+			const get = vi.fn(() => 2)
+			const configSpy = vi.spyOn(vscode.workspace, "getConfiguration")
+			configSpy.mockReturnValue({ get } as any)
+			spies.push(configSpy)
+
+			// beforeEach lists two files; three blocks each reach the embedder in batches
+			const blocks = ["one", "two", "three"].map((content, i) => ({
+				file_path: "test/file1.js",
+				content,
+				start_line: i + 1,
+				end_line: i + 1,
+				identifier: null,
+				type: "chunk",
+				fileHash: "hash",
+				segmentHash: `segment-hash-${i}`,
+			}))
+			;(mockCodeParser.parseFile as any).mockResolvedValue(blocks)
+			mockEmbedder.createEmbeddings.mockImplementation(async (texts: string[]) => ({
+				embeddings: texts.map(() => [0.1, 0.2]),
+			}))
+
+			await scanner.scanDirectory("/test")
+			const batchSizes = () => mockEmbedder.createEmbeddings.mock.calls.map(([texts]: [string[]]) => texts.length)
+			expect(batchSizes()).toEqual([2, 2, 2])
+
+			get.mockReturnValue(3)
+			mockEmbedder.createEmbeddings.mockClear()
+			await scanner.scanDirectory("/test")
+			expect(batchSizes()).toEqual([3, 3])
 		})
 	})
 
