@@ -28,7 +28,7 @@ global.fetch = fetchMock
 const CLERK = "https://auth.tumblecode.dev"
 const KEY = "clerk-auth-credentials"
 const STATE = "746573742d72616e646f6d2d6279746573" // hex of "test-random-bytes"
-const CREDENTIALS = { clientToken: "client-token", sessionId: "sess-1" }
+const CREDENTIALS = { clientToken: "client-token", sessionId: "sess-1", organizationId: null }
 
 type Reply = { ok: boolean; status: number; statusText: string; json: () => Promise<unknown>; headers: Headers }
 
@@ -176,6 +176,11 @@ describe("WebAuthService", () => {
 		it.each([
 			["unreadable JSON", "invalid-json{", "[auth] Failed to parse stored credentials:"],
 			["the wrong shape", JSON.stringify({ invalid: "data" }), "[auth] Invalid credentials format:"],
+			[
+				"no organization context (pre-organizations credentials)",
+				JSON.stringify({ clientToken: "client-token", sessionId: "sess-1" }),
+				"[auth] Invalid credentials format:",
+			],
 		])("treats stored credentials with %s as logged out", async (_name, stored, logged) => {
 			secrets.set(KEY, stored)
 			const service = makeService()
@@ -434,7 +439,6 @@ describe("WebAuthService", () => {
 		it.each([
 			["an organization", { organizationId: "org_1" }, "org_1"],
 			["a personal account", { organizationId: null }, ""],
-			["legacy credentials", {}, undefined],
 		])("asks for a token in the context of %s", async (_name, extra, sent) => {
 			await signedIn({ ...CREDENTIALS, ...extra })
 
@@ -442,7 +446,7 @@ describe("WebAuthService", () => {
 
 			const form = formOf("/tokens")
 			expect(form.get("_is_native")).toBe("1")
-			expect(form.get("organization_id") ?? undefined).toBe(sent)
+			expect(form.get("organization_id")).toBe(sent)
 		})
 
 		it.each([401, 404])("drops the credentials when the client token is refused with %i", async (status) => {
@@ -538,13 +542,6 @@ describe("WebAuthService", () => {
 				{ ...person, ...orgFields("org_2") },
 			],
 			["a stored organization the user left", { organizationId: "org_9" }, [membership("org_1")], person],
-			[
-				"legacy credentials: the first membership",
-				{},
-				[membership("org_1"), membership("org_2")],
-				{ ...person, ...orgFields("org_1") },
-			],
-			["legacy credentials without memberships", {}, [], person],
 		])("for %s", async (_name, extra, memberships, expected) => {
 			routes["/organization_memberships"] = () => reply(200, { response: memberships })
 
