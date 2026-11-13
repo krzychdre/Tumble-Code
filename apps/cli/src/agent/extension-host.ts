@@ -382,7 +382,14 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 
 		// Handle waiting for input - delegate to AskDispatcher.
 		this.client.on("waitingForInput", (event: WaitingForInputEvent) => {
-			this.askDispatcher.handleAsk(event.message)
+			this.askDispatcher.handleAsk(event.message).catch((error: unknown) => {
+				// A failed handler never answers the ask, and waitingForInput
+				// fires only on the transition into waiting, so the run would
+				// hang. Fail it through the client's error event, which
+				// waitForTaskCompletion rejects on (run.ts exits 1).
+				const err = error instanceof Error ? error : new Error(String(error))
+				this.client.getEmitter().emit("error", err)
+			})
 		})
 	}
 

@@ -1080,6 +1080,38 @@ describe("ExtensionHost", () => {
 		})
 	})
 
+	// A failed ask handler never answers the ask, and waitingForInput fires
+	// only on the transition into waiting; the run must fail (runTask
+	// rejects, run.ts exits 1) instead of waiting forever.
+	describe("a failed ask handler fails the run", () => {
+		it("rejects runTask with the handler's error", async () => {
+			const host = createTestHost()
+			host.markWebviewReady()
+			const client = getPrivate(host, "client") as ExtensionClient
+			setPrivate(host, "askDispatcher", {
+				handleAsk: () => Promise.reject(new Error("ask handler exploded")),
+			})
+
+			const taskPromise = host.runTask("test prompt")
+			setTimeout(
+				() =>
+					client.getEmitter().emit("waitingForInput", {
+						ask: "command",
+						stateInfo: {
+							state: AgentLoopState.IDLE,
+							isWaitingForInput: true,
+							isRunning: false,
+							isStreaming: false,
+						},
+						message: { ts: 9, type: "ask", ask: "command", text: "ls", partial: false },
+					}),
+				10,
+			)
+
+			await expect(taskPromise).rejects.toThrow("ask handler exploded")
+		}, 5000)
+	})
+
 	// --exit-on-error reads the client's delivery stream (D11 step 3): a
 	// retry backoff fails the run even when another message arrives in the
 	// same push, and an old backoff in a resumed task's history does not.
