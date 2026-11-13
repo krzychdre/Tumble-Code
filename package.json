@@ -5,9 +5,7 @@
 		"node": "22.23.3"
 	},
 	"scripts": {
-		"preinstall": "node scripts/bootstrap.mjs",
 		"prepare": "husky",
-		"install:all": "node scripts/bootstrap.mjs",
 		"lint": "turbo lint --log-order grouped --output-logs new-only",
 		"check-types": "turbo check-types --log-order grouped --output-logs new-only",
 		"test": "turbo test --log-order grouped --output-logs new-only",
