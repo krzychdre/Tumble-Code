@@ -23,7 +23,7 @@ import { SearchableSetting } from "./SearchableSetting"
 import { SettingsCard, SettingsNested, checkboxDescription, settingDescription } from "./SettingsCard"
 import { postImmediateSetting } from "./postImmediateSetting"
 import { useSetting } from "./SettingsDraftContext"
-import type { ExtensionMessage } from "@tumble-code/types"
+import { SETTINGS_DEFAULTS, type ExtensionMessage } from "@tumble-code/types"
 import { onExtensionMessage } from "@src/utils/extensionBus"
 
 const PromptsSettings = () => {
@@ -39,7 +39,8 @@ const PromptsSettings = () => {
 	const [draftIncludeTaskHistoryInEnhance, setIncludeTaskHistoryInEnhance] = useSetting("includeTaskHistoryInEnhance")
 
 	// The Save buffer first; the live state only while the buffer has no value.
-	const includeTaskHistoryInEnhance = draftIncludeTaskHistoryInEnhance ?? contextIncludeTaskHistoryInEnhance ?? true
+	const includeTaskHistoryInEnhance =
+		draftIncludeTaskHistoryInEnhance ?? contextIncludeTaskHistoryInEnhance ?? SETTINGS_DEFAULTS.includeTaskHistoryInEnhance
 
 	const [testPrompt, setTestPrompt] = useState("")
 	const [isEnhancing, setIsEnhancing] = useState(false)
