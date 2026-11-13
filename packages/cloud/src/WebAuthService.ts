@@ -26,10 +26,13 @@ const AUTH_STATE_KEY = "clerk-auth-state"
  * AuthCredentials
  */
 
-const authCredentialsSchema = z.object({
+const sessionCredentialsSchema = z.object({
 	clientToken: z.string().min(1, "Client token cannot be empty"),
 	sessionId: z.string().min(1, "Session ID cannot be empty"),
-	organizationId: z.string().nullable().optional(),
+})
+
+const authCredentialsSchema = sessionCredentialsSchema.extend({
+	organizationId: z.string().nullable(),
 })
 
 type AuthCredentials = z.infer<typeof authCredentialsSchema>
@@ -223,16 +226,7 @@ export class WebAuthService extends EventEmitter<AuthServiceEvents> implements A
 
 		try {
 			const parsedJson = JSON.parse(credentialsJson)
-			const credentials = authCredentialsSchema.parse(parsedJson)
-
-			// Migration: If no organizationId but we have userInfo, add it
-			if (credentials.organizationId === undefined && this.userInfo?.organizationId) {
-				credentials.organizationId = this.userInfo.organizationId
-				await this.storeCredentials(credentials)
-				this.log("[auth] Migrated credentials with organizationId")
-			}
-
-			return credentials
+			return authCredentialsSchema.parse(parsedJson)
 		} catch (error) {
 			if (error instanceof z.ZodError) {
 				this.log("[auth] Invalid credentials format:", error.issues)
@@ -325,12 +319,10 @@ export class WebAuthService extends EventEmitter<AuthServiceEvents> implements A
 				throw new Error("Invalid state parameter. Authentication request may have been tampered with.")
 			}
 
-			const credentials = await this.clerkSignIn(code)
+			const { clientToken, sessionId } = await this.clerkSignIn(code)
 
-			// Set organizationId (null for personal accounts)
-			credentials.organizationId = organizationId || null
-
-			await this.storeCredentials(credentials)
+			// organizationId is null for personal accounts
+			await this.storeCredentials({ clientToken, sessionId, organizationId: organizationId || null })
 
 			const vscode = await importVscode()
 
@@ -535,7 +527,7 @@ export class WebAuthService extends EventEmitter<AuthServiceEvents> implements A
 		}
 	}
 
-	private async clerkSignIn(ticket: string): Promise<AuthCredentials> {
+	private async clerkSignIn(ticket: string): Promise<Pick<AuthCredentials, "clientToken" | "sessionId">> {
 		const formData = new URLSearchParams()
 		formData.append("strategy", "ticket")
 		formData.append("ticket", ticket)
@@ -565,23 +557,15 @@ export class WebAuthService extends EventEmitter<AuthServiceEvents> implements A
 			throw new Error("No authorization header found in the response")
 		}
 
-		return authCredentialsSchema.parse({ clientToken, sessionId })
+		return sessionCredentialsSchema.parse({ clientToken, sessionId })
 	}
 
 	private async clerkCreateSessionToken(): Promise<string> {
 		const formData = new URLSearchParams()
 		formData.append("_is_native", "1")
 
-		// Handle 3 cases for organization_id:
-		// 1. Have an org id: organization_id=THE_ORG_ID
-		// 2. Have a personal account: organization_id= (empty string)
-		// 3. Don't know if you have an org id (old style credentials): don't send organization_id param at all
-		const organizationId = this.getStoredOrganizationId()
-		if (this.credentials?.organizationId !== undefined) {
-			// We have organization context info (either org id or personal account)
-			formData.append("organization_id", organizationId || "")
-		}
-		// If organizationId is undefined, don't send the param at all (old credentials)
+		// The organization id, or an empty string for a personal account.
+		formData.append("organization_id", this.getStoredOrganizationId() || "")
 
 		const response = await fetch(`${getClerkBaseUrl()}/v1/client/sessions/${this.credentials!.sessionId}/tokens`, {
 			method: "POST",
@@ -641,43 +625,24 @@ export class WebAuthService extends EventEmitter<AuthServiceEvents> implements A
 		try {
 			const storedOrgId = this.getStoredOrganizationId()
 
-			if (this.credentials?.organizationId !== undefined) {
-				// We have organization context info
-				if (storedOrgId !== null) {
-					// User is in organization context - fetch user's memberships and filter
-					const orgMemberships = await this.clerkGetOrganizationMemberships()
-					const userMembership = this.findOrganizationMembership(orgMemberships, storedOrgId)
-
-					if (userMembership) {
-						this.setUserOrganizationInfo(userInfo, userMembership)
-
-						this.log("[auth] User in organization context:", {
-							id: userMembership.organization.id,
-							name: userMembership.organization.name,
-							role: userMembership.role,
-						})
-					} else {
-						this.log("[auth] Warning: User not found in stored organization:", storedOrgId)
-					}
-				} else {
-					this.log("[auth] User in personal account context - not setting organization info")
-				}
-			} else {
-				// Old credentials without organization context - fetch organization info to determine context
+			if (storedOrgId !== null) {
+				// User is in organization context - fetch user's memberships and filter
 				const orgMemberships = await this.clerkGetOrganizationMemberships()
-				const primaryOrgMembership = this.findPrimaryOrganizationMembership(orgMemberships)
+				const userMembership = this.findOrganizationMembership(orgMemberships, storedOrgId)
 
-				if (primaryOrgMembership) {
-					this.setUserOrganizationInfo(userInfo, primaryOrgMembership)
+				if (userMembership) {
+					this.setUserOrganizationInfo(userInfo, userMembership)
 
-					this.log("[auth] Legacy credentials: Found organization membership:", {
-						id: primaryOrgMembership.organization.id,
-						name: primaryOrgMembership.organization.name,
-						role: primaryOrgMembership.role,
+					this.log("[auth] User in organization context:", {
+						id: userMembership.organization.id,
+						name: userMembership.organization.name,
+						role: userMembership.role,
 					})
 				} else {
-					this.log("[auth] Legacy credentials: No organization memberships found")
+					this.log("[auth] Warning: User not found in stored organization:", storedOrgId)
 				}
+			} else {
+				this.log("[auth] User in personal account context - not setting organization info")
 			}
 		} catch (error) {
 			this.log("[auth] Failed to fetch organization info:", error)
@@ -692,12 +657,6 @@ export class WebAuthService extends EventEmitter<AuthServiceEvents> implements A
 		organizationId: string,
 	): CloudOrganizationMembership | undefined {
 		return memberships?.find((membership) => membership.organization.id === organizationId)
-	}
-
-	private findPrimaryOrganizationMembership(
-		memberships: CloudOrganizationMembership[],
-	): CloudOrganizationMembership | undefined {
-		return memberships && memberships.length > 0 ? memberships[0] : undefined
 	}
 
 	private setUserOrganizationInfo(userInfo: CloudUserInfo, membership: CloudOrganizationMembership): void {
