@@ -318,6 +318,7 @@ describe("RetryQueue", () => {
 
 		it.each([
 			["seconds", () => "2", 2_000],
+			["an ISO-8601 date", () => new Date(Date.now() + 3_000).toISOString(), 3_000],
 			["an HTTP date", () => new Date(Date.now() + 3_000).toUTCString(), 3_000],
 			["an unreadable value", () => "soon", 60_000],
 		])("pauses the whole queue on 429 for a Retry-After in %s", async (_name, retryAfter, pauseMs) => {

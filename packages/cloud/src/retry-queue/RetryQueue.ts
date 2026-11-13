@@ -179,9 +179,11 @@ export class RetryQueue {
 					if (response && response.status === 429) {
 						const retryAfter = response.headers.get("Retry-After")
 						if (retryAfter) {
-							// Parse Retry-After (could be seconds or a date)
+							// Parse Retry-After (could be seconds or a date).
+							// Number() only accepts fully-numeric values: parseInt would
+							// truncate an ISO-8601 date to its year (e.g. 2026).
 							let delayMs: number
-							const retryAfterSeconds = parseInt(retryAfter, 10)
+							const retryAfterSeconds = Number(retryAfter)
 							if (!isNaN(retryAfterSeconds)) {
 								delayMs = retryAfterSeconds * 1000
 							} else {
