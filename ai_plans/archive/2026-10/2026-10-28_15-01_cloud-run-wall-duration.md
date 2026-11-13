@@ -40,10 +40,10 @@ the union of the run's request intervals is 2374 s.
 
 ## Measurements (Postgres 16.15, one `refresh_run_totals` from a leaf, median of 10)
 
-| Synthetic run | Before | After, no index | After, with index |
-|---|---|---|---|
-| 5000 subtasks, 20 timed + 200 untimed messages each | 13 ms / 28 ms (changed) | ~3.5 s | 214 ms / 370 ms |
-| 500 subtasks, same shape | 7 ms | - | 23 ms |
+| Synthetic run                                       | Before                  | After, no index | After, with index |
+| --------------------------------------------------- | ----------------------- | --------------- | ----------------- |
+| 5000 subtasks, 20 timed + 200 untimed messages each | 13 ms / 28 ms (changed) | ~3.5 s          | 214 ms / 370 ms   |
+| 500 subtasks, same shape                            | 7 ms                    | -               | 23 ms             |
 
 Live data: at most 28 children under one parent, 473 timed messages in total. The migration's UPDATE took 350 ms
 over 10.5k tasks and 1.1M messages.

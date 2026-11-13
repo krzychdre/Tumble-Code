@@ -67,13 +67,13 @@ can be summed per member.
 `/app/metrics?period=all` through the TestClient on SQLite: 40,000 completions on 1,500 tasks of five people (the
 reader 7,928 of them, the organization 19,947), median of 5 requests, several runs:
 
-| View | Before | After |
-| --- | --- | --- |
-| Mine, no grouping | 100-102 ms | 104-113 ms |
-| Mine, by project | 103-104 ms | 111-117 ms |
-| Organization, by project | (n/a) | 310-375 ms |
-| Organization, by user | (n/a) | 334-363 ms |
-| Organization, one member | (n/a) | 202-266 ms |
+| View                     | Before     | After      |
+| ------------------------ | ---------- | ---------- |
+| Mine, no grouping        | 100-102 ms | 104-113 ms |
+| Mine, by project         | 103-104 ms | 111-117 ms |
+| Organization, by project | (n/a)      | 310-375 ms |
+| Organization, by user    | (n/a)      | 334-363 ms |
+| Organization, one member | (n/a)      | 202-266 ms |
 
 The organization's page costs what the same number of completions costs on the reader's page (about 15 µs each,
 the Python pass); the few ms on "Mine" are the admin lookup, the project visibility condition and reading the rows by column name.
@@ -81,12 +81,12 @@ the Python pass); the few ms on "Mine" are the admin lookup, the project visibil
 `compute_user_metrics` on PostgreSQL 16.15: 200,000 completions, 6,000 tasks, 20 people, the organization 19,908
 completions, `ANALYZE` run:
 
-| Query | Without the index | With it |
-| --- | --- | --- |
-| Mine, all time (base commit: 153-166 ms) | 151 ms | 156 ms |
-| Organization, all time | 426 ms | 483 ms |
-| Organization, 7 days | 42 ms | 43 ms |
-| Organization's session quality | 15 ms | 16 ms |
+| Query                                    | Without the index | With it |
+| ---------------------------------------- | ----------------- | ------- |
+| Mine, all time (base commit: 153-166 ms) | 151 ms            | 156 ms  |
+| Organization, all time                   | 426 ms            | 483 ms  |
+| Organization, 7 days                     | 42 ms             | 43 ms   |
+| Organization's session quality           | 15 ms             | 16 ms   |
 
 The SQL of the organization's 7-day query runs in 10-13 ms either way: Postgres walks the events through the
 `(user_id, event_type, created_at)` index per person and hashes the organization's 600 tasks, which a sequential

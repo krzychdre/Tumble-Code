@@ -21,12 +21,12 @@ once sat between things read every day, and the export form grew with every mode
 
 Four tabs under the "Dataset" heading (`_dataset_head.html`, built on `_tabs.html`), each its own URL:
 
-| Tab       | URL                       | Holds                                                                                   |
-| --------- | ------------------------- | --------------------------------------------------------------------------------------- |
-| Overview  | `/app/dataset`            | the counters, "By model", "Why exchanges are left out"                                  |
-| Export    | `/app/dataset/export`     | the export form in two panels: what goes in, how it is written; the audit button        |
-| Tasks     | `/app/dataset/tasks`      | every recorded task, latest first, 25 to a page, each downloadable in full              |
-| Recording | `/app/dataset/recording`  | the recording switch, the anonymization terms, deleting all recordings with their count |
+| Tab       | URL                      | Holds                                                                                   |
+| --------- | ------------------------ | --------------------------------------------------------------------------------------- |
+| Overview  | `/app/dataset`           | the counters, "By model", "Why exchanges are left out"                                  |
+| Export    | `/app/dataset/export`    | the export form in two panels: what goes in, how it is written; the audit button        |
+| Tasks     | `/app/dataset/tasks`     | every recorded task, latest first, 25 to a page, each downloadable in full              |
+| Recording | `/app/dataset/recording` | the recording switch, the anonymization terms, deleting all recordings with their count |
 
 - Overview, Export and Tasks show a period and a client; their selectors stay on the tab, and the tabs carry the
   period and client along, so switching tabs keeps what you are looking at. Recording has no period: it is a

@@ -22,12 +22,13 @@ duplicate yet.
 - A project's name is unique in its tenant (an organization, or a user's personal space), case-insensitively. The
   database enforces it: unique index `uq_projects_tenant_name` on `(tenant_id, lower(name))`.
 - A new project whose default name is taken gets the first free name of `name_candidates`:
-  1. the default name (`notes`);
-  2. the name qualified: for a folder without git by the local part of its user's e-mail (`notes (alice)`), for a
-     repository by the owner segment of its key (`api (acme)` for `github.com/acme/api`);
-  3. then numbered: `notes (alice, 2)`, `notes (alice, 3)`, ...
+    1. the default name (`notes`);
+    2. the name qualified: for a folder without git by the local part of its user's e-mail (`notes (alice)`), for a
+       repository by the owner segment of its key (`api (acme)` for `github.com/acme/api`);
+    3. then numbered: `notes (alice, 2)`, `notes (alice, 3)`, ...
 
-  Each candidate is cut so that it fits `NAME_MAX` (100) with its suffix.
+    Each candidate is cut so that it fits `NAME_MAX` (100) with its suffix.
+
 - The alarm: the API logs a warning with the tenant, the wanted name, the new project's key and the name it got;
   the project keeps the wanted name in `projects.wanted_name`, and its page shows "Renamed automatically because
   another project of this space was already called X." (plus "Rename it if you like: saving a name hides this
