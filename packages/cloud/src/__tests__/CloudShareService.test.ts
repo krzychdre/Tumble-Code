@@ -20,11 +20,9 @@ vi.mock("../config", () => ({
 	getTumbleCodeApiUrl: () => "http://localhost:8080",
 }))
 
-vi.mock("../utils", () => ({
-	getUserAgent: () => "Tumble-Code 1.0.0",
-}))
-
 const SHARED = { success: true, shareUrl: "http://localhost:8080/share/abc123" }
+
+const context = { extension: { packageJSON: { version: "3.7.1" } } } as any
 
 const httpError = (status: number, body: string) => ({
 	ok: false,
@@ -49,7 +47,7 @@ describe("CloudShareService", () => {
 		settingsService = { getSettings: vi.fn() }
 		mockFetch.mockResolvedValue({ ok: true, json: async () => SHARED })
 		shareService = new CloudShareService(
-			new CloudAPI(authService as unknown as AuthService, log),
+			new CloudAPI(authService as unknown as AuthService, context, log),
 			settingsService as unknown as SettingsService,
 			log,
 		)
@@ -69,7 +67,7 @@ describe("CloudShareService", () => {
 				headers: {
 					"Content-Type": "application/json",
 					Authorization: "Bearer session-token",
-					"User-Agent": "Tumble-Code 1.0.0",
+					"User-Agent": "Tumble-Code 3.7.1",
 				},
 				body: JSON.stringify({ taskId: "task-123", visibility: sent }),
 				signal: expect.any(AbortSignal),

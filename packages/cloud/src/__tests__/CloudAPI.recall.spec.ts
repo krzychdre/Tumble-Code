@@ -2,6 +2,7 @@
 // and how the contract's answers are read.
 
 import type { AuthService } from "@tumble-code/types"
+import type { ExtensionContext } from "vscode"
 
 import { CloudAPI } from "../CloudAPI.js"
 
@@ -10,6 +11,8 @@ vi.mock("../config", () => ({
 }))
 
 const fetchMock = vi.fn()
+
+const CONTEXT = { extension: { packageJSON: { version: "1.0.0" } } } as unknown as ExtensionContext
 
 const FOLDER = { workspacePath: "/home/ann/tool", repositoryUrl: "https://github.com/acme/tool.git" }
 
@@ -46,7 +49,7 @@ let api: CloudAPI
 beforeEach(() => {
 	fetchMock.mockReset()
 	vi.stubGlobal("fetch", fetchMock)
-	api = new CloudAPI({ getSessionToken: () => "jwt-1" } as unknown as AuthService, () => {})
+	api = new CloudAPI({ getSessionToken: () => "jwt-1" } as unknown as AuthService, CONTEXT, () => {})
 })
 
 afterEach(() => {
