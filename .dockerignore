@@ -73,7 +73,6 @@ src/node_modules
 !package.json
 !pnpm-lock.yaml
 !pnpm-workspace.yaml
-!scripts/bootstrap.mjs
 !apps/cli/
 !src/
 !webview-ui/

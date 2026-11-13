@@ -135,8 +135,6 @@ Read by the test harnesses; set in CI, rarely by hand.
 | `GITHUB_ACTIONS`                                                   | `packages/config-vitest/index.js` (`resolveVerbosity`)  | `true` adds the github-actions reporter to src/webview-ui. |
 | `ROO_CLI_FAKE_AI_MODULE`                                           | `apps/cli/src/lib/utils/fake-ai-module.ts`              | Integration suite only: runs the CLI on a scripted model.  |
 | `VSCODE_TEXTMATE_DEBUG`                                            | `webview-ui/vite.config.ts`                             | Baked into the webview bundle at build time (`define`).    |
-| `npm_execpath`                                                     | `scripts/bootstrap.mjs`                                 | Set by the package manager; tells bootstrap pnpm is used.  |
-| `BOOTSTRAP_IN_PROGRESS`                                            | `scripts/bootstrap.mjs`                                 | Guards the bootstrap script against re-entry.              |
 | `ZAI_API_KEY`, `VLLM_BASE_URL`, `VLLM_API_KEY`, `VLLM_METRICS_URL` | `scripts/agent-bench/`                                  | Keys/endpoints for the cache-probe scripts (Z.ai / vLLM).  |
 | `ROO_CLI_ROOT`                                                     | `apps/cli/scripts/integration/`                         | The integration harness points the CLI at a build to test. |
 
