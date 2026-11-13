@@ -32,7 +32,6 @@ describe("CloudTelemetryClient.sendErrorReport", () => {
 		vi.clearAllMocks()
 		vi.spyOn(console, "error").mockImplementation(() => {})
 		delete process.env.TUMBLE_CODE_DISABLE_TELEMETRY
-		delete process.env.ROO_CODE_DISABLE_TELEMETRY
 
 		authService = {
 			getSessionToken: vi.fn().mockReturnValue("session-token"),
@@ -70,8 +69,8 @@ describe("CloudTelemetryClient.sendErrorReport", () => {
 		expect(authService.getSessionToken).not.toHaveBeenCalled()
 	})
 
-	it.each(["TUMBLE_CODE_DISABLE_TELEMETRY", "ROO_CODE_DISABLE_TELEMETRY"])("does nothing when %s=1", async (name) => {
-		process.env[name] = "1"
+	it("does nothing when TUMBLE_CODE_DISABLE_TELEMETRY=1", async () => {
+		process.env.TUMBLE_CODE_DISABLE_TELEMETRY = "1"
 
 		await client.sendErrorReport(REPORT)
 

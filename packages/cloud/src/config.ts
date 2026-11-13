@@ -52,8 +52,4 @@ export const setTumbleCodeApiUrl = (url: string | undefined) => {
 }
 
 export const getTumbleCodeApiUrl = () =>
-	runtimeTumbleCodeApiUrl ||
-	process.env.TUMBLE_CODE_API_URL ||
-	// The former name, still read so existing setups keep working.
-	process.env.ROO_CODE_API_URL ||
-	PRODUCTION_TUMBLE_CODE_API_URL
+	runtimeTumbleCodeApiUrl || process.env.TUMBLE_CODE_API_URL || PRODUCTION_TUMBLE_CODE_API_URL

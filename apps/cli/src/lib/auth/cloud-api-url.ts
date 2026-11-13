@@ -4,7 +4,7 @@
  * `cloudApiUrl` in ~/.roo/cli-settings.json is handed to the extension as the
  * `tumble-code.cloudApiUrl` setting before it activates (the extension reads it
  * once, early in `activate()`). Without it the extension falls back to the
- * `TUMBLE_CODE_API_URL` (or older `ROO_CODE_API_URL`) environment variable.
+ * `TUMBLE_CODE_API_URL` environment variable.
  * Every path normalizes the setting the same way, because the extension keys
  * the stored credentials by this URL: a sign-in under one spelling would not be
  * found under another.
@@ -54,7 +54,7 @@ export function resolveCloudApiUrl(
 				}
 	}
 
-	const fromEnv = env.TUMBLE_CODE_API_URL?.trim() || env.ROO_CODE_API_URL?.trim()
+	const fromEnv = env.TUMBLE_CODE_API_URL?.trim()
 
 	if (fromEnv) {
 		return { ok: true, url: fromEnv, source: "environment" }

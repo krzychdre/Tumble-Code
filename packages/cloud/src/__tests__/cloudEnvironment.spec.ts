@@ -20,16 +20,6 @@ describe("resolveCloudEnvironment", () => {
 		).toEqual({ staticToken: " tok ", staticOrgSettings: "e30=" })
 	})
 
-	it("still reads the former ROO_CODE_* names, the new names win", () => {
-		expect(resolveCloudEnvironment({ ROO_CODE_CLOUD_TOKEN: "old", ROO_CODE_CLOUD_ORG_SETTINGS: "e30=" })).toEqual({
-			staticToken: "old",
-			staticOrgSettings: "e30=",
-		})
-		expect(
-			resolveCloudEnvironment({ ROO_CODE_CLOUD_TOKEN: "old", TUMBLE_CODE_CLOUD_TOKEN: "new" }).staticToken,
-		).toBe("new")
-	})
-
 	it("ignores unrelated variables", () => {
 		expect(resolveCloudEnvironment({ TUMBLE_CODE_API_URL: "https://x" })).toEqual({
 			staticToken: undefined,

@@ -18,14 +18,11 @@ describe("resolveCloudApiUrl", () => {
 		).toEqual({ ok: true, url: "https://a.example", source: "settings" })
 	})
 
-	it("falls back to TUMBLE_CODE_API_URL, then ROO_CODE_API_URL", () => {
+	it("falls back to TUMBLE_CODE_API_URL", () => {
 		expect(resolveCloudApiUrl({}, { TUMBLE_CODE_API_URL: "https://b.example" })).toEqual({
 			ok: true,
 			url: "https://b.example",
 			source: "environment",
-		})
-		expect(resolveCloudApiUrl({}, { ROO_CODE_API_URL: "https://c.example" })).toMatchObject({
-			url: "https://c.example",
 		})
 	})
 

@@ -8,8 +8,7 @@
  *   TUMBLE_CODE_CLOUD_ORG_SETTINGS. When present they replace the settings that
  *   would otherwise be fetched from the cloud.
  *
- * An empty variable counts as unset. The former names ROO_CODE_CLOUD_TOKEN and
- * ROO_CODE_CLOUD_ORG_SETTINGS are still read when the new ones are unset.
+ * An empty variable counts as unset.
  */
 export interface CloudEnvironment {
 	staticToken: string | undefined
@@ -20,7 +19,7 @@ const nonEmpty = (value: string | undefined): string | undefined => (value && va
 
 export function resolveCloudEnvironment(env: Record<string, string | undefined> = process.env): CloudEnvironment {
 	return {
-		staticToken: nonEmpty(env.TUMBLE_CODE_CLOUD_TOKEN) ?? nonEmpty(env.ROO_CODE_CLOUD_TOKEN),
-		staticOrgSettings: nonEmpty(env.TUMBLE_CODE_CLOUD_ORG_SETTINGS) ?? nonEmpty(env.ROO_CODE_CLOUD_ORG_SETTINGS),
+		staticToken: nonEmpty(env.TUMBLE_CODE_CLOUD_TOKEN),
+		staticOrgSettings: nonEmpty(env.TUMBLE_CODE_CLOUD_ORG_SETTINGS),
 	}
 }

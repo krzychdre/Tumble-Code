@@ -140,8 +140,11 @@ Read by the test harnesses; set in CI, rarely by hand.
 | `ZAI_API_KEY`, `VLLM_BASE_URL`, `VLLM_API_KEY`, `VLLM_METRICS_URL` | `scripts/agent-bench/`                                  | Keys/endpoints for the cache-probe scripts (Z.ai / vLLM).  |
 | `ROO_CLI_ROOT`                                                     | `apps/cli/scripts/integration/`                         | The integration harness points the CLI at a build to test. |
 
-## Removed variables (D15)
+## Removed variables
 
+- `ROO_CODE_API_URL`, `ROO_CODE_CLOUD_TOKEN`, `ROO_CODE_CLOUD_ORG_SETTINGS`, `ROO_CODE_DISABLE_TELEMETRY`: former
+  names of the `TUMBLE_CODE_API_URL`, `TUMBLE_CODE_CLOUD_TOKEN`, `TUMBLE_CODE_CLOUD_ORG_SETTINGS` and
+  `TUMBLE_CODE_DISABLE_TELEMETRY` variables above; no longer read. Set the `TUMBLE_CODE_*` names.
 - `ROO_CODE_PROVIDER_URL`: removed in D15 together with the `tumble-code.cloudProviderUrl` setting and
   `getTumbleCodeProviderUrl`/`setTumbleCodeProviderUrl` in `packages/cloud/src/config.ts`. The getter had no caller outside
   tests after the cloud proxy provider was removed, so a value could be set but nothing read it.
