@@ -26,21 +26,22 @@ Anthropic. Nothing else happens.
   memoizes both calls on `client`, which is created once and never changes.
   The compiled provider served by Vite:
 
-  ```js
-  if ($[15] !== client) {
-      t8 = client.getValue();
-      $[15] = client;
-      $[16] = t8;
-  } else {
-      t8 = $[16];
-  }
-  ```
+    ```js
+    if ($[15] !== client) {
+    	t8 = client.getValue()
+    	$[15] = client
+    	$[16] = t8
+    } else {
+    	t8 = $[16]
+    }
+    ```
 
-  So every `useExtensionState()` consumer saw the value of the first render
-  forever. `useExtensionSelector` consumers were fine (they read inside a
-  `useSyncExternalStore` snapshot function), which is why most of the app
-  kept working. The same freeze hit `resyncRequested`, so the
-  `resyncClineMessages` request could never be sent.
+    So every `useExtensionState()` consumer saw the value of the first render
+    forever. `useExtensionSelector` consumers were fine (they read inside a
+    `useSyncExternalStore` snapshot function), which is why most of the app
+    kept working. The same freeze hit `resyncRequested`, so the
+    `resyncClineMessages` request could never be sent.
+
 - Vitest does not run the React Compiler, so a jsdom render test of the same
   flow passes (checked: switching to OpenAI Compatible works there). That is
   why no existing test caught it.

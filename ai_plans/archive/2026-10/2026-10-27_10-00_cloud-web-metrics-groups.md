@@ -56,12 +56,12 @@ for one of them.
 `/app/metrics?period=all` through the TestClient on SQLite, 40,000 completions, 1,500 tasks, 20 projects, median of
 5 requests:
 
-| View | Before | After |
-| --- | --- | --- |
-| No grouping | 474 ms | 513 ms |
-| By project | (n/a) | 510 ms |
-| By model | (n/a) | 527 ms |
-| Narrowed to one project | (n/a) | 276 ms |
+| View                    | Before | After  |
+| ----------------------- | ------ | ------ |
+| No grouping             | 474 ms | 513 ms |
+| By project              | (n/a)  | 510 ms |
+| By model                | (n/a)  | 527 ms |
+| Narrowed to one project | (n/a)  | 276 ms |
 
 The 40 ms are the outer join; the rest is the unchanged Python pass. On Postgres the join is two primary-key
 lookups per row.

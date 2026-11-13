@@ -48,14 +48,14 @@ a9b0c1d2e3f4 on start, which renames the key in place (a catalog change, no tabl
   `alembic downgrade` to b2c3d4e5f6a7. Mutation: dropping `name=` from the model turns it red with
   `No such constraint: 'fk_tasks_parent_task_id'`.
 - By hand on a throwaway PostgreSQL 16.15 container:
-  - origin/main code: db-migrate.sh on an empty database, `alembic check` clean, `alembic downgrade base` fails
-    on `fk_tasks_parent_task_id` (the reproduction). This database is the "old live-like" one.
-  - This branch on the old database: `upgrade head` renames the key, `alembic check` clean, `downgrade base` and
-    `upgrade head` both pass, `alembic check` clean; downgrade and upgrade of a9b0c1d2e3f4 again is a no-op.
-  - This branch on an empty database: db-migrate.sh (FRESH), `alembic check` clean, key already named,
-    `downgrade base`, `upgrade head`, `alembic check` clean.
-  - `pg_dump -s` of the upgraded old database and of a new create_all database differ only in column order
-    (a downgrade plus upgrade re-adds columns at the end); constraints and indexes are identical.
+    - origin/main code: db-migrate.sh on an empty database, `alembic check` clean, `alembic downgrade base` fails
+      on `fk_tasks_parent_task_id` (the reproduction). This database is the "old live-like" one.
+    - This branch on the old database: `upgrade head` renames the key, `alembic check` clean, `downgrade base` and
+      `upgrade head` both pass, `alembic check` clean; downgrade and upgrade of a9b0c1d2e3f4 again is a no-op.
+    - This branch on an empty database: db-migrate.sh (FRESH), `alembic check` clean, key already named,
+      `downgrade base`, `upgrade head`, `alembic check` clean.
+    - `pg_dump -s` of the upgraded old database and of a new create_all database differ only in column order
+      (a downgrade plus upgrade re-adds columns at the end); constraints and indexes are identical.
 - Full `uv run pytest -q`.
 
 ## Notes

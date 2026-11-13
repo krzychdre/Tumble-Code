@@ -18,7 +18,7 @@
   of each pair (portable `DELETE ... WHERE EXISTS`), then creates the index. Live DB had 0 duplicates on 2026-11-06.
   No `on_conflict_do_nothing` in the sync: a second process now fails its sync loudly and the next tick retries.
 - `validate_ticket` is one `UPDATE tickets SET used = true WHERE code = :c AND used = false AND expires_at > now
-  RETURNING session_id`.
+RETURNING session_id`.
 - OAuth state (`get_oauth_state`) left as is: a duplicate callback still needs Authentik's single-use code, so the race
   cannot mint twice.
 

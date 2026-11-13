@@ -66,11 +66,11 @@ had 0 organizations and 0 memberships, so nothing needed migrating.
 ## Authentik facts verified (Authentik 2026.8.3, the pinned image, read in the running container)
 
 - `uid` = `sha256(f"{user.id}-{install id}")` (`authentik/core/models.py`, `User.uid`); under `sub_mode
-  hashed_user_id` (the model default, and the live provider's value in `auth_db`) the ID token's and userinfo's
+hashed_user_id` (the model default, and the live provider's value in `auth_db`) the ID token's and userinfo's
   `sub` is `user.uid` (`providers/oauth2/id_token.py` `_resolve_sub`, `views/userinfo.py`). Live: akadmin's `uid`
   prefix `787d86d70112` equals the cloud's `users.authentik_id`.
 - Groups list: `users_obj` with `PartialUserSerializer` fields `pk, username, name, is_active, last_login, email,
-  attributes, uid`, included unless `include_users=false`; members are the group's direct users
+attributes, uid`, included unless `include_users=false`; members are the group's direct users
   (`core/api/groups.py`).
 - Paging: `PageNumberPagination` with `page` and `page_size`, `pagination.next` = 0 on the last page, default size
   20, maximum 100 per tenant (`api/pagination.py`, `tenants/models.py`).
