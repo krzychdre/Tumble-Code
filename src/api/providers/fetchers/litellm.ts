@@ -63,7 +63,7 @@ export async function getLiteLLMModels(apiKey: string, baseUrl: string): Promise
 		} else {
 			// If response.data.data is not in the expected format, consider it an error.
 			logger.error("Error fetching LiteLLM models: Unexpected response format", response.data)
-			throw new Error("Failed to fetch LiteLLM models: Unexpected response format.")
+			throw new Error("Unexpected response format.")
 		}
 
 		return models
