@@ -1,4 +1,5 @@
 import { z } from "zod"
+import type { ExtensionContext } from "vscode"
 
 import { type AuthService, type ShareVisibility, type ShareResponse, shareResponseSchema } from "@tumble-code/types"
 
@@ -88,11 +89,13 @@ interface CloudAPIRequestOptions extends Omit<RequestInit, "headers"> {
 
 export class CloudAPI {
 	private authService: AuthService
+	private context: ExtensionContext
 	private log: (...args: unknown[]) => void
 	private baseUrl: string
 
-	constructor(authService: AuthService, log?: (...args: unknown[]) => void) {
+	constructor(authService: AuthService, context: ExtensionContext, log?: (...args: unknown[]) => void) {
 		this.authService = authService
+		this.context = context
 		this.log = log || console.log
 		this.baseUrl = getTumbleCodeApiUrl()
 	}
@@ -116,7 +119,7 @@ export class CloudAPI {
 		const requestHeaders = {
 			"Content-Type": "application/json",
 			Authorization: `Bearer ${sessionToken}`,
-			"User-Agent": getUserAgent(),
+			"User-Agent": getUserAgent(this.context),
 			...headers,
 		}
 

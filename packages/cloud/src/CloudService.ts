@@ -155,7 +155,7 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements Di
 				this._settingsService = cloudSettingsService
 			}
 
-			this._cloudAPI = new CloudAPI(this._authService, this.log)
+			this._cloudAPI = new CloudAPI(this._authService, this.context, this.log)
 
 			// Initialize retry queue with auth header provider.
 			this._retryQueue = new RetryQueue(
