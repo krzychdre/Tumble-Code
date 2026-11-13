@@ -131,7 +131,6 @@ type TestProvider = {
 	context: unknown
 	isDisposed: boolean
 	ensureSettingsDirectoryExists: Mock
-	ensureMcpServersDirectoryExists: Mock
 	getState: Mock
 	postMessageToWebview: Mock
 }
@@ -151,7 +150,6 @@ function createProvider(): TestProvider {
 		context: { extension: { packageJSON: { version: "1.0.0" } }, globalState: createGlobalState() },
 		isDisposed: false,
 		ensureSettingsDirectoryExists: vi.fn().mockResolvedValue(settingsDir),
-		ensureMcpServersDirectoryExists: vi.fn().mockResolvedValue("/mock/mcp-servers"),
 		getState: vi.fn().mockResolvedValue({ mcpEnabled: true }),
 		postMessageToWebview: vi.fn().mockResolvedValue(undefined),
 	}
@@ -391,13 +389,6 @@ describe("McpHub", () => {
 			expect(fakeWatchers.liveFiles()).toEqual([])
 			expect(hub.connections).toEqual([])
 			expect(connection.transport!.close).toHaveBeenCalled()
-		})
-
-		it("asks the live provider for the MCP servers directory", async () => {
-			sidebar.isDisposed = true
-
-			expect(await hub.getMcpServersPath()).toBe("/mock/mcp-servers")
-			expect(editorTab.ensureMcpServersDirectoryExists).toHaveBeenCalled()
 		})
 	})
 

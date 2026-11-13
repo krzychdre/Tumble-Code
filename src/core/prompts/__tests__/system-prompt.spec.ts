@@ -183,7 +183,6 @@ const createMockMcpHub = (withServers: boolean = false): McpHub =>
 						},
 					]
 				: [],
-		getMcpServersPath: async () => "/mock/mcp/path",
 		getMcpSettingsFilePath: async () => "/mock/settings/path",
 		dispose: async () => {},
 		// Add other required public methods with no-op implementations
@@ -460,7 +459,6 @@ const createTwoServerHub = (): McpHub =>
 				resources: [],
 			},
 		],
-		getMcpServersPath: async () => "/mock/mcp/path",
 		getMcpSettingsFilePath: async () => "/mock/settings/path",
 		dispose: async () => {},
 		restartConnection: async () => {},
