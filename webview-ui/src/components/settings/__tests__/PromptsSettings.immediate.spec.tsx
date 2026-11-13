@@ -3,14 +3,17 @@
 // are written immediately; the support prompt texts stay in the Save buffer.
 import { screen, fireEvent } from "@/utils/test-utils"
 
+import { SETTINGS_DEFAULTS } from "@tumble-code/types"
+
 import PromptsSettings from "../PromptsSettings"
 import { renderWithSettingsDraft } from "./settingsDraftTestUtils"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
 import { Textarea as RealTextarea } from "@/components/ui/textarea"
 
-const { mockPostMessage, mockSetEnhancementApiConfigId } = vi.hoisted(() => ({
+const { mockPostMessage, mockSetEnhancementApiConfigId, mockLiveState } = vi.hoisted(() => ({
 	mockPostMessage: vi.fn(),
 	mockSetEnhancementApiConfigId: vi.fn(),
+	mockLiveState: { includeTaskHistoryInEnhance: true as boolean | undefined },
 }))
 
 vi.mock("@src/utils/vscode", () => ({ vscode: { postMessage: mockPostMessage } }))
@@ -30,7 +33,7 @@ vi.mock("@src/context/ExtensionStateContext", () => ({
 		listApiConfigMeta: [{ id: "p1", name: "work" }],
 		enhancementApiConfigId: "",
 		setEnhancementApiConfigId: mockSetEnhancementApiConfigId,
-		includeTaskHistoryInEnhance: true,
+		includeTaskHistoryInEnhance: mockLiveState.includeTaskHistoryInEnhance,
 		setIncludeTaskHistoryInEnhance: vi.fn(),
 	}),
 	useExtensionSelector: (selector: (s: never) => unknown) =>
@@ -38,7 +41,7 @@ vi.mock("@src/context/ExtensionStateContext", () => ({
 			listApiConfigMeta: [{ id: "p1", name: "work" }],
 			enhancementApiConfigId: "",
 			setEnhancementApiConfigId: mockSetEnhancementApiConfigId,
-			includeTaskHistoryInEnhance: true,
+			includeTaskHistoryInEnhance: mockLiveState.includeTaskHistoryInEnhance,
 			setIncludeTaskHistoryInEnhance: vi.fn(),
 		} as never),
 }))
@@ -67,6 +70,7 @@ vi.mock("@src/components/ui", () => ({
 describe("PromptsSettings immediate writes (WEB-3)", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
+		mockLiveState.includeTaskHistoryInEnhance = true
 	})
 
 	it("posts includeTaskHistoryInEnhance immediately and also sets the Save buffer", () => {
@@ -92,6 +96,18 @@ describe("PromptsSettings immediate writes (WEB-3)", () => {
 		expect(mockPostMessage.mock.calls.map(([message]) => message)).toEqual([
 			{ type: "enhancementApiConfigId", text: "p1" },
 		])
+	})
+
+	// Neither the buffer nor the live state has a value (before the first host
+	// push): the checkbox shows the schema default, the single source.
+	it("falls back to the schema default for includeTaskHistoryInEnhance", () => {
+		mockLiveState.includeTaskHistoryInEnhance = undefined
+		renderWithSettingsDraft(<PromptsSettings />, { customSupportPrompts: {} })
+
+		const checkbox = screen.getByRole("checkbox", {
+			name: "prompts:supportPrompts.enhance.includeTaskHistory",
+		}) as HTMLInputElement
+		expect(checkbox.checked).toBe(SETTINGS_DEFAULTS.includeTaskHistoryInEnhance)
 	})
 
 	// The first text area is the support prompt, the second the enhancement test input.
