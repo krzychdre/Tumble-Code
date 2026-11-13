@@ -33,4 +33,17 @@ describe("getDeepSeekModels", () => {
 
 		expect(models["deepseek-v4-flash"]).toEqual(deepSeekModels["deepseek-flash"])
 	})
+
+	it("prices an unknown id at the current flash-tier rates", async () => {
+		listModels(["deepseek-future-model"])
+
+		const models = await getDeepSeekModels(undefined, "key")
+
+		expect(models["deepseek-future-model"]).toMatchObject({
+			inputPrice: 0.3,
+			outputPrice: 1.2,
+			cacheWritesPrice: 0.3,
+			cacheReadsPrice: 0.006,
+		})
+	})
 })

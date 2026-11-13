@@ -6,7 +6,7 @@ import { geminiModels } from "./gemini.js"
 // https://cloud.google.com/vertex-ai/generative-ai/docs/partner-models/use-claude
 export type VertexModelId = keyof typeof vertexModels
 
-export const vertexDefaultModelId: VertexModelId = "claude-opus-5"
+export const vertexDefaultModelId: VertexModelId = "claude-opus-5-5"
 
 // Info stand-ins for a model id that is not in the table, one per handler (see `vertexModelFamily`).
 // Only the info is used, never the id. An unknown Claude id gets Claude Sonnet 4.5: it lists no effort
@@ -17,10 +17,11 @@ export const vertexUnknownClaudeModelStandInId: VertexModelId = "claude-sonnet-4
 export const vertexUnknownGeminiModelStandInId: VertexModelId = "gemini-3.1-pro-preview"
 
 export const vertexModels = {
+	"gemini-4-carbon": { ...geminiModels["gemini-4-carbon"] },
+	"gemini-4-hydrogen": { ...geminiModels["gemini-4-hydrogen"] },
 	"gemini-4-argon": { ...geminiModels["gemini-4-argon"] },
 	"gemini-3.8-flash": { ...geminiModels["gemini-3.8-flash"] },
 	"gemini-3.5-flash-lite": { ...geminiModels["gemini-3.5-flash-lite"] },
-	"gemini-3.5-flash": { ...geminiModels["gemini-3.5-flash"] },
 	"gemini-3.1-pro-preview": { ...geminiModels["gemini-3.1-pro-preview"] },
 	"gemini-3.1-pro-preview-customtools": { ...geminiModels["gemini-3.1-pro-preview-customtools"] },
 	"gemini-3-flash-preview": { ...geminiModels["gemini-3-flash-preview"] },
@@ -36,9 +37,15 @@ export const vertexModels = {
 	"claude-opus-5": withoutTemperature(claudeModels["opus-5"]),
 	"claude-sonnet-5-5": withoutTemperature(claudeModels["sonnet-5-5"]),
 	"claude-sonnet-5": withoutTemperature(claudeModels["sonnet-5"]),
+	"claude-fable-5-2": withoutTemperature(claudeModels["fable-5-2"]),
 	"claude-fable-5-1": withoutTemperature(claudeModels["fable-5-1"]),
 	"claude-fable-5": withoutTemperature(claudeModels["fable-5"]),
+	"claude-mythos-5-2": withoutTemperature(claudeModels["mythos-5-2"]),
+	"claude-mythos-5-1": withoutTemperature(claudeModels["mythos-5-1"]),
+	"claude-mythos-5": withoutTemperature(claudeModels["mythos-5"]),
 	"claude-opus-4-5@20251101": withoutTemperature(claudeModels["opus-4-5"]),
+	// Retired on the Claude API but still served by Vertex (Google-managed Claude model table).
+	"claude-opus-4-1@20250805": withoutTemperature(withoutFields(claudeModels["opus-4"], "supportsReasoningBudget")),
 	"claude-opus-4@20250514": withoutTemperature(withoutFields(claudeModels["opus-4"], "supportsReasoningBudget")),
 } as const satisfies Record<string, ModelInfo>
 

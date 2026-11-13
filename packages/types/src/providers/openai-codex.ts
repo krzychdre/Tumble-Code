@@ -10,7 +10,7 @@ import type { ModelInfo } from "../model.js"
 
 export type OpenAiCodexModelId = keyof typeof openAiCodexModels
 
-export const openAiCodexDefaultModelId: OpenAiCodexModelId = "gpt-5.6-sol"
+export const openAiCodexDefaultModelId: OpenAiCodexModelId = "gpt-6.1-sol"
 
 /**
  * The Codex backend rejects `max_output_tokens`, so this provider never sends it
@@ -25,6 +25,7 @@ export const openAiCodexDefaultModelId: OpenAiCodexModelId = "gpt-5.6-sol"
  * almost immediately.
  */
 const SUBSCRIPTION_200K_MAX_OUTPUT_TOKENS = 40_000
+const SUBSCRIPTION_500K_MAX_OUTPUT_TOKENS = 100_000
 
 const commonSubscriptionModelInfo = {
 	includedTools: ["apply_patch"],
@@ -37,6 +38,46 @@ const commonSubscriptionModelInfo = {
 
 /** Models currently documented for Codex with ChatGPT sign-in. */
 export const openAiCodexModels = {
+	"gpt-6.1-sol": {
+		...commonSubscriptionModelInfo,
+		// Codex runs Sol on a 500k subscription window, not the usual 200k.
+		maxTokens: SUBSCRIPTION_500K_MAX_OUTPUT_TOKENS,
+		contextWindow: 500_000,
+		supportsImages: true,
+		supportsReasoningEffort: ["none", "low", "medium", "high", "xhigh", "max"],
+		reasoningEffort: "medium",
+		description:
+			"GPT-6.1 Sol: Flagship model for complex coding, computer use, research, and cybersecurity via ChatGPT subscription",
+	},
+	"gpt-6.1-terra": {
+		...commonSubscriptionModelInfo,
+		maxTokens: SUBSCRIPTION_200K_MAX_OUTPUT_TOKENS,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsReasoningEffort: ["none", "low", "medium", "high", "xhigh", "max"],
+		reasoningEffort: "medium",
+		description: "GPT-6.1 Terra: Balanced model for everyday coding and knowledge work via ChatGPT subscription",
+	},
+	"gpt-6-astra": {
+		...commonSubscriptionModelInfo,
+		maxTokens: SUBSCRIPTION_200K_MAX_OUTPUT_TOKENS,
+		contextWindow: 200_000,
+		supportsImages: true,
+		// Astra rejects `none` with HTTP 400, so reasoning cannot be switched off.
+		supportsReasoningEffort: ["low", "medium", "high", "xhigh", "max"],
+		requiredReasoningEffort: true,
+		reasoningEffort: "medium",
+		description: "GPT-6 Astra: OpenAI's flagship model for demanding end-to-end work via ChatGPT subscription",
+	},
+	"gpt-6-luna": {
+		...commonSubscriptionModelInfo,
+		maxTokens: SUBSCRIPTION_200K_MAX_OUTPUT_TOKENS,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsReasoningEffort: ["none", "low", "medium", "high", "xhigh", "max"],
+		reasoningEffort: "medium",
+		description: "GPT-6 Luna: Fast model for clear, repeatable, high-volume work via ChatGPT subscription",
+	},
 	"gpt-5.6-sol": {
 		...commonSubscriptionModelInfo,
 		maxTokens: SUBSCRIPTION_200K_MAX_OUTPUT_TOKENS,
@@ -67,44 +108,5 @@ export const openAiCodexModels = {
 		reasoningEffort: "medium",
 		supportsVerbosity: true,
 		description: "GPT-5.6 Luna: Fast model for clear, repeatable, high-volume work via ChatGPT subscription",
-	},
-	"gpt-5.5": {
-		...commonSubscriptionModelInfo,
-		maxTokens: SUBSCRIPTION_200K_MAX_OUTPUT_TOKENS,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsReasoningEffort: ["none", "low", "medium", "high", "xhigh"],
-		reasoningEffort: "medium",
-		supportsVerbosity: true,
-		description: "GPT-5.5: Previous-generation frontier model via ChatGPT subscription",
-	},
-	"gpt-5.3-codex-spark": {
-		...commonSubscriptionModelInfo,
-		maxTokens: 8_192,
-		contextWindow: 128_000,
-		supportsImages: false,
-		supportsReasoningEffort: ["low", "medium", "high", "xhigh"],
-		reasoningEffort: "medium",
-		description: "GPT-5.3 Codex Spark: Fast, text-only preview available to ChatGPT Pro users",
-	},
-	"gpt-5.4": {
-		...commonSubscriptionModelInfo,
-		maxTokens: SUBSCRIPTION_200K_MAX_OUTPUT_TOKENS,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsReasoningEffort: ["none", "low", "medium", "high", "xhigh"],
-		reasoningEffort: "none",
-		supportsVerbosity: true,
-		description: "GPT-5.4: Frontier model for professional work via ChatGPT subscription",
-	},
-	"gpt-5.4-mini": {
-		...commonSubscriptionModelInfo,
-		maxTokens: SUBSCRIPTION_200K_MAX_OUTPUT_TOKENS,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsReasoningEffort: ["none", "low", "medium", "high", "xhigh"],
-		reasoningEffort: "none",
-		supportsVerbosity: true,
-		description: "GPT-5.4 Mini: Fast model for responsive coding tasks and subagents via ChatGPT subscription",
 	},
 } as const satisfies Record<string, ModelInfo>

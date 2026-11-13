@@ -19,7 +19,12 @@ export const mistralDefaultModelId: MistralModelId = "codestral-latest"
 //
 // maxTokens is not published per model, so the previous conservative 8192
 // default is kept except where the docs state a figure.
+//
+// The platform prices cached input for some models, but the handler reports no
+// cache usage, so no cache fields are recorded here (supportsPromptCache stays
+// false for the same reason).
 export const mistralModels = {
+	// Deprecated on 2026-10-31, retires on 2027-04-30 (model lifecycle page).
 	"mistral-medium-latest": {
 		maxTokens: 8192,
 		contextWindow: 256_000,
@@ -27,7 +32,18 @@ export const mistralModels = {
 		supportsPromptCache: false,
 		inputPrice: 1.5,
 		outputPrice: 7.5,
-		description: "Mistral Medium 3.5 (v26.04), Mistral's multimodal mid-tier model.",
+		description:
+			"Mistral Medium 3.5 (v26.04), Mistral's multimodal mid-tier model. Deprecated on 2026-10-31, retiring on 2027-04-30.",
+		deprecated: true,
+	},
+	"mistral-large-4": {
+		maxTokens: 8192,
+		contextWindow: 1_000_000,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0.7,
+		outputPrice: 2.1,
+		description: "Mistral Large 4, Mistral's multimodal flagship with a 1M context window.",
 	},
 	"mistral-small-latest": {
 		maxTokens: 8192,
@@ -39,6 +55,7 @@ export const mistralModels = {
 		description:
 			"Mistral Small 4 (v26.03), a hybrid model combining instruct, reasoning and coding, and the successor to the retired Devstral and Magistral families.",
 	},
+	// Deprecated on 2026-10-31, retires on 2027-04-30 (model lifecycle page).
 	"mistral-large-latest": {
 		maxTokens: 8192,
 		contextWindow: 256_000,
@@ -46,7 +63,9 @@ export const mistralModels = {
 		supportsPromptCache: false,
 		inputPrice: 0.5,
 		outputPrice: 1.5,
-		description: "Mistral Large 3 (v25.12), Mistral's multimodal flagship.",
+		description:
+			"Mistral Large 3 (v25.12), Mistral's multimodal flagship. Deprecated on 2026-10-31, retiring on 2027-04-30.",
+		deprecated: true,
 	},
 	"ministral-14b-latest": {
 		maxTokens: 8192,
@@ -84,14 +103,33 @@ export const mistralModels = {
 		outputPrice: 0.9,
 		description: "Codestral (v25.08), Mistral's dedicated code model.",
 	},
-	"zai-glm-5-2": {
+	"zai-glm-5-3": {
 		maxTokens: 128_000,
 		contextWindow: 1_000_000,
 		supportsImages: false,
 		supportsPromptCache: false,
 		inputPrice: 1.4,
 		outputPrice: 4.4,
-		description: "Z.ai GLM 5.2, a text-only third-party model served through Mistral's platform.",
+		description: "Z.ai GLM 5.3, a text-only third-party model served through Mistral's platform.",
+	},
+	"zai-glm-5-3-flash": {
+		maxTokens: 128_000,
+		contextWindow: 1_000_000,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0.15,
+		outputPrice: 0.5,
+		description: "Z.ai GLM 5.3 Flash, a fast third-party model served through Mistral's platform.",
+	},
+	"deepseek-v4-1-flash-1017": {
+		maxTokens: 393_216,
+		contextWindow: 1_048_576,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0.3,
+		outputPrice: 1.2,
+		description:
+			"DeepSeek V4.1 Flash (1017 snapshot), a third-party model served through Mistral's platform, in public preview.",
 	},
 } as const satisfies Record<string, ModelInfo>
 

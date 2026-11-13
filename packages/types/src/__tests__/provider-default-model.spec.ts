@@ -10,6 +10,7 @@ describe("getProviderDefaultModelId", () => {
 	it("returns the canonical OpenAI Native default model", () => {
 		const id = getProviderDefaultModelId("openai-native")
 
+		expect(openAiNativeDefaultModelId).toBe("gpt-6.1-sol")
 		expect(id).toBe(openAiNativeDefaultModelId)
 		expect(openAiNativeModels).toHaveProperty(id)
 	})

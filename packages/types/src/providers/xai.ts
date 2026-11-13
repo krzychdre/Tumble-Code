@@ -4,7 +4,7 @@ import type { ModelInfo } from "../model.js"
 // https://docs.x.ai/developers/pricing
 export type XAIModelId = keyof typeof xaiModels
 
-export const xaiDefaultModelId: XAIModelId = "grok-4.6"
+export const xaiDefaultModelId: XAIModelId = "grok-4.7"
 
 // xAI applies a long-context surcharge to the WHOLE request once the prompt
 // reaches 200K tokens, rather than only to the excess. The prices below are the
@@ -14,6 +14,28 @@ export const xaiDefaultModelId: XAIModelId = "grok-4.6"
 // xAI does not publish a max output token limit for any Grok model, so the
 // existing conservative defaults are kept rather than inventing a figure.
 export const xaiModels = {
+	"grok-4.7": {
+		maxTokens: 65_536,
+		contextWindow: 500_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 2.0,
+		outputPrice: 6.0,
+		cacheWritesPrice: 0.5,
+		cacheReadsPrice: 0.5,
+		description:
+			"xAI's flagship Grok 4.7 model with a 500K context window and configurable reasoning effort, with encrypted reasoning on the Responses API.",
+		supportsReasoningEffort: true,
+		includedTools: ["search_replace"],
+		excludedTools: ["apply_diff"],
+		longContextPricing: {
+			thresholdTokens: 200_000,
+			inputPriceMultiplier: 2,
+			outputPriceMultiplier: 2,
+			cacheWritesPriceMultiplier: 2,
+			cacheReadsPriceMultiplier: 2,
+		},
+	},
 	"grok-4.6": {
 		maxTokens: 65_536,
 		contextWindow: 500_000,
@@ -76,18 +98,88 @@ export const xaiModels = {
 			cacheReadsPriceMultiplier: 2,
 		},
 	},
-	"grok-4.20": {
+	// The vendor no longer serves the undated `grok-4.20`; only the dated
+	// 0309 snapshot ids remain.
+	"grok-4.20-0309-reasoning": {
 		maxTokens: 65_536,
-		contextWindow: 2_000_000,
+		contextWindow: 1_000_000,
 		supportsImages: true,
 		supportsPromptCache: true,
-		inputPrice: 2.0,
-		outputPrice: 6.0,
-		cacheWritesPrice: 0.5,
-		cacheReadsPrice: 0.5,
-		description: "xAI's flagship Grok 4.20 model with 2M context and reasoning support via Responses API.",
+		inputPrice: 1.25,
+		outputPrice: 2.5,
+		cacheWritesPrice: 0.2,
+		cacheReadsPrice: 0.2,
+		description: "xAI's Grok 4.20 model (0309 snapshot) with 1M context and reasoning support via Responses API.",
 		includedTools: ["search_replace"],
 		excludedTools: ["apply_diff"],
+		longContextPricing: {
+			thresholdTokens: 200_000,
+			inputPriceMultiplier: 2,
+			outputPriceMultiplier: 2,
+			cacheWritesPriceMultiplier: 2,
+			cacheReadsPriceMultiplier: 2,
+		},
+	},
+	"grok-4.20-0309-non-reasoning": {
+		maxTokens: 65_536,
+		contextWindow: 1_000_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 1.25,
+		outputPrice: 2.5,
+		cacheWritesPrice: 0.2,
+		cacheReadsPrice: 0.2,
+		description: "xAI's Grok 4.20 model (0309 snapshot) with 1M context, without reasoning.",
+		includedTools: ["search_replace"],
+		excludedTools: ["apply_diff"],
+		longContextPricing: {
+			thresholdTokens: 200_000,
+			inputPriceMultiplier: 2,
+			outputPriceMultiplier: 2,
+			cacheWritesPriceMultiplier: 2,
+			cacheReadsPriceMultiplier: 2,
+		},
+	},
+	"grok-4.20-multi-agent-0309": {
+		maxTokens: 65_536,
+		contextWindow: 1_000_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 1.25,
+		outputPrice: 2.5,
+		cacheWritesPrice: 0.2,
+		cacheReadsPrice: 0.2,
+		description:
+			"xAI's Grok 4.20 multi-agent model (0309 snapshot) with 1M context, for multi-agent orchestration.",
+		includedTools: ["search_replace"],
+		excludedTools: ["apply_diff"],
+		longContextPricing: {
+			thresholdTokens: 200_000,
+			inputPriceMultiplier: 2,
+			outputPriceMultiplier: 2,
+			cacheWritesPriceMultiplier: 2,
+			cacheReadsPriceMultiplier: 2,
+		},
+	},
+	"grok-build-0.1": {
+		maxTokens: 65_536,
+		contextWindow: 256_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 1.0,
+		outputPrice: 2.0,
+		cacheWritesPrice: 0.2,
+		cacheReadsPrice: 0.2,
+		description: "xAI's Grok Build 0.1 model with 256K context window.",
+		includedTools: ["search_replace"],
+		excludedTools: ["apply_diff"],
+		longContextPricing: {
+			thresholdTokens: 200_000,
+			inputPriceMultiplier: 2,
+			outputPriceMultiplier: 2,
+			cacheWritesPriceMultiplier: 2,
+			cacheReadsPriceMultiplier: 2,
+		},
 	},
 	"grok-code-fast-1": {
 		maxTokens: 16_384,

@@ -76,15 +76,17 @@ export async function getDeepSeekModels(baseUrl?: string, apiKey?: string): Prom
 			if (knownSpecs) {
 				models[modelId] = { ...knownSpecs }
 			} else {
+				// An unknown model is priced like the flash tier, the cheapest
+				// line-up rate, so costs are not understated.
 				models[modelId] = {
 					maxTokens: 8192,
 					contextWindow: 128_000,
 					supportsImages: false,
 					supportsPromptCache: true,
-					inputPrice: 0.28,
-					outputPrice: 0.42,
-					cacheWritesPrice: 0.28,
-					cacheReadsPrice: 0.028,
+					inputPrice: 0.3,
+					outputPrice: 1.2,
+					cacheWritesPrice: 0.3,
+					cacheReadsPrice: 0.006,
 					defaultTemperature: DEEP_SEEK_DEFAULT_TEMPERATURE,
 					description: `DeepSeek model: ${modelId}`,
 				}

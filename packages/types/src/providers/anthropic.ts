@@ -3,7 +3,7 @@ import type { ModelInfo } from "../model.js"
 import { claudeModels, oneMillionContextIds, withoutTemperature } from "./claude.js"
 
 export type AnthropicModelId = keyof typeof anthropicModels
-export const anthropicDefaultModelId: AnthropicModelId = "claude-opus-5"
+export const anthropicDefaultModelId: AnthropicModelId = "claude-opus-5-5"
 
 export const anthropicModels = {
 	"claude-opus-5-5": withoutTemperature(claudeModels["opus-5-5"]),
@@ -16,8 +16,12 @@ export const anthropicModels = {
 	"claude-opus-4-6": withoutTemperature(claudeModels["opus-4-6"]),
 	"claude-opus-4-7": withoutTemperature(claudeModels["opus-4-7"]),
 	"claude-opus-4-8": withoutTemperature(claudeModels["opus-4-8"]),
+	"claude-fable-5-2": withoutTemperature(claudeModels["fable-5-2"]),
 	"claude-fable-5-1": withoutTemperature(claudeModels["fable-5-1"]),
 	"claude-fable-5": withoutTemperature(claudeModels["fable-5"]),
+	"claude-mythos-5-2": withoutTemperature(claudeModels["mythos-5-2"]),
+	"claude-mythos-5-1": withoutTemperature(claudeModels["mythos-5-1"]),
+	"claude-mythos-5": withoutTemperature(claudeModels["mythos-5"]),
 	"claude-opus-4-5-20251101": withoutTemperature(claudeModels["opus-4-5"]),
 	"claude-haiku-5-5": withoutTemperature(claudeModels["haiku-5-5"]),
 	"claude-haiku-4-5-20251001": withoutTemperature(claudeModels["haiku-4-5"]),

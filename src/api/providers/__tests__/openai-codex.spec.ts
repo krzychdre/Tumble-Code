@@ -10,8 +10,8 @@ vitest.mock("@tumble-code/telemetry", () => ({
 }))
 
 describe("OpenAiCodexHandler.getModel", () => {
-	it.each(["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"])(
-		"should expose current GPT-5.6 subscription model capabilities: %s",
+	it.each(["gpt-6.1-terra", "gpt-6-luna", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"])(
+		"should expose a 200k subscription model: %s",
 		(apiModelId) => {
 			const handler = new OpenAiCodexHandler({ apiModelId })
 			const model = handler.getModel()
@@ -29,24 +29,41 @@ describe("OpenAiCodexHandler.getModel", () => {
 		},
 	)
 
-	it.each(["gpt-5.5", "gpt-5.4", "gpt-5.4-mini"])(
-		"should use the ChatGPT subscription context limit: %s",
-		(apiModelId) => {
-			const handler = new OpenAiCodexHandler({ apiModelId })
+	it("should keep reasoning required for GPT-6 Astra", () => {
+		const handler = new OpenAiCodexHandler({ apiModelId: "gpt-6-astra" })
+		const model = handler.getModel()
 
-			expect(handler.getModel().info.contextWindow).toBe(200_000)
-		},
-	)
+		expect(model.id).toBe("gpt-6-astra")
+		// Astra rejects `none` with HTTP 400, so reasoning cannot be switched off.
+		expect(model.info.supportsReasoningEffort).toEqual(["low", "medium", "high", "xhigh", "max"])
+		expect(model.info.requiredReasoningEffort).toBe(true)
+		expect(model.info.contextWindow).toBe(200_000)
+	})
+
+	it("should expose current GPT-6.1 Sol capabilities on the 500k subscription window", () => {
+		const handler = new OpenAiCodexHandler({ apiModelId: "gpt-6.1-sol" })
+		const model = handler.getModel()
+
+		expect(model.id).toBe("gpt-6.1-sol")
+		expect(model.info).toMatchObject({
+			// Codex runs Sol on a 500k window, not the usual 200k.
+			contextWindow: 500_000,
+			maxTokens: 100_000,
+			supportsImages: true,
+			supportsReasoningEffort: ["none", "low", "medium", "high", "xhigh", "max"],
+			reasoningEffort: "medium",
+		})
+	})
 
 	it("should expose only the current ChatGPT subscription model catalog", () => {
 		expect(Object.keys(openAiCodexModels)).toEqual([
+			"gpt-6.1-sol",
+			"gpt-6.1-terra",
+			"gpt-6-astra",
+			"gpt-6-luna",
 			"gpt-5.6-sol",
 			"gpt-5.6-terra",
 			"gpt-5.6-luna",
-			"gpt-5.5",
-			"gpt-5.3-codex-spark",
-			"gpt-5.4",
-			"gpt-5.4-mini",
 		])
 	})
 
@@ -56,24 +73,6 @@ describe("OpenAiCodexHandler.getModel", () => {
 
 		expect(model.id).toBe("not-a-real-model")
 		expect(model.info.contextWindow).toBe(new OpenAiCodexHandler({}).getModel().info.contextWindow)
-	})
-
-	it("should use Spark-specific limits and capabilities", () => {
-		const handler = new OpenAiCodexHandler({ apiModelId: "gpt-5.3-codex-spark" })
-		const model = handler.getModel()
-
-		expect(model.id).toBe("gpt-5.3-codex-spark")
-		expect(model.info.contextWindow).toBe(128000)
-		expect(model.info.maxTokens).toBe(8192)
-		expect(model.info.supportsImages).toBe(false)
-	})
-
-	it("should use GPT-5.4 Mini capabilities when selected", () => {
-		const handler = new OpenAiCodexHandler({ apiModelId: "gpt-5.4-mini" })
-		const model = handler.getModel()
-
-		expect(model.id).toBe("gpt-5.4-mini")
-		expect(model.info).toBeDefined()
 	})
 })
 

@@ -3,7 +3,7 @@ import type { ModelInfo } from "../model.js"
 // https://openai.com/api/pricing/
 export type OpenAiNativeModelId = keyof typeof openAiNativeModels
 
-export const openAiNativeDefaultModelId: OpenAiNativeModelId = "gpt-5.6-sol"
+export const openAiNativeDefaultModelId: OpenAiNativeModelId = "gpt-6.1-sol"
 
 export const openAiNativeModels = {
 	// GPT-6 prices: https://developers.openai.com/api/docs/pricing (checked 2026-09-24).
@@ -57,6 +57,54 @@ export const openAiNativeModels = {
 		},
 		supportsTemperature: false,
 		description: "GPT-6 Sol: Cost-efficient high-end model for demanding professional work",
+	},
+	"gpt-6.1-sol": {
+		maxTokens: 128_000,
+		contextWindow: 1_050_000,
+		includedTools: ["apply_patch"],
+		excludedTools: ["apply_diff", "write_to_file"],
+		supportsImages: true,
+		supportsPromptCache: true,
+		supportsReasoningEffort: ["none", "low", "medium", "high", "xhigh", "max"],
+		reasoningEffort: "medium",
+		inputPrice: 2,
+		outputPrice: 10,
+		cacheReadsPrice: 0.1,
+		cacheWritesPrice: 2.5,
+		longContextPricing: {
+			thresholdTokens: 272_000,
+			inputPriceMultiplier: 2,
+			outputPriceMultiplier: 1.5,
+			cacheWritesPriceMultiplier: 2,
+			cacheReadsPriceMultiplier: 2,
+			appliesToServiceTiers: ["default", "flex", "priority"],
+		},
+		supportsTemperature: false,
+		description: "GPT-6.1 Sol: Cost-efficient high-end model for demanding professional work",
+	},
+	"gpt-6.1-terra": {
+		maxTokens: 128_000,
+		contextWindow: 1_050_000,
+		includedTools: ["apply_patch"],
+		excludedTools: ["apply_diff", "write_to_file"],
+		supportsImages: true,
+		supportsPromptCache: true,
+		supportsReasoningEffort: ["none", "low", "medium", "high", "xhigh", "max"],
+		reasoningEffort: "medium",
+		inputPrice: 1,
+		outputPrice: 5,
+		cacheReadsPrice: 0.05,
+		cacheWritesPrice: 1.25,
+		longContextPricing: {
+			thresholdTokens: 272_000,
+			inputPriceMultiplier: 2,
+			outputPriceMultiplier: 1.5,
+			cacheWritesPriceMultiplier: 2,
+			cacheReadsPriceMultiplier: 2,
+			appliesToServiceTiers: ["default", "flex", "priority"],
+		},
+		supportsTemperature: false,
+		description: "GPT-6.1 Terra: Balanced model for everyday professional work",
 	},
 	"gpt-6-luna": {
 		maxTokens: 128_000,
@@ -274,6 +322,7 @@ export const openAiNativeModels = {
 		tiers: [{ name: "flex", contextWindow: 400000, inputPrice: 0.1, outputPrice: 0.625, cacheReadsPrice: 0.01 }],
 		description: "GPT-5.4 Nano: The smallest GPT-5.4 model for high-volume, low-latency tasks",
 	},
+	// Deprecated by OpenAI on the GPT-6.1 release; superseded by the GPT-5.6 / 6.1 line.
 	"gpt-5.2": {
 		maxTokens: 128000,
 		contextWindow: 400000,
@@ -294,7 +343,9 @@ export const openAiNativeModels = {
 			{ name: "priority", contextWindow: 400000, inputPrice: 3.5, outputPrice: 28.0, cacheReadsPrice: 0.35 },
 		],
 		description: "GPT-5.2: Our flagship model for coding and agentic tasks across industries",
+		deprecated: true,
 	},
+	// Deprecated by OpenAI on the GPT-6.1 release; superseded by the GPT-5.6 / 6.1 line.
 	"gpt-5.3-codex": {
 		maxTokens: 128000,
 		contextWindow: 400000,
@@ -312,6 +363,7 @@ export const openAiNativeModels = {
 		tiers: [{ name: "priority", contextWindow: 400000, inputPrice: 3.5, outputPrice: 28.0, cacheReadsPrice: 0.35 }],
 		description:
 			"GPT-5.3 Codex: Our most intelligent coding model optimized for long-horizon, agentic coding tasks",
+		deprecated: true,
 	},
 	"gpt-5.1": {
 		maxTokens: 128000,

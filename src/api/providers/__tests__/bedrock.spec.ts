@@ -252,15 +252,15 @@ describe("getModel", () => {
 		expect(handlerFor({ apiModelId }).getModel().id).toBe(bedrockDefaultModelId)
 	})
 
-	// The default is Claude Opus 5, but an unknown id or ARN keeps the Claude Sonnet 4.5 stand-in info:
-	// Opus 5 info would drop temperature and add effort support for models that may not accept them.
+	// The default is Claude Opus 5.5, but an unknown id or ARN keeps the Claude Sonnet 4.5 stand-in info:
+	// Opus 5.5 info would drop temperature and add effort support for models that may not accept them.
 	it.each([
 		[{ apiModelId: "mistral.some-new-model-v1:0" }, "mistral.some-new-model-v1:0"],
 		[
 			{ awsCustomArn: "arn:aws:bedrock:us-east-1:123456789012:imported-model/abc" },
 			"arn:aws:bedrock:us-east-1:123456789012:imported-model/abc",
 		],
-	])("sizes an unknown model with the stand-in info, not the Opus 5 default (%o)", (settings, id) => {
+	])("sizes an unknown model with the stand-in info, not the Opus 5.5 default (%o)", (settings, id) => {
 		const model = handlerFor(settings).getModel()
 		expect(model.id).toBe(id)
 		expect(model.temperature).toBe(0.3)
