@@ -1,6 +1,6 @@
 // npx vitest run src/components/common/__tests__/CodeBlock.spec.tsx
 
-import { render, screen, fireEvent, act } from "@/utils/test-utils"
+import { render, screen, fireEvent, act, waitFor } from "@/utils/test-utils"
 
 import CodeBlock, { HIGHLIGHT_INTERVAL_MS } from "../CodeBlock"
 import { getHighlighter } from "../../../utils/highlighter"
@@ -148,6 +148,42 @@ describe("CodeBlock", () => {
 		})
 
 		expect(screen.getByText(/\[dark-theme\]/)).toBeInTheDocument()
+	})
+
+	// Regression: token colors are baked inline into the highlighted JSX, so a
+	// class flip on <body> after the first highlight completed must re-run
+	// highlighting with the new theme (not only on remount/source change).
+	it("re-highlights with the new theme after a mid-session theme switch", async () => {
+		const code = "const x = 1;"
+		document.body.className = "github-dark"
+		const highlighter = await getHighlighter("typescript", "github-dark")
+
+		try {
+			render(<CodeBlock source={code} language="typescript" />)
+
+			// First highlight completes with the dark theme.
+			await waitFor(() =>
+				expect(highlighter.codeToHast).toHaveBeenCalledWith(
+					code,
+					expect.objectContaining({ theme: "github-dark" }),
+				),
+			)
+
+			await act(async () => {
+				document.body.className = "github-light"
+			})
+
+			// The class flip re-runs highlighting (throttled by HIGHLIGHT_INTERVAL_MS).
+			await waitFor(() =>
+				expect(highlighter.codeToHast).toHaveBeenCalledWith(
+					code,
+					expect.objectContaining({ theme: "github-light" }),
+				),
+			)
+			expect(screen.getByText(/\[light-theme\]/)).toBeInTheDocument()
+		} finally {
+			document.body.className = ""
+		}
 	})
 
 	it("handles invalid language gracefully", async () => {

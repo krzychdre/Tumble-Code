@@ -41,9 +41,28 @@ interface CodeBlockProps {
 	language: string
 }
 
+const resolveShikiTheme = (): ShikiThemeName =>
+	document.body.className.toLowerCase().includes("light") ? "github-light" : "github-dark"
+
+// Token colors are baked inline into the highlighted JSX, so a theme switch on
+// <body> must re-run highlighting. The observer turns the class flip into state
+// the highlight effect can depend on.
+const useShikiTheme = (): ShikiThemeName => {
+	const [theme, setTheme] = useState<ShikiThemeName>(resolveShikiTheme)
+
+	useEffect(() => {
+		const observer = new MutationObserver(() => setTheme(resolveShikiTheme()))
+		observer.observe(document.body, { attributes: true, attributeFilter: ["class"] })
+		return () => observer.disconnect()
+	}, [])
+
+	return theme
+}
+
 const CodeBlock = memo(({ source, language }: CodeBlockProps) => {
 	const [windowShade, setWindowShade] = useState(true)
 	const currentLanguage = normalizeLanguage(language)
+	const shikiTheme = useShikiTheme()
 	const [highlightedCode, setHighlightedCode] = useState<React.ReactNode>(null)
 	const [showCollapseButton, setShowCollapseButton] = useState(true)
 	const codeBlockRef = useRef<HTMLDivElement>(null)
@@ -75,10 +94,6 @@ const CodeBlock = memo(({ source, language }: CodeBlockProps) => {
 					setHighlightedCode(fallback)
 				}
 			}
-
-			const shikiTheme: ShikiThemeName = document.body.className.toLowerCase().includes("light")
-				? "github-light"
-				: "github-dark"
 
 			const highlighter = await getHighlighter(currentLanguage, shikiTheme)
 			if (!isMountedRef.current) return
@@ -151,7 +166,7 @@ const CodeBlock = memo(({ source, language }: CodeBlockProps) => {
 			clearTimeout(timer)
 			isMountedRef.current = false
 		}
-	}, [source, currentLanguage])
+	}, [source, currentLanguage, shikiTheme])
 
 	// The collapse toggle schedules two timers; clear them on unmount only.
 	useEffect(
