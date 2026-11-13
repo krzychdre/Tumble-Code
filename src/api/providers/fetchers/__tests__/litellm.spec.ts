@@ -109,13 +109,18 @@ describe("getLiteLLMModels", () => {
 			"Failed to fetch LiteLLM models: No response from server. Check LiteLLM server status and base URL.",
 		],
 		["any other failure", new Error("boom"), "Failed to fetch LiteLLM models: boom"],
-	])("explains %s", async (_label, outcome, message) => {
+	])("explains %s with the prefix exactly once", async (_label, outcome, message) => {
 		if (outcome instanceof Error) {
 			get.mockRejectedValueOnce(outcome)
 		} else {
 			get.mockResolvedValueOnce(outcome)
 		}
-		await expect(getLiteLLMModels("key", "http://localhost:4000")).rejects.toThrow(message)
+		const result = await getLiteLLMModels("key", "http://localhost:4000").catch((error: Error) => error)
+		if (!(result instanceof Error)) {
+			throw new Error("expected getLiteLLMModels to fail")
+		}
+		expect(result.message).toBe(message)
+		expect(result.message.split("Failed to fetch LiteLLM models:")).toHaveLength(2)
 	})
 
 	it("explains an invalid base URL", async () => {
