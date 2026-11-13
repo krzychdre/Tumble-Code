@@ -80,7 +80,7 @@ const reasoningItems = (messages: unknown[]) => messages.filter((message: any) =
 
 const handlers = {
 	openAiNative: () => new OpenAiNativeHandler({ openAiNativeApiKey: "k", apiModelId: "gpt-5.4" }),
-	openAiCodex: () => new OpenAiCodexHandler({ apiModelId: "gpt-5.4" }),
+	openAiCodex: () => new OpenAiCodexHandler({ apiModelId: "gpt-6.1-sol" }),
 	xai: () => new XAIHandler({ xaiApiKey: "k", apiModelId: "grok-4.6" }),
 	anthropic: () => new AnthropicHandler({ apiKey: "k", apiModelId: "claude-sonnet-4-5" }),
 	openAiCompatible: () => new OpenAiHandler({ openAiApiKey: "k", openAiModelId: "some-model" }),
