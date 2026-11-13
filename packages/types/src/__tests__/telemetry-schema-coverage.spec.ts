@@ -4,7 +4,7 @@
 // tumbleCodeTelemetryEventSchema; an event missing from the schema is silently
 // dropped by the cloud telemetry client.
 
-import { TelemetryEventName, tumbleCodeTelemetryEventSchema } from "../telemetry.js"
+import { TelemetryEventName, type TelemetryEventPayloads, tumbleCodeTelemetryEventSchema } from "../telemetry.js"
 
 import { discriminatorMap } from "./helpers/discriminated-union.js"
 
@@ -88,6 +88,44 @@ describe("tumbleCodeTelemetryEventSchema coverage", () => {
 		})
 
 		expect(result.success).toBe(true)
+	})
+
+	// Regression: durationMs was captured but missing from the schema, which
+	// strips unknown keys, so the cloud metrics page showed a duration of 0.
+	it("keeps every property an LLM Completion producer may send", () => {
+		const own: Required<TelemetryEventPayloads[TelemetryEventName.LLM_COMPLETION]> = {
+			taskId: "t1",
+			inputTokens: 1,
+			outputTokens: 2,
+			cacheWriteTokens: 3,
+			cacheReadTokens: 4,
+			cost: 0.5,
+			ttftMs: 6,
+			durationMs: 7,
+			reasoningChars: 8,
+			toolCount: 9,
+			completionKind: "task",
+			usageReported: true,
+			modelId: "m",
+			apiProvider: "openai",
+			mode: "code",
+		}
+
+		const result = tumbleCodeTelemetryEventSchema.safeParse({
+			type: TelemetryEventName.LLM_COMPLETION,
+			properties: {
+				appName: "a",
+				appVersion: "1",
+				vscodeVersion: "1",
+				platform: "linux",
+				editorName: "code",
+				language: "en",
+				...own,
+			},
+		})
+
+		expect(result.success).toBe(true)
+		expect(result.data?.properties).toMatchObject(own)
 	})
 
 	describe("clientKind", () => {

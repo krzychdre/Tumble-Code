@@ -353,6 +353,7 @@ export const tumbleCodeTelemetryEventSchema = z.discriminatedUnion("type", [
 			cacheWriteTokens: z.number().optional(),
 			cost: z.number().optional(),
 			ttftMs: z.number().optional(),
+			durationMs: z.number().optional(),
 			reasoningChars: z.number().optional(),
 			toolCount: z.number().optional(),
 			completionKind: completionKindSchema.optional(),
