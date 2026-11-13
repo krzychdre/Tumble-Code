@@ -439,6 +439,19 @@ describe("McpHub", () => {
 			expect(hub.connections[0]).toMatchObject({ type: "connected", server: { status: "connected" } })
 		})
 
+		it("a connect failure while enabling rejects the toggle instead of swallowing it", async () => {
+			const spawnError = Object.assign(new Error("spawn /nonexistent/bin/xyz ENOENT"), { code: "ENOENT" })
+			// What StdioClientTransport.start() does when the command does not exist.
+			vi.mocked(StdioClientTransport).mockImplementation(function () {
+				return { ...stdioTransport(), start: vi.fn().mockRejectedValue(spawnError), stderr: undefined } as any
+			})
+			writeFiles({ global: { mcpServers: { a: { command: "/nonexistent/bin/xyz", disabled: true } } } })
+			const hub = await startHub()
+
+			await expect(hub.toggleServerDisabled("a", false)).rejects.toThrow(spawnError)
+			expect(logger.error).not.toHaveBeenCalledWith("Failed to refresh capabilities for a:", expect.anything())
+		})
+
 		it("re-reads the capabilities of a connected server whose flag did not change its state", async () => {
 			const hub = await startHub()
 			const client = hub.connections[0].client as unknown as ReturnType<typeof connectedClient>

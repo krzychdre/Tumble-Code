@@ -519,35 +519,35 @@ export class McpHub {
 			await this.updateServerConfig(serverName, { disabled }, serverSource)
 
 			// Update the connection object
-			try {
-				connection.server.disabled = disabled
+			connection.server.disabled = disabled
 
-				// If disabling a connected server, disconnect it
-				if (disabled && connection.server.status === "connected") {
-					// deleteConnection also closes the server's file watchers
-					await this.deleteConnection(serverName, serverSource)
-					// Re-add as a disabled connection
-					// Re-read config from file to get updated disabled state
-					const updatedConfig = await this.readServerConfigFromFile(serverName, serverSource)
-					await this.connectionManager.connectToServer(serverName, updatedConfig, serverSource)
-				} else if (!disabled && connection.server.status === "disconnected") {
-					// If enabling a disabled server, connect it
-					// Re-read config from file to get updated disabled state
-					const updatedConfig = await this.readServerConfigFromFile(serverName, serverSource)
-					if (serverSource === "project" && !(await this.mayStartProjectServer(serverName, updatedConfig))) {
-						connection.server.disabled = true
-						await this.notifyWebviewOfServerChanges()
-						return
-					}
-					await this.deleteConnection(serverName, serverSource)
-					// When re-enabling, file watchers will be set up in connectToServer
-					await this.connectionManager.connectToServer(serverName, updatedConfig, serverSource)
-				} else if (connection.server.status === "connected") {
-					// Only refresh capabilities if connected
-					Object.assign(connection.server, await this.toolCatalog.fetchCapabilities(serverName, serverSource))
+			// If disabling a connected server, disconnect it
+			if (disabled && connection.server.status === "connected") {
+				// deleteConnection also closes the server's file watchers
+				await this.deleteConnection(serverName, serverSource)
+				// Re-add as a disabled connection
+				// Re-read config from file to get updated disabled state
+				const updatedConfig = await this.readServerConfigFromFile(serverName, serverSource)
+				await this.connectionManager.connectToServer(serverName, updatedConfig, serverSource)
+			} else if (!disabled && connection.server.status === "disconnected") {
+				// If enabling a disabled server, connect it
+				// Re-read config from file to get updated disabled state
+				const updatedConfig = await this.readServerConfigFromFile(serverName, serverSource)
+				if (serverSource === "project" && !(await this.mayStartProjectServer(serverName, updatedConfig))) {
+					connection.server.disabled = true
+					await this.notifyWebviewOfServerChanges()
+					return
 				}
-			} catch (error) {
-				logger.error(`Failed to refresh capabilities for ${serverName}:`, error)
+				await this.deleteConnection(serverName, serverSource)
+				// When re-enabling, file watchers will be set up in connectToServer
+				await this.connectionManager.connectToServer(serverName, updatedConfig, serverSource)
+			} else if (connection.server.status === "connected") {
+				// Only refresh capabilities if connected; a failure here is not worth failing the toggle
+				try {
+					Object.assign(connection.server, await this.toolCatalog.fetchCapabilities(serverName, serverSource))
+				} catch (error) {
+					logger.error(`Failed to refresh capabilities for ${serverName}:`, error)
+				}
 			}
 
 			await this.notifyWebviewOfServerChanges()
