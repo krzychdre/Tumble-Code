@@ -1,5 +1,56 @@
 # Tumble Code Changelog
 
+## 1.3.0
+
+Released 2026-11-14
+
+### New
+
+- **Council in the Marketplace.** A Marketplace item can now hold a set of modes that install and uninstall together. The first one is Council: a chair mode that has an explorer and a verifier, each on its own model, check each other before it answers.
+- **Lock a mode to its API configuration.** The padlock next to the mode in the API configuration picker keeps that mode on its configuration: you cannot switch it until you unlock it, and "Apply this configuration to other modes" leaves locked modes unchecked and unchanged.
+- **Request budget for a custom mode.** Set `maxRequests` on a mode in `.roomodes` or the global modes file and a task in that mode is told to finish once it has made that many model requests for one assignment, then stopped two requests later. The count starts again when the task switches mode and with every message you send, so the same mode can be used again in one conversation. A parallel subagent stopped this way hands its last message back as a partial report.
+
+### Improved
+
+- **CLI: breaking, the `-k, --api-key` option is gone.** A key on the command line was visible to every user of the machine in the process list; set the provider's environment variable (for example `OPENROUTER_API_KEY`) or `apiKey` / `apiKeyEnv` in `~/.roo/cli-settings.json` instead.
+- **"Max concurrent requests" counts every request to the model.** The profile limit (in the CLI `models.<id>.maxConcurrentRequests`) now bounds all requests the model gets at once, from every task, editor tab and subagent in the VS Code window or CLI run, including condensing and memory requests. A request over the limit waits for a free slot instead of overloading a local server.
+- **November 2026 provider model and cost refresh.** Adds the newly released models across Anthropic (Fable 5.2 and the Mythos family), OpenAI (GPT-6.1 Sol/Terra, Codex GPT-6 line), Gemini 4 Carbon/Hydrogen, Grok 4.7, GLM-5.3 Flash variants, Mistral Large 4, MiniMax M3, Kimi K3.1 Pro and the current Qwen Coding Plan set, and moves every affected default model to the new flagship. Retired and deprecated models are removed or flagged, and the stale per-token prices (DeepSeek fallback, Z.ai mainland overrides, OpenRouter default) now match the vendors' current lists.
+- **Legacy ROO_CODE\_\* environment variables removed.** `ROO_CODE_API_URL`, `ROO_CODE_CLOUD_TOKEN`, `ROO_CODE_CLOUD_ORG_SETTINGS` and `ROO_CODE_DISABLE_TELEMETRY` are no longer read; set the `TUMBLE_CODE_*` names instead.
+- **Up to 20 parallel subagents, or no limit.** "Max parallel subagents" now goes up to 20, and its last step is No limit, where only each profile's "Max concurrent requests" and the number of subtasks bound how many run at once. In the CLI, `maxParallelSubagents` accepts 0 to 20, or -1 for no limit.
+- **CLI: installer warns when the installed binary fails to start** The post-install verification previously ignored the binary's exit status; a failed start is now reported instead of silently printing success.
+- **CLI: faster `tumble doctor` when something is down.** Its checks run at the same time, so a hanging ripgrep and an unreachable cloud cost at most 5 seconds together instead of 8; the report keeps its order.
+- **CLI: quicker small commands.** `tumble --version`, `--help`, `doctor`, `upgrade`, `list` and `auth` no longer load the interactive interface first, which takes about 90 ms off each.
+- **CLI: the installer verifies where the download was built.** Every CLI release now carries a GitHub build attestation, and when the GitHub CLI (`gh`) is installed and signed in, the installer refuses a tarball that this project's release workflow did not build. The `ROO_SKIP_CHECKSUM` setting is gone: every CLI release publishes a checksum.
+- **CLI: less CPU and memory on long tasks.** Each update of a long transcript no longer re-searches the whole conversation for every message, and `--output-format stream-json` no longer keeps every event it has already printed.
+- **CLI: the approval mode is always visible.** The footer shows `permissions: allow` or `permissions: ask` and follows `/permissions` at once, and a `--print` run starts with one line on stderr saying whether actions run without approval.
+- **Cloud sign-in from before organization support ends once.** Credentials stored by versions older than the organizations feature are no longer readable; after updating, such users appear signed out and sign in to Tumble Code Cloud once to continue.
+- **Self-hosted cloud: the usage metrics page refreshes itself.** While the page is open in a visible tab, its figures, charts and tables update every 30 seconds without a reload; an opened daily table and a hidden chart series stay as you left them.
+- **Smoother streaming of code.** A code block in an answer that is still arriving is colored a few times per second instead of on every word, so long code answers stream with less lag.
+
+### Fixed
+
+- **File restrictions of a mode cover renames.** A mode that may edit only some files (for example only Markdown) can no longer rename an allowed file into one it may not edit.
+- **Removed a leftover "Roo" label from tool-use prompts** One prompt string still called the assistant "Roo"; it now uses the current product name.
+- **Home screen briefly showed worktree tasks for users who disabled them** The worktree toggle was missing from the initial webview state, so the home screen could show worktree tasks for a moment before the saved setting arrived.
+- **CLI: a failed ask handler fails the run instead of hanging it.** When handling a prompt or approval failed, the CLI sat silent forever; the run now ends with the handler's error and exit code 1.
+- **CLI: safer installer.** The installer refuses to replace a directory that is not a previous CLI installation (a mistyped `ROO_INSTALL_DIR` can no longer wipe it), and an upgrade that fails while moving the new release into place leaves the previous installation working.
+- **CLI: private debug log and exports.** `~/.roo/cli-debug.log` and the files `/export` writes are now readable by you only, and a debug log over 10 MB is moved to `cli-debug.log.1` when the next `--debug` run starts.
+- **CLI: terminal control codes from the agent.** Text from the model, a command or an MCP server can no longer write to your clipboard, hide a link target, clear the screen or move the cursor; colours in command output still show. This covers print mode and the interactive view.
+- **CLI: upgrade and installer no longer hang on a dead connection.** `tumble upgrade` gives up on the version check after 15 seconds, and the installer bounds its release lookup and checksum download, so a blackholed network ends with an error instead of waiting forever.
+- **CLI: web_fetch connects to the address it checked.** In the CLI, `web_fetch` now connects to the public address it verified instead of looking the name up a second time, so a hostile DNS server can no longer switch the request to your own machine or local network between the check and the request.
+- **Cloud client: an ISO-8601 Retry-After no longer pauses the queue for the year as seconds.** A 429 with a date like "2026-11-12T22:32:11Z" was parsed as 2026 seconds (~34 minutes) because parseInt stopped at the first dash; both ISO-8601 and HTTP-date values now compute the actual wait-until date.
+- **Cloud requests send the real extension version in the User-Agent header.** Share, bridge and recall requests sent "Tumble-Code unknown" because CloudAPI built its User-Agent without the extension context; it now receives the context at construction and every request carries the actual version.
+- **Code index batch size now follows settings changes.** The embedding batch size (`tumble-code.codeIndex.embeddingBatchSize`) was captured once when the indexing services were created, so changing it mid-session left the scanner and the file watcher batching at the old size until restart. Both now read the setting on every scan and batch pass.
+- **Code blocks now recolor after a theme switch.** Syntax colors are baked into each code block when it is highlighted, so switching between light and dark mid-session left finished blocks in the old palette; they now re-highlight with the new theme immediately.
+- **Doubled error prefix when fetching LiteLLM models.** An unexpected LiteLLM response shape no longer reports "Failed to fetch LiteLLM models:" twice in the error message.
+- **MCP server toggle failures are reported.** Enabling or disabling an MCP server whose connection could not be re-established no longer fails silently; the error is logged and the server's error state is pushed to the server list instead of being swallowed as a capabilities refresh.
+- **MCP servers on Windows.** Arguments of a local MCP server are passed exactly as written, so values containing `&`, `|` or `%` no longer break or change the command. When the server's command cannot be found, the server list now says which command is missing and that it must be installed and reachable through PATH, or given as a full path.
+- **Request time reaches the cloud metrics page.** The extension and the CLI measured how long each model request took but dropped that figure before sending it, so the Duration card on the metrics page always read 0s. Requests made after updating are counted; earlier ones cannot be recovered.
+- **"current" label in "Apply this configuration to other modes".** The list now marks the modes that already use the shown API configuration; the label never appeared before.
+- **Watching a long job is no longer stopped as a loop.** A command repeated to check on a running job (for example `sleep 300; tail -1 build.log`) used to be stopped at the fourth call as a suspected loop. It now runs as long as each call returns something new; a call that keeps returning the same result is still stopped.
+- **Stricter script protection in the Tumble panels.** The panels' content security policy now uses an unguessable value per page, and an unusual OpenRouter base URL can no longer alter that policy.
+- **Mail links in answers.** Clicking a mail link or an in-page link in a chat answer no longer tries to open a file with that name; mail links open your mail program again.
+
 ## 1.2.0
 
 Released 2026-10-29
