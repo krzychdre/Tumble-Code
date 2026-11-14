@@ -1,4 +1,4 @@
-import { CLI_RUNTIME_ENV } from "@tumble-code/types"
+import { CLI_RUNTIME_ENV, openAiCodexDefaultModelId } from "@tumble-code/types"
 
 import { openExternal } from "@/lib/utils/open-external.js"
 
@@ -100,7 +100,7 @@ export async function loginToOpenAiCodex(
 
 			const credentials = await manager.waitForCallback()
 			console.log(`✓ Signed in to OpenAI Codex${credentials.email ? ` as ${credentials.email}` : ""}.`)
-			console.log("Run: tumble --provider openai-codex --model gpt-5.6-sol")
+			console.log(`Run: tumble --provider openai-codex --model ${openAiCodexDefaultModelId}`)
 			return { success: true, email: credentials.email }
 		})
 	} catch (error) {
