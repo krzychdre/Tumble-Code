@@ -4,7 +4,7 @@ import os from "os"
 
 import type { MockInstance } from "vitest"
 
-import { openAiModelInfoSaneDefaults } from "@tumble-code/types"
+import { openAiCodexDefaultModelId, openAiModelInfoSaneDefaults } from "@tumble-code/types"
 
 import { providerRequiresApiKey, getEnvVarName, keylessProviders, getBaseUrlField } from "@/lib/utils/provider-types.js"
 
@@ -227,7 +227,7 @@ describe("run OpenAI Codex OAuth configuration", () => {
 		try {
 			await run("hello", baseFlags({ provider: "openai-codex" }))
 			expect(mockHost.lastOptions?.provider).toBe("openai-codex")
-			expect(mockHost.lastOptions?.model).toBe("gpt-5.6-sol")
+			expect(mockHost.lastOptions?.model).toBe(openAiCodexDefaultModelId)
 		} finally {
 			exitSpy.mockRestore()
 		}
@@ -860,7 +860,7 @@ describe("run provider settings per mode", () => {
 		expect(outcome).toBe("ran")
 		expect(mockHost.lastOptions?.modeProviderSettings?.modes.ask).toEqual({
 			apiProvider: "openai-codex",
-			apiModelId: "gpt-5.6-sol",
+			apiModelId: openAiCodexDefaultModelId,
 			enableReasoningEffort: true,
 			reasoningEffort: "medium",
 			slimToolset: false,

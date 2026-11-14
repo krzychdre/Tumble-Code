@@ -18,13 +18,15 @@ export const minimaxModels = {
 		preserveReasoning: true,
 		inputPrice: 0.3,
 		outputPrice: 1.2,
+		// Caching is automatic: only hits are discounted, a write bills as input.
+		cacheWritesPrice: 0.3,
 		cacheReadsPrice: 0.06,
-		// Above 512k input tokens the whole request bills at double the standard
-		// rates, including cache reads; the pricing page lists no cache-write price.
+		// Above 512k input tokens the whole request bills at double the standard rates.
 		longContextPricing: {
 			thresholdTokens: 512_000,
 			inputPriceMultiplier: 2,
 			outputPriceMultiplier: 2,
+			cacheWritesPriceMultiplier: 2,
 			cacheReadsPriceMultiplier: 2,
 		},
 		description:
@@ -40,6 +42,7 @@ export const minimaxModels = {
 		preserveReasoning: true,
 		inputPrice: 0.15,
 		outputPrice: 0.6,
+		cacheWritesPrice: 0.15,
 		cacheReadsPrice: 0.015,
 		supportsReasoningEffort: ["low", "medium", "high", "xhigh", "max"],
 		reasoningEffort: "max",
