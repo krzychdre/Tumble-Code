@@ -30,7 +30,7 @@ catalog:
     # src/package.json spells this range out: vsce package checks it against engines.vscode
     # and cannot parse "catalog:".
     "@types/vscode": "^1.102.0"
-    "@vscode/vsce": "4.0.0"
+    "@vscode/vsce": "4.1.1"
     axios: "^1.21.0"
     diff: "^9.0.0"
     esbuild: "^0.28.2"
