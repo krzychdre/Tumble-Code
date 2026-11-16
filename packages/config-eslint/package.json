@@ -17,8 +17,8 @@
 		"eslint-plugin-only-warn": "^1.2.1",
 		"eslint-plugin-react": "^7.37.4",
 		"eslint-plugin-react-hooks": "^7.1.1",
-		"eslint-plugin-turbo": "^2.11.10",
+		"eslint-plugin-turbo": "^2.11.11",
 		"globals": "catalog:",
-		"typescript-eslint": "^8.72.1"
+		"typescript-eslint": "^8.72.2"
 	}
 }
