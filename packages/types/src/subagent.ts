@@ -44,6 +44,10 @@ export const subagentSummarySchema = z.object({
 	tokensIn: z.number(),
 	tokensOut: z.number(),
 	totalCost: z.number(),
+	/** Context window of the child's model, for the context gauge (unknown on queued placeholders and older rows). */
+	contextWindow: z.number().optional(),
+	/** Output tokens its model reserves from that window. */
+	maxOutputTokens: z.number().optional(),
 	startedAt: z.number(),
 	lastActivityAt: z.number(),
 	/**

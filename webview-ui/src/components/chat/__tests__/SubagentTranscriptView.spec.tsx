@@ -1,7 +1,7 @@
 // pnpm --filter @tumble-code/vscode-webview test src/components/chat/__tests__/SubagentTranscriptView.spec.tsx
 
 import React, { useContext } from "react"
-import { act, fireEvent, render, screen } from "@/utils/test-utils"
+import { act, fireEvent, render, screen, within } from "@/utils/test-utils"
 
 import type { ClineMessage, HistoryItem, SubagentSummary } from "@tumble-code/types"
 
@@ -188,6 +188,45 @@ describe("SubagentTranscriptView", () => {
 		fireEvent.click(screen.getAllByTestId("row")[0])
 
 		expect(list.followOutput?.()).toBe(false)
+	})
+
+	it.each([
+		{
+			name: "the model's window known: the gauge",
+			window: { contextWindow: 200_000, maxOutputTokens: 8_000 },
+			gauge: true,
+		},
+		{ name: "the window unknown: the token count", window: {}, gauge: false },
+	])("shows the context size of the last request in the header: $name", ({ window, gauge }) => {
+		state.current = { subagents: [summary(window)], taskHistory: [] }
+		renderView()
+		fromHost({
+			type: "subagentMessages",
+			sourceTaskId: "child-1",
+			subagentMessages: [
+				TRANSCRIPT[0],
+				{
+					ts: 2,
+					type: "say",
+					say: "api_req_started",
+					text: JSON.stringify({ tokensIn: 10_000, tokensOut: 500 }),
+				},
+				{
+					ts: 3,
+					type: "say",
+					say: "api_req_started",
+					text: JSON.stringify({ tokensIn: 40_000, tokensOut: 2_000 }),
+				},
+			],
+		})
+
+		const context = screen.getByTestId("subagent-context")
+		expect(context).toHaveTextContent("42.0")
+		if (gauge) {
+			expect(context).toHaveTextContent("200.0")
+		} else {
+			expect(within(context).queryByRole("progressbar")).not.toBeInTheDocument()
+		}
 	})
 
 	it("a running subagent can be stopped and guided from the transcript", () => {
