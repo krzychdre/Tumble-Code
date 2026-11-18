@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { Virtuoso } from "react-virtuoso"
+import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
 import { Send, Square } from "lucide-react"
 
 import type { ClineMessage, ExtensionMessage } from "@tumble-code/types"
@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils"
 import { vscode } from "@src/utils/vscode"
 import { onExtensionMessage } from "@src/utils/extensionBus"
 import { useExtensionSelector } from "@src/context/ExtensionStateContext"
+import { useScrollLifecycle } from "@src/hooks/useScrollLifecycle"
 
 import MarkdownBlock from "../common/MarkdownBlock"
 import { Tab, TabHeader, TabTitle } from "../common/Tab"
@@ -26,7 +27,6 @@ import { StatusIcon, isLive } from "./subagentStatus"
 // A transcript has no "rows shown before" to keep: it is read, not worked in.
 const NOTHING_EVER_VISIBLE = { has: () => false }
 const ROW_DEFAULT_HEIGHT = 120
-const noop = () => {}
 
 function findLastIndexByTs(messages: ClineMessage[], ts: number): number {
 	for (let i = messages.length - 1; i >= 0; i--) {
@@ -266,6 +266,20 @@ const SubagentTranscriptView = ({ taskId, onDone }: SubagentTranscriptViewProps)
 	const { byTs: rowMetaByTs } = useMemo(() => computeRowMeta(messages, rows), [messages, rows])
 	const isStreaming = live && messages.at(-1)?.partial === true
 
+	// Opens at the bottom and follows new rows, like the chat: the list mounts
+	// with the first loaded message, whose ts starts the scroll lifecycle.
+	const virtuosoRef = useRef<VirtuosoHandle>(null)
+	const scrollContainerRef = useRef<HTMLDivElement>(null)
+	const { handleRowHeightChange, followOutputCallback, atBottomStateChangeCallback, enterUserBrowsingHistory } =
+		useScrollLifecycle({
+			virtuosoRef,
+			scrollContainerRef,
+			taskTs: loaded ? taskMessage?.ts : undefined,
+			isStreaming,
+			isHidden: false,
+			hasTask: loaded && messages.length > 0,
+		})
+
 	// The subtask message the subagent was given heads the list. One object
 	// per message: Virtuoso remounts the header when the component changes.
 	const subtaskText = taskMessage ? (decodeStoredProse(taskMessage).text ?? "") : undefined
@@ -284,9 +298,14 @@ const SubagentTranscriptView = ({ taskId, onDone }: SubagentTranscriptViewProps)
 		[subtaskText, t],
 	)
 
-	const toggleRowExpansion = useCallback((ts: number, expand?: boolean) => {
-		setExpandedRows((prev) => ({ ...prev, [ts]: expand ?? !prev[ts] }))
-	}, [])
+	// Opening or closing a row means the user reads it: stop following.
+	const toggleRowExpansion = useCallback(
+		(ts: number, expand?: boolean) => {
+			enterUserBrowsingHistory()
+			setExpandedRows((prev) => ({ ...prev, [ts]: expand ?? !prev[ts] }))
+		},
+		[enterUserBrowsingHistory],
+	)
 
 	const cancel = useCallback(() => {
 		vscode.postMessage({ type: "cancelSubagent", taskId })
@@ -355,27 +374,32 @@ const SubagentTranscriptView = ({ taskId, onDone }: SubagentTranscriptViewProps)
 						)}
 					</div>
 				) : (
-					<Virtuoso
-						className="scrollable grow overflow-y-scroll"
-						data={rows}
-						defaultItemHeight={ROW_DEFAULT_HEIGHT}
-						followOutput={(atBottom) => (atBottom ? "auto" : false)}
-						computeItemKey={(index, row) => `${row.ts}-${index}`}
-						components={listComponents}
-						itemContent={(index, row) => (
-							<ChatRow
-								message={row}
-								isExpanded={expandedRows[row.ts] ?? false}
-								onToggleExpand={toggleRowExpansion}
-								isLast={index === rows.length - 1}
-								lastModifiedMessage={index === rows.length - 1 ? messages.at(-1) : undefined}
-								isStreaming={isStreaming}
-								onHeightChange={noop}
-								isFollowUpAnswered={row.isAnswered === true || !live}
-								meta={rowMetaByTs.get(row.ts)}
-							/>
-						)}
-					/>
+					<div className="grow flex min-h-0" ref={scrollContainerRef}>
+						<Virtuoso
+							ref={virtuosoRef}
+							className="scrollable grow overflow-y-scroll"
+							data={rows}
+							defaultItemHeight={ROW_DEFAULT_HEIGHT}
+							followOutput={followOutputCallback}
+							atBottomStateChange={atBottomStateChangeCallback}
+							atBottomThreshold={10}
+							computeItemKey={(index, row) => `${row.ts}-${index}`}
+							components={listComponents}
+							itemContent={(index, row) => (
+								<ChatRow
+									message={row}
+									isExpanded={expandedRows[row.ts] ?? false}
+									onToggleExpand={toggleRowExpansion}
+									isLast={index === rows.length - 1}
+									lastModifiedMessage={index === rows.length - 1 ? messages.at(-1) : undefined}
+									isStreaming={isStreaming}
+									onHeightChange={handleRowHeightChange}
+									isFollowUpAnswered={row.isAnswered === true || !live}
+									meta={rowMetaByTs.get(row.ts)}
+								/>
+							)}
+						/>
+					</div>
 				)}
 			</ReadOnlyRowsContext.Provider>
 			{live && summary && (
