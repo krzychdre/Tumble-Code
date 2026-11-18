@@ -28,26 +28,44 @@ vi.mock("../../common/MarkdownBlock", () => ({
 // The real rows are covered by the ChatRow specs; this one shows what each
 // row is given, and whether it renders read-only.
 vi.mock("../ChatRow", () => ({
-	default: function MockChatRow({ message }: { message: ClineMessage }) {
+	default: function MockChatRow({
+		message,
+		onToggleExpand,
+	}: {
+		message: ClineMessage
+		onToggleExpand: (ts: number, expand?: boolean) => void
+	}) {
 		const readOnly = useContext(ReadOnlyRowsContext)
 		return (
-			<div data-testid="row" data-read-only={String(readOnly)}>
+			<div data-testid="row" data-read-only={String(readOnly)} onClick={() => onToggleExpand(message.ts, true)}>
 				{`${message.say ?? message.ask}: ${message.text ?? ""}`}
 			</div>
 		)
 	},
 }))
 
+// The list the view scrolls: its scroll calls and the last followOutput it was given.
+const list = vi.hoisted(() => ({
+	scrollToIndex: vi.fn(),
+	followOutput: undefined as undefined | (() => "auto" | false),
+}))
 vi.mock("react-virtuoso", () => ({
-	Virtuoso: function MockVirtuoso({
-		data,
-		itemContent,
-		components,
-	}: {
-		data: ClineMessage[]
-		itemContent: (index: number, item: ClineMessage) => React.ReactNode
-		components?: { Header?: () => React.ReactNode }
-	}) {
+	Virtuoso: React.forwardRef(function MockVirtuoso(
+		{
+			data,
+			itemContent,
+			components,
+			followOutput,
+		}: {
+			data: ClineMessage[]
+			itemContent: (index: number, item: ClineMessage) => React.ReactNode
+			components?: { Header?: () => React.ReactNode }
+			followOutput: () => "auto" | false
+		},
+		ref: React.Ref<{ scrollToIndex: typeof list.scrollToIndex }>,
+	) {
+		React.useImperativeHandle(ref, () => ({ scrollToIndex: list.scrollToIndex }))
+		list.followOutput = followOutput
 		const Header = components?.Header
 		return (
 			<div>
@@ -57,7 +75,7 @@ vi.mock("react-virtuoso", () => ({
 				))}
 			</div>
 		)
-	},
+	}),
 }))
 
 const state = vi.hoisted(() => ({
@@ -105,6 +123,7 @@ const renderView = (taskId = "child-1") => {
 describe("SubagentTranscriptView", () => {
 	beforeEach(() => {
 		vi.mocked(vscode.postMessage).mockClear()
+		list.scrollToIndex.mockClear()
 		state.current = { subagents: [summary()], taskHistory: [] }
 	})
 
@@ -155,6 +174,20 @@ describe("SubagentTranscriptView", () => {
 			"reasoning: more",
 			expect.stringContaining("readFile"),
 		])
+	})
+
+	it("opens at the bottom and follows until the user opens a row", () => {
+		renderView()
+		expect(list.scrollToIndex).not.toHaveBeenCalled()
+
+		fromHost({ type: "subagentMessages", sourceTaskId: "child-1", subagentMessages: TRANSCRIPT })
+
+		expect(list.scrollToIndex).toHaveBeenCalledWith({ index: "LAST", align: "end", behavior: "auto" })
+		expect(list.followOutput?.()).toBe("auto")
+
+		fireEvent.click(screen.getAllByTestId("row")[0])
+
+		expect(list.followOutput?.()).toBe(false)
 	})
 
 	it("a running subagent can be stopped and guided from the transcript", () => {
