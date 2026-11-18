@@ -8,7 +8,6 @@ import {
 	deepSeekModels,
 	deepSeekModelAliases,
 	openAiModelInfoSaneDefaults,
-	vscodeLlmModels,
 	vscodeLlmDefaultModelId,
 	lMStudioDefaultModelInfo,
 	BEDROCK_1M_CONTEXT_MODEL_IDS,
@@ -255,9 +254,7 @@ function getSelectedModel({
 			const id = apiConfiguration?.vsCodeLmModelSelector
 				? `${apiConfiguration.vsCodeLmModelSelector.vendor}/${apiConfiguration.vsCodeLmModelSelector.family}`
 				: vscodeLlmDefaultModelId
-			const modelFamily = apiConfiguration?.vsCodeLmModelSelector?.family ?? vscodeLlmDefaultModelId
-			const info = vscodeLlmModels[modelFamily as keyof typeof vscodeLlmModels]
-			return { id, info: { ...openAiModelInfoSaneDefaults, ...info, supportsImages: false } } // VSCode LM API currently doesn't support images.
+			return { id, info: { ...openAiModelInfoSaneDefaults, supportsImages: false } } // VSCode LM API currently doesn't support images.
 		}
 		// Everything else is the shared resolver (`resolveProviderModelSelection`), the one the request
 		// uses, with the settings' policies: an unknown id shows no info (the request uses a stand-in),

@@ -30,7 +30,6 @@ import {
 	resolveProviderModelSelection,
 	vertexDefaultModelId,
 	vertexModels,
-	vscodeLlmModels,
 	xaiDefaultModelId,
 	xaiModels,
 } from "@tumble-code/types"
@@ -300,7 +299,7 @@ const cases: [string, ProviderSettings, Expected][] = [
 		{ apiProvider: "vscode-lm", vsCodeLmModelSelector: { vendor: "copilot", family: "gpt-5-mini" } },
 		{
 			id: "copilot/gpt-5-mini",
-			info: { ...openAiModelInfoSaneDefaults, ...models(vscodeLlmModels)["gpt-5-mini"], supportsImages: false },
+			info: { ...openAiModelInfoSaneDefaults, supportsImages: false },
 			isUnknownModel: false,
 		},
 	],

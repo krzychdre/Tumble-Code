@@ -21,7 +21,38 @@ export const vertexModels = {
 	"gemini-4-hydrogen": { ...geminiModels["gemini-4-hydrogen"] },
 	"gemini-4-argon": { ...geminiModels["gemini-4-argon"] },
 	"gemini-3.8-flash": { ...geminiModels["gemini-3.8-flash"] },
+	// Still served by Vertex after the Gemini API began routing it to 3.8 Flash; Vertex retires it on 2027-01-28.
+	"gemini-3.7-flash": {
+		maxTokens: 65_536,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: true,
+		supportsReasoningEffort: ["minimal", "low", "medium", "high"],
+		reasoningEffort: "medium",
+		inputPrice: 1.5,
+		outputPrice: 7.5,
+		cacheReadsPrice: 0.15,
+		supportsReasoningBudget: false,
+		description:
+			"Gemini 3.7 Flash, still served by Vertex AI after the Gemini API began routing it to Gemini 3.8 Flash. Launch pricing of $0.75 / $3.75 runs through 2026-12-31; Vertex AI retires it on 2027-01-28.",
+	},
+	// Still served by Vertex after the Gemini API removed it; Vertex retires it on 2027-05-19 or later.
+	"gemini-3.5-flash": {
+		maxTokens: 65_536,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: true,
+		supportsReasoningEffort: ["minimal", "low", "medium", "high"],
+		reasoningEffort: "medium",
+		inputPrice: 1.5,
+		outputPrice: 9.0,
+		cacheReadsPrice: 0.15,
+		supportsReasoningBudget: false,
+		description:
+			"Gemini 3.5 Flash, still served by Vertex AI after its removal from the Gemini API. Vertex AI retires it on 2027-05-19 or later.",
+	},
 	"gemini-3.5-flash-lite": { ...geminiModels["gemini-3.5-flash-lite"] },
+	"gemini-3.1-flash-lite": { ...geminiModels["gemini-3.1-flash-lite"] },
 	"gemini-3.1-pro-preview": { ...geminiModels["gemini-3.1-pro-preview"] },
 	"gemini-3.1-pro-preview-customtools": { ...geminiModels["gemini-3.1-pro-preview-customtools"] },
 	"gemini-3-flash-preview": { ...geminiModels["gemini-3-flash-preview"] },

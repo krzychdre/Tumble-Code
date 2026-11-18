@@ -6,6 +6,9 @@ export type GeminiModelId = keyof typeof geminiModels
 export const geminiDefaultModelId: GeminiModelId = "gemini-4-carbon"
 
 export const geminiModels = {
+	// Gemini context caching bills cache storage per 1M tokens per hour and has no
+	// per-token cache write price, so the entries carry no cacheWritesPrice.
+	//
 	// The Gemini 4 Carbon launch prices ($2 / $10, cache $0.10) are promotional
 	// through 2026-11-30; the entry records the standard $4 / $20 (cache $0.20)
 	// that applies afterwards, so estimates never come in under the charge.
@@ -28,16 +31,16 @@ export const geminiModels = {
 		contextWindow: 1_048_576,
 		supportsImages: true,
 		supportsPromptCache: true,
-		supportsReasoningEffort: ["low", "medium", "high"],
-		reasoningEffort: "medium",
+		supportsReasoningEffort: ["low", "medium", "high", "xhigh"],
+		reasoningEffort: "high",
 		inputPrice: 1.5,
 		outputPrice: 7.5,
 		cacheReadsPrice: 0.075,
 		supportsReasoningBudget: false,
 		description: "Google's Gemini 4 Hydrogen model, the cost-efficient member of the Gemini 4 line.",
 	},
-	// The Gemini 4 Argon prices are promotional through 2026-11-30, after which
-	// they double to $4 / $20.
+	// The Gemini 4 Argon launch prices ($2 / $10, cache $0.10) run through
+	// 2026-11-30; the standard $4 / $20 (cache $0.20) is recorded here.
 	"gemini-4-argon": {
 		maxTokens: 65_536,
 		contextWindow: 1_048_576,
@@ -45,19 +48,20 @@ export const geminiModels = {
 		supportsPromptCache: true,
 		supportsReasoningEffort: ["low", "medium", "high"],
 		reasoningEffort: "medium",
-		inputPrice: 2.0,
-		outputPrice: 10.0,
-		cacheReadsPrice: 0.1,
+		inputPrice: 4.0,
+		outputPrice: 20.0,
+		cacheReadsPrice: 0.2,
 		supportsReasoningBudget: false,
-		description: "Google's flagship Gemini 4 reasoning model. Promotional pricing runs through 2026-11-30.",
+		description:
+			"Google's efficient Gemini 4 frontier reasoning model, with faster responses and lower token spend per turn than Carbon. Launch pricing of $2 / $10 runs through 2026-11-30; the listed prices are the standard rates.",
 	},
 	// Google currently ships no stable Gemini 3.x Pro: the Pro line exists only
 	// as `gemini-3.1-pro-preview`, and the whole stable Gemini 3 offering is
 	// Flash and Flash-Lite.
 	//
-	// The 3.8 and 3.6 Flash prices are promotional through 2026-12-31, after
-	// which they double to $1.50 / $7.50. (3.5 Flash and 3.7 Flash were removed
-	// from the Gemini API.)
+	// The 3.8 and 3.6 Flash launch prices ($0.75 / $3.75, cache $0.075) run
+	// through 2026-12-31; the standard $1.50 / $7.50 (cache $0.15) is recorded
+	// here. (3.5 Flash and 3.7 Flash were removed from the Gemini API.)
 	"gemini-3.8-flash": {
 		maxTokens: 65_536,
 		contextWindow: 1_048_576,
@@ -65,12 +69,12 @@ export const geminiModels = {
 		supportsPromptCache: true,
 		supportsReasoningEffort: ["low", "medium", "high"],
 		reasoningEffort: "medium",
-		inputPrice: 0.75,
-		outputPrice: 3.75,
-		cacheReadsPrice: 0.075,
-		cacheWritesPrice: 1.0,
+		inputPrice: 1.5,
+		outputPrice: 7.5,
+		cacheReadsPrice: 0.15,
 		supportsReasoningBudget: false,
-		description: "Google's newest Gemini 3.8 Flash model. Promotional pricing runs through 2026-12-31.",
+		description:
+			"Google's newest Gemini 3.8 Flash model. Launch pricing of $0.75 / $3.75 runs through 2026-12-31; the listed prices are the standard rates.",
 	},
 	"gemini-3.6-flash": {
 		maxTokens: 65_536,
@@ -79,12 +83,12 @@ export const geminiModels = {
 		supportsPromptCache: true,
 		supportsReasoningEffort: ["minimal", "low", "medium", "high"],
 		reasoningEffort: "medium",
-		inputPrice: 0.75,
-		outputPrice: 3.75,
-		cacheReadsPrice: 0.075,
-		cacheWritesPrice: 1.0,
+		inputPrice: 1.5,
+		outputPrice: 7.5,
+		cacheReadsPrice: 0.15,
 		supportsReasoningBudget: false,
-		description: "Gemini 3.6 Flash. Promotional pricing runs through 2026-12-31.",
+		description:
+			"Gemini 3.6 Flash. Launch pricing of $0.75 / $3.75 runs through 2026-12-31; the listed prices are the standard rates.",
 	},
 	"gemini-3.5-flash-lite": {
 		maxTokens: 65_536,
@@ -96,9 +100,21 @@ export const geminiModels = {
 		inputPrice: 0.3,
 		outputPrice: 2.5,
 		cacheReadsPrice: 0.03,
-		cacheWritesPrice: 1.0,
 		supportsReasoningBudget: false,
-		description: "Gemini 3.5 Flash-Lite, the cheapest model in the stable Gemini 3 line.",
+		description: "Gemini 3.5 Flash-Lite, a cost-efficient model in the stable Gemini 3 line.",
+	},
+	"gemini-3.1-flash-lite": {
+		maxTokens: 65_536,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: true,
+		supportsReasoningEffort: ["minimal", "low", "medium", "high"],
+		reasoningEffort: "medium",
+		inputPrice: 0.25,
+		outputPrice: 1.5,
+		cacheReadsPrice: 0.025,
+		supportsReasoningBudget: false,
+		description: "Gemini 3.1 Flash-Lite, the cheapest model in the stable Gemini 3 line.",
 	},
 	"gemini-3.1-pro-preview": {
 		maxTokens: 65_536,
@@ -113,7 +129,6 @@ export const geminiModels = {
 		inputPrice: 4.0,
 		outputPrice: 18.0,
 		cacheReadsPrice: 0.4,
-		cacheWritesPrice: 4.5,
 		tiers: [
 			{
 				contextWindow: 200_000,
@@ -142,7 +157,6 @@ export const geminiModels = {
 		inputPrice: 4.0,
 		outputPrice: 18.0,
 		cacheReadsPrice: 0.4,
-		cacheWritesPrice: 4.5,
 		tiers: [
 			{
 				contextWindow: 200_000,
@@ -184,7 +198,6 @@ export const geminiModels = {
 		inputPrice: 2.5, // This is the pricing for prompts above 200k tokens.
 		outputPrice: 15,
 		cacheReadsPrice: 0.25,
-		cacheWritesPrice: 4.5,
 		maxThinkingTokens: 32_768,
 		supportsReasoningBudget: true,
 		requiredReasoningBudget: true,
@@ -217,7 +230,6 @@ export const geminiModels = {
 		inputPrice: 0.3,
 		outputPrice: 2.5,
 		cacheReadsPrice: 0.075,
-		cacheWritesPrice: 1.0,
 		maxThinkingTokens: 24_576,
 		supportsReasoningBudget: true,
 	},
@@ -230,7 +242,6 @@ export const geminiModels = {
 		inputPrice: 0.3,
 		outputPrice: 2.5,
 		cacheReadsPrice: 0.03,
-		cacheWritesPrice: 1.0,
 		maxThinkingTokens: 24_576,
 		supportsReasoningBudget: true,
 		description:
@@ -248,7 +259,6 @@ export const geminiModels = {
 		inputPrice: 0.1,
 		outputPrice: 0.4,
 		cacheReadsPrice: 0.025,
-		cacheWritesPrice: 1.0,
 		supportsReasoningBudget: true,
 		maxThinkingTokens: 24_576,
 	},

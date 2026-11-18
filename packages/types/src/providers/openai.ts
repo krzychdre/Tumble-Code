@@ -3,11 +3,63 @@ import type { ModelInfo } from "../model.js"
 // https://openai.com/api/pricing/
 export type OpenAiNativeModelId = keyof typeof openAiNativeModels
 
-export const openAiNativeDefaultModelId: OpenAiNativeModelId = "gpt-6.1-sol"
+export const openAiNativeDefaultModelId: OpenAiNativeModelId = "gpt-6.2-sol"
 
 export const openAiNativeModels = {
-	// GPT-6 prices: https://developers.openai.com/api/docs/pricing (checked 2026-09-24).
+	// GPT-6 prices: https://developers.openai.com/api/docs/pricing (checked 2026-11-18).
 	// Above 272K input tokens the whole request bills at 2x input/cache and 1.5x output.
+	"gpt-6.2-astra": {
+		maxTokens: 128_000,
+		contextWindow: 1_050_000,
+		includedTools: ["apply_patch"],
+		excludedTools: ["apply_diff", "write_to_file"],
+		supportsImages: true,
+		supportsPromptCache: true,
+		// Astra rejects `none` with HTTP 400, so reasoning cannot be switched off.
+		supportsReasoningEffort: ["low", "medium", "high", "xhigh", "max"],
+		requiredReasoningEffort: true,
+		reasoningEffort: "medium",
+		inputPrice: 8,
+		outputPrice: 40,
+		cacheReadsPrice: 0.4,
+		cacheWritesPrice: 10,
+		longContextPricing: {
+			thresholdTokens: 272_000,
+			inputPriceMultiplier: 2,
+			outputPriceMultiplier: 1.5,
+			cacheWritesPriceMultiplier: 2,
+			cacheReadsPriceMultiplier: 2,
+			appliesToServiceTiers: ["default", "flex", "priority"],
+		},
+		supportsTemperature: false,
+		description: "GPT-6.2 Astra: OpenAI's most capable model for the hardest projects, from start to finish",
+	},
+	"gpt-6.2-sol": {
+		maxTokens: 128_000,
+		contextWindow: 1_050_000,
+		includedTools: ["apply_patch"],
+		excludedTools: ["apply_diff", "write_to_file"],
+		supportsImages: true,
+		supportsPromptCache: true,
+		// Sol rejects `none` with HTTP 400, so reasoning cannot be switched off.
+		supportsReasoningEffort: ["low", "medium", "high", "xhigh", "max"],
+		requiredReasoningEffort: true,
+		reasoningEffort: "medium",
+		inputPrice: 2,
+		outputPrice: 10,
+		cacheReadsPrice: 0.1,
+		cacheWritesPrice: 2.5,
+		longContextPricing: {
+			thresholdTokens: 272_000,
+			inputPriceMultiplier: 2,
+			outputPriceMultiplier: 1.5,
+			cacheWritesPriceMultiplier: 2,
+			cacheReadsPriceMultiplier: 2,
+			appliesToServiceTiers: ["default", "flex", "priority"],
+		},
+		supportsTemperature: false,
+		description: "GPT-6.2 Sol: OpenAI's go-to model for everyday work, from coding to agents at scale",
+	},
 	"gpt-6-astra": {
 		maxTokens: 128_000,
 		contextWindow: 1_050_000,
@@ -305,6 +357,7 @@ export const openAiNativeModels = {
 		],
 		description: "GPT-5.4 Mini: A faster, lower-cost GPT-5.4 model for coding and agentic workflows",
 	},
+	// Deprecated by OpenAI; shuts down Apr 1, 2027, replacement gpt-6-luna.
 	"gpt-5.4-nano": {
 		maxTokens: 128000,
 		contextWindow: 400000,
@@ -320,7 +373,9 @@ export const openAiNativeModels = {
 		supportsVerbosity: true,
 		supportsTemperature: false,
 		tiers: [{ name: "flex", contextWindow: 400000, inputPrice: 0.1, outputPrice: 0.625, cacheReadsPrice: 0.01 }],
-		description: "GPT-5.4 Nano: The smallest GPT-5.4 model for high-volume, low-latency tasks",
+		description:
+			"GPT-5.4 Nano: The smallest GPT-5.4 model for high-volume, low-latency tasks. Deprecated: shuts down on Apr 1, 2027, use gpt-6-luna instead.",
+		deprecated: true,
 	},
 	// Deprecated by OpenAI on the GPT-6.1 release; superseded by the GPT-5.6 / 6.1 line.
 	"gpt-5.2": {
@@ -365,6 +420,7 @@ export const openAiNativeModels = {
 			"GPT-5.3 Codex: Our most intelligent coding model optimized for long-horizon, agentic coding tasks",
 		deprecated: true,
 	},
+	// Deprecated by OpenAI; shuts down Apr 1, 2027, replacement gpt-6-sol.
 	"gpt-5.1": {
 		maxTokens: 128000,
 		contextWindow: 400000,
@@ -384,8 +440,11 @@ export const openAiNativeModels = {
 			{ name: "flex", contextWindow: 400000, inputPrice: 0.625, outputPrice: 5.0, cacheReadsPrice: 0.0625 },
 			{ name: "priority", contextWindow: 400000, inputPrice: 2.5, outputPrice: 20.0, cacheReadsPrice: 0.25 },
 		],
-		description: "GPT-5.1: The best model for coding and agentic tasks across domains",
+		description:
+			"GPT-5.1: The best model for coding and agentic tasks across domains. Deprecated: shuts down on Apr 1, 2027, use gpt-6-sol instead.",
+		deprecated: true,
 	},
+	// Deprecated by OpenAI; shuts down Dec 11, 2026, replacement gpt-6.1-sol.
 	"gpt-5": {
 		maxTokens: 128000,
 		contextWindow: 400000,
@@ -404,8 +463,11 @@ export const openAiNativeModels = {
 			{ name: "flex", contextWindow: 400000, inputPrice: 0.625, outputPrice: 5.0, cacheReadsPrice: 0.0625 },
 			{ name: "priority", contextWindow: 400000, inputPrice: 2.5, outputPrice: 20.0, cacheReadsPrice: 0.25 },
 		],
-		description: "GPT-5: The best model for coding and agentic tasks across domains",
+		description:
+			"GPT-5: The best model for coding and agentic tasks across domains. Deprecated: shuts down on Dec 11, 2026, use gpt-6.1-sol instead.",
+		deprecated: true,
 	},
+	// Deprecated by OpenAI; shuts down Dec 11, 2026, replacement gpt-6.1-terra.
 	"gpt-5-mini": {
 		maxTokens: 128000,
 		contextWindow: 400000,
@@ -424,8 +486,11 @@ export const openAiNativeModels = {
 			{ name: "flex", contextWindow: 400000, inputPrice: 0.125, outputPrice: 1.0, cacheReadsPrice: 0.0125 },
 			{ name: "priority", contextWindow: 400000, inputPrice: 0.45, outputPrice: 3.6, cacheReadsPrice: 0.045 },
 		],
-		description: "GPT-5 Mini: A faster, more cost-efficient version of GPT-5 for well-defined tasks",
+		description:
+			"GPT-5 Mini: A faster, more cost-efficient version of GPT-5 for well-defined tasks. Deprecated: shuts down on Dec 11, 2026, use gpt-6.1-terra instead.",
+		deprecated: true,
 	},
+	// Deprecated by OpenAI; shuts down Dec 11, 2026, replacement gpt-6-luna.
 	"gpt-5-nano": {
 		maxTokens: 128000,
 		contextWindow: 400000,
@@ -441,8 +506,11 @@ export const openAiNativeModels = {
 		supportsVerbosity: true,
 		supportsTemperature: false,
 		tiers: [{ name: "flex", contextWindow: 400000, inputPrice: 0.025, outputPrice: 0.2, cacheReadsPrice: 0.0025 }],
-		description: "GPT-5 Nano: Fastest, most cost-efficient version of GPT-5",
+		description:
+			"GPT-5 Nano: Fastest, most cost-efficient version of GPT-5. Deprecated: shuts down on Dec 11, 2026, use gpt-6-luna instead.",
+		deprecated: true,
 	},
+	// Deprecated by OpenAI; shuts down Jan 14, 2027, replacement gpt-6-luna.
 	"gpt-4.1": {
 		maxTokens: 32_768,
 		contextWindow: 1_047_576,
@@ -457,7 +525,10 @@ export const openAiNativeModels = {
 		tiers: [
 			{ name: "priority", contextWindow: 1_047_576, inputPrice: 3.5, outputPrice: 14.0, cacheReadsPrice: 0.875 },
 		],
+		description: "Deprecated: shuts down on Jan 14, 2027, use gpt-6-luna instead.",
+		deprecated: true,
 	},
+	// Deprecated by OpenAI; shuts down Jan 14, 2027, replacement gpt-6-luna.
 	"gpt-4.1-mini": {
 		maxTokens: 32_768,
 		contextWindow: 1_047_576,
@@ -472,7 +543,10 @@ export const openAiNativeModels = {
 		tiers: [
 			{ name: "priority", contextWindow: 1_047_576, inputPrice: 0.7, outputPrice: 2.8, cacheReadsPrice: 0.175 },
 		],
+		description: "Deprecated: shuts down on Jan 14, 2027, use gpt-6-luna instead.",
+		deprecated: true,
 	},
+	// Deprecated by OpenAI; shuts down Dec 11, 2026, replacement gpt-6.1-sol.
 	o3: {
 		maxTokens: 100_000,
 		contextWindow: 200_000,
@@ -488,7 +562,10 @@ export const openAiNativeModels = {
 			{ name: "flex", contextWindow: 200_000, inputPrice: 1.0, outputPrice: 4.0, cacheReadsPrice: 0.25 },
 			{ name: "priority", contextWindow: 200_000, inputPrice: 3.5, outputPrice: 14.0, cacheReadsPrice: 0.875 },
 		],
+		description: "Deprecated: shuts down on Dec 11, 2026, use gpt-6.1-sol instead.",
+		deprecated: true,
 	},
+	// Deprecated by OpenAI; shuts down Jan 14, 2027, replacement gpt-6-luna.
 	"gpt-4o-mini": {
 		maxTokens: 16_384,
 		contextWindow: 128_000,
@@ -501,6 +578,8 @@ export const openAiNativeModels = {
 		tiers: [
 			{ name: "priority", contextWindow: 128_000, inputPrice: 0.25, outputPrice: 1.0, cacheReadsPrice: 0.125 },
 		],
+		description: "Deprecated: shuts down on Jan 14, 2027, use gpt-6-luna instead.",
+		deprecated: true,
 	},
 } as const satisfies Record<string, ModelInfo>
 

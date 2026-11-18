@@ -379,7 +379,7 @@ const mainlandZAiOverrides = {
 	"glm-4.7-flashx": { contextWindow: 204_800, inputPrice: 0.07, outputPrice: 0.43, cacheReadsPrice: 0.014 },
 	"glm-4.6v": { inputPrice: 0.14, outputPrice: 0.43, cacheReadsPrice: 0.029 },
 	"glm-4.6v-flash": {},
-	"glm-4.6v-flashx": { inputPrice: 0.02, outputPrice: 0.2, cacheReadsPrice: 0.002 },
+	"glm-4.6v-flashx": { inputPrice: 0.02, outputPrice: 0.21, cacheReadsPrice: 0.004 },
 	"glm-5v-turbo": { contextWindow: 204_800, inputPrice: 0.71, outputPrice: 3.14, cacheReadsPrice: 0.17 },
 } as const satisfies Partial<
 	Record<

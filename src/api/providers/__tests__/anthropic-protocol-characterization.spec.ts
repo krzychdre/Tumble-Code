@@ -137,7 +137,7 @@ const HANDLERS: HandlerCase[] = [
 	},
 	{
 		name: "MiniMax",
-		build: () => new MiniMaxHandler({ minimaxApiKey: "test-key", apiModelId: "MiniMax-M2.7" }),
+		build: () => new MiniMaxHandler({ minimaxApiKey: "test-key", apiModelId: "MiniMax-M3" }),
 	},
 	{
 		name: "Anthropic Vertex",

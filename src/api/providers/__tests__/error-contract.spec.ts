@@ -298,7 +298,7 @@ const cases: HandlerCase[] = [
 	{
 		name: "MiniMax",
 		build: (status) => {
-			const handler = new MiniMaxHandler({ minimaxApiKey: "k", apiModelId: "MiniMax-M2" })
+			const handler = new MiniMaxHandler({ minimaxApiKey: "k", apiModelId: "MiniMax-M3" })
 			Reflect.set(handler, "client", { messages: { create: vi.fn(rejectWith(anthropicSdkError(status))) } })
 			return handler
 		},

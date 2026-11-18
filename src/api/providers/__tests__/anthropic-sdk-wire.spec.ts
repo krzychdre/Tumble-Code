@@ -132,7 +132,7 @@ const CASES: WireCase[] = [
 	},
 	{
 		name: "MiniMax",
-		build: () => new MiniMaxHandler({ minimaxApiKey: "test-key", apiModelId: "MiniMax-M2.7" }),
+		build: () => new MiniMaxHandler({ minimaxApiKey: "test-key", apiModelId: "MiniMax-M3" }),
 		url: "https://api.minimax.io/anthropic/v1/messages",
 		auth: ["x-api-key", "test-key"],
 		absentAuth: "authorization",
