@@ -65,6 +65,7 @@ function installTaskFake() {
 			abortReason: undefined as string | undefined,
 			start: vi.fn(() => events.push(`start:${taskId}`)),
 			setTaskApiConfigName: vi.fn(),
+			api: { getModel: () => MODEL },
 			abortTask: vi.fn(async (isAbandoned?: boolean) => {
 				events.push(`abortTask:${taskId}:${isAbandoned === true}`)
 			}),
@@ -77,6 +78,12 @@ function installTaskFake() {
 		})
 		return task
 	} as never)
+}
+
+// A max-output slider model: the subagent profile's modelMaxTokens sets its output reservation.
+const MODEL = {
+	id: "glm",
+	info: { contextWindow: 200_000, maxTokens: 32_000, supportsMaxTokens: true, supportsPromptCache: true },
 }
 
 const SUBAGENT_INFO = {
@@ -165,8 +172,8 @@ describe("BackgroundTaskRunner.createBackgroundTask", () => {
 		expect(task.start).toHaveBeenCalledTimes(1)
 	})
 
-	it("registers a subagent in the panel before start(), with the mode-pinned profile name", async () => {
-		const pinned: ProviderSettings = { apiProvider: "anthropic", apiModelId: "pinned" }
+	it("registers a subagent in the panel before start(), with the mode-pinned profile and its model", async () => {
+		const pinned: ProviderSettings = { apiProvider: "anthropic", apiModelId: "pinned", modelMaxTokens: 12_000 }
 		const { host, register } = makeHost({
 			getApiConfigurationForMode: vi.fn(async () => ({ apiConfiguration: pinned, name: "pinned-profile" })),
 		})
@@ -188,6 +195,8 @@ describe("BackgroundTaskRunner.createBackgroundTask", () => {
 				description: "part two",
 				status: "running",
 				apiConfigName: "pinned-profile",
+				contextWindow: 200_000,
+				maxOutputTokens: 12_000,
 			}),
 		)
 		expect(task.options.apiConfiguration).toBe(pinned)

@@ -5,18 +5,20 @@ import { Send, Square } from "lucide-react"
 
 import type { ClineMessage, ExtensionMessage } from "@tumble-code/types"
 import { parseFollowUpData } from "@tumble-code/types"
-import { consolidateApiRequests, consolidateCommands } from "@tumble-code/core/browser"
+import { consolidateApiRequests, consolidateCommands, consolidateTokenUsage } from "@tumble-code/core/browser"
 
 import { Button, Input, StandardTooltip } from "@/components/ui"
 import { cn } from "@/lib/utils"
 import { vscode } from "@src/utils/vscode"
 import { onExtensionMessage } from "@src/utils/extensionBus"
+import { formatLargeNumber } from "@src/utils/format"
 import { useExtensionSelector } from "@src/context/ExtensionStateContext"
 import { useScrollLifecycle } from "@src/hooks/useScrollLifecycle"
 
 import MarkdownBlock from "../common/MarkdownBlock"
 import { Tab, TabHeader, TabTitle } from "../common/Tab"
 import ChatRow from "./ChatRow"
+import { ContextWindowProgress } from "./ContextWindowProgress"
 import { filterVisible } from "./rows/filterVisible"
 import { groupToolAsks } from "./rows/groupToolAsks"
 import { computeRowMeta } from "./rows/computeRowMeta"
@@ -265,6 +267,7 @@ const SubagentTranscriptView = ({ taskId, onDone }: SubagentTranscriptViewProps)
 	}, [messages])
 	const { byTs: rowMetaByTs } = useMemo(() => computeRowMeta(messages, rows), [messages, rows])
 	const isStreaming = live && messages.at(-1)?.partial === true
+	const { contextTokens } = useMemo(() => consolidateTokenUsage(messages), [messages])
 
 	// Opens at the bottom and follows new rows, like the chat: the list mounts
 	// with the first loaded message, whose ts starts the scroll lifecycle.
@@ -354,6 +357,24 @@ const SubagentTranscriptView = ({ taskId, onDone }: SubagentTranscriptViewProps)
 					{totalCost > 0 && <span className="shrink-0">{`$${totalCost.toFixed(2)}`}</span>}
 					{summary && <span className="shrink-0">{t(`chat:subagents.status.${summary.status}`)}</span>}
 				</div>
+				{contextTokens > 0 && (
+					<div
+						className="flex items-center text-xs text-vscode-descriptionForeground"
+						data-testid="subagent-context">
+						{summary?.contextWindow ? (
+							<ContextWindowProgress
+								contextWindow={summary.contextWindow}
+								contextTokens={contextTokens}
+								maxTokens={summary.maxOutputTokens}
+							/>
+						) : (
+							// Opened from history or an older row: the model's window is unknown.
+							<StandardTooltip content={t("chat:tokenProgress.contextUsed")}>
+								<span>{formatLargeNumber(contextTokens)}</span>
+							</StandardTooltip>
+						)}
+					</div>
+				)}
 				{stopReason && (
 					<div className="text-sm text-vscode-errorForeground" data-testid="subagent-stop-reason">
 						{stopReason}

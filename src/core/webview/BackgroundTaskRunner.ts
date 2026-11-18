@@ -2,6 +2,7 @@ import * as path from "path"
 import * as vscode from "vscode"
 
 import { type ExtensionMessage, type ProviderSettings, type TodoItem, TumbleCodeEventName } from "@tumble-code/types"
+import { getModelMaxOutputTokens } from "@tumble-code/core/browser"
 
 import { buildApiHandler } from "../../api"
 import { Task, type AutoApprovalOverride } from "../task/Task"
@@ -199,6 +200,7 @@ export class BackgroundTaskRunner {
 			// Register BEFORE start() so a tail subscribed on the queued
 			// placeholder streams the child's first messages.
 			const now = Date.now()
+			const model = task.api.getModel()
 			this.host.subagentRegistry.register({
 				taskId: task.taskId,
 				parentTaskId: options.subagentInfo.parentTaskId,
@@ -211,6 +213,12 @@ export class BackgroundTaskRunner {
 				tokensIn: 0,
 				tokensOut: 0,
 				totalCost: 0,
+				contextWindow: model.info.contextWindow,
+				maxOutputTokens: getModelMaxOutputTokens({
+					modelId: model.id,
+					model: model.info,
+					settings: apiConfiguration,
+				}),
 				startedAt: now,
 				lastActivityAt: now,
 			})
