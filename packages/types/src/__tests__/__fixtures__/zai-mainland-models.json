@@ -263,9 +263,9 @@
 		"supportsPromptCache": true,
 		"supportsMaxTokens": true,
 		"inputPrice": 0.02,
-		"outputPrice": 0.2,
+		"outputPrice": 0.21,
 		"cacheWritesPrice": 0,
-		"cacheReadsPrice": 0.002,
+		"cacheReadsPrice": 0.004,
 		"description": "GLM-4.6V-FlashX is an ultra-fast multimodal vision model optimized for high-speed visual processing at low cost."
 	},
 	"glm-5v-turbo": {

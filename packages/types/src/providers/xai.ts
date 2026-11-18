@@ -9,10 +9,57 @@ export const xaiDefaultModelId: XAIModelId = "grok-4.7"
 // xAI applies a long-context surcharge to the WHOLE request once the prompt
 // reaches 200K tokens, rather than only to the excess. The prices below are the
 // sub-200K rates, with `longContextPricing` carrying the doubling that kicks in
-// at the threshold — which is exactly the whole-request semantics that field has.
+// at the threshold, which is exactly the whole-request semantics that field has.
 //
 // xAI does not publish a max output token limit for any Grok model, so the
 // existing conservative defaults are kept rather than inventing a figure.
+//
+// xAI retired seven text models on 2026-05-15. Their slugs still resolve, so the
+// entries stay for profiles pinned to them, but requests are served by the
+// redirect target and billed at its rates. Those entries share the redirect
+// target's info and carry the deprecated flag, so the picker offers the current
+// model instead.
+// https://docs.x.ai/developers/migration/may-15-retirement
+const grok43Info: ModelInfo = {
+	maxTokens: 65_536,
+	contextWindow: 1_000_000,
+	supportsImages: true,
+	supportsPromptCache: true,
+	inputPrice: 1.25,
+	outputPrice: 2.5,
+	cacheWritesPrice: 0.2,
+	cacheReadsPrice: 0.2,
+	includedTools: ["search_replace"],
+	excludedTools: ["apply_diff"],
+	longContextPricing: {
+		thresholdTokens: 200_000,
+		inputPriceMultiplier: 2,
+		outputPriceMultiplier: 2,
+		cacheWritesPriceMultiplier: 2,
+		cacheReadsPriceMultiplier: 2,
+	},
+}
+
+const grokBuild01Info: ModelInfo = {
+	maxTokens: 65_536,
+	contextWindow: 256_000,
+	supportsImages: true,
+	supportsPromptCache: true,
+	inputPrice: 1.0,
+	outputPrice: 2.0,
+	cacheWritesPrice: 0.2,
+	cacheReadsPrice: 0.2,
+	includedTools: ["search_replace"],
+	excludedTools: ["apply_diff"],
+	longContextPricing: {
+		thresholdTokens: 200_000,
+		inputPriceMultiplier: 2,
+		outputPriceMultiplier: 2,
+		cacheWritesPriceMultiplier: 2,
+		cacheReadsPriceMultiplier: 2,
+	},
+}
+
 export const xaiModels = {
 	"grok-4.7": {
 		maxTokens: 65_536,
@@ -79,24 +126,8 @@ export const xaiModels = {
 		},
 	},
 	"grok-4.3": {
-		maxTokens: 65_536,
-		contextWindow: 1_000_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 1.25,
-		outputPrice: 2.5,
-		cacheWritesPrice: 0.2,
-		cacheReadsPrice: 0.2,
+		...grok43Info,
 		description: "xAI's Grok 4.3 model with a 1M context window.",
-		includedTools: ["search_replace"],
-		excludedTools: ["apply_diff"],
-		longContextPricing: {
-			thresholdTokens: 200_000,
-			inputPriceMultiplier: 2,
-			outputPriceMultiplier: 2,
-			cacheWritesPriceMultiplier: 2,
-			cacheReadsPriceMultiplier: 2,
-		},
 	},
 	// The vendor no longer serves the undated `grok-4.20`; only the dated
 	// 0309 snapshot ids remain.
@@ -162,106 +193,45 @@ export const xaiModels = {
 		},
 	},
 	"grok-build-0.1": {
-		maxTokens: 65_536,
-		contextWindow: 256_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 1.0,
-		outputPrice: 2.0,
-		cacheWritesPrice: 0.2,
-		cacheReadsPrice: 0.2,
+		...grokBuild01Info,
 		description: "xAI's Grok Build 0.1 model with 256K context window.",
-		includedTools: ["search_replace"],
-		excludedTools: ["apply_diff"],
-		longContextPricing: {
-			thresholdTokens: 200_000,
-			inputPriceMultiplier: 2,
-			outputPriceMultiplier: 2,
-			cacheWritesPriceMultiplier: 2,
-			cacheReadsPriceMultiplier: 2,
-		},
 	},
+	// Retired on 2026-05-15; the id is now an alias of grok-build-0.1 and is
+	// served and billed as that model.
 	"grok-code-fast-1": {
-		maxTokens: 16_384,
-		contextWindow: 256_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 0.2,
-		outputPrice: 1.5,
-		cacheWritesPrice: 0.02,
-		cacheReadsPrice: 0.02,
-		description: "xAI's Grok Code Fast model with 256K context window",
-		includedTools: ["search_replace"],
-		excludedTools: ["apply_diff"],
+		...grokBuild01Info,
+		deprecated: true,
+		description: "Retired on 2026-05-15; requests are served by Grok Build 0.1. Select grok-build-0.1 instead.",
 	},
 	"grok-4-1-fast-reasoning": {
-		maxTokens: 65_536,
-		contextWindow: 2_000_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 0.2,
-		outputPrice: 0.5,
-		cacheWritesPrice: 0.05,
-		cacheReadsPrice: 0.05,
+		...grok43Info,
+		deprecated: true,
 		description:
-			"xAI's Grok 4.1 Fast model with 2M context window, optimized for high-performance agentic tool calling with reasoning",
-		includedTools: ["search_replace"],
-		excludedTools: ["apply_diff"],
+			"Retired on 2026-05-15; requests are served by Grok 4.3 at low reasoning effort. Select grok-4.3 instead.",
 	},
 	"grok-4-1-fast-non-reasoning": {
-		maxTokens: 65_536,
-		contextWindow: 2_000_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 0.2,
-		outputPrice: 0.5,
-		cacheWritesPrice: 0.05,
-		cacheReadsPrice: 0.05,
+		...grok43Info,
+		deprecated: true,
 		description:
-			"xAI's Grok 4.1 Fast model with 2M context window, optimized for high-performance agentic tool calling",
-		includedTools: ["search_replace"],
-		excludedTools: ["apply_diff"],
+			"Retired on 2026-05-15; requests are served by Grok 4.3 with reasoning effort none. Select grok-4.3 instead.",
 	},
 	"grok-4-fast-reasoning": {
-		maxTokens: 65_536,
-		contextWindow: 2_000_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 0.2,
-		outputPrice: 0.5,
-		cacheWritesPrice: 0.05,
-		cacheReadsPrice: 0.05,
+		...grok43Info,
+		deprecated: true,
 		description:
-			"xAI's Grok 4 Fast model with 2M context window, optimized for high-performance agentic tool calling with reasoning",
-		includedTools: ["search_replace"],
-		excludedTools: ["apply_diff"],
+			"Retired on 2026-05-15; requests are served by Grok 4.3 at low reasoning effort. Select grok-4.3 instead.",
 	},
 	"grok-4-fast-non-reasoning": {
-		maxTokens: 65_536,
-		contextWindow: 2_000_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 0.2,
-		outputPrice: 0.5,
-		cacheWritesPrice: 0.05,
-		cacheReadsPrice: 0.05,
+		...grok43Info,
+		deprecated: true,
 		description:
-			"xAI's Grok 4 Fast model with 2M context window, optimized for high-performance agentic tool calling",
-		includedTools: ["search_replace"],
-		excludedTools: ["apply_diff"],
+			"Retired on 2026-05-15; requests are served by Grok 4.3 with reasoning effort none. Select grok-4.3 instead.",
 	},
 	"grok-4-0709": {
-		maxTokens: 8192,
-		contextWindow: 256_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 3.0,
-		outputPrice: 15.0,
-		cacheWritesPrice: 0.75,
-		cacheReadsPrice: 0.75,
-		description: "xAI's Grok-4 model with 256K context window",
-		includedTools: ["search_replace"],
-		excludedTools: ["apply_diff"],
+		...grok43Info,
+		deprecated: true,
+		description:
+			"Retired on 2026-05-15; requests are served by Grok 4.3 at low reasoning effort. Select grok-4.3 instead.",
 	},
 	"grok-3-mini": {
 		maxTokens: 8192,
@@ -279,16 +249,9 @@ export const xaiModels = {
 		excludedTools: ["apply_diff"],
 	},
 	"grok-3": {
-		maxTokens: 8192,
-		contextWindow: 131072,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 3.0,
-		outputPrice: 15.0,
-		cacheWritesPrice: 0.75,
-		cacheReadsPrice: 0.75,
-		description: "xAI's Grok-3 model with 128K context window",
-		includedTools: ["search_replace"],
-		excludedTools: ["apply_diff"],
+		...grok43Info,
+		deprecated: true,
+		description:
+			"Retired on 2026-05-15; requests are served by Grok 4.3 with reasoning effort none. Select grok-4.3 instead.",
 	},
 } as const satisfies Record<string, ModelInfo>

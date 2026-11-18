@@ -58,7 +58,7 @@ describe("client", () => {
 describe("getModel", () => {
 	it.each([
 		["the default model without an id", undefined, minimaxDefaultModelId, minimaxDefaultModelId],
-		["a known model", "MiniMax-M2", "MiniMax-M2", "MiniMax-M2"],
+		["a known model", "MiniMax-M3.1-Flash", "MiniMax-M3.1-Flash", "MiniMax-M3.1-Flash"],
 	])("resolves %s", (_label, apiModelId, id, infoOf) => {
 		const model = handlerFor({ apiModelId }).getModel()
 		expect(model.id).toBe(id)
@@ -69,10 +69,10 @@ describe("getModel", () => {
 describe("createMessage request", () => {
 	it("sends the capped max tokens, temperature 1 and the cache marks, with the task signal", async () => {
 		const signal = new AbortController().signal
-		const [body, requestOptions] = await requestOf({ apiModelId: "MiniMax-M2" }, { taskId: "t", signal })
-		const info = minimaxModels["MiniMax-M2"]
+		const [body, requestOptions] = await requestOf({ apiModelId: "MiniMax-M3" }, { taskId: "t", signal })
+		const info = minimaxModels["MiniMax-M3"]
 		expect(body).toMatchObject({
-			model: "MiniMax-M2",
+			model: "MiniMax-M3",
 			max_tokens: Math.min(info.maxTokens, Math.ceil(info.contextWindow * 0.2)),
 			temperature: 1,
 			stream: true,

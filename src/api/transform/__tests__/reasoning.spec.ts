@@ -140,11 +140,17 @@ describe("getGeminiReasoning", () => {
 			{ reasoningEffort: "low", enableReasoningEffort: false },
 			{ thinkingLevel: "low", includeThoughts: true },
 		],
+		[
+			"xhigh when the model lists it",
+			{ ...gemini3, supportsReasoningEffort: ["low", "high", "xhigh"] },
+			{ reasoningEffort: "xhigh" },
+			{ thinkingLevel: "xhigh", includeThoughts: true },
+		],
 		["the model default without a choice", gemini3, {}, { thinkingLevel: "high", includeThoughts: true }],
 		[
 			"the model default for a level it does not list",
 			gemini3,
-			{ reasoningEffort: "minimal" },
+			{ reasoningEffort: "xhigh" },
 			{ thinkingLevel: "high", includeThoughts: true },
 		],
 		["nothing for disable", gemini3, { reasoningEffort: "disable" }, undefined],
@@ -170,7 +176,7 @@ describe("getGeminiReasoning", () => {
 		["minimal", true],
 		["high", true],
 		["none", false],
-		["xhigh", false],
+		["xhigh", true],
 		[undefined, false],
 	])("isGeminiThinkingLevel(%s) is %s", (value, expected) => {
 		expect(isGeminiThinkingLevel(value)).toBe(expected)

@@ -55,8 +55,40 @@ describe("OpenAiCodexHandler.getModel", () => {
 		})
 	})
 
+	it("should keep reasoning required on GPT-6.2 and run Sol on the 500k window", () => {
+		const handler = new OpenAiCodexHandler({ apiModelId: "gpt-6.2-sol" })
+		const model = handler.getModel()
+
+		expect(model.id).toBe("gpt-6.2-sol")
+		expect(model.info).toMatchObject({
+			contextWindow: 500_000,
+			maxTokens: 100_000,
+			supportsImages: true,
+			supportsReasoningEffort: ["low", "medium", "high", "xhigh", "max"],
+			requiredReasoningEffort: true,
+			reasoningEffort: "medium",
+		})
+	})
+
+	it("should run GPT-6.2 Astra on the 272k window with reasoning required", () => {
+		const handler = new OpenAiCodexHandler({ apiModelId: "gpt-6.2-astra" })
+		const model = handler.getModel()
+
+		expect(model.id).toBe("gpt-6.2-astra")
+		expect(model.info).toMatchObject({
+			contextWindow: 272_000,
+			maxTokens: 54_400,
+			supportsImages: true,
+			supportsReasoningEffort: ["low", "medium", "high", "xhigh", "max"],
+			requiredReasoningEffort: true,
+			reasoningEffort: "medium",
+		})
+	})
+
 	it("should expose only the current ChatGPT subscription model catalog", () => {
 		expect(Object.keys(openAiCodexModels)).toEqual([
+			"gpt-6.2-sol",
+			"gpt-6.2-astra",
 			"gpt-6.1-sol",
 			"gpt-6.1-terra",
 			"gpt-6-astra",

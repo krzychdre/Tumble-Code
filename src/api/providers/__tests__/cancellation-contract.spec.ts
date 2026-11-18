@@ -331,7 +331,7 @@ const cases: HandlerCase[] = [
 	{
 		name: "MiniMax",
 		build: (sdk) => {
-			const handler = new MiniMaxHandler({ minimaxApiKey: "k", apiModelId: "MiniMax-M2" })
+			const handler = new MiniMaxHandler({ minimaxApiKey: "k", apiModelId: "MiniMax-M3" })
 			Reflect.set(handler, "client", anthropicClient(sdk))
 			return handler
 		},

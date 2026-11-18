@@ -115,21 +115,21 @@ export const mistralModels = {
 	"zai-glm-5-3-flash": {
 		maxTokens: 128_000,
 		contextWindow: 1_000_000,
-		supportsImages: false,
+		supportsImages: true,
 		supportsPromptCache: false,
 		inputPrice: 0.15,
 		outputPrice: 0.5,
-		description: "Z.ai GLM 5.3 Flash, a fast third-party model served through Mistral's platform.",
+		description: "Z.ai GLM 5.3 Flash, a fast multimodal third-party model served through Mistral's platform.",
 	},
 	"deepseek-v4-1-flash-1017": {
-		maxTokens: 393_216,
+		maxTokens: 128_000,
 		contextWindow: 1_048_576,
-		supportsImages: false,
+		supportsImages: true,
 		supportsPromptCache: false,
 		inputPrice: 0.3,
 		outputPrice: 1.2,
 		description:
-			"DeepSeek V4.1 Flash (1017 snapshot), a third-party model served through Mistral's platform, in public preview.",
+			"DeepSeek V4.1 Flash (1017 snapshot), a third-party model with text and image inputs served through Mistral's platform, in public preview.",
 	},
 } as const satisfies Record<string, ModelInfo>
 

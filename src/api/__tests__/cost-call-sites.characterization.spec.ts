@@ -157,7 +157,7 @@ async function computeAll(): Promise<Record<string, number | undefined>> {
 	const task: [string, string, string][] = [
 		["anthropic", "claude-sonnet-4-6", "claudeSonnet46"],
 		["anthropic", "claude-opus-5", "claudeOpus5"],
-		["minimax", "MiniMax-M2.7", "minimaxM27"],
+		["minimax", "MiniMax-M3", "minimaxM3"],
 		["openai-native", "gpt-5.4", "gpt54"],
 		["xai", "grok-4.6", "grok46"],
 		["deepseek", "deepseek-chat", "deepseekChat"],
@@ -169,7 +169,7 @@ async function computeAll(): Promise<Record<string, number | undefined>> {
 			out[`task message/${model}/${usageName}`] = taskMessageCost(provider, modelId, MODELS[model], u)
 			out[`task telemetry/${model}/${usageName}`] = await taskTelemetryCost(provider, modelId, MODELS[model], u)
 		}
-		for (const model of ["claudeSonnet46", "claudeOpus5", "minimaxM27", "noWritePrice"]) {
+		for (const model of ["claudeSonnet46", "claudeOpus5", "minimaxM3", "noWritePrice"]) {
 			out[`anthropic stream/${model}/${usageName}`] = await anthropicStreamCost(MODELS[model], u)
 		}
 		for (const model of ["deepseekChat", "grok46", "gpt54", "gemini31Pro", "noWritePrice"]) {

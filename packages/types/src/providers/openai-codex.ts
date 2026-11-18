@@ -10,7 +10,7 @@ import type { ModelInfo } from "../model.js"
 
 export type OpenAiCodexModelId = keyof typeof openAiCodexModels
 
-export const openAiCodexDefaultModelId: OpenAiCodexModelId = "gpt-6.1-sol"
+export const openAiCodexDefaultModelId: OpenAiCodexModelId = "gpt-6.2-sol"
 
 /**
  * The Codex backend rejects `max_output_tokens`, so this provider never sends it
@@ -25,6 +25,7 @@ export const openAiCodexDefaultModelId: OpenAiCodexModelId = "gpt-6.1-sol"
  * almost immediately.
  */
 const SUBSCRIPTION_200K_MAX_OUTPUT_TOKENS = 40_000
+const SUBSCRIPTION_272K_MAX_OUTPUT_TOKENS = 54_400
 const SUBSCRIPTION_500K_MAX_OUTPUT_TOKENS = 100_000
 
 const commonSubscriptionModelInfo = {
@@ -38,6 +39,31 @@ const commonSubscriptionModelInfo = {
 
 /** Models currently documented for Codex with ChatGPT sign-in. */
 export const openAiCodexModels = {
+	"gpt-6.2-sol": {
+		...commonSubscriptionModelInfo,
+		// Codex runs Sol on a 500k subscription window, not the usual 200k.
+		maxTokens: SUBSCRIPTION_500K_MAX_OUTPUT_TOKENS,
+		contextWindow: 500_000,
+		supportsImages: true,
+		// Sol rejects `none` with HTTP 400, so reasoning cannot be switched off.
+		supportsReasoningEffort: ["low", "medium", "high", "xhigh", "max"],
+		requiredReasoningEffort: true,
+		reasoningEffort: "medium",
+		description:
+			"GPT-6.2 Sol: Recommended model for everyday coding, writing, and work across several sources via ChatGPT subscription",
+	},
+	"gpt-6.2-astra": {
+		...commonSubscriptionModelInfo,
+		// Codex runs Astra on a 272k default subscription window.
+		maxTokens: SUBSCRIPTION_272K_MAX_OUTPUT_TOKENS,
+		contextWindow: 272_000,
+		supportsImages: true,
+		// Astra rejects `none` with HTTP 400, so reasoning cannot be switched off.
+		supportsReasoningEffort: ["low", "medium", "high", "xhigh", "max"],
+		requiredReasoningEffort: true,
+		reasoningEffort: "medium",
+		description: "GPT-6.2 Astra: Most capable model for the hardest end-to-end work via ChatGPT subscription",
+	},
 	"gpt-6.1-sol": {
 		...commonSubscriptionModelInfo,
 		// Codex runs Sol on a 500k subscription window, not the usual 200k.

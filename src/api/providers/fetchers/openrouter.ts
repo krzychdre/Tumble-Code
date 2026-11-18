@@ -262,6 +262,7 @@ export const parseOpenRouterModel = ({
 		"anthropic/claude-fable-5": "claude-fable-5",
 		"anthropic/claude-fable-5.1": "claude-fable-5-1",
 		"anthropic/claude-fable-5.2": "claude-fable-5-2",
+		"anthropic/claude-haiku-5.5": "claude-haiku-5-5",
 	}
 	const claude5AnthropicId = claude5AnthropicIds[id]
 	if (claude5AnthropicId) {
