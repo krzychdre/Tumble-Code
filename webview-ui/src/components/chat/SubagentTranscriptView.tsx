@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
-import { Send, Square } from "lucide-react"
+import { ChevronDown, ChevronUp, Send, Square } from "lucide-react"
 
 import type { ClineMessage, ExtensionMessage } from "@tumble-code/types"
 import { parseFollowUpData } from "@tumble-code/types"
@@ -283,23 +283,10 @@ const SubagentTranscriptView = ({ taskId, onDone }: SubagentTranscriptViewProps)
 			hasTask: loaded && messages.length > 0,
 		})
 
-	// The subtask message the subagent was given heads the list. One object
-	// per message: Virtuoso remounts the header when the component changes.
+	// The subtask message the subagent was given: the title shows its first
+	// line and unfolds the whole of it, like the task card of the chat.
 	const subtaskText = taskMessage ? (decodeStoredProse(taskMessage).text ?? "") : undefined
-	const listComponents = useMemo(
-		() => ({
-			Header: () =>
-				subtaskText === undefined ? null : (
-					<div className="mx-3 mt-3 mb-1 p-2 border border-frame bg-surface rounded-control max-h-48 overflow-y-auto text-sm">
-						<div className="text-xs text-vscode-descriptionForeground mb-1">
-							{t("chat:subagents.transcript.subtask")}
-						</div>
-						<MarkdownBlock markdown={subtaskText} />
-					</div>
-				),
-		}),
-		[subtaskText, t],
-	)
+	const [isPromptExpanded, setIsPromptExpanded] = useState(false)
 
 	// Opening or closing a row means the user reads it: stop following.
 	const toggleRowExpansion = useCallback(
@@ -328,7 +315,28 @@ const SubagentTranscriptView = ({ taskId, onDone }: SubagentTranscriptViewProps)
 			<TabHeader className="flex flex-col gap-1">
 				<div className="flex items-center justify-between gap-2">
 					<TabTitle
-						title={description}
+						title={
+							subtaskText === undefined ? (
+								description
+							) : (
+								<StandardTooltip
+									content={isPromptExpanded ? t("chat:task.collapse") : t("chat:task.expand")}>
+									<button
+										type="button"
+										aria-expanded={isPromptExpanded}
+										aria-controls="subagent-prompt"
+										onClick={() => setIsPromptExpanded((expanded) => !expanded)}
+										className="flex items-center gap-1 max-w-full p-0 text-left bg-transparent border-none cursor-pointer focus-ring">
+										<span className="truncate">{description}</span>
+										{isPromptExpanded ? (
+											<ChevronUp className="size-4 shrink-0" aria-hidden />
+										) : (
+											<ChevronDown className="size-4 shrink-0" aria-hidden />
+										)}
+									</button>
+								</StandardTooltip>
+							)
+						}
 						backLabel={t("chat:subagents.transcript.back")}
 						onBack={onDone}
 						backTestId="subagent-transcript-back"
@@ -357,6 +365,16 @@ const SubagentTranscriptView = ({ taskId, onDone }: SubagentTranscriptViewProps)
 					{totalCost > 0 && <span className="shrink-0">{`$${totalCost.toFixed(2)}`}</span>}
 					{summary && <span className="shrink-0">{t(`chat:subagents.status.${summary.status}`)}</span>}
 				</div>
+				{isPromptExpanded && subtaskText !== undefined && (
+					<div
+						id="subagent-prompt"
+						className="p-2 border border-frame bg-surface rounded-control max-h-[40vh] overflow-y-auto text-sm">
+						<div className="text-xs text-vscode-descriptionForeground mb-1">
+							{t("chat:subagents.transcript.subtask")}
+						</div>
+						<MarkdownBlock markdown={subtaskText} />
+					</div>
+				)}
 				{contextTokens > 0 && (
 					<div
 						className="flex items-center text-xs text-vscode-descriptionForeground"
@@ -405,7 +423,6 @@ const SubagentTranscriptView = ({ taskId, onDone }: SubagentTranscriptViewProps)
 							atBottomStateChange={atBottomStateChangeCallback}
 							atBottomThreshold={10}
 							computeItemKey={(index, row) => `${row.ts}-${index}`}
-							components={listComponents}
 							itemContent={(index, row) => (
 								<ChatRow
 									message={row}

@@ -54,22 +54,18 @@ vi.mock("react-virtuoso", () => ({
 		{
 			data,
 			itemContent,
-			components,
 			followOutput,
 		}: {
 			data: ClineMessage[]
 			itemContent: (index: number, item: ClineMessage) => React.ReactNode
-			components?: { Header?: () => React.ReactNode }
 			followOutput: () => "auto" | false
 		},
 		ref: React.Ref<{ scrollToIndex: typeof list.scrollToIndex }>,
 	) {
 		React.useImperativeHandle(ref, () => ({ scrollToIndex: list.scrollToIndex }))
 		list.followOutput = followOutput
-		const Header = components?.Header
 		return (
 			<div>
-				{Header && <Header />}
 				{data.map((item, index) => (
 					<div key={item.ts}>{itemContent(index, item)}</div>
 				))}
@@ -149,11 +145,10 @@ describe("SubagentTranscriptView", () => {
 		expect(vscode.postMessage).toHaveBeenCalledWith({ type: "subscribeSubagentMessages", taskId: "child-2" })
 	})
 
-	it("shows the subtask message, then every row, read-only", () => {
+	it("shows every row after the subtask message, read-only", () => {
 		renderView()
 		fromHost({ type: "subagentMessages", sourceTaskId: "child-1", subagentMessages: TRANSCRIPT })
 
-		expect(screen.getByText("Repo: Game. Fix the ladder.")).toBeInTheDocument()
 		const rows = screen.getAllByTestId("row")
 		expect(rows.map((row) => row.textContent)).toEqual([
 			"reasoning: look at ladder.js",
@@ -174,6 +169,22 @@ describe("SubagentTranscriptView", () => {
 			"reasoning: more",
 			expect.stringContaining("readFile"),
 		])
+	})
+
+	it("the title unfolds the whole subtask message, like the task card of the chat", () => {
+		renderView()
+		fromHost({ type: "subagentMessages", sourceTaskId: "child-1", subagentMessages: TRANSCRIPT })
+		expect(screen.queryByText("Repo: Game. Fix the ladder.")).not.toBeInTheDocument()
+
+		const toggle = screen.getByRole("button", { name: "fix the ladder" })
+		fireEvent.click(toggle)
+
+		expect(toggle).toHaveAttribute("aria-expanded", "true")
+		expect(screen.getByText("Repo: Game. Fix the ladder.")).toBeInTheDocument()
+
+		fireEvent.click(toggle)
+
+		expect(screen.queryByText("Repo: Game. Fix the ladder.")).not.toBeInTheDocument()
 	})
 
 	it("opens at the bottom and follows until the user opens a row", () => {
