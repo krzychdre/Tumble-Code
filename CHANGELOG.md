@@ -1,5 +1,16 @@
 # Tumble Code Changelog
 
+## 1.4.0
+
+Released 2026-11-18
+
+### Improved
+
+- **GPT-6.2 and a provider model sweep.** OpenAI's GPT-6.2 Sol and Astra are available on the OpenAI and Codex providers, and GPT-6.2 Sol is the new default there. Retired models are removed or flagged across OpenAI, xAI, MiniMax, Gemini, Bedrock and Copilot, Gemini 4 Hydrogen gains the extra-high thinking level, and cost estimates now follow the vendors' standard (post-promotion) prices, including corrected Bedrock prices for gpt-oss and other non-Claude models.
+- **Subagent context size.** The header of an open subagent shows how full its context window is, with the same gauge as the main task header.
+- **Full subagent prompt on click.** Clicking the title of an open subagent unfolds the whole subtask it was given, like the task card in the main chat; clicking again folds it.
+- **Subagent transcript opens at the latest message.** Opening a subagent shows the bottom of its transcript and keeps following new messages, like the main chat, until you scroll up or open a row.
+
 ## 1.3.0
 
 Released 2026-11-14
