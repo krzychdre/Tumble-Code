@@ -896,16 +896,27 @@ describe("pushToolResultToUserContent", () => {
 	const result = (id: string, content: Anthropic.ToolResultBlockParam["content"] = `result ${id}`) =>
 		({ type: "tool_result", tool_use_id: id, content }) as Anthropic.ToolResultBlockParam
 
-	it("appends results after other content and skips a second result for the same tool_use_id", () => {
+	it("keeps every result ahead of other content and skips a second result for the same tool_use_id", () => {
 		const task = newTask(provider)
 		const warn = vi.spyOn(logger, "warn").mockImplementation(() => {})
-		task.userMessageContent.push({ type: "text", text: "Some text" })
+		// Parallel read_file calls on images: each result is followed by its image block.
+		const image = {
+			type: "image",
+			source: { type: "base64", media_type: "image/png", data: "iVBORw0KGgo=" },
+		} as Anthropic.ImageBlockParam
 
 		expect(task.pushToolResultToUserContent(result("id-1"))).toBe(true)
+		task.userMessageContent.push(image)
 		expect(task.pushToolResultToUserContent(result("id-2"))).toBe(true)
+		task.userMessageContent.push({ type: "text", text: "Some text" })
 		expect(task.pushToolResultToUserContent(result("id-1", "second"))).toBe(false)
 
-		expect(task.userMessageContent).toEqual([{ type: "text", text: "Some text" }, result("id-1"), result("id-2")])
+		expect(task.userMessageContent).toEqual([
+			result("id-1"),
+			result("id-2"),
+			image,
+			{ type: "text", text: "Some text" },
+		])
 		expect(warn).toHaveBeenCalledWith(
 			expect.stringContaining("Skipping duplicate tool_result for tool_use_id: id-1"),
 		)
