@@ -765,6 +765,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 * Push a tool_result block to userMessageContent, preventing duplicates.
 	 * Duplicate tool_use_ids cause API errors.
 	 *
+	 * The block goes in after the last tool_result, ahead of any text or image
+	 * already pushed (a read_file image, user feedback): Anthropic rejects a
+	 * tool_result that follows a non-tool_result block in the same message.
+	 *
 	 * This is the single choke point where a tool result becomes conversation
 	 * content, so it is also where the spill policy runs: an oversized result is
 	 * persisted as an artifact and replaced by a head/tail preview that cites
@@ -801,17 +805,26 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 								ARTIFACT_SPILL_DEFAULTS.DEFAULT_INLINE_TOOL_RESULT_BYTES,
 						)
 					: toolResult.content
-			this.userMessageContent.push(content === toolResult.content ? toolResult : { ...toolResult, content })
+			this.insertToolResult(content === toolResult.content ? toolResult : { ...toolResult, content })
 			return true
 		}
 
-		this.userMessageContent.push(toolResult)
+		this.insertToolResult(toolResult)
 
 		if (typeof toolResult.content === "string" && this.toolResultSpill) {
 			this.spillToolResultInBackground(toolResult, toolResult.content, options?.toolName, this.toolResultSpill)
 		}
 
 		return true
+	}
+
+	private insertToolResult(toolResult: Anthropic.ToolResultBlockParam): void {
+		const firstOther = this.userMessageContent.findIndex((block) => block.type !== "tool_result")
+		if (firstOther === -1) {
+			this.userMessageContent.push(toolResult)
+		} else {
+			this.userMessageContent.splice(firstOther, 0, toolResult)
+		}
 	}
 
 	/**
