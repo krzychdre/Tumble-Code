@@ -9,11 +9,11 @@ import { ApiMessage } from "../../task-persistence/apiMessages"
 import {
 	microcompactToolResults,
 	selectMicrocompactTargets,
-	microcompactTargetChars,
+	microcompactTarget,
 	MICROCOMPACT_CLEARED_PLACEHOLDER,
 	MICROCOMPACT_PLACEHOLDER_CHARS,
 	MICROCOMPACT_CHARS_PER_TOKEN,
-	MICROCOMPACT_TARGET_MARGIN,
+	MICROCOMPACT_HEADROOM_FRACTION,
 	MICROCOMPACT_MIN_KEEP,
 	MICROCOMPACT_CLEAR_FLOOR_CHARS,
 	MICROCOMPACT_PROTECT_MAX_CHARS,
@@ -74,20 +74,17 @@ function candidate(toolUseId: string, chars: number, critical = false): Microcom
 
 // --- Budget conversion ----------------------------------------------------------------
 
-describe("microcompactTargetChars", () => {
-	it("selects nothing when there is no pressure", () => {
-		expect(microcompactTargetChars(0)).toBe(0)
-		expect(microcompactTargetChars(-500)).toBe(0)
-		expect(microcompactTargetChars(Number.NaN)).toBe(0)
-		expect(microcompactTargetChars(Number.POSITIVE_INFINITY)).toBe(0)
+describe("microcompactTarget", () => {
+	it.each([0, -500, Number.NaN, Number.POSITIVE_INFINITY])("selects nothing at overage %s", (overage) => {
+		expect(microcompactTarget(overage, 30_000)).toEqual({ needChars: 0, targetChars: 0 })
 	})
 
-	it("converts the token overage to chars with the overshoot margin", () => {
-		expect(microcompactTargetChars(1000)).toBe(
-			Math.ceil(1000 * MICROCOMPACT_TARGET_MARGIN * MICROCOMPACT_CHARS_PER_TOKEN),
-		)
-		// Overshooting is deliberate: landing exactly on the threshold re-selects next turn.
-		expect(microcompactTargetChars(1000)).toBeGreaterThan(1000 * MICROCOMPACT_CHARS_PER_TOKEN)
+	it("needs the overage and aims a fraction of the window below the ceiling", () => {
+		const needChars = 1000 * MICROCOMPACT_CHARS_PER_TOKEN
+		expect(microcompactTarget(1000, 200_000)).toEqual({
+			needChars,
+			targetChars: needChars + 200_000 * MICROCOMPACT_HEADROOM_FRACTION * MICROCOMPACT_CHARS_PER_TOKEN,
+		})
 	})
 })
 
@@ -184,6 +181,20 @@ describe("selectMicrocompactTargets", () => {
 		expect(selection.clearIds.size).toBe(2)
 		expect(selection.releasedProtectedCount).toBe(2)
 		expect(selection.protectedCount).toBe(0)
+	})
+
+	it("releases protection only for the need, not for the headroom above it", () => {
+		const candidates = [
+			candidate("listing", 10_000),
+			candidate("err", 5_000, true),
+			...Array.from({ length: MICROCOMPACT_MIN_KEEP }, (_, i) => candidate(`keep-${i}`, 9_000)),
+		]
+
+		const selection = selectMicrocompactTargets(candidates, { targetChars: 20_000, needChars: 5_000 })
+
+		expect([...selection.clearIds]).toEqual(["listing"])
+		expect(selection.protectedCount).toBe(1)
+		expect(selection.releasedProtectedCount).toBe(0)
 	})
 
 	it("releases protection oldest-first and stops the moment the target is met", () => {
@@ -650,6 +661,44 @@ describe("manageContext microcompaction pre-pass", () => {
 
 		expect(result.microcompactClearedIds).toEqual(["big-0", "big-1", "big-2", "big-3", "big-4", "big-5"])
 	})
+
+	it("selects once, then sends the same prefix until growth has used up the headroom", async () => {
+		// Each 3000-char result reclaims about one turn of growth (1000 tokens), so reclaiming
+		// only the overflow would select another old result, and move the prefix, every turn.
+		const messages = [firstUser(), ...bigReadPairs(12, 3000)]
+		let previouslyClearedIds = new Set<string>()
+		const clearedPerTurn: string[][] = []
+
+		for (let turn = 1; turn <= 5; turn++) {
+			messages.push(...toolPair("read_file", bigText(`turn ${turn} output`, 3000)))
+			const result = await manageContext({
+				messages,
+				// The pristine size, as TaskApiLoop passes it after adding back what was stripped.
+				totalTokens: 15000 + 1000 * turn,
+				lastMessageTokens: 0,
+				contextWindow: 30000,
+				maxTokens: 1000,
+				apiHandler,
+				autoCondenseContext: true,
+				autoCondenseContextPercent: 50,
+				systemPrompt: "sys",
+				taskId,
+				profileThresholds: {},
+				currentProfileId: "default",
+				previouslyClearedIds,
+			})
+			expect(result.summary).toBe("")
+			clearedPerTurn.push(result.microcompactClearedIds ?? [])
+			previouslyClearedIds = new Set(result.microcompactClearedIds)
+		}
+
+		const [first, second, third, fourth, fifth] = clearedPerTurn
+		expect(first.length).toBeGreaterThan(0)
+		expect([second, third, fourth]).toEqual([first, first, first])
+		// Turn 5 overflows by more than the carried set reclaims: one new pass, oldest first.
+		expect(fifth.slice(0, first.length)).toEqual(first)
+		expect(fifth.length).toBeGreaterThan(first.length)
+	})
 })
 
 // --- Old-reasoning trimming inside the pre-pass (trimOldReasoning) ---------------------
@@ -705,7 +754,7 @@ describe("manageContext pre-pass with trimOldReasoning", () => {
 
 	/**
 	 * Context window 30k, condense at 50% (15k). `lastMessageTokens: 0` makes the overage
-	 * exactly `totalTokens - 15k`, so the char target is known (see microcompactTargetChars).
+	 * exactly `totalTokens - 15k`, so the char target is known (see microcompactTarget).
 	 */
 	function run(
 		messages: ApiMessage[],
@@ -752,9 +801,9 @@ describe("manageContext pre-pass with trimOldReasoning", () => {
 	})
 
 	it("trims old reasoning first and clears tool results only for the remainder", async () => {
-		// Overage 5000 tokens -> 13750 chars. Two reasoning blocks reclaim ~6.2k of it.
+		// Overage 5000 tokens -> 12500 chars needed, 20000 aimed at. Two reasoning blocks reclaim ~6.2k of it.
 		const messages = turns(2)
-		const targetChars = microcompactTargetChars(5000)
+		const { targetChars } = microcompactTarget(5000, 30000)
 		expect(reclaimOf(0) + reclaimOf(1)).toBeLessThan(targetChars)
 
 		const off = await run(messages, 20000)
@@ -772,31 +821,39 @@ describe("manageContext pre-pass with trimOldReasoning", () => {
 		expect(on.messages).toBe(messages) // non-destructive: nothing persisted
 	})
 
-	it("keeps reasoning keys carried over from an earlier request, together with carried tool ids", async () => {
-		// Overage 1000 tokens -> 2750 chars: one block would do, but the carried block is
-		// taken first and is enough, so the oldest block stays untouched.
-		const result = await run(turns(10), 16000, {
-			trimOldReasoning: true,
-			previouslyClearedIds: new Set([reasoningTrimKey(2), "big-5"]),
-		})
+	it.each([[[reasoningTrimKey(2), "big-5"]], [["big-5"]]])(
+		"selects nothing new while the carried-over ids %j cover the overage",
+		async (carried) => {
+			// Overage 1000 tokens -> 2500 chars needed. The carried ids reclaim more than that, so
+			// neither the oldest reasoning block nor the oldest tool result is touched.
+			const result = await run(turns(10), 16000, {
+				trimOldReasoning: true,
+				previouslyClearedIds: new Set(carried),
+			})
 
-		expect(result.microcompactClearedIds).toEqual([reasoningTrimKey(2), "big-5"])
-	})
+			expect(result.microcompactClearedIds).toEqual(carried)
+		},
+	)
 
 	it("a reasoning-only outcome skips condense and reports the reasoning tokens", async () => {
-		// Overage 1000 tokens -> 2750 chars; the oldest block alone reclaims more than that.
+		// Overage 1000 tokens; the oldest blocks reach the target before the tool results are needed.
 		const messages = turns(10)
-		expect(reclaimOf(0)).toBeGreaterThanOrEqual(microcompactTargetChars(1000))
+		const { targetChars } = microcompactTarget(1000, 30000)
+		let trimmedBlocks = 0
+		let reclaimed = 0
+		while (reclaimed < targetChars) {
+			reclaimed += reclaimOf(trimmedBlocks++)
+		}
 		const capture = vi.spyOn(TelemetryService.instance, "capture")
 
 		const result = await run(messages, 16000, { trimOldReasoning: true })
 
-		const tokensCleared = Math.round(reclaimOf(0) / MICROCOMPACT_CHARS_PER_TOKEN)
+		const tokensCleared = Math.round(reclaimed / MICROCOMPACT_CHARS_PER_TOKEN)
 		expect(result).toMatchObject({
 			summary: "",
 			microcompacted: true,
 			microcompactClearedCount: 0,
-			microcompactClearedIds: [reasoningTrimKey(1)],
+			microcompactClearedIds: Array.from({ length: trimmedBlocks }, (_, i) => reasoningTrimKey(i + 1)),
 			microcompactTokensCleared: tokensCleared,
 			newContextTokens: 16000 - tokensCleared,
 		})

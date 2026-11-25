@@ -18,7 +18,7 @@ import { ANTHROPIC_DEFAULT_MAX_TOKENS, PRUNE_CONDENSE_DEFAULTS, TelemetryEventNa
 import { RooIgnoreController } from "../ignore/RooIgnoreController"
 import {
 	microcompactToolResults,
-	microcompactTargetChars,
+	microcompactTarget,
 	MICROCOMPACT_CHARS_PER_TOKEN,
 	MICROCOMPACT_PLACEHOLDER_TOKENS,
 } from "./microcompact"
@@ -412,11 +412,13 @@ export async function manageContext({
 	// ordering: the expensive summary is the last resort, not the first response to
 	// any overflow.
 	//
-	// Selection is need-adaptive: we compute how far over the binding ceiling we are
-	// and clear the oldest results until that much is reclaimed, sparing the ones the
-	// context ledger marks critical (unresolved errors, validation outcomes, file
-	// writes). Reclaiming only what is needed keeps the small, high-signal results
-	// the old count-based rule discarded wholesale.
+	// Selection is need-adaptive with hysteresis. While the decisions carried over from
+	// earlier requests still cover the overflow over the binding ceiling, nothing new is
+	// selected and the sent prefix stays byte-identical. Once growth has used that up, a
+	// pass clears the oldest results down to a low-water mark `MICROCOMPACT_HEADROOM_FRACTION`
+	// of the window below the ceiling, sparing the ones the context ledger marks critical
+	// (unresolved errors, validation outcomes, file writes), so the following turns run on
+	// the carried-over selection again.
 	//
 	// NON-DESTRUCTIVE: we only SELECT the ids here (for the freed-token estimate and
 	// for the send-time strip). The stored `tool_result` content is left pristine;
@@ -447,25 +449,36 @@ export async function manageContext({
 			? (contextWindow * effectiveThreshold) / 100
 			: Number.POSITIVE_INFINITY
 		const ceilingTokens = Math.min(condenseCeilingTokens, allowedTokens)
-		const targetChars = microcompactTargetChars(prevContextTokens - ceilingTokens)
+		const target = microcompactTarget(prevContextTokens - ceilingTokens, contextWindow)
 
 		// Old reasoning goes FIRST, tool results only cover what it leaves (opt-in, see
 		// `trimOldReasoning`). A trimmed reasoning block keeps its head, its findings and its
 		// last paragraph, so the model needs no recovery action; a cleared tool result can
 		// cost a re-read or a re-run, which is one more request. Previously trimmed blocks
 		// are carried over like previously cleared results (both live in the same id set).
-		const reasoning = trimOldReasoning
-			? selectReasoningTrims(messages, { targetChars, alreadyTrimmed: previouslyClearedIds })
-			: { keys: [], reclaimedChars: 0 }
+		const select = (targetChars: number, needChars: number) => {
+			const reasoning = trimOldReasoning
+				? selectReasoningTrims(messages, { targetChars, alreadyTrimmed: previouslyClearedIds })
+				: { keys: [], reclaimedChars: 0 }
+			const mc = microcompactToolResults(messages, {
+				// Zero when reasoning alone met the target: the tool results a previous request
+				// cleared are still carried over, nothing new is cleared.
+				targetChars: Math.max(0, targetChars - reasoning.reclaimedChars),
+				needChars: Math.max(0, needChars - reasoning.reclaimedChars),
+				// Marks which results carry facts the model cannot cheaply re-derive.
+				criticalToolUseIds: getLedger().criticalToolUseIds,
+				alreadyClearedToolUseIds: previouslyClearedIds,
+			})
+			return { reasoning, mc }
+		}
 
-		const mc = microcompactToolResults(messages, {
-			// Zero when reasoning alone met the target: the tool results a previous request
-			// cleared are still carried over, nothing new is cleared.
-			targetChars: Math.max(0, targetChars - reasoning.reclaimedChars),
-			// Marks which results carry facts the model cannot cheaply re-derive.
-			criticalToolUseIds: getLedger().criticalToolUseIds,
-			alreadyClearedToolUseIds: previouslyClearedIds,
-		})
+		// Both carry-overs together decide: checking reasoning alone would trim new blocks
+		// while the carried tool results already cover the overflow.
+		const carried = select(0, 0)
+		const { reasoning, mc } =
+			carried.reasoning.reclaimedChars + carried.mc.reclaimedChars >= target.needChars
+				? carried
+				: select(target.targetChars, target.needChars)
 		if (mc.clearedCount > 0 || reasoning.keys.length > 0) {
 			microcompacted = true
 			microcompactClearedCount = mc.clearedCount

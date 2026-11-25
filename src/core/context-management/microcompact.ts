@@ -97,23 +97,36 @@ export const MICROCOMPACT_CLEAR_FLOOR_CHARS = 2_000
 export const MICROCOMPACT_PROTECT_MAX_CHARS = 8_000
 
 /**
- * Reclaim this much more than strictly needed.
+ * Low-water mark below the ceiling, as a fraction of the context window.
  *
- * Landing exactly on the threshold means the next turn is over it again and re-selects,
- * moving the sent prefix every turn and defeating prompt caching. Overshooting buys a
- * turn or two of headroom for the cost of a little extra reclaim.
+ * Every pass that selects something new moves the first changed byte of the request back to
+ * an old message, and the provider re-prefills the whole context from there. Reclaiming only
+ * the overflow lands right under the ceiling, so one turn of growth puts the next request over
+ * it again and the next pass selects again: one full re-prefill per turn. Reclaiming this much
+ * extra lets the following turns run on the carried-over selection, with the prefix unchanged,
+ * until growth has used up the headroom.
  */
-export const MICROCOMPACT_TARGET_MARGIN = 1.1
+export const MICROCOMPACT_HEADROOM_FRACTION = 0.1
+
+/** How much a pass must reclaim, in the chars selection works in. */
+export interface MicrocompactTarget {
+	/** The overflow: what gets the request back under the ceiling. */
+	needChars: number
+	/** The overflow plus the headroom: where a pass that selects anything new aims. */
+	targetChars: number
+}
 
 /**
- * Converts "we are N tokens over budget" into the character target selection consumes.
- * Returns 0 when there is no pressure, which selects nothing.
+ * Converts "we are N tokens over the ceiling" into the reclaim selection consumes.
+ * Returns zeros when there is no pressure, which selects nothing.
  */
-export function microcompactTargetChars(tokensOverBudget: number): number {
+export function microcompactTarget(tokensOverBudget: number, contextWindow: number): MicrocompactTarget {
 	if (!Number.isFinite(tokensOverBudget) || tokensOverBudget <= 0) {
-		return 0
+		return { needChars: 0, targetChars: 0 }
 	}
-	return Math.ceil(tokensOverBudget * MICROCOMPACT_TARGET_MARGIN * MICROCOMPACT_CHARS_PER_TOKEN)
+	const needChars = Math.ceil(tokensOverBudget * MICROCOMPACT_CHARS_PER_TOKEN)
+	const headroomChars = Math.ceil(contextWindow * MICROCOMPACT_HEADROOM_FRACTION * MICROCOMPACT_CHARS_PER_TOKEN)
+	return { needChars, targetChars: needChars + headroomChars }
 }
 
 /**
@@ -154,6 +167,12 @@ export interface MicrocompactSelectionOptions {
 	 * possible. Omit (or pass Infinity) to clear everything eligible.
 	 */
 	targetChars?: number
+	/**
+	 * Characters that must be reclaimed even at the cost of releasing importance protection.
+	 * Defaults to `targetChars`. Critical facts are released to stay out of the lossy condense,
+	 * not to buy headroom.
+	 */
+	needChars?: number
 	/**
 	 * Ids cleared on a PREVIOUS request. Always kept cleared, so the sent prefix only ever
 	 * grows: a set that shrinks between turns would move the first changed position
@@ -298,10 +317,10 @@ function isAlreadyCleared(block: Anthropic.Messages.ToolResultBlockParam): boole
  * "cleared" to "kept". The worst case is therefore always LESS reclaim, never lost data —
  * and even a cleared result is only stripped from the outgoing copy, never from storage.
  *
- * 1. `minKeep`   — the newest results are off limits (immediate working set).
- * 2. `clearFloorChars` — results too small for clearing to pay for its own placeholder.
- * 3. `protectMaxChars` — critical results stay raw while they are small enough to be worth
- *    the space, releasing only if the target cannot be met without them. Releasing is the
+ * 1. `minKeep`: the newest results are off limits (immediate working set).
+ * 2. `clearFloorChars`: results too small for clearing to pay for its own placeholder.
+ * 3. `protectMaxChars`: critical results stay raw while they are small enough to be worth
+ *    the space, releasing only if `needChars` cannot be met without them. Releasing is the
  *    lesser evil: falling short here hands the whole conversation to the lossy condense.
  */
 export function selectMicrocompactTargets(
@@ -309,6 +328,7 @@ export function selectMicrocompactTargets(
 	options: MicrocompactSelectionOptions = {},
 ): MicrocompactSelection {
 	const targetChars = options.targetChars ?? Number.POSITIVE_INFINITY
+	const needChars = options.needChars ?? targetChars
 	const minKeep = Math.max(0, options.minKeep ?? MICROCOMPACT_MIN_KEEP)
 	// Never accept a floor below the placeholder's own length — clearing at that size is
 	// pure loss with zero reclaim.
@@ -342,7 +362,7 @@ export function selectMicrocompactTargets(
 	let protectedCount = 0
 	let releasedProtectedCount = 0
 
-	// Pass 1 — honour importance protection.
+	// Pass 1: honour importance protection.
 	for (const candidate of eligible) {
 		if (reclaimedChars >= targetChars) {
 			break
@@ -357,10 +377,10 @@ export function selectMicrocompactTargets(
 		take(candidate)
 	}
 
-	// Pass 2 — still short, so release protection (the floor and `minKeep` still hold).
-	if (reclaimedChars < targetChars) {
+	// Pass 2: short of the need, so release protection (the floor and `minKeep` still hold).
+	if (reclaimedChars < needChars) {
 		for (const candidate of eligible) {
-			if (reclaimedChars >= targetChars) {
+			if (reclaimedChars >= needChars) {
 				break
 			}
 			if (clearIds.has(candidate.toolUseId) || candidate.chars < clearFloorChars) {
@@ -444,6 +464,7 @@ export function microcompactToolResults(messages: ApiMessage[], options: Microco
 
 	const selection = selectMicrocompactTargets(candidates, {
 		targetChars: options.targetChars,
+		needChars: options.needChars,
 		alreadyCleared: options.alreadyClearedToolUseIds,
 		minKeep: options.minKeep,
 		clearFloorChars: options.clearFloorChars,
