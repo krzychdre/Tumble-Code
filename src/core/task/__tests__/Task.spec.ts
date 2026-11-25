@@ -631,7 +631,9 @@ describe("Task request cycle", () => {
 			})
 			task.apiConversationHistory = [
 				{ role: "user", content: [{ type: "text", text: "task" }], ts: 999 },
-				...Array.from({ length: 8 }, (_, i) => readFilePair(i)).flat(),
+				// Enough old results that the first forced pass, which reclaims the overflow plus
+				// the headroom, leaves some for a second one.
+				...Array.from({ length: 16 }, (_, i) => readFilePair(i)).flat(),
 				{ role: "user", content: [{ type: "text", text: "continue" }], ts: 2000 },
 			]
 			// 78% of the window: under the user's thresholds, so the rejected request went out
