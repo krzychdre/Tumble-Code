@@ -373,7 +373,7 @@ describe("BackgroundTaskRunner.awaitTaskCompletion ordering", () => {
 		const task = await started(runner)
 		task.clineMessages.push(
 			{ type: "say", say: "completion_result", text: "first" },
-			{ type: "say", say: "text", text: "between" },
+			{ type: "say", say: "user_feedback", text: "stop for today" },
 			{ type: "say", say: "completion_result", text: "saved 2" },
 		)
 		const pending = runner.awaitTaskCompletion(task as never)
@@ -384,6 +384,7 @@ describe("BackgroundTaskRunner.awaitTaskCompletion ordering", () => {
 			completed: true,
 			lastMessage: "saved 2",
 			writtenPaths: [path.resolve("/work", "notes/a.md"), "/abs/b.md"],
+			notes: expect.stringContaining("<user_message>\nstop for today\n</user_message>"),
 		})
 		expect(runner.getBackgroundTask(task.taskId)).toBeUndefined()
 		expect(events).toEqual([

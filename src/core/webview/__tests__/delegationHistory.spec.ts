@@ -86,14 +86,9 @@ describe("hasToolResultFor", () => {
 
 describe("formatSubtaskResult", () => {
 	it.each([
-		{ childTaskId: "child-1", summary: "All done", expected: "Subtask child-1 completed.\n\nResult:\nAll done" },
-		{ childTaskId: "c", summary: "", expected: "Subtask c completed.\n\nResult:\n" },
-		{
-			childTaskId: "c2",
-			summary: "line 1\nline 2",
-			expected: "Subtask c2 completed.\n\nResult:\nline 1\nline 2",
-		},
-	])("formats $childTaskId", ({ childTaskId, summary, expected }) => {
-		expect(formatSubtaskResult(childTaskId, summary)).toBe(expected)
+		{ notes: "", expected: "Subtask c1 completed.\n\nResult:\nAll done" },
+		{ notes: "The user wrote...", expected: "Subtask c1 completed.\n\nResult:\nAll done\n\nThe user wrote..." },
+	])("formats a result with notes $notes", ({ notes, expected }) => {
+		expect(formatSubtaskResult("c1", "All done", notes)).toBe(expected)
 	})
 })

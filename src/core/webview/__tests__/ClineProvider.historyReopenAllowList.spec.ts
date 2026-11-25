@@ -305,6 +305,7 @@ describe("Reopening a task from history obeys the organization allow list (DEF-C
 				parentTaskId: "parent",
 				childTaskId: "child",
 				completionResultSummary: "done",
+				notes: "",
 			}),
 		).resolves.toBe(true)
 

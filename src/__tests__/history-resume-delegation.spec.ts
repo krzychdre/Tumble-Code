@@ -72,6 +72,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 			parentTaskId: "parent-1",
 			childTaskId: "child-1",
 			completionResultSummary: "Child done",
+			notes: "",
 		})
 
 		// Assert: metadata updated BEFORE createTaskWithHistoryItem
@@ -139,6 +140,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 			parentTaskId: "p1",
 			childTaskId: "c1",
 			completionResultSummary: "Subtask completed successfully",
+			notes: "",
 		})
 
 		// Verify UI history injection (say: subtask_result)
@@ -234,6 +236,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 			parentTaskId: "p-tool",
 			childTaskId: "c-tool",
 			completionResultSummary: "Subtask completed via tool_result",
+			notes: "The user wrote to this subtask",
 		})
 
 		// Verify API history injection uses tool_result (not text fallback)
@@ -246,7 +249,9 @@ describe("History resume delegation - parent metadata transitions", () => {
 							expect.objectContaining({
 								type: "tool_result",
 								tool_use_id: "toolu_abc123",
-								content: expect.stringContaining("Subtask c-tool completed"),
+								content: expect.stringMatching(
+									/^Subtask c-tool completed[\s\S]*The user wrote to this subtask$/,
+								),
 							}),
 						]),
 					}),
@@ -304,6 +309,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 			parentTaskId: "p-no-tool",
 			childTaskId: "c-no-tool",
 			completionResultSummary: "Subtask completed without tool_use",
+			notes: "",
 		})
 
 		const apiCall = vi.mocked(saveApiMessages).mock.calls[0][0]
@@ -353,6 +359,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 			parentTaskId: "parent-2",
 			childTaskId: "child-2",
 			completionResultSummary: "Done",
+			notes: "",
 		})
 
 		// Critical: verify skipPrevResponseIdOnce set to true by resumeAfterDelegation
@@ -395,6 +402,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 			parentTaskId: "p3",
 			childTaskId: "c3",
 			completionResultSummary: "Summary",
+			notes: "",
 		})
 
 		// Verify both events emitted
@@ -470,6 +478,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 				parentTaskId: "parent-rpd06",
 				childTaskId: "child-rpd06",
 				completionResultSummary: "Subtask finished despite overwrite failures",
+				notes: "",
 			}),
 		).resolves.toBe(true)
 
@@ -525,6 +534,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 			parentTaskId: "p4",
 			childTaskId: "c4",
 			completionResultSummary: "S",
+			notes: "",
 		})
 
 		// CRITICAL: verify legacy pause/unpause events NOT emitted
@@ -587,6 +597,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 			parentTaskId: "parent-rpd02",
 			childTaskId: "child-rpd02",
 			completionResultSummary: "Child done without being current",
+			notes: "",
 		})
 
 		expect(clearCurrentTask).not.toHaveBeenCalled()
@@ -664,6 +675,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 				parentTaskId: "parent-rpd04",
 				childTaskId: "child-rpd04",
 				completionResultSummary: "Child completion with persistence failure",
+				notes: "",
 			}),
 		).resolves.toBe(true)
 
@@ -718,6 +730,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 				parentTaskId: "p5",
 				childTaskId: "c5",
 				completionResultSummary: "Result",
+				notes: "",
 			}),
 		).resolves.toBe(true)
 

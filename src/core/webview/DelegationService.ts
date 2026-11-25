@@ -468,8 +468,10 @@ export class DelegationService {
 		parentTaskId: string
 		childTaskId: string
 		completionResultSummary: string
+		/** What the parent reads besides the child's report (childReportNotes). */
+		notes: string
 	}): Promise<boolean> {
-		const { parentTaskId, childTaskId, completionResultSummary } = params
+		const { parentTaskId, childTaskId, completionResultSummary, notes } = params
 		const globalStoragePath = this.host.contextProxy.globalStorageUri.fsPath
 
 		// 1) Load parent from history and current persisted messages
@@ -530,7 +532,7 @@ export class DelegationService {
 
 		// Find the tool_use_id from the last assistant message's new_task tool_use
 		const toolUseId = findLastNewTaskToolUse(parentApiMessages)?.toolUseId
-		const subtaskResultText = formatSubtaskResult(childTaskId, completionResultSummary)
+		const subtaskResultText = formatSubtaskResult(childTaskId, completionResultSummary, notes)
 
 		// Preferred: if the parent history contains the native tool_use for new_task,
 		// inject a matching tool_result for the Anthropic message contract:

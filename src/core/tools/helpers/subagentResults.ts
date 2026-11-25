@@ -19,6 +19,8 @@ export interface ParallelSubtaskResult {
 	error?: string
 	/** Worktree + branch removed because nothing reviewable was produced. */
 	cleaned?: boolean
+	/** What the parent reads besides the subagent's own words (childReportNotes); "" or absent for none. */
+	notes?: string
 }
 
 /** A subagent as the parent model knows it: its number in the task and what it was asked to do. */
@@ -65,6 +67,9 @@ export function formatParallelResults(finished: ReadonlyArray<FinishedSubagent>)
 			if (r.message?.trim()) {
 				lines.push("", "Its last message before it stopped:", "", r.message.trim())
 			}
+		}
+		if (r.notes) {
+			lines.push("", r.notes)
 		}
 		lines.push("", "---", "")
 	}

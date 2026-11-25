@@ -362,6 +362,7 @@ describe("DelegationService transition table", () => {
 					parentTaskId: "p",
 					childTaskId: "c1",
 					completionResultSummary: "result",
+					notes: "",
 				}),
 			).resolves.toBe(returns)
 
@@ -390,7 +391,7 @@ describe("DelegationService transition table", () => {
 			service.cancelledChildIds.add("c1")
 
 			await expect(
-				service.complete({ parentTaskId: "p", childTaskId: "c1", completionResultSummary: "r" }),
+				service.complete({ parentTaskId: "p", childTaskId: "c1", completionResultSummary: "r", notes: "" }),
 			).resolves.toBe(false)
 		})
 	})
@@ -424,7 +425,7 @@ describe("DelegationService transition table", () => {
 		expect(delegationState(store.get("p"))).toMatchObject({ status: "delegated", awaitingChildId: "c1" })
 
 		await expect(
-			service.complete({ parentTaskId: "p", childTaskId: "c1", completionResultSummary: "r" }),
+			service.complete({ parentTaskId: "p", childTaskId: "c1", completionResultSummary: "r", notes: "" }),
 		).resolves.toBe(true)
 		expect(store.get("p")).toMatchObject({ status: "active", awaitingChildId: undefined, completedByChildId: "c1" })
 		expect(store.get("c1")?.status).toBe("completed")
@@ -494,6 +495,7 @@ describe("DelegationService with tasks working off screen", () => {
 				parentTaskId: "p",
 				childTaskId: "c1",
 				completionResultSummary: "r",
+				notes: "",
 			}),
 		).resolves.toBe(true)
 
@@ -522,6 +524,7 @@ describe("DelegationService with tasks working off screen", () => {
 			parentTaskId: "p",
 			childTaskId: "c1",
 			completionResultSummary: "r",
+			notes: "",
 		})
 
 		// Closing the view saves the parent with its old status; "active" must come after.
