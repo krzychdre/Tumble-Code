@@ -195,4 +195,36 @@ describe("InputFooter", () => {
 			expect(lastFrame()).not.toContain("offline")
 		})
 	})
+
+	describe("code index status", () => {
+		const status = (systemStatus: string, processedItems = 0, totalItems = 0) => ({
+			systemStatus,
+			processedItems,
+			totalItems,
+		})
+
+		it.each([
+			["Indexing", 3, 4, "◐ index 75%"],
+			["Indexing", 0, 0, "◐ index"],
+			["Indexed", 0, 0, "● index"],
+			["Error", 0, 0, "✗ index"],
+			["Stopping", 0, 0, "○ index stopping"],
+		])("shows %s (%i of %i) as %s, first on the right", (systemStatus, processed, total, segment) => {
+			const { lastFrame } = render(
+				<InputFooter
+					mode="code"
+					cloud={{ signedIn: true, remoteControl: "connected" }}
+					codeIndex={status(systemStatus, processed, total)}
+				/>,
+			)
+			const frame = lastFrame() ?? ""
+			expect(frame).toContain(segment)
+			expect(frame.indexOf("index")).toBeLessThan(frame.indexOf("cloud"))
+		})
+
+		it("shows nothing while the index is off, not even a separator", () => {
+			const off = render(<InputFooter mode="code" codeIndex={status("Standby")} />).lastFrame()
+			expect(off).toBe(render(<InputFooter mode="code" />).lastFrame())
+		})
+	})
 })

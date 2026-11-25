@@ -1,6 +1,8 @@
 import { memo, type ReactNode } from "react"
 import { Box, Text } from "ink"
 
+import type { IndexingStatus } from "@tumble-code/types"
+
 import type { PermissionMode } from "../../../lib/utils/permissions.js"
 import * as theme from "../../theme.js"
 import type { Toast } from "../../hooks/useToast.js"
@@ -33,6 +35,8 @@ interface InputFooterProps {
 	cost?: number
 	/** Cloud session and bridge; shown only when signed in (UI plan §4) */
 	cloud?: CloudStatus | null
+	/** The code index of the workspace; shown unless the index is off */
+	codeIndex?: IndexingStatus | null
 }
 
 /**
@@ -56,6 +60,36 @@ function CloudSegment({ cloud }: { cloud: CloudStatus }) {
 			return <Text color={theme.warning}>○ cloud offline</Text>
 		case "off":
 			return <Text dimColor>○ cloud</Text>
+	}
+}
+
+/**
+ * The code index segment, or null while the index is off (Standby): `◐ index
+ * 42%` while it indexes (the share of the current batch), `● index` once the
+ * workspace is indexed, `✗ index` in the error colour.
+ */
+function CodeIndexSegment({ status }: { status: IndexingStatus }) {
+	switch (status.systemStatus) {
+		case "Indexing":
+			return (
+				<Text dimColor>
+					◐ index
+					{status.totalItems > 0 ? ` ${Math.floor((status.processedItems / status.totalItems) * 100)}%` : ""}
+				</Text>
+			)
+		case "Indexed":
+			return (
+				<Text>
+					<Text color={theme.success}>●</Text>
+					<Text dimColor> index</Text>
+				</Text>
+			)
+		case "Error":
+			return <Text color={theme.error}>✗ index</Text>
+		case "Stopping":
+			return <Text dimColor>○ index stopping</Text>
+		default:
+			return null
 	}
 }
 
@@ -109,6 +143,7 @@ function InputFooter({
 	contextWindow,
 	cost,
 	cloud,
+	codeIndex,
 }: InputFooterProps) {
 	let leftHint: ReactNode
 	if (toast) {
@@ -125,7 +160,12 @@ function InputFooter({
 
 	const rightParts: ReactNode[] = []
 	let added = false
+	if (codeIndex && codeIndex.systemStatus !== "Standby") {
+		rightParts.push(<CodeIndexSegment key="codeIndex" status={codeIndex} />)
+		added = true
+	}
 	if (cloud?.signedIn) {
+		if (added) rightParts.push(<DimDot key="sep-cloud" />)
 		rightParts.push(<CloudSegment key="cloud" cloud={cloud} />)
 		added = true
 	}

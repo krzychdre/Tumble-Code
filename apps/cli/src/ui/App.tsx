@@ -107,6 +107,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		currentTodos,
 		mcpServers,
 		cloudStatus,
+		codeIndexStatus,
 		turnStartedAt,
 		stepStartedAt,
 		stepCountedAt,
@@ -155,7 +156,15 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 	const { rows: terminalRows, columns: terminalColumns } = useTerminalSize()
 
 	// Toast notifications for ephemeral messages (e.g., mode changes).
-	const { currentToast, showInfo, showWarning } = useToast()
+	const { currentToast, showInfo, showWarning, showError } = useToast()
+
+	// The footer only shows that the code index failed; the toast says why, once per message.
+	const codeIndexError = codeIndexStatus?.systemStatus === "Error" ? codeIndexStatus.message : undefined
+	useEffect(() => {
+		if (codeIndexError) {
+			showError(`Code index: ${codeIndexError}`)
+		}
+	}, [codeIndexError, showError])
 
 	const transcript = useTranscriptSink({
 		nonInteractive: permissionMode === "allow",
@@ -574,6 +583,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 						contextWindow={contextWindow}
 						cost={footerCost}
 						cloud={cloudStatus}
+						codeIndex={codeIndexStatus}
 						toast={currentToast}
 						exitHint={showExitHint ? "Press Ctrl+C again to exit" : null}
 						accentPrompt={showFollowupCustomInput}

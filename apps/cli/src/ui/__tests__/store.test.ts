@@ -202,6 +202,19 @@ describe("useCLIStore", () => {
 		})
 	})
 
+	describe("codeIndexStatus", () => {
+		it("starts unknown and survives both resets: the index belongs to the workspace, not to a task", () => {
+			expect(useCLIStore.getState().codeIndexStatus).toBeNull()
+			const status = { systemStatus: "Indexed", processedItems: 0, totalItems: 0 }
+
+			useCLIStore.getState().setCodeIndexStatus(status)
+			useCLIStore.getState().reset()
+			useCLIStore.getState().resetForTaskSwitch()
+
+			expect(useCLIStore.getState().codeIndexStatus).toEqual(status)
+		})
+	})
+
 	describe("mcpServers", () => {
 		it("survives both resets: the servers belong to the process, not to a task", () => {
 			const servers = [{ name: "s", config: "{}", status: "connected" as const }]

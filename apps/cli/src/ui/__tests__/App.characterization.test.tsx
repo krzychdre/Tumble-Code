@@ -31,6 +31,7 @@ import { FOLLOWUP_TIMEOUT_SECONDS } from "../../types/constants.js"
 import { App, type TUIAppProps } from "../App.js"
 import { useCLIStore } from "../store.js"
 import { useUIStateStore } from "../stores/uiStateStore.js"
+import { useToastStore } from "../hooks/useToast.js"
 
 // ink-testing-library renders in ink's debug mode, which writes the whole
 // `<Static>` output and the dynamic tail as one string, so a frame alone
@@ -237,8 +238,10 @@ describe("App characterization (recorded message sequences)", () => {
 		// CI render the same frames. ink-testing-library itself is 100 wide.
 		Object.defineProperty(process.stdout, "columns", { value: 100, configurable: true })
 		Object.defineProperty(process.stdout, "rows", { value: 40, configurable: true })
-		useCLIStore.getState().reset()
+		// Process-wide state (code index, cloud, MCP servers) survives reset(): start each test from scratch.
+		useCLIStore.setState(useCLIStore.getInitialState())
 		useUIStateStore.setState(useUIStateStore.getInitialState())
+		useToastStore.setState(useToastStore.getInitialState())
 		staticRegion.last = []
 	})
 
@@ -267,6 +270,27 @@ describe("App characterization (recorded message sequences)", () => {
 
 		expect(h.frames[0]!.frame).not.toContain("architect")
 		expect(h.frames.at(-1)!.frame).toContain("architect")
+		h.unmount()
+	})
+
+	it("shows the code index in the footer, and why it failed in a toast", async () => {
+		const h = await start()
+		const indexing = (systemStatus: string, processedItems: number, totalItems: number, message = "") =>
+			({ type: "indexingStatusUpdate", values: { systemStatus, processedItems, totalItems, message } }) as never
+
+		await h.emit("indexing", indexing("Indexing", 1, 2))
+		expect(h.frames.at(-1)!.frame).toContain("◐ index 50%")
+
+		await h.emit("failed", indexing("Error", 0, 0, "Failed during initial scan: Qdrant is unreachable"))
+		expect(h.frames.at(-1)!.frame).toContain("✗ Code index: Failed during initial scan")
+
+		// Once the toast is gone, the footer keeps the error mark.
+		await act(async () => {
+			vi.advanceTimersByTime(5_000)
+		})
+		await h.snap("toast gone")
+		expect(h.frames.at(-1)!.frame).toContain("✗ index")
+		expect(h.frames.at(-1)!.frame).not.toContain("Qdrant is unreachable")
 		h.unmount()
 	})
 
