@@ -129,20 +129,6 @@ async def unshare_task(db: AsyncSession, task_id: str, user_id: str) -> bool:
     return result.rowcount > 0
 
 
-async def delete_shared_task(
-    db: AsyncSession,
-    task_id: str,
-    user_id: str,
-) -> bool:
-    """Permanently remove a task and everything hanging off it from the DB.
-
-    Returns True when the task existed and was owned by ``user_id`` (and is now
-    gone), False otherwise — so an unknown id or another user's task is a safe
-    no-op, never a leak or an error.
-    """
-    return await delete_tasks(db, [task_id], user_id) == 1
-
-
 async def delete_tasks(
     db: AsyncSession,
     task_ids: list[str],

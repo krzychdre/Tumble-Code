@@ -1,8 +1,8 @@
 /*
  * The task list: selection (checkboxes, shift-click ranges, the bulk action
  * bar), folding the run tree and the groups (and remembering what was left
- * open), the density preference, select mode, and the filter form's live
- * results.
+ * open), the density preference, select mode, the filter form's live
+ * results, a row's delete dialog, and the live "Needs your attention" strip.
  *
  * Progressive enhancement. The form and every button work without this file:
  * the bar starts hidden and is only revealed here, so with scripting off the
@@ -15,7 +15,12 @@
  *
  * Confirmations are attached here rather than as inline `onsubmit` handlers so
  * the page needs no inline script, and so the bulk confirmation can state the
- * real count instead of a fixed sentence.
+ * real count instead of a fixed sentence. A row's delete opens the page's
+ * dialog, which says what goes and posts to that row's endpoint.
+ *
+ * The strip is fetched again (/app/attention) whenever the bridge tells this
+ * user's browsers that their running or waiting tasks changed, and the rows
+ * follow it: their state, their pill and whether they may be deleted.
  */
 ;(function () {
 	"use strict"
@@ -311,29 +316,11 @@
 
 		refreshExpandAll()
 
-		// --- confirmations -------------------------------------------------------
+		// --- confirmation -------------------------------------------------------
 
-		// The per-row button posts to its own endpoint via formaction, so it must
-		// confirm for itself; the submit listener below would otherwise ask the bulk
-		// question for a single-row delete.
-		form.addEventListener("click", function (e) {
-			var btn = e.target.closest("[data-confirm]")
-			if (!btn) return
-			if (!window.confirm(btn.getAttribute("data-confirm"))) {
-				e.preventDefault()
-			} else {
-				btn.setAttribute("data-confirmed", "1")
-			}
-		})
-
+		// A row's own delete never submits this form with scripting on (it opens
+		// the dialog instead, see bindDeleteDialog), so a submission is the bulk one.
 		form.addEventListener("submit", function (e) {
-			var submitter = e.submitter
-			if (submitter && submitter.hasAttribute("data-confirm")) {
-				// Already answered in the click handler above.
-				submitter.removeAttribute("data-confirmed")
-				return
-			}
-
 			var n = selected().length
 			if (n === 0) {
 				e.preventDefault()
@@ -453,5 +440,117 @@
 		})
 	}
 
+	// --- a row's delete: the dialog ---------------------------------------------
+
+	function plural(n, word) {
+		return n + " " + word + (n === 1 ? "" : "s")
+	}
+
+	// Bound once: the dialog is outside the swapped regions, and the click is
+	// caught on the document so rows swapped in later need nothing.
+	function bindDeleteDialog() {
+		var dialog = document.getElementById("delete-dialog")
+		if (!dialog) return
+		var dialogForm = document.getElementById("delete-dialog-form")
+		var wrap = document.getElementById("delete-dialog-subtasks-wrap")
+		var include = wrap.querySelector("input")
+
+		document.addEventListener("click", function (e) {
+			var btn = e.target.closest("#bulk-form button.btn-delete")
+			if (!btn) return
+			e.preventDefault()
+			var subtasks = Number(btn.getAttribute("data-subtasks"))
+			dialogForm.setAttribute("action", btn.getAttribute("formaction"))
+			document.getElementById("delete-dialog-what").textContent = btn.getAttribute("data-title")
+			document.getElementById("delete-dialog-messages").textContent = plural(
+				Number(btn.getAttribute("data-messages")),
+				"message",
+			)
+			document.getElementById("delete-dialog-subtasks").textContent = plural(subtasks, "subtask")
+			// Unticked as well as hidden when there is nothing under it, so it never posts.
+			wrap.hidden = subtasks === 0
+			include.checked = subtasks > 0
+			dialog.showModal()
+		})
+		document.getElementById("delete-dialog-cancel").addEventListener("click", function () {
+			dialog.close()
+		})
+	}
+
+	// --- the live strip -----------------------------------------------------------
+
+	var STOP_FIRST = "Stop the task before deleting it"
+
+	// Rows follow the strip: a task on it is live, any other falls back to the
+	// state it was rendered with (data-rest). Mirrors templates/tasks_list.html.
+	function syncRows() {
+		var live = {}
+		Array.prototype.slice.call(document.querySelectorAll("#attention .attention-card")).forEach(function (card) {
+			live[card.getAttribute("data-task-id")] = card
+		})
+		Array.prototype.slice.call(document.querySelectorAll(".task-node[data-task-id]")).forEach(function (node) {
+			var card = live[node.getAttribute("data-task-id")]
+			node.setAttribute("data-state", card ? card.getAttribute("data-state") : node.getAttribute("data-rest"))
+			var title = node.querySelector(":scope > .task-item .cell-title")
+			var pill = title.querySelector(":scope > .state-pill")
+			if (pill) pill.remove()
+			if (card) title.insertBefore(card.querySelector(".state-pill").cloneNode(true), title.firstChild)
+			var holder = node.querySelector(":scope > .task-item .task-delete")
+			var btn = holder.querySelector(".btn-delete")
+			btn.disabled = !!card
+			if (card) {
+				holder.title = STOP_FIRST
+				btn.removeAttribute("title")
+			} else {
+				holder.removeAttribute("title")
+				btn.title = "Delete task"
+			}
+		})
+	}
+
+	var stripGeneration = 0
+
+	function refreshStrip() {
+		var mine = ++stripGeneration
+		window
+			.fetch("/app/attention", { credentials: "same-origin", headers: { Accept: "text/html" } })
+			.then(function (response) {
+				if (!response.ok) throw new Error("HTTP " + response.status)
+				return response.text()
+			})
+			.then(function (html) {
+				if (mine !== stripGeneration) return
+				var next = new DOMParser().parseFromString(html, "text/html").getElementById("attention")
+				var current = document.getElementById("attention")
+				// The sign-in page once the session ended: keep what is shown.
+				if (!next || !current) return
+				current.replaceWith(document.importNode(next, true))
+				syncRows()
+			})
+			.catch(function () {
+				// Kept as it is; the next change tries again.
+			})
+	}
+
+	function bindLive() {
+		var cfgEl = document.getElementById("list-live-config")
+		if (!cfgEl || typeof io === "undefined") return
+		var cfg = JSON.parse(cfgEl.textContent)
+		var socket = io(window.location.origin, {
+			path: cfg.bridgePath,
+			withCredentials: true,
+			transports: ["websocket", "polling"],
+		})
+		var connected = false
+		socket.on("connect", function () {
+			// A reconnect may have missed changes; the first connect has the page.
+			if (connected) refreshStrip()
+			connected = true
+		})
+		socket.on("user:tasks_changed", refreshStrip)
+	}
+
 	bindList()
+	bindDeleteDialog()
+	bindLive()
 })()

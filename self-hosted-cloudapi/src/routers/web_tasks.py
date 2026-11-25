@@ -14,6 +14,7 @@ from starlette.datastructures import QueryParams
 from config.settings import settings
 from src.auth.web_session import cookie_should_be_secure
 from src.models.task import Task, TaskShare
+from src.realtime.hub import registry
 from src.routers.web_page import (
     WebPage,
     not_found_page,
@@ -23,11 +24,7 @@ from src.routers.web_page import (
 from src.routers.task_images import TS_MAX, TS_MIN, image_response
 from src.services.client_kind import CLIENT_LABELS
 from src.services.recall_cards import rebuild_card
-from src.services.share_service import (
-    delete_shared_task,
-    delete_tasks,
-    unshare_task,
-)
+from src.services.share_service import delete_tasks, unshare_task
 from src.services.task_access import share_expired, task_owner
 from src.services.task_images import load_task_image
 from src.services.task_summary import derive_title
@@ -42,6 +39,7 @@ from src.web.presenters.task_detail import (
     _tree_entry,
     conversation_json,
 )
+from src.web.presenters.live_tasks import attention_items, live_states
 from src.web.presenters.task_list import ListView, list_page
 from src.web.presenters.task_rows import _workspace_label
 
@@ -106,6 +104,8 @@ async def task_list(
         else QueryParams(request.cookies.get(VIEW_COOKIE, ""))
     )
     view = ListView.parse(**{name: source.get(name) for name in _VIEW_FIELDS})
+    user_id = web["user"]["user_id"]
+    snapshots = registry.live_tasks(user_id)
     response = render_page(
         request,
         web,
@@ -116,13 +116,18 @@ async def task_list(
         scope=view.scope,
         # What the empty state tells the reader to point the extension at.
         api_url=settings.api_base_url,
+        attention=await attention_items(web["db"], user_id, snapshots),
+        live_config_json=json_for_script({"bridgePath": settings.bridge_path})
+        if settings.bridge_enabled
+        else None,
         **await list_page(
             web["db"],
             view,
-            web["user"]["user_id"],
+            user_id,
             web["user"]["email"],
             web["zone"],
             page,
+            live_states(snapshots),
         ),
     )
     if explicit:
@@ -136,6 +141,25 @@ async def task_list(
             path="/app",
         )
     return response
+
+
+@router.get("/app/attention", response_class=HTMLResponse)
+async def attention_strip(
+    request: Request,
+    web: WebPage = Depends(require_web_page),
+):
+    """The list's "Needs your attention" strip alone: what the list page
+    fetches again when the bridge says the reader's live tasks changed."""
+    user_id = web["user"]["user_id"]
+    return render_page(
+        request,
+        web,
+        "_attention.html",
+        "tasks",
+        attention=await attention_items(
+            web["db"], user_id, registry.live_tasks(user_id)
+        ),
+    )
 
 
 @router.get("/app/tasks/{task_id}", response_class=HTMLResponse)
@@ -242,15 +266,23 @@ async def task_image(
 @router.post("/app/tasks/{task_id}/delete")
 async def delete_task(
     task_id: str,
+    request: Request,
     web: WebPage = Depends(require_web_page),
 ):
-    """Permanently delete a task the user owns (row + messages + share).
+    """Permanently delete a task the user owns (row + messages + share), with
+    ``include_subtasks=1`` its whole subtree too.
 
     Owner-only; a non-owner / unknown id is a silent no-op (see
-    ``delete_shared_task``). Always redirects back to the task list, so the
-    POST is idempotent and refresh-safe.
+    ``delete_tasks``). Always redirects back to the task list, which opens on
+    the view last looked at, so the POST is idempotent and refresh-safe.
     """
-    await delete_shared_task(web["db"], task_id, web["user"]["user_id"])
+    form = await request.form()
+    await delete_tasks(
+        web["db"],
+        [task_id],
+        web["user"]["user_id"],
+        include_subtasks=form.get("include_subtasks") == "1",
+    )
     return RedirectResponse(url="/app", status_code=303)
 
 

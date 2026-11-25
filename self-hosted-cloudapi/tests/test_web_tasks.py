@@ -2074,6 +2074,39 @@ async def test_bulk_delete_can_include_the_whole_subtree(
     )
 
 
+@pytest.mark.parametrize(
+    "form, left",
+    [
+        ({}, {"mid", "leaf", "unrelated"}),
+        ({"include_subtasks": "1"}, {"unrelated"}),
+    ],
+    ids=["alone", "with-subtasks"],
+)
+async def test_a_rows_delete_takes_its_subtree_only_when_asked(
+    client, db_session, session_factory, form, left
+):
+    """The list's delete dialog ticks "Also delete its subtasks" by default;
+    without it (or without scripting) the subtasks survive as runs."""
+    await _seed_user(db_session)
+    await _seed_tasks(
+        session_factory,
+        ("root", "user_test", None),
+        ("mid", "user_test", "root"),
+        ("leaf", "user_test", "mid"),
+        ("unrelated", "user_test", None),
+    )
+
+    _override_web_user(client.app)
+    try:
+        resp = client.post("/app/tasks/root/delete", data=form, follow_redirects=False)
+    finally:
+        client.app.dependency_overrides.pop(get_web_user_optional, None)
+
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/app"
+    assert await _remaining(session_factory) == left
+
+
 async def test_bulk_delete_reaches_below_twenty_levels(db_session, session_factory):
     """The walk stopped at 20 levels, so deleting a 90-level vision chain would
     have left 71 subtasks behind as orphaned runs."""

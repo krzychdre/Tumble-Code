@@ -26,6 +26,47 @@ from typing import Optional, TypedDict
 # (TaskBridgeEventName.InstanceState).
 EVT_INSTANCE_STATE = "instanceState"
 
+# Asks the task stops on until the user acts: the interactive ones
+# (interactiveAsks, packages/types/src/message.ts) and the idle ones the task
+# page offers a button for (Retry, Proceed, Reset).
+WAITING_ASKS = (
+    "followup",
+    "command",
+    "tool",
+    "use_mcp_server",
+    "api_req_failed",
+    "mistake_limit_reached",
+    "auto_approval_max_req_reached",
+)
+
+LIVE_RUNNING = "running"
+LIVE_WAITING = "waiting"
+
+
+def live_state(snapshot: dict) -> Optional[str]:
+    """What a task's snapshot says it is doing: waiting on the user, running,
+    or nothing live (idle, finished, resumable)."""
+    # Sent by the client, so its shape is not ours to trust.
+    ask = snapshot.get("currentAsk")
+    if isinstance(ask, dict) and ask.get("ask") in WAITING_ASKS:
+        return LIVE_WAITING
+    if snapshot.get("isRunning") is True:
+        return LIVE_RUNNING
+    return None
+
+
+def _live_key(snapshot: Optional[dict]) -> tuple:
+    """What the list's live strip shows of a snapshot; a change of it is what
+    the browsers are told about (token counts change far more often)."""
+    if snapshot is None:
+        return (None,)
+    ask = snapshot.get("currentAsk")
+    return (
+        live_state(snapshot),
+        ask.get("ts") if isinstance(ask, dict) else None,
+        snapshot.get("mode"),
+    )
+
 
 class SocketMeta(TypedDict):
     role: str  # "extension" | "browser"
@@ -150,23 +191,37 @@ class ConnectionRegistry:
         if inst is not None:
             inst["lastHeartbeat"] = time.time()
 
-    def note_task_event(self, sid: str, task_id: str, data: dict) -> None:
+    def note_task_event(self, sid: str, task_id: str, data: dict) -> bool:
         """Record that this extension socket streams ``task_id`` (its user owns
         it: call only after the ownership check), and keep the task's latest
-        instanceState snapshot.
+        instanceState snapshot. Returns whether what the live strip shows of
+        the task changed.
 
         The last socket to report a task is the one that runs it now: a task
         moves windows only by being reopened there, and then that window
         streams it.
         """
         if sid not in self._meta:
-            return
+            return False
         self._task_sid[task_id] = sid
-        if data.get("type") == EVT_INSTANCE_STATE:
-            self._task_state[task_id] = dict(data)
-            inst = self._instance_by_sid.get(sid)
-            if inst is not None:
-                inst["lastHeartbeat"] = time.time()
+        if data.get("type") != EVT_INSTANCE_STATE:
+            return False
+        before = _live_key(self._task_state.get(task_id))
+        self._task_state[task_id] = dict(data)
+        inst = self._instance_by_sid.get(sid)
+        if inst is not None:
+            inst["lastHeartbeat"] = time.time()
+        return _live_key(data) != before
+
+    def live_tasks(self, user_id: str) -> dict[str, dict]:
+        """The snapshots of ``user_id``'s tasks that are running or waiting
+        on the user, by task id."""
+        out = {}
+        for task_id, snapshot in self._task_state.items():
+            owner = self._meta[self._task_sid[task_id]]["user_id"]
+            if owner == user_id and live_state(snapshot):
+                out[task_id] = snapshot
+        return out
 
     def extension_sid(
         self, user_id: str, task_id: Optional[str] = None

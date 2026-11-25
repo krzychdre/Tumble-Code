@@ -40,8 +40,8 @@ from src.services.session_quality import (
     GRADE_UNFINISHED,
 )
 from src.services.task_tree import subtrees
-from src.utils.clientzone import UTC, day_start_utc
-from src.utils.format import fmt_cost, fmt_duration, fmt_int, fmt_tokens
+from src.utils.clientzone import UTC, day_start_utc, local_day, today
+from src.utils.format import fmt_cost, fmt_duration, fmt_int, fmt_tokens, plural
 from src.utils.pagination import paginate
 from src.web.presenters.task_rows import _list_row
 
@@ -436,12 +436,14 @@ async def list_page(
     email: str,
     zone: ZoneInfo,
     page: int,
+    live: dict[str, str],
 ) -> dict:
     """The template context of one page of the list: its rows, the pager and
     the filter suggestions.
 
     ``page`` is clamped to the real pages, so a typed out-of-range number lands
-    on the nearest one.
+    on the nearest one. ``live`` maps the reader's running or waiting tasks to
+    that state.
     """
     filters = view.conditions(user_id, zone)
     projects = await _reader_projects(db, user_id)
@@ -464,7 +466,7 @@ async def list_page(
     if view.grouped:
         return {
             **shared,
-            **await _group_page(db, view, user_id, names, subs, filters, page),
+            **await _group_page(db, view, user_id, names, subs, filters, page, live),
         }
 
     total = await _count(db, *filters)
@@ -482,10 +484,15 @@ async def list_page(
     # One query per tree level for the whole page rather than a lookup per row.
     tree = await subtrees(db, [t.id for t in page_tasks], user_id)
     nest = view.scope == "roots"
+    rows = [_list_row(task, tree, nest, live) for task in page_tasks]
 
     return dict(
         shared,
-        tasks=[_list_row(task, tree, nest) for task in page_tasks],
+        tasks=rows,
+        # Newest first is a timeline, so it reads by day; another order is not.
+        days=await _days(db, view, filters, rows, zone)
+        if view.sort == "updated"
+        else [],
         groups=[],
         tree_view=nest,
         **pager,
@@ -501,6 +508,7 @@ async def _group_page(
     subs: dict,
     filters: list,
     page: int,
+    live: dict[str, str],
 ) -> dict:
     """One page of groups: their totals, and the first GROUP_ROWS tasks of each.
 
@@ -598,7 +606,7 @@ async def _group_page(
                 "updated": g["updated"],
                 # A write between the sums and the ranking can empty a group.
                 "rows": [
-                    _list_row(tasks[task_id], tree, runs)
+                    _list_row(tasks[task_id], tree, runs, live)
                     for task_id in rows.get(g["key"], [])
                 ],
                 "more_url": replace(view, only=g["key"] or NO_KEY).url()
@@ -613,6 +621,55 @@ async def _group_page(
         **pager,
         total=sum(g["count"] for g in groups),
     )
+
+
+async def _days(
+    db: AsyncSession, view: ListView, filters: list, rows: list[dict], zone: ZoneInfo
+) -> list[dict]:
+    """The page's rows under one heading per day of the reader's calendar,
+    each with what the whole day holds (its rows may run onto the next page).
+
+    A day's figures sum what its rows show, as a group's do: under "Runs" a
+    run's cost includes its subtasks, under "All" each task counts its own.
+    """
+    by_day: dict[date, list[dict]] = {}
+    for row in rows:
+        by_day.setdefault(local_day(row["updated_at"], zone), []).append(row)
+    runs = view.scope == "roots"
+    unit = "run" if runs else "task"
+    now = today(zone)
+    out = []
+    for day, day_rows in by_day.items():
+        count, cost = (
+            await db.execute(
+                select(func.count(), func.sum(Task.run_cost if runs else Task.cost))
+                .select_from(Task)
+                .where(
+                    *filters,
+                    Task.updated_at >= day_start_utc(day, zone),
+                    Task.updated_at < day_start_utc(day + timedelta(days=1), zone),
+                )
+            )
+        ).one()
+        out.append(
+            {
+                "label": _day_label(day, now),
+                "count": plural(count, unit),
+                "cost": fmt_cost(cost) if cost else None,
+                "rows": day_rows,
+            }
+        )
+    return out
+
+
+def _day_label(day: date, now: date) -> str:
+    """Today, Yesterday, or the day written out (with its year when not this one)."""
+    if day == now:
+        return "Today"
+    if day == now - timedelta(days=1):
+        return "Yesterday"
+    label = f"{day:%a} {day.day} {day:%b}"
+    return label if day.year == now.year else f"{label} {day.year}"
 
 
 def _group_label(grouping: Grouping, key: Optional[str], names: dict) -> str:

@@ -15,6 +15,7 @@ from src.services.session_quality import quality_of
 from src.services.task_summary import DEFAULT_TITLE
 from src.services.task_tree import Spend, subtree_size, subtree_spend
 from src.utils.format import fmt_cost, fmt_duration, fmt_int, fmt_tokens, plural
+from src.web.presenters.live_tasks import LIVE_LABELS, rest_state
 
 
 def _workspace_label(path: str | None) -> str | None:
@@ -96,15 +97,23 @@ def _spend_fields(task: Task, tree: dict[str, list[Task]]) -> dict:
     return fields
 
 
-def _list_row(task: Task, tree: dict[str, list[Task]], nest: bool) -> dict:
+def _list_row(
+    task: Task, tree: dict[str, list[Task]], nest: bool, live: dict[str, str]
+) -> dict:
     """View-model for one row of the task list.
 
     With ``nest`` the row carries its subtasks as rows of their own, so the run
     view renders the whole delegation tree under each run. The flat view lists
     subtasks as ordinary rows instead, so nesting them there would show each
     one twice.
+
+    ``live`` maps the reader's running or waiting tasks to that state
+    (presenters/live_tasks.live_states).
     """
     kids = tree.get(task.id, [])
+    quality = _quality_fields(task)
+    rest = rest_state(quality["grade"])
+    state = live.get(task.id) or rest
     return {
         "id": task.id,
         "title": task.title or DEFAULT_TITLE,
@@ -125,8 +134,13 @@ def _list_row(task: Task, tree: dict[str, list[Task]], nest: bool) -> dict:
         # direct children the pill counts.
         "descendant_count": subtree_size(tree, task.id),
         "is_subtask": task.parent_task_id is not None,
-        "children": [_list_row(kid, tree, nest) for kid in kids] if nest else [],
-        **_quality_fields(task),
+        "children": [_list_row(kid, tree, nest, live) for kid in kids] if nest else [],
+        **quality,
+        "state": state,
+        # What the row falls back to once it is no longer live (tasklist.js).
+        "rest_state": rest,
+        # A live task's pill; a row that is not live has none.
+        "live_label": LIVE_LABELS.get(state),
     }
 
 

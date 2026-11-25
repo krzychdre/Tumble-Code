@@ -870,32 +870,246 @@ textarea::placeholder {
 	pointer-events: none;
 }
 
-/* Rows carry a left rail instead of a card border. Across 25 rows the rails
-   line up into a single edge, which is far easier to scan than 25 boxes, and
-   the rail is where per-session state lives. */
+/* A task's state, one colour each: the stripe of a run's card, the pill of a
+   live task and the strip's cards all read it from here. The state comes
+   from presenters/task_rows (_list_row). */
+[data-state="running"] {
+	--state: var(--status-run);
+	--state-wash: var(--status-run-wash);
+}
+[data-state="waiting"] {
+	--state: var(--signal-bright);
+	--state-wash: var(--signal-wash);
+}
+[data-state="unfinished"] {
+	--state: var(--d-error);
+	--state-wash: var(--d-error-wash);
+}
+[data-state="done"] {
+	--state: var(--line-strong);
+	--state-wash: transparent;
+}
+.state-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4em;
+	padding: 0 var(--s2);
+	border-radius: var(--r-pill);
+	background: var(--state-wash);
+	color: var(--state);
+	font-family: var(--mono);
+	font-size: var(--t-label);
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: var(--track-caps);
+	line-height: 1.8;
+	white-space: nowrap;
+}
+.state-pill::before {
+	content: "";
+	width: 0.55em;
+	height: 0.55em;
+	border-radius: 50%;
+	background: currentColor;
+}
+[data-state="running"] .state-pill::before {
+	animation: state-pulse 1.4s ease-in-out infinite;
+}
+[data-state="waiting"] .state-pill::before {
+	animation: state-pulse 0.9s ease-in-out infinite;
+}
+@keyframes state-pulse {
+	50% {
+		opacity: 0.25;
+	}
+}
+
+/* Every run is a card of its own, its subtasks inside it on a sunken ground,
+   so where one run ends is seen, not read. The left edge carries its state. */
 .task-list {
 	list-style: none;
 	padding: 0;
 	margin: 0;
-	border-top: 1px solid var(--line);
+	display: flex;
+	flex-direction: column;
+	gap: var(--s2);
+}
+.task-list > .task-node {
+	background: var(--surface-1);
+	border: 1px solid var(--line);
+	border-radius: var(--r-lg);
+	overflow: hidden;
+	box-shadow: inset 4px 0 0 var(--state);
+}
+.task-list > .task-node:hover {
+	border-color: var(--line-strong);
 }
 .task-item {
 	display: flex;
 	align-items: stretch;
-	border-bottom: 1px solid var(--line);
 }
-/* Zebra rows on the runs (not inside a folded tree), so a long row of figures
-   can be followed across to its title. Hover steps one surface further up. */
-.task-list > .task-node:nth-child(even) > .task-item {
-	background: var(--surface-1);
+/* Clear of the state edge; the column headers move with it (.task-head). */
+.task-list > .task-node > .task-item {
+	padding-left: 4px;
 }
-.task-list .task-item:hover,
-.task-list > .task-node:nth-child(even) > .task-item:hover {
+.task-list .task-item:hover {
 	background: var(--surface-2);
 }
-.task-list .task-item.selected,
-.task-list > .task-node:nth-child(even) > .task-item.selected {
+.task-list .task-item.selected {
 	background: var(--signal-wash);
+}
+.task-list > .task-node > .task-children {
+	background: var(--sunken);
+	border-top: 1px solid var(--line);
+}
+.task-children .task-item {
+	border-top: 1px solid var(--line);
+}
+.task-children > .task-node:first-child > .task-item {
+	border-top: none;
+}
+
+/* A day of the newest-first list: its name, then what the whole day holds. */
+.day-sep {
+	display: flex;
+	align-items: center;
+	gap: var(--s3);
+	margin-top: var(--s3);
+	font-family: var(--mono);
+	font-size: var(--t-label);
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: var(--track-caps);
+	color: var(--text-dim);
+}
+.day-sep:first-child {
+	margin-top: 0;
+}
+.day-sep::after {
+	content: "";
+	flex: 1;
+	height: 1px;
+	background: var(--line);
+}
+.day-sum {
+	font-weight: 400;
+	text-transform: none;
+	letter-spacing: 0;
+	color: var(--text-faint);
+}
+
+/* --- needs your attention ------------------------------------------------- */
+
+.attention {
+	margin: 0 0 var(--s5);
+}
+.attention[hidden] {
+	display: none;
+}
+.attention-title {
+	margin: 0 0 var(--s2);
+}
+.attention-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: var(--s2);
+	grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
+}
+.attention-card {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: center;
+	gap: var(--s1) var(--s3);
+	padding: var(--s3) var(--s3) var(--s3) var(--s4);
+	background: var(--surface-1);
+	border: 1px solid var(--line);
+	border-radius: var(--r-lg);
+	box-shadow: inset 4px 0 0 var(--state);
+}
+.attention-card[data-state="waiting"] {
+	background: linear-gradient(90deg, var(--state-wash), var(--surface-1) 60%);
+}
+.attention-top {
+	display: flex;
+	align-items: center;
+	gap: var(--s2);
+	min-width: 0;
+}
+.attention-name {
+	min-width: 0;
+	font-weight: 600;
+	font-size: var(--t-row);
+	color: var(--text);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.attention-sub {
+	grid-column: 1;
+	font-size: var(--t-sm);
+	color: var(--text-dim);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.attention-card > .btn {
+	grid-column: 2;
+	grid-row: 1 / span 2;
+}
+
+/* --- a row's delete dialog -------------------------------------------------- */
+
+dialog.confirm {
+	max-width: min(30rem, calc(100vw - 2 * var(--s4)));
+	padding: var(--s5);
+	color: var(--text);
+	background: var(--surface-1);
+	border: 1px solid var(--line-strong);
+	border-radius: var(--r-lg);
+	box-shadow: var(--shadow-lift);
+}
+dialog.confirm::backdrop {
+	background: var(--shadow-ink);
+}
+dialog.confirm h2 {
+	margin: 0 0 var(--s3);
+	font-size: var(--t-lead);
+}
+dialog.confirm p {
+	margin: 0 0 var(--s3);
+	font-size: var(--t-sm);
+	color: var(--text-dim);
+}
+dialog.confirm .confirm-what {
+	padding: var(--s2) var(--s3);
+	background: var(--sunken);
+	border-radius: var(--r-sm);
+	font-size: var(--t-body);
+	font-weight: 600;
+	color: var(--text);
+	overflow-wrap: anywhere;
+}
+.confirm-option {
+	display: flex;
+	align-items: center;
+	gap: var(--s2);
+	margin-bottom: var(--s4);
+	font-size: var(--t-sm);
+	cursor: pointer;
+}
+.confirm-option[hidden] {
+	display: none;
+}
+.confirm-option input {
+	accent-color: var(--d-error);
+	margin: 0;
+}
+.confirm-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--s2);
 }
 
 /* --- selection ----------------------------------------------------------- */
@@ -1037,6 +1251,10 @@ textarea::placeholder {
 .task-item:hover .task-link::before {
 	background: var(--signal);
 }
+/* A run's card edge already says where it starts. */
+.task-list > .task-node > .task-item .task-link::before {
+	display: none;
+}
 
 .cell-main {
 	display: flex;
@@ -1051,6 +1269,20 @@ textarea::placeholder {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+/* A run's title in the list is what the reader scans for: a step larger, and
+   two lines before it is cut. */
+.task-list > .task-node > .task-item .cell-title {
+	font-size: var(--t-body);
+	font-weight: 600;
+	white-space: normal;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+}
+.cell-title > .state-pill {
+	margin-right: var(--s2);
+	vertical-align: 2px;
 }
 /* Outside the task list (subtask rows, roughest runs) a title is one of
    several facts on a line, so it is set a step quieter. */
@@ -1420,16 +1652,16 @@ a.rough-link:hover {
 	align-items: center;
 	padding-right: var(--s3);
 }
-/* Destructive actions stay out of the way until the row is engaged, but remain
-   reachable by keyboard at all times. */
+/* Quiet but always there: a touch screen has no hover to reveal it. */
 .task-item .btn-delete {
-	color: transparent;
-	border-color: transparent;
-}
-.task-item:hover .btn-delete,
-.task-item .btn-delete:focus-visible {
 	color: var(--text-faint);
 	border-color: var(--line);
+}
+/* A live task: stop it first (the title on its wrapper says so). */
+.task-item .btn-delete:disabled {
+	opacity: 0.35;
+	cursor: not-allowed;
+	pointer-events: none;
 }
 .btn.btn-delete:hover {
 	color: var(--d-error);
@@ -1552,6 +1784,8 @@ a.rough-link:hover {
 	align-items: stretch;
 	background: var(--bg);
 	border-bottom: 1px solid var(--line-strong);
+	/* The rows' card border and state edge, so the columns line up. */
+	padding: 0 1px 0 5px;
 }
 .head-check {
 	flex: none;
@@ -4298,10 +4532,40 @@ table.diag-table th.diag-num {
 		flex-wrap: wrap;
 	}
 
-	/* A row's own Delete took a third of a phone row's width from the title.
-	   Deleting stays one tick and "Delete selected" away (the bulk bar). */
+	/* A run's delete is a thumb-sized target at the card's edge; a subtask's
+	   stays one tick and "Delete selected" away (the bulk bar), so the nested
+	   titles keep their width. */
 	.task-delete {
+		padding-right: var(--s2);
+	}
+	.task-list .btn-delete {
+		width: 40px;
+		height: 40px;
+	}
+	.task-children .task-delete {
 		display: none;
+	}
+	/* The grade shares the title's line here, and a live pill takes its start. */
+	.task-list > .task-node > .task-item .cell-title {
+		-webkit-line-clamp: 3;
+	}
+	.attention-list,
+	.attention-card {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.attention-card > .btn {
+		grid-column: 1;
+		grid-row: auto;
+		justify-content: center;
+		min-height: 44px;
+	}
+	.attention-sub {
+		white-space: normal;
+	}
+	.confirm-actions .btn {
+		flex: 1;
+		justify-content: center;
+		min-height: 44px;
 	}
 	/* The top bar scrolls away here, so the header sticks to the very top. */
 	.task-head {

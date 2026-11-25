@@ -1,0 +1,20 @@
+{# The reader's tasks that run or wait on them (presenters/live_tasks). Served
+   with the list and alone at /app/attention, which tasklist.js fetches again
+   whenever the bridge says this changed. Always present, empty and hidden
+   when nothing is live, so there is one element to replace. #}
+{% if attention %}
+<section id="attention" class="attention" aria-labelledby="attention-title">
+  <h2 class="chart-title attention-title" id="attention-title">Needs your attention <span class="count-pill">{{ attention | length }}</span></h2>
+  <ul class="attention-list">
+    {% for a in attention %}
+    <li class="attention-card" data-task-id="{{ a.id }}" data-state="{{ a.state }}">
+      <span class="attention-top"><span class="state-pill">{{ a.label }}</span><a class="attention-name" href="/app/tasks/{{ a.id }}">{{ a.title }}</a></span>
+      {% if a.summary %}<span class="attention-sub">{{ a.summary }}</span>{% endif %}
+      <a class="btn{{ ' ghost' if a.action == 'Open' else '' }}" href="/app/tasks/{{ a.id }}" aria-label="{{ a.action }}: {{ a.title }}">{{ a.action }}</a>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% else %}
+<section id="attention" class="attention" hidden></section>
+{% endif %}

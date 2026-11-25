@@ -122,6 +122,9 @@ def _leaf_row(task_id: str, tokens: str, cost: str, hover: str) -> dict:
         "grade": "unfinished",
         "grade_label": "Unfinished",
         "grade_title": "no result was reached",
+        "state": "unfinished",
+        "rest_state": "unfinished",
+        "live_label": None,
     }
 
 
@@ -130,7 +133,7 @@ def _leaf_row(task_id: str, tokens: str, cost: str, hover: str) -> dict:
 
 def test_list_row_nests_the_whole_tree_and_sums_the_run():
     root, tree = _ado_run()
-    row = _list_row(root, tree, True)
+    row = _list_row(root, tree, True, {})
 
     c_row = {
         **_leaf_row(
@@ -159,6 +162,8 @@ def test_list_row_nests_the_whole_tree_and_sums_the_run():
         "grade": "friction",
         "grade_label": "Friction",
         "grade_title": "1 error",
+        "state": "done",
+        "rest_state": "done",
     }
     assert row == {
         "id": "root",
@@ -193,13 +198,30 @@ def test_list_row_nests_the_whole_tree_and_sums_the_run():
         "grade": "clean",
         "grade_label": "Clean",
         "grade_title": "nothing went wrong",
+        "state": "done",
+        "rest_state": "done",
+        "live_label": None,
     }
+
+
+def test_list_row_state_is_live_first_then_the_grade():
+    root, tree = _ado_run()
+    row = _list_row(root, tree, True, {"root": "waiting", "c": "running"})
+
+    assert (row["state"], row["live_label"]) == ("waiting", "Waiting for you")
+    assert row["rest_state"] == "done"
+    [a, b] = row["children"]
+    [c] = a["children"]
+    assert (c["state"], c["live_label"]) == ("running", "Working")
+    # Not live: an unfinished run says so, any other is done.
+    assert (a["grade"], a["state"], a["live_label"]) == ("friction", "done", None)
+    assert (b["grade"], b["state"]) == ("unfinished", "unfinished")
 
 
 def test_list_row_flat_view_does_not_nest_but_still_sums_the_run():
     root, tree = _ado_run()
-    flat = _list_row(root, tree, False)
-    nested = _list_row(root, tree, True)
+    flat = _list_row(root, tree, False, {})
+    nested = _list_row(root, tree, True, {})
 
     assert flat["children"] == []
     assert {k: v for k, v in flat.items() if k != "children"} == {
@@ -208,7 +230,7 @@ def test_list_row_flat_view_does_not_nest_but_still_sums_the_run():
 
 
 def test_list_row_for_a_task_with_nothing_recorded():
-    row = _list_row(_task("bare"), {}, True)
+    row = _list_row(_task("bare"), {}, True, {})
 
     assert row == {
         "id": "bare",
@@ -234,11 +256,14 @@ def test_list_row_for_a_task_with_nothing_recorded():
         "grade": "unfinished",
         "grade_label": "Unfinished",
         "grade_title": "no result was reached",
+        "state": "unfinished",
+        "rest_state": "unfinished",
+        "live_label": None,
     }
 
 
 def test_list_row_falls_back_to_the_default_title():
-    row = _list_row(_task("untitled", title=None), {}, True)
+    row = _list_row(_task("untitled", title=None), {}, True, {})
     assert row["title"] == "Untitled task"
 
 

@@ -127,6 +127,7 @@ EXPECTED = {
     ("/app/dataset/audit", ("GET",), "dataset_audit", "APIRoute"),
     ("/app/dataset/tasks/{task_id}.jsonl", ("GET",), "dataset_task_report", "APIRoute"),
     ("/app/dataset/delete", ("POST",), "dataset_delete_all", "APIRoute"),
+    ("/app/attention", ("GET",), "attention_strip", "APIRoute"),
     ("/app/tasks/{task_id}", ("GET",), "task_detail", "APIRoute"),
     ("/app/tasks/{task_id}/images", ("GET",), "task_image", "APIRoute"),
     ("/app/tasks/{task_id}/delete", ("POST",), "delete_task", "APIRoute"),
@@ -359,6 +360,12 @@ def test_web_routes_keep_their_openapi_operations():
             "dataset_delete_all_app_dataset_delete_post",
             ("web",),
             json_,
+            (),
+        ),
+        ("/app/attention", "get"): (
+            "attention_strip_app_attention_get",
+            ("web",),
+            html,
             (),
         ),
         ("/app/tasks/{task_id}", "get"): (
