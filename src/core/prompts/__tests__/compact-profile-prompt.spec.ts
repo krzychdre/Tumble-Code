@@ -167,6 +167,7 @@ interface BuildExtras {
 function build(mode: string, extras: BuildExtras = {}): Promise<string> {
 	return SYSTEM_PROMPT({
 		context: mockContext,
+		memoryIndex: memoryIndex.present ? MEMORY_INDEX_FIXTURE : "",
 		cwd: CWD,
 		mode: mode as never,
 		mcpHub,

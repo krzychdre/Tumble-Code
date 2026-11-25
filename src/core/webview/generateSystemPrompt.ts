@@ -4,6 +4,7 @@ import { resolveProviderModel } from "../../api"
 
 import { SYSTEM_PROMPT } from "../prompts/system"
 import { buildSystemPromptInput } from "../prompts/system-prompt-input"
+import { readMemoryIndex } from "../memory/memoryPrompt"
 
 import { ClineProvider } from "./ClineProvider"
 import { logger } from "../../utils/logging"
@@ -46,6 +47,8 @@ export const generateSystemPrompt = async (provider: ClineProvider, message: Web
 			// updateTaskApiHandler), and this also works with no task.
 			compactProfile: isCompactProfile(state.apiConfiguration),
 			skillsManager: provider.getSkillsManager(),
+			// The file as it is now; a task that saved a note since it started still sends its first read.
+			memoryIndex: await readMemoryIndex(provider.cwd),
 		}),
 	)
 }

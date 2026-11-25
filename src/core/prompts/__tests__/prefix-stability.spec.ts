@@ -68,7 +68,7 @@ const MEMORY_INDEX_STUB = "Contents of MEMORY.md:\n\n- [Entry](file.md)"
 
 vi.mock("../sections/memory", () => ({
 	getMemorySection: vi.fn().mockResolvedValue("# auto memory\n\nMemory behavioral body."),
-	getMemoryIndexSection: vi.fn().mockResolvedValue("\nContents of MEMORY.md:\n\n- [Entry](file.md)"),
+	getMemoryIndexSection: vi.fn().mockReturnValue("\nContents of MEMORY.md:\n\n- [Entry](file.md)"),
 }))
 
 // The compact profile has its own memory sections (sections/compact/memory.ts);
@@ -79,7 +79,7 @@ const COMPACT_MEMORY_INDEX_STUB = "MEMORY.md:\n- [Entry](file.md)"
 
 vi.mock("../sections/compact/memory", () => ({
 	getCompactMemorySection: vi.fn().mockResolvedValue("====\n\nMEMORY\n\nCompact memory instruction."),
-	getCompactMemoryIndexSection: vi.fn().mockResolvedValue("MEMORY.md:\n- [Entry](file.md)"),
+	getCompactMemoryIndexSection: vi.fn().mockReturnValue("MEMORY.md:\n- [Entry](file.md)"),
 }))
 
 vi.mock("../../../services/code-index/manager", () => ({
@@ -173,6 +173,7 @@ async function buildPrompt(
 ): Promise<string> {
 	return SYSTEM_PROMPT({
 		context: mockContext,
+		memoryIndex: "",
 		cwd: "/test/path",
 		mcpHub,
 		mode: mode as never,

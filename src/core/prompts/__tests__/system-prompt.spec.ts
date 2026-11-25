@@ -217,6 +217,7 @@ describe("SYSTEM_PROMPT", () => {
 	it("should maintain consistent system prompt", async () => {
 		const prompt = await SYSTEM_PROMPT({
 			context: mockContext,
+			memoryIndex: "",
 			cwd: "/test/path",
 			mode: defaultModeSlug,
 			experiments,
@@ -230,6 +231,7 @@ describe("SYSTEM_PROMPT", () => {
 
 		const prompt = await SYSTEM_PROMPT({
 			context: mockContext,
+			memoryIndex: "",
 			cwd: "/test/path",
 			mcpHub: mockMcpHub,
 			mode: defaultModeSlug,
@@ -271,6 +273,7 @@ describe("SYSTEM_PROMPT", () => {
 
 		const prompt = await SYSTEM_PROMPT({
 			context: mockContext,
+			memoryIndex: "",
 			cwd: "/test/path",
 			mode: defaultModeSlug,
 		})
@@ -324,6 +327,7 @@ describe("SYSTEM_PROMPT", () => {
 
 		const prompt = await SYSTEM_PROMPT({
 			context: mockContext,
+			memoryIndex: "",
 			cwd: "/test/path",
 			mode: "custom-mode",
 			customModes,
@@ -353,6 +357,7 @@ describe("SYSTEM_PROMPT", () => {
 
 		const prompt = await SYSTEM_PROMPT({
 			context: mockContext,
+			memoryIndex: "",
 			cwd: "/test/path",
 			mode: defaultModeSlug as Mode,
 			customModePrompts,
@@ -374,6 +379,7 @@ describe("SYSTEM_PROMPT", () => {
 
 		const prompt = await SYSTEM_PROMPT({
 			context: mockContext,
+			memoryIndex: "",
 			cwd: "/test/path",
 			mode: defaultModeSlug as Mode,
 			customModePrompts,
@@ -399,6 +405,7 @@ describe("SYSTEM_PROMPT", () => {
 
 			const prompt = await SYSTEM_PROMPT({
 				context: mockContext,
+				memoryIndex: "",
 				cwd: "/test/path",
 				mcpHub: mockMcpHub,
 				mode: "filtered-mode",
@@ -424,6 +431,7 @@ describe("SYSTEM_PROMPT", () => {
 
 			const prompt = await SYSTEM_PROMPT({
 				context: mockContext,
+				memoryIndex: "",
 				cwd: "/test/path",
 				mcpHub: mockMcpHub,
 				mode: "mcp-mode",
@@ -480,6 +488,7 @@ describe("SYSTEM_PROMPT per-mode MCP allowlist (built-in modes)", () => {
 		// below — without it, the absence assertion could pass vacuously.
 		const prompt = await SYSTEM_PROMPT({
 			context: mockContext,
+			memoryIndex: "",
 			cwd: "/test/path",
 			mcpHub: createTwoServerHub(),
 			mode: "code",
@@ -495,6 +504,7 @@ describe("SYSTEM_PROMPT per-mode MCP allowlist (built-in modes)", () => {
 
 		const prompt = await SYSTEM_PROMPT({
 			context: mockContext,
+			memoryIndex: "",
 			cwd: "/test/path",
 			mcpHub: createTwoServerHub(),
 			mode: "code",
@@ -514,6 +524,7 @@ describe("SYSTEM_PROMPT per-mode MCP allowlist (built-in modes)", () => {
 
 		const prompt = await SYSTEM_PROMPT({
 			context: mockContext,
+			memoryIndex: "",
 			cwd: "/test/path",
 			mcpHub: createTwoServerHub(),
 			mode: "code",

@@ -42,7 +42,7 @@ vi.mock("../sections/modes", () => ({
 }))
 vi.mock("../sections/memory", () => ({
 	getMemorySection: vi.fn().mockResolvedValue("# auto memory\n\nMemory behavioral body."),
-	getMemoryIndexSection: vi.fn().mockResolvedValue("Contents of MEMORY.md:\n\n- [Entry](file.md)"),
+	getMemoryIndexSection: vi.fn().mockReturnValue("Contents of MEMORY.md:\n\n- [Entry](file.md)"),
 }))
 vi.mock("../../../services/code-index/manager", () => ({
 	CodeIndexManager: {

@@ -4,8 +4,8 @@
  * Ported from Claude Code's `memdir/memdir.ts`:
  * - `buildMemoryLines()` — the full behavioral prompt body.
  * - `truncateEntrypointContent()` — line/byte caps for the MEMORY.md index.
- * - `loadMemoryPrompt()` / `loadMemoryIndex()` — the dispatchers used by the
- *   system-prompt section.
+ * - `loadMemoryPrompt()`, `readMemoryIndex()` and `formatMemoryIndex()`: used by
+ *   the system-prompt sections.
  *
  * Tool names are mapped to Roo's equivalents (`write_to_file`, `search_files`,
  * `list_files`, `edit_file`). The "Searching past context" section always emits
@@ -195,29 +195,29 @@ export async function loadMemoryPrompt(cwd: string): Promise<string> {
 }
 
 /**
- * Load the truncated `MEMORY.md` index content for `cwd`.
- *
- * Returns "" when memory is disabled or the index doesn't exist yet (the model
- * creates it on first save). The returned string is prefixed with a header so
- * the system prompt identifies it as the user's persistent auto-memory.
+ * `MEMORY.md` for `cwd` as it is on disk, or "" when memory is disabled or the
+ * index does not exist yet (the model creates it on first save). A task reads
+ * it once and keeps the text for its whole life (ApiRequestBuilder), so a note
+ * saved mid-task does not change the system prompt of running tasks.
  */
-export async function loadMemoryIndex(cwd: string): Promise<string> {
+export async function readMemoryIndex(cwd: string): Promise<string> {
 	// Same graceful-degradation guard as loadMemoryPrompt.
 	if (!isMemoryPathsInitialized() || !isAutoMemoryEnabled()) return ""
-	const entrypoint = getAutoMemEntrypoint(cwd)
-	let content = ""
 	try {
-		content = await fs.readFile(entrypoint, "utf-8")
-	} catch (err) {
-		const code = (err as NodeJS.ErrnoException)?.code
-		if (!code || code !== "ENOENT") {
-			// Non-fatal: an unreadable index just means no index content this turn.
-		}
+		return await fs.readFile(getAutoMemEntrypoint(cwd), "utf-8")
+	} catch {
 		return ""
 	}
-	if (!content.trim()) return ""
-	const t = truncateEntrypointContent(content)
-	return `\nContents of ${entrypoint} (user's auto-memory, persists across conversations):\n\n${t.content}`
+}
+
+/**
+ * The truncated index text from {@link readMemoryIndex}, prefixed with a header
+ * so the system prompt identifies it as the user's persistent auto-memory.
+ */
+export function formatMemoryIndex(cwd: string, raw: string): string {
+	if (!raw.trim()) return ""
+	const t = truncateEntrypointContent(raw)
+	return `\nContents of ${getAutoMemEntrypoint(cwd)} (user's auto-memory, persists across conversations):\n\n${t.content}`
 }
 
 // ---------------------------------------------------------------------------
@@ -340,19 +340,9 @@ export async function loadCompactMemoryPrompt(cwd: string): Promise<string> {
 	return buildCompactMemoryInstruction(autoDir)
 }
 
-/**
- * The compact MEMORY.md index for `cwd`, or "" when memory is disabled or the
- * index does not exist yet. Same guards as {@link loadMemoryIndex}.
- */
-export async function loadCompactMemoryIndex(cwd: string): Promise<string> {
-	if (!isMemoryPathsInitialized() || !isAutoMemoryEnabled()) return ""
-	let content = ""
-	try {
-		content = await fs.readFile(getAutoMemEntrypoint(cwd), "utf-8")
-	} catch {
-		return ""
-	}
-	const compact = compactMemoryIndex(content)
+/** The index text from {@link readMemoryIndex} in the compact line format, capped. */
+export function formatCompactMemoryIndex(cwd: string, raw: string): string {
+	const compact = compactMemoryIndex(raw)
 	if (!compact) return ""
 	return `${ENTRYPOINT_NAME}:\n${truncateCompactMemoryIndex(compact, getAutoMemPath(cwd))}`
 }

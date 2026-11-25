@@ -217,9 +217,10 @@ async function generatePrompt(
 
 	// Memory system: the behavioral section (what/when/how to save) and the
 	// truncated MEMORY.md index. Both are workspace-scoped and mode-independent,
-	// so they close the stable head (WS-F sections 7). Both read from disk and
-	// return "" when memory is disabled.
-	const [memorySection, memoryIndex] = await Promise.all([getMemorySection(cwd), getMemoryIndexSection(cwd)])
+	// so they close the stable head (WS-F sections 7). Both are "" when memory
+	// is disabled.
+	const memorySection = await getMemorySection(cwd)
+	const memoryIndex = getMemoryIndexSection(cwd, options.memoryIndex)
 
 	const customInstructionsSection = await buildCustomInstructionsSection(options, mode, baseInstructions)
 
@@ -255,8 +256,9 @@ async function generatePrompt(
 		getSystemInfoSection(cwd),
 		// 7. Memory: behavioral instructions plus the MEMORY.md index. Both are
 		//    mode-independent, which is why they sit at the end of the head
-		//    rather than in the tail: a mode switch keeps them cached. The cost
-		//    is that writing a memory mid-task invalidates the tail after them.
+		//    rather than in the tail: a mode switch keeps them cached. The index
+		//    is the text the task read once, so a note saved mid-task does not
+		//    change it.
 		memorySection,
 		memoryIndex,
 	]
@@ -366,11 +368,11 @@ async function generateCompactPrompt(
 	const { cwd, customModes: customModeConfigs, settings } = options
 
 	const modesSection = getCompactModesSection(customModeConfigs, options.customModePrompts)
-	const [memorySection, memoryIndex, customInstructionsSection] = await Promise.all([
+	const [memorySection, customInstructionsSection] = await Promise.all([
 		getCompactMemorySection(cwd),
-		getCompactMemoryIndexSection(cwd),
 		buildCustomInstructionsSection(options, mode, baseInstructions),
 	])
+	const memoryIndex = getCompactMemoryIndexSection(cwd, options.memoryIndex)
 
 	// COMPACT STABLE HEAD: identical for every mode on one workspace and
 	// machine. Constants first, then the machine facts, then memory, which

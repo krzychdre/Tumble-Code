@@ -45,6 +45,7 @@ describe("buildSystemPromptInput removedTools", () => {
 	it("carries the background removal of new_task", () => {
 		const input = buildSystemPromptInput({
 			context,
+			memoryIndex: "",
 			cwd: "/test/path",
 			mode: "orchestrator",
 			state: { parallelTasksMaxConcurrency: 4 },
@@ -57,6 +58,7 @@ describe("buildSystemPromptInput removedTools", () => {
 	it("carries the user's disabledTools and the model's excludedTools", () => {
 		const input = buildSystemPromptInput({
 			context,
+			memoryIndex: "",
 			cwd: "/test/path",
 			mode: "orchestrator",
 			state: { disabledTools: ["switch_mode"], parallelTasksMaxConcurrency: 4 },
@@ -74,14 +76,14 @@ describe("buildSystemPromptInput cliDisplay", () => {
 
 	it("takes what the CLI's terminal UI shows from ROO_CLI_DISPLAY", () => {
 		vi.stubEnv("ROO_CLI_DISPLAY", "images")
-		const input = buildSystemPromptInput({ context, cwd: "/test/path", mode: "code", state: {} })
+		const input = buildSystemPromptInput({ context, cwd: "/test/path", mode: "code", state: {}, memoryIndex: "" })
 
 		expect(input.settings?.cliDisplay).toBe("images")
 	})
 
 	it("leaves it unset in VS Code", () => {
 		vi.stubEnv("ROO_CLI_DISPLAY", "")
-		const input = buildSystemPromptInput({ context, cwd: "/test/path", mode: "code", state: {} })
+		const input = buildSystemPromptInput({ context, cwd: "/test/path", mode: "code", state: {}, memoryIndex: "" })
 
 		expect(input.settings?.cliDisplay).toBeUndefined()
 	})

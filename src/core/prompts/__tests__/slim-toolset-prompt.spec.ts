@@ -46,7 +46,7 @@ vi.mock("../sections/custom-instructions", () => ({
 
 vi.mock("../sections/memory", () => ({
 	getMemorySection: vi.fn().mockResolvedValue(""),
-	getMemoryIndexSection: vi.fn().mockResolvedValue(""),
+	getMemoryIndexSection: vi.fn().mockReturnValue(""),
 }))
 
 // The advertised tools array is built here too, from the SAME flags, because the
@@ -109,6 +109,7 @@ const baseSettings: SystemPromptSettings = {
 async function buildPrompt(settings: SystemPromptSettings): Promise<string> {
 	return SYSTEM_PROMPT({
 		context: mockContext,
+		memoryIndex: "",
 		cwd: "/test/path",
 		mcpHub: mcpHubWithServer,
 		mode: "code",

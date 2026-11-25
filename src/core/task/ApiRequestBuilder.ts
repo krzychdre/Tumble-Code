@@ -42,6 +42,7 @@ import { type ClineProvider } from "../webview/ClineProvider"
 import { type ProviderState } from "../webview/ProviderStateBuilder"
 import { type ApiMessage } from "../task-persistence"
 import { type RooIgnoreController } from "../ignore/RooIgnoreController"
+import { readMemoryIndex } from "../memory/memoryPrompt"
 import { logger } from "../../utils/logging"
 import {
 	TaskApiConfigurationAccess,
@@ -144,6 +145,9 @@ function asEmbeddedReasoningBlock(block: unknown): EmbeddedReasoningBlock | unde
 }
 
 export class ApiRequestBuilder {
+	/** MEMORY.md as the task's first request read it; see buildSystemPrompt. */
+	private memoryIndex: string | undefined
+
 	constructor(private readonly access: ApiRequestBuilderAccess) {}
 
 	/**
@@ -207,6 +211,9 @@ export class ApiRequestBuilder {
 				// which a background task or a detached parent does not share).
 				compactProfile: isCompactProfile(this.access.apiConfiguration),
 				skillsManager: provider.getSkillsManager(),
+				// Read once: a note saved mid-task would otherwise change the
+				// system prompt and re-prefill the whole conversation.
+				memoryIndex: (this.memoryIndex ??= await readMemoryIndex(this.access.cwd)),
 			}),
 		)
 	}
