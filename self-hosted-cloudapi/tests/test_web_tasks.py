@@ -265,6 +265,13 @@ async def test_owner_task_detail_renders_live_controls(
     assert "/static/live.js" in body
     # The config must carry the task id and the bridge path for the client.
     assert '"taskId": "task-live"' in body
+    # The phone cockpit: the header carries the state, Stop and the Details
+    # fold, and the facts and figures sit in the part that folds.
+    assert 'class="detail-header cockpit"' in body
+    assert 'id="task-state"' in body and 'id="head-stop"' in body
+    assert 'aria-controls="detail-more"' in body
+    folded = body[body.index('id="detail-more"') :]
+    assert folded.index('class="task-stats panel"') < folded.index('id="conversation"')
 
 
 async def test_shared_page_anonymous_never_renders_live_controls(
@@ -297,6 +304,8 @@ async def test_shared_page_anonymous_never_renders_live_controls(
     body = resp.text
     assert 'id="live-controls"' not in body
     assert "/static/live.js" not in body
+    # Nor the cockpit: nothing on a read-only page folds or stops.
+    assert "cockpit" not in body and 'id="details-toggle"' not in body
     # Nor what the task cost: a reader of a shared link gets the conversation.
     assert 'class="spend-table"' not in body
 

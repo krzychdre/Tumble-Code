@@ -2,7 +2,10 @@
 {% import "_spend.html" as spend %}
 {% block title %}{{ title }} · Tumble Code{% endblock %}
 {% block content %}
-<div class="detail-header">
+{# On a live task the header is the phone's cockpit (app.css): it sticks to the
+   top with the state and Stop, and everything under it folds behind Details. #}
+<div class="detail-header{% if live %} cockpit{% endif %}" id="detail-header">
+  <div class="detail-top">
   {% if ancestors %}
   {# The run this task belongs to. Reads root → … → here, so the chain of
      delegation is visible and every step is one click away. #}
@@ -20,6 +23,12 @@
   {% else %}
   <a class="back" href="/app">← All tasks</a>
   {% endif %}
+  {% if live %}
+  {# Set by live.js: Working, Waiting for you, Idle, Done or Offline. #}
+  <span id="task-state" class="state-pill" data-state="connecting" role="status">Connecting…</span>
+  <button type="button" id="head-stop" class="btn btn-deny small head-stop" hidden>Stop</button>
+  {% endif %}
+  </div>
   <div class="detail-title-row">
     <h1 class="page-title">{{ title }}</h1>
     {% if can_delete %}
@@ -29,6 +38,17 @@
     </form>
     {% endif %}
   </div>
+  {% if live %}
+  {# Phone only: the summary of what folds away under it. live.js keeps the
+     mode and the figures current. #}
+  <button type="button" id="details-toggle" class="details-toggle" aria-expanded="false" aria-controls="detail-more">
+    Details<span class="details-sum"> · <span id="sum-mode">&#8212;</span>{% if spend_table %} · <span id="sum-tokens">{{ spend_table.rows[0].tokens }}</span> tok · <span id="sum-cost" class="details-cost">{{ spend_table.rows[0].cost }}</span>{% endif %}{% if subtask_count %} · {{ subtask_count }} subtask{{ '' if subtask_count == 1 else 's' }}{% endif %}</span>
+  </button>
+  {% endif %}
+</div>
+
+<div class="detail-more" id="detail-more">
+<div class="detail-facts">
   {% if workspace %}<div class="detail-workspace" title="{{ workspace }}"><span aria-hidden="true">📁</span> {{ workspace }}</div>{% endif %}
   {% if client_label %}<div class="detail-workspace detail-client">Client: {{ client_label }}</div>{% endif %}
   {% if task.project_id %}
@@ -141,6 +161,7 @@
   </div>
 </section>
 {% endif %}
+</div>
 
 {% if subtasks %}
 <section class="subtasks panel" id="subtasks">

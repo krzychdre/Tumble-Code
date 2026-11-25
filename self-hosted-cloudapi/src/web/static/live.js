@@ -50,6 +50,10 @@
 		dockApprove: document.getElementById("ask-dock-approve"),
 		dockDeny: document.getElementById("ask-dock-deny"),
 		dockComment: document.getElementById("ask-dock-comment"),
+		header: document.getElementById("detail-header"),
+		state: document.getElementById("task-state"),
+		headStop: document.getElementById("head-stop"),
+		sumMode: document.getElementById("sum-mode"),
 	}
 	var composerPlaceholder = els.input ? els.input.placeholder : ""
 	var toggles = {}
@@ -69,6 +73,8 @@
 	// live one), so the run row is always this task's current figures plus it.
 	var own = { tokensIn: null, tokensOut: null, cost: null }
 	var subtasks = cfg.subtasks || null
+	// The table's top row, which the phone's Details summary repeats.
+	var topRow = subtasks ? "run" : "own"
 
 	// A figure not known yet keeps what the server rendered.
 	function setCell(id, text) {
@@ -82,6 +88,10 @@
 		setCell("hdr-" + key + "-in", s.tokensIn != null ? fmt(s.tokensIn) : null)
 		setCell("hdr-" + key + "-out", s.tokensOut != null ? fmt(s.tokensOut) : null)
 		setCell("hdr-" + key + "-cost", s.cost != null ? fmtCost(s.cost) : null)
+		if (key === topRow) {
+			setCell("sum-tokens", both ? fmt(s.tokensIn + s.tokensOut) : null)
+			setCell("sum-cost", s.cost != null ? fmtCost(s.cost) : null)
+		}
 	}
 
 	function showSpend() {
@@ -107,7 +117,7 @@
 
 	function setControlsEnabled(online) {
 		if (els.controls) els.controls.classList.toggle("offline", !online)
-		;[els.send, els.stop, els.input, els.autoEnabled, els.autoMode].forEach(function (el) {
+		;[els.send, els.stop, els.headStop, els.input, els.autoEnabled, els.autoMode].forEach(function (el) {
 			if (el) el.disabled = !online
 		})
 		Object.keys(toggles).forEach(function (k) {
@@ -121,6 +131,7 @@
 		}
 		// Resume stays available when offline so the user can reopen the task.
 		if (els.resume) els.resume.disabled = false
+		refreshState()
 	}
 
 	// --- socket --------------------------------------------------------------
@@ -137,6 +148,7 @@
 	}
 
 	var lastAsk = null // currentAsk from the most recent instanceState
+	var joined = false // the join was answered
 	var isRunning = false
 	var openedAtTail = false
 	// Token/cost/context are derived from the persisted conversation so a finished
@@ -167,8 +179,38 @@
 	function setRunning(running) {
 		isRunning = !!running
 		if (els.stop) els.stop.hidden = !isRunning
+		if (els.headStop) els.headStop.hidden = !isRunning
 		if (els.resume) els.resume.hidden = isRunning
 		refreshActivity()
+		refreshState()
+	}
+
+	// The header's one word on the task. A pending ask the dock shows outranks
+	// running: the extension reports an ask it waits on as running too.
+	var STATE_LABELS = {
+		connecting: "Connecting…",
+		offline: "Offline",
+		waiting: "Waiting for you",
+		running: "Working",
+		done: "Done",
+		idle: "Idle",
+	}
+	var DONE_ASKS = { completion_result: true, resume_completed_task: true }
+
+	function taskState() {
+		if (!joined) return "connecting"
+		if (!controlsOnline) return "offline"
+		if (dockAsk && ASK_DOCK[dockAsk.ask].waits !== false) return "waiting"
+		if (isRunning) return "running"
+		if (lastAsk && DONE_ASKS[lastAsk.ask]) return "done"
+		return "idle"
+	}
+
+	function refreshState() {
+		if (!els.state) return
+		var state = taskState()
+		els.state.setAttribute("data-state", state)
+		els.state.textContent = STATE_LABELS[state]
 	}
 
 	// Surface what the task is doing right now (api / tool / thinking), like the
@@ -191,6 +233,7 @@
 
 	socket.on("connect", function () {
 		socket.emit("task:join", { taskId: taskId }, function (res) {
+			joined = true
 			if (!res || !res.success) {
 				setStatus("Cannot control this task", "offline")
 				setControlsEnabled(false)
@@ -257,7 +300,10 @@
 		if (els.context && ctx != null) {
 			els.context.textContent = fmt(ctx) + (s.contextWindow ? " / " + fmt(s.contextWindow) : "")
 		}
-		if (els.mode && s.mode) els.mode.textContent = s.mode
+		if (s.mode) {
+			if (els.mode) els.mode.textContent = s.mode
+			if (els.sumMode) els.sumMode.textContent = s.mode
+		}
 
 		if (s.isRunning != null) {
 			setRunning(s.isRunning)
@@ -310,10 +356,13 @@
 	var ASK_DOCK = {
 		followup: { kind: "Question" },
 		command: { kind: "Run command", prompt: "Run this command?", approve: "Run", deny: "Deny", detail: askText },
+		// The command runs on and the task with it; Continue is optional, so the
+		// header keeps saying Working.
 		command_output: {
 			kind: "Command running",
 			prompt: "The command is still running.",
 			approve: "Continue While Running",
+			waits: false,
 		},
 		tool: {
 			kind: "Approve tool",
@@ -442,6 +491,7 @@
 			setPlaceholder(deny ? "Optional comment for " + approve + " / " + deny + "…" : composerPlaceholder)
 		}
 		els.dock.hidden = false
+		refreshState()
 	}
 
 	function hideDock() {
@@ -450,6 +500,7 @@
 		if (!els.dock) return
 		els.dock.hidden = true
 		setPlaceholder(composerPlaceholder)
+		refreshState()
 	}
 
 	function setPlaceholder(text) {
@@ -569,10 +620,12 @@
 			}
 		})
 	}
-	if (els.stop)
-		els.stop.addEventListener("click", function () {
-			sendCommand("stop_task", {})
-		})
+	;[els.stop, els.headStop].forEach(function (el) {
+		if (el)
+			el.addEventListener("click", function () {
+				sendCommand("stop_task", {})
+			})
+	})
 	if (els.resume)
 		els.resume.addEventListener("click", function () {
 			sendCommand("resume_task", {})
@@ -600,14 +653,16 @@
 		if (el) el.addEventListener("change", pushAutoApproval)
 	})
 
-	// On a phone the auto-approval row folds behind one button (app.css).
-	var autoMore = document.getElementById("auto-more")
-	if (autoMore && els.controls) {
-		autoMore.addEventListener("click", function () {
-			var open = els.controls.classList.toggle("show-auto")
-			autoMore.setAttribute("aria-expanded", open ? "true" : "false")
+	// Phone folds (app.css): a button opens its part by a class on `host`.
+	function fold(button, host, cls) {
+		if (!button || !host) return
+		button.addEventListener("click", function () {
+			var open = host.classList.toggle(cls)
+			button.setAttribute("aria-expanded", open ? "true" : "false")
 		})
 	}
+	fold(document.getElementById("auto-more"), els.controls, "show-auto")
+	fold(document.getElementById("details-toggle"), els.header, "show-details")
 	Object.keys(toggles).forEach(function (k) {
 		if (toggles[k]) toggles[k].addEventListener("change", pushAutoApproval)
 	})

@@ -117,6 +117,7 @@
 	--t-sm: 0.8125rem; /* 13px — dense body, table cells    */
 	--t-row: 0.875rem; /* 14px, a task's title in a list   */
 	--t-body: 0.9375rem; /* 15px — prose                      */
+	--t-field: 1rem; /* 16px, a phone's text box: below it iOS zooms in on focus */
 	--t-lead: 1.125rem;
 	--t-title: 1.375rem;
 	--t-stat: 1.75rem;
@@ -889,6 +890,18 @@ textarea::placeholder {
 	--state: var(--line-strong);
 	--state-wash: transparent;
 }
+/* The task page's header pill names more states. Done's stripe hue is a line
+   colour, too faint for the pill's word. */
+[data-state="connecting"],
+[data-state="idle"],
+.state-pill[data-state="done"] {
+	--state: var(--text-faint);
+	--state-wash: var(--surface-2);
+}
+[data-state="offline"] {
+	--state: var(--d-error);
+	--state-wash: var(--d-error-wash);
+}
 .state-pill {
 	display: inline-flex;
 	align-items: center;
@@ -912,10 +925,12 @@ textarea::placeholder {
 	border-radius: 50%;
 	background: currentColor;
 }
-[data-state="running"] .state-pill::before {
+[data-state="running"] .state-pill::before,
+.state-pill[data-state="running"]::before {
 	animation: state-pulse 1.4s ease-in-out infinite;
 }
-[data-state="waiting"] .state-pill::before {
+[data-state="waiting"] .state-pill::before,
+.state-pill[data-state="waiting"]::before {
 	animation: state-pulse 0.9s ease-in-out infinite;
 }
 @keyframes state-pulse {
@@ -2172,15 +2187,29 @@ a.rough-link:hover {
    Task detail
    ========================================================================== */
 
-.detail-header {
-	margin-bottom: var(--s5);
-}
 .back {
 	display: inline-block;
 	font-family: var(--mono);
 	font-size: var(--t-micro);
 	color: var(--text-faint);
+}
+/* The way back (or up the delegation chain), then the live state. */
+.detail-top {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--s2) var(--s3);
 	margin-bottom: var(--s2);
+}
+/* The facts under the title; the gap below them is the header's. */
+.detail-facts {
+	margin-bottom: var(--s5);
+}
+
+/* Phone-only cockpit controls (see the phone block below). */
+.head-stop,
+.details-toggle {
+	display: none;
 }
 .detail-title-row {
 	display: flex;
@@ -2289,6 +2318,117 @@ a.rough-link:hover {
 	letter-spacing: var(--track-caps);
 	color: var(--text-faint);
 	margin-top: var(--s2);
+}
+
+/* A live task on a phone is a cockpit: its header replaces the site's top
+   bar and sticks to the top (the way back, the state, Stop, the title on one
+   line), the rest folds behind Details, and the controls dock to the bottom
+   edge. */
+@media (max-width: 640px) {
+	body:has(.cockpit) .topbar {
+		display: none;
+	}
+	.content:has(.cockpit) {
+		padding-bottom: 0;
+	}
+	.cockpit {
+		position: sticky;
+		top: 0;
+		z-index: 6;
+		margin: calc(-1 * var(--s4)) calc(-1 * var(--s3)) var(--s3);
+		padding: var(--s2) var(--s3);
+		background: var(--surface-1);
+		border-bottom: 1px solid var(--line);
+		box-shadow: 0 6px 16px -12px var(--shadow-ink);
+	}
+	.cockpit .detail-top {
+		flex-wrap: nowrap;
+		margin-bottom: var(--s1);
+	}
+	.cockpit .trail {
+		flex-wrap: nowrap;
+		min-width: 0;
+		overflow: hidden;
+		margin-bottom: 0;
+	}
+	.cockpit .head-stop {
+		display: inline-flex;
+		margin-left: auto;
+		min-height: 36px;
+	}
+	.cockpit .head-stop[hidden] {
+		display: none;
+	}
+	.cockpit .page-title {
+		max-width: 100%;
+		font-size: var(--t-row);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.cockpit .details-toggle {
+		display: flex;
+		align-items: center;
+		gap: var(--s1);
+		max-width: 100%;
+		margin-top: var(--s1);
+		padding: var(--s1) 0;
+		background: none;
+		border: none;
+		font-family: var(--mono);
+		font-size: var(--t-label);
+		text-transform: uppercase;
+		letter-spacing: var(--track-caps);
+		color: var(--text-dim);
+		cursor: pointer;
+		white-space: nowrap;
+		overflow: hidden;
+	}
+	.cockpit .details-toggle::before {
+		content: "▸";
+		transition: transform 0.12s ease;
+	}
+	.cockpit .details-toggle[aria-expanded="true"]::before {
+		transform: rotate(90deg);
+	}
+	.details-sum {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		text-transform: none;
+		letter-spacing: 0;
+		color: var(--text-faint);
+	}
+	.details-cost {
+		color: var(--d-cost);
+	}
+	/* Delete is one of the details, not a header control. */
+	.cockpit:not(.show-details) .task-delete-detail,
+	.cockpit:not(.show-details) + .detail-more {
+		display: none;
+	}
+
+	/* The controls: the bottom edge, full width, thumb-sized. */
+	.cockpit ~ .live-controls {
+		bottom: 0;
+		margin: var(--s4) calc(-1 * var(--s3)) 0;
+		border-bottom: none;
+		border-radius: var(--r-lg) var(--r-lg) 0 0;
+		padding-bottom: calc(var(--s3) + env(safe-area-inset-bottom, 0px));
+	}
+	.cockpit ~ .live-controls .chat-bar {
+		flex-direction: column;
+	}
+	.cockpit ~ .live-controls .chat-bar textarea {
+		font-size: var(--t-field);
+		min-height: 44px;
+	}
+	.cockpit ~ .live-controls .chat-actions {
+		flex-direction: row;
+	}
+	.cockpit ~ .live-controls .chat-actions .btn {
+		flex: 1;
+		min-height: 44px;
+	}
 }
 .loading {
 	color: var(--text-faint);
