@@ -236,6 +236,20 @@ describe("WorkspaceAPI", () => {
 		})
 	})
 
+	describe("getWorkspaceFolder()", () => {
+		it("finds the folder of a path inside it, the folder itself included, and none outside", () => {
+			const [folder] = workspaceAPI.workspaceFolders!
+
+			expect(workspaceAPI.getWorkspaceFolder(Uri.file(path.join(workspacePath, "src", "a.ts")))).toBe(folder)
+			expect(workspaceAPI.getWorkspaceFolder(Uri.file(workspacePath))).toBe(folder)
+			expect(workspaceAPI.getWorkspaceFolder(Uri.file(path.join(workspacePath, "..notes")))).toBe(folder)
+			expect(
+				workspaceAPI.getWorkspaceFolder(Uri.file(path.join(tempDir, "workspace-other", "a.ts"))),
+			).toBeUndefined()
+			expect(workspaceAPI.getWorkspaceFolder(Uri.file(extensionPath))).toBeUndefined()
+		})
+	})
+
 	describe("createFileSystemWatcher()", () => {
 		const watchers: FileSystemWatcher[] = []
 

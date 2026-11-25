@@ -64,6 +64,14 @@ export class WorkspaceAPI {
 		this.fs = new FileSystemAPI()
 	}
 
+	/** The workspace folder that contains `uri`, or undefined for a path outside every folder. */
+	getWorkspaceFolder(uri: Uri): WorkspaceFolder | undefined {
+		return this.workspaceFolders?.find((folder) => {
+			const relative = path.relative(folder.uri.fsPath, uri.fsPath)
+			return relative.split(path.sep)[0] !== ".." && !path.isAbsolute(relative)
+		})
+	}
+
 	asRelativePath(pathOrUri: string | Uri, includeWorkspaceFolder?: boolean): string {
 		const fsPath = typeof pathOrUri === "string" ? pathOrUri : pathOrUri.fsPath
 

@@ -25,6 +25,16 @@ which VS Code keeps in its secret store. The owner wants the index configurable 
 - The CLI's cache of indexed file hashes is its own, so its first run re-embeds the workspace once; Qdrant point
   ids are content hashes, so nothing is duplicated, and an existing collection takes the incremental path.
 
+- The shim lacked `vscode.workspace.getWorkspaceFolder`, which the scanner reaches through
+  `getWorkspacePathForContext`: the first scan ended in "Failed during initial scan: ... is not a function". It now
+  returns the folder that contains a path.
+
+## Smoke run (2026-11-25)
+
+Isolated HOME, a workspace of four small TypeScript files, the fake model of the CLI integration suite, the
+owner's Qdrant and granite embedder: status Indexing, "Indexed 4 / 4 blocks", watcher started, Indexed; a file added
+during the run went from 5 to 6 points ("File changes processed. Index up-to-date"). The test collection was deleted.
+
 ## Tests
 
 `cliSettingsMirror.spec.ts` (config mirrored, only the two keys), `code-index-settings.test.ts`,
