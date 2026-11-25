@@ -20,6 +20,7 @@ import type {
 	ClineMessage,
 	CliModeProviderSettings,
 	ExtensionMessage,
+	GlobalSettings,
 	ProviderSettings,
 	ReasoningEffortExtended,
 	TumbleCodeSettings,
@@ -99,6 +100,8 @@ export interface ExtensionHostOptions {
 	modeProviderSettings?: CliModeProviderSettings
 	/** `models` of cli-settings.json: what comes with a model that /model switches to. */
 	models?: Record<string, CliModelSettings>
+	/** The editor's settings (`vscode.settings` of cli-settings.json), applied under every other setting. */
+	vscodeSettings?: Partial<GlobalSettings>
 	/**
 	 * The provider settings /model gives `model` in `mode`, resolved from the
 	 * settings file: on the model's own provider and base URL when its
@@ -357,12 +360,14 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 			}),
 			enableCheckpoints: false,
 			experiments: {
+				...this.options.vscodeSettings?.experiments,
 				customTools: true,
 			},
 			...toProviderSettings(this.options),
 		}
 
 		this.initialSettings = {
+			...this.options.vscodeSettings,
 			...getPermissionSettings(getPermissionMode(this.options.nonInteractive ?? false)),
 			...baseSettings,
 		}

@@ -357,7 +357,10 @@ async function resolveRunLimits(settings: CliSettings, flagOptions: FlagOptions)
 	}
 
 	const rawCommandExecutionTimeout =
-		flagOptions.commandExecutionTimeout ?? settings.commandExecutionTimeout ?? DEFAULT_FLAGS.commandExecutionTimeout
+		flagOptions.commandExecutionTimeout ??
+		settings.commandExecutionTimeout ??
+		settings.vscode?.settings?.commandExecutionTimeout ??
+		DEFAULT_FLAGS.commandExecutionTimeout
 	const effectiveCommandExecutionTimeout = parseCommandExecutionTimeout(rawCommandExecutionTimeout)
 
 	if (effectiveCommandExecutionTimeout === undefined) {
@@ -591,6 +594,7 @@ async function resolveRunOptions(
 		model: providerConfig.model,
 		modelSettings: providers.modelSettingsFor(providerConfig),
 		models: settings.models,
+		vscodeSettings: settings.vscode?.settings,
 		workspacePath: effectiveWorkspacePath,
 		extensionPath: path.resolve(flagOptions.extension || getDefaultExtensionPath(__dirname)),
 		mcpSettingsPath: resolveMcpSettingsPath(settings.mcpSettingsPath),

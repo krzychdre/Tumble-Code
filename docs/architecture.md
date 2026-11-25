@@ -103,6 +103,11 @@ slots by literal name, so renaming a slot means changing both. `TelemetryPropert
 `ROO_CLI_RUNTIME` and `ROO_CLI_VERSION` (the CLI package version) into `clientKind` (`vscode` or `cli`) and
 `clientVersion`, which every telemetry event, error report and LLM exchange carries to the cloud.
 
+The CLI also gets the editor's settings through a file. In VS Code (not inside the CLI) the extension writes the
+`vscode` section of `~/.roo/cli-settings.json` on every `ContextProxy` change (`src/core/config/cliSettingsMirror.ts`,
+under the same file lock the CLI's `saveSettings` takes); the CLI passes `vscode.settings` to the extension host
+under its own settings (`apps/cli/src/commands/cli/run.ts`, `extension-host.ts`).
+
 ## Where settings defaults live today
 
 Settings are stored by `ContextProxy` (`src/core/config/ContextProxy.ts`) under the keys and schemas in

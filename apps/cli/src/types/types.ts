@@ -1,4 +1,4 @@
-import type { ReasoningEffortExtended } from "@tumble-code/types"
+import type { GlobalSettings, ReasoningEffortExtended } from "@tumble-code/types"
 import type { OutputFormat } from "./json-events.js"
 import type { SupportedProvider } from "@/lib/utils/provider-types.js"
 import type { MODEL_SIZES } from "./constants.js"
@@ -215,4 +215,16 @@ export interface CliSettings {
 	 * wrong, such as a container without /etc/localtime; overrides TZ.
 	 */
 	timeZone?: string
+	/**
+	 * Written by the VS Code extension on every settings change; do not edit
+	 * it, the next change replaces it. The run applies it under everything
+	 * else in this file and the flags.
+	 */
+	vscode?: CliVscodeSection
+}
+
+/** The `vscode` section of cli-settings.json (src/core/config/cliSettingsMirror.ts in the extension). */
+export interface CliVscodeSection {
+	/** The editor's global settings, without its approvals, profiles, terminal and view state. */
+	settings?: Partial<GlobalSettings>
 }
