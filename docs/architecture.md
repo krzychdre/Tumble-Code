@@ -104,9 +104,11 @@ slots by literal name, so renaming a slot means changing both. `TelemetryPropert
 `clientVersion`, which every telemetry event, error report and LLM exchange carries to the cloud.
 
 The CLI also gets the editor's settings through a file. In VS Code (not inside the CLI) the extension writes the
-`vscode` section of `~/.roo/cli-settings.json` on every `ContextProxy` change (`src/core/config/cliSettingsMirror.ts`,
-under the same file lock the CLI's `saveSettings` takes); the CLI passes `vscode.settings` to the extension host
-under its own settings (`apps/cli/src/commands/cli/run.ts`, `extension-host.ts`).
+`vscode` section of `~/.roo/cli-settings.json` on every `ContextProxy` or secret-store change
+(`src/core/config/cliSettingsMirror.ts`, under the same file lock the CLI's `saveSettings` takes): the global settings
+and the provider profiles without keys (`ProviderSettingsManager.export()`). The CLI passes `vscode.settings` to the
+extension host under its own settings and resolves each mode's provider on its VS Code profile, under the file and the
+flags (`apps/cli/src/commands/cli/run.ts`, `apps/cli/src/lib/utils/vscode-profiles.ts`).
 
 ## Where settings defaults live today
 

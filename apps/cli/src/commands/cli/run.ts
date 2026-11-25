@@ -56,6 +56,7 @@ import {
 	listSetModelSettings,
 } from "@/lib/utils/model-settings.js"
 import { readVsCodeConfig } from "@/lib/utils/vscode-config.js"
+import { definedOnly, readVscodeProfiles, type VscodeProfiles } from "@/lib/utils/vscode-profiles.js"
 import { validateTerminalShellPath } from "@/lib/utils/shell.js"
 import { getDefaultExtensionPath } from "@/lib/utils/extension.js"
 import { isValidSessionId } from "@/lib/utils/session-id.js"
@@ -260,6 +261,7 @@ function resolveProviders(
 	settings: CliSettings,
 	flagOptions: FlagOptions,
 	vsCodeConfig: ReturnType<typeof readVsCodeConfig>,
+	vscodeProfiles: VscodeProfiles | undefined,
 ) {
 	const settingsProviderConfig = pickProviderConfig(settings)
 	const flagProviderConfig = {
@@ -267,29 +269,53 @@ function resolveProviders(
 		model: flagOptions.model,
 		baseUrl: flagOptions.baseUrl,
 	}
+	// The VS Code profile of a mode is the bottom layer of its configuration, in
+	// place of the CLI's own extension state, whose key it keeps for the same
+	// provider. The profile's model facts come with it while the run uses its
+	// connection.
+	const resolveOnProfile = (
+		mode: string | undefined,
+		input: Omit<Parameters<typeof resolveProviderConfigWithModel>[0], "fallback">,
+	): ResolvedProviderConfig => {
+		const profile = vscodeProfiles?.forMode(mode)
+		const connection = profile?.connection
+		const fallback = connection
+			? {
+					...connection,
+					apiKey: vsCodeConfig?.provider === connection.provider ? vsCodeConfig?.apiKey : undefined,
+				}
+			: vsCodeConfig
+		const config = resolveProviderConfigWithModel({ ...input, fallback })
+		const sameConnection =
+			config.provider === connection?.provider &&
+			config.model === connection.model &&
+			config.baseUrl === connection.baseUrl
+		return sameConnection ? { ...config, profileModelSettings: profile!.modelSettings } : config
+	}
+
 	// A model whose `models` entry sets a provider, base URL or key runs on
 	// that connection, under the flags.
-	const baseProviderConfig = resolveProviderConfigWithModel({
-		fallback: vsCodeConfig,
+	const baseProviderConfig = resolveOnProfile(undefined, {
 		layers: [settingsProviderConfig],
 		top: flagProviderConfig,
 		models: settings.models,
 	})
 
 	// Per-mode overrides from the settings file (`modes`, and the modes a
-	// `models` entry lists), each resolved on top of the file's global values.
-	// Any provider flag makes this run use one configuration for every mode,
-	// so the overrides are dropped.
+	// `models` entry lists) and the modes VS Code binds to a profile, each
+	// resolved on top of the file's global values. Any provider flag makes
+	// this run use one configuration for every mode, so the overrides are
+	// dropped.
 	const isProviderForcedByFlags = Object.values(flagProviderConfig).some((value) => value !== undefined)
 	const modeEntries = getEffectiveModeSettings(settings)
+	const modeSlugs = new Set([...Object.keys(modeEntries), ...(vscodeProfiles?.boundModes ?? [])])
 	const modeProviderConfigs: Record<string, ResolvedProviderConfig> = isProviderForcedByFlags
 		? {}
 		: Object.fromEntries(
-				Object.entries(modeEntries).map(([modeSlug, { settings: modeSettings }]) => [
+				[...modeSlugs].map((modeSlug) => [
 					modeSlug,
-					resolveProviderConfigWithModel({
-						fallback: vsCodeConfig,
-						layers: [settingsProviderConfig, pickProviderConfig(modeSettings)],
+					resolveOnProfile(modeSlug, {
+						layers: [settingsProviderConfig, pickProviderConfig(modeEntries[modeSlug]?.settings ?? {})],
 						models: settings.models,
 					}),
 				]),
@@ -300,8 +326,10 @@ function resolveProviders(
 	const providerConfig = modeProviderConfigs[effectiveMode] ?? baseProviderConfig
 	// `models` entries follow the model wherever it runs, flags included, and
 	// so does the reasoning effort, which is read from them.
-	const modelSettingsFor = (config: ResolvedProviderConfig) =>
-		getConfiguredModelSettings(settings.models, config.model)
+	const modelSettingsFor = (config: ResolvedProviderConfig) => {
+		const own = getConfiguredModelSettings(settings.models, config.model)
+		return config.profileModelSettings ? { ...config.profileModelSettings, ...definedOnly(own ?? {}) } : own
+	}
 	const reasoningEffortFor = (config: ResolvedProviderConfig) =>
 		resolveReasoningEffort(config.provider, modelSettingsFor(config), flagOptions.reasoningEffort, config.model)
 	// The configuration /model gives `model` in `mode`: the mode's layers (none
@@ -310,8 +338,7 @@ function resolveProviders(
 	// had its own. The flags stay on top, without their model.
 	const resolveForModel = (mode: string | undefined, model: string) => {
 		const modeSettings = isProviderForcedByFlags || !mode ? undefined : modeEntries[mode]?.settings
-		return resolveProviderConfigWithModel({
-			fallback: vsCodeConfig,
+		return resolveOnProfile(isProviderForcedByFlags ? undefined : mode, {
 			layers: [settingsProviderConfig, ...(modeSettings ? [pickProviderConfig(modeSettings)] : [])],
 			top: { ...flagProviderConfig, model: undefined },
 			models: settings.models,
@@ -436,10 +463,10 @@ async function checkProviders(settings: CliSettings, flagOptions: FlagOptions, p
 			.filter(([, config]) => config !== providerConfig)
 			.map(
 				([modeSlug, config]) =>
-					[`${modeEntries[modeSlug]!.label} in ${getSettingsPath()}`, config] as [
-						string,
-						ResolvedProviderConfig,
-					],
+					[
+						`${modeEntries[modeSlug]?.label ?? `the VS Code profile of ${modeSlug} mode`} in ${getSettingsPath()}`,
+						config,
+					] as [string, ResolvedProviderConfig],
 			),
 		// A model with its own connection may only be reached by /model or
 		// --model, so it is checked against the top level as well.
@@ -564,12 +591,24 @@ async function resolveRunOptions(
 
 	// With no provider anywhere (flag, settings file, the CLI's own extension
 	// state) the run starts on the default provider; say how to choose one.
-	if (isTuiEnabled && !flagOptions.provider && !settings.provider && !vsCodeConfig?.provider) {
+	const vscodeProfiles = readVscodeProfiles(settings.vscode?.profiles)
+	if (settings.vscode?.profiles !== undefined && !vscodeProfiles) {
+		console.error(
+			`[CLI] Warning: ignoring vscode.profiles in ${getSettingsPath()}: another version of the VS Code extension wrote them`,
+		)
+	}
+	if (
+		isTuiEnabled &&
+		!flagOptions.provider &&
+		!settings.provider &&
+		!vscodeProfiles?.forMode(undefined) &&
+		!vsCodeConfig?.provider
+	) {
 		console.log(
 			`[CLI] No provider configured, using ${DEFAULT_FLAGS.provider}. Set provider and apiKey (or apiKeyEnv) in ${getSettingsPath()}, or pass --provider and set the provider's environment variable.`,
 		)
 	}
-	const providers = resolveProviders(settings, flagOptions, vsCodeConfig)
+	const providers = resolveProviders(settings, flagOptions, vsCodeConfig, vscodeProfiles)
 	const { providerConfig, reasoningEffortFor, resolveForModel, settingsFor } = providers
 
 	// Workspace precedence: explicit -w/--workspace wins; bare runs always use

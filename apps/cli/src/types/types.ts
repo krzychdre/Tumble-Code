@@ -1,4 +1,4 @@
-import type { GlobalSettings, ReasoningEffortExtended } from "@tumble-code/types"
+import type { GlobalSettings, ProviderProfilesEnvelope, ReasoningEffortExtended } from "@tumble-code/types"
 import type { OutputFormat } from "./json-events.js"
 import type { SupportedProvider } from "@/lib/utils/provider-types.js"
 import type { MODEL_SIZES } from "./constants.js"
@@ -227,4 +227,6 @@ export interface CliSettings {
 export interface CliVscodeSection {
 	/** The editor's global settings, without its approvals, profiles, terminal and view state. */
 	settings?: Partial<GlobalSettings>
+	/** The editor's provider profiles and their modes, without API keys (lib/utils/vscode-profiles.ts). */
+	profiles?: ProviderProfilesEnvelope
 }

@@ -66,6 +66,8 @@ export interface ResolvedProviderConfig {
 	apiKey?: string
 	/** Set when the chosen key source is an `apiKeyEnv` whose variable is empty or unset. */
 	missingApiKeyEnv?: string
+	/** The model facts of the VS Code profile whose connection this is (vscode-profiles.ts), under the `models` entry. */
+	profileModelSettings?: CliModelSettings
 }
 
 export interface ResolveProviderConfigInput {
