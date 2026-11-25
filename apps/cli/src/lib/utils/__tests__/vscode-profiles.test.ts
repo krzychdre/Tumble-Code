@@ -24,6 +24,8 @@ describe("readVscodeProfiles", () => {
 			preserveReasoning: true,
 			reasoningEffort: "high",
 			maxConcurrentRequests: 4,
+			temperature: 0.6,
+			headers: { "X-Team": "qub-it" },
 		})
 		expect(profiles.forMode("architect")?.modelSettings).toEqual({
 			reasoningEffort: "disabled",

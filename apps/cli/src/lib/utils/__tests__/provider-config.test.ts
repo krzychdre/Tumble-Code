@@ -328,6 +328,8 @@ describe("toProviderSettings", () => {
 			},
 			openAiPreserveReasoning: false,
 			openAiTrimOldReasoning: false,
+			openAiHeaders: {},
+			modelTemperature: null,
 			slimToolset: false,
 			slimHidesMcp: true,
 			compactProfile: false,
@@ -447,11 +449,13 @@ describe("toProviderSettings", () => {
 				supportsImages: false,
 				preserveReasoning: true,
 				trimOldReasoning: true,
+				headers: { "X-Team": "qub-it" },
 			},
 		})
 		expect(settings).not.toHaveProperty("openAiCustomModelInfo")
 		expect(settings).not.toHaveProperty("openAiPreserveReasoning")
 		expect(settings).not.toHaveProperty("openAiTrimOldReasoning")
+		expect(settings).not.toHaveProperty("openAiHeaders")
 	})
 
 	it("returns the reasoning to an openai model whose entry asks for it", () => {
@@ -531,6 +535,20 @@ describe("toProviderSettings", () => {
 		expect(toProviderSettings({ ...connection, modelSettings: { maxConcurrentRequests: 2 } })).toMatchObject({
 			maxConcurrentRequests: 2,
 		})
+	})
+
+	it("passes the model's temperature with any provider and its headers to the openai provider", () => {
+		expect(
+			toProviderSettings({
+				provider: "anthropic",
+				model: "claude-x",
+				apiKey: "k",
+				modelSettings: { temperature: 0.2 },
+			}).modelTemperature,
+		).toBe(0.2)
+		expect(
+			toProviderSettings({ ...connection, modelSettings: { temperature: 0.6, headers: { "X-Team": "qub-it" } } }),
+		).toMatchObject({ modelTemperature: 0.6, openAiHeaders: { "X-Team": "qub-it" } })
 	})
 
 	it("clears a request limit an earlier run left in the extension state", () => {

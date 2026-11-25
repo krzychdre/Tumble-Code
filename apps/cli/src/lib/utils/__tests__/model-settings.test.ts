@@ -31,9 +31,10 @@ describe("listSetModelSettings", () => {
 		])
 		// Other providers take image support from their own model tables.
 		expect(listSetModelSettings({ supportsImages: false })).toEqual(["supportsImages"])
+		expect(listSetModelSettings({ headers: { "X-Team": "qub-it" } })).toEqual(["headers"])
 		// Every provider takes these, so they are never reported as ignored.
 		expect(listSetModelSettings({ reasoningEffort: "high", modelSize: "compact", hideMcp: false })).toEqual([])
-		expect(listSetModelSettings({ maxConcurrentRequests: 4 })).toEqual([])
+		expect(listSetModelSettings({ maxConcurrentRequests: 4, temperature: 0.6 })).toEqual([])
 		expect(listSetModelSettings({ provider: "zai", baseUrl: "x", apiKey: "k", apiKeyEnv: "K" })).toEqual([])
 		expect(listSetModelSettings({ modes: ["code"] })).toEqual([])
 		expect(listSetModelSettings({})).toEqual([])
@@ -83,6 +84,31 @@ describe("findModelSettingsProblems", () => {
 			`models.m.inputPrice must be a number of USD per million tokens, 0 or more, got ${JSON.stringify(inputPrice)}`,
 		])
 	})
+
+	it("accepts a temperature from 0 to 2 and headers with string values", () => {
+		expect(
+			findModelSettingsProblems({
+				a: { temperature: 0 },
+				b: { temperature: 2, headers: { "X-Team": "qub-it" } },
+				c: { headers: {} },
+			}),
+		).toEqual([])
+	})
+
+	it.each([-0.1, 2.1, "0.6", null])("rejects the temperature %s and names the field", (temperature) => {
+		expect(findModelSettingsProblems({ m: { temperature } })).toEqual([
+			`models.m.temperature must be a number from 0 to 2, got ${JSON.stringify(temperature)}`,
+		])
+	})
+
+	it.each([{ "X-Team": 1 }, "X-Team: qub-it", ["X-Team"]])(
+		"rejects the headers %j and names the field",
+		(headers) => {
+			expect(findModelSettingsProblems({ m: { headers } })).toEqual([
+				`models.m.headers must be an object of header names and string values, e.g. { "X-Team": "qub-it" }, got ${JSON.stringify(headers)}`,
+			])
+		},
+	)
 
 	it.each(["preserveReasoning", "trimOldReasoning", "hideMcp", "supportsImages"])(
 		"accepts %s true or false and rejects anything else",

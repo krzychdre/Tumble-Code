@@ -229,6 +229,10 @@ describe("run provider requirements shared with the settings UI", () => {
 				reasoningEffort: "high",
 			})
 			expect(mockHost.lastOptions?.modelSettings?.contextWindow).toBe(1_048_576)
+			expect(mockHost.lastOptions?.modeProviderSettings?.base).toMatchObject({
+				modelTemperature: 0.6,
+				openAiHeaders: { "X-Team": "qub-it" },
+			})
 			expect(mockHost.lastOptions?.modeProviderSettings?.modes.architect).toMatchObject({
 				apiProvider: "anthropic",
 				apiModelId: "claude-opus-5-5",
@@ -896,6 +900,8 @@ describe("run provider settings per mode", () => {
 				openAiCustomModelInfo: withEffort("max"),
 				openAiPreserveReasoning: false,
 				openAiTrimOldReasoning: false,
+				openAiHeaders: {},
+				modelTemperature: null,
 				slimToolset: false,
 				slimHidesMcp: true,
 				compactProfile: false,
@@ -911,6 +917,8 @@ describe("run provider settings per mode", () => {
 					openAiCustomModelInfo: withEffort("high"),
 					openAiPreserveReasoning: false,
 					openAiTrimOldReasoning: false,
+					openAiHeaders: {},
+					modelTemperature: null,
 					slimToolset: false,
 					slimHidesMcp: true,
 					compactProfile: false,
@@ -953,6 +961,7 @@ describe("run provider settings per mode", () => {
 			apiModelId: openAiCodexDefaultModelId,
 			enableReasoningEffort: true,
 			reasoningEffort: "medium",
+			modelTemperature: null,
 			slimToolset: false,
 			slimHidesMcp: true,
 			compactProfile: false,
