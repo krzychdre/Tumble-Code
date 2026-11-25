@@ -118,6 +118,7 @@
 
 	var lastAsk = null // currentAsk from the most recent instanceState
 	var isRunning = false
+	var openedAtTail = false
 	// Token/cost/context are derived from the persisted conversation so a finished
 	// or offline task still shows its totals (no live instanceState ever arrives
 	// for it). A live instanceState, when one does arrive, is authoritative and
@@ -240,6 +241,11 @@
 
 		if (s.isRunning != null) {
 			setRunning(s.isRunning)
+		}
+		// A live task opens at its newest message (static/follow.js).
+		if (isRunning && !openedAtTail && window.TumbleFollow) {
+			openedAtTail = true
+			window.TumbleFollow.toTail()
 		}
 		if (s.autoApproval) applyAutoApproval(s.autoApproval)
 		if ("currentAsk" in s) {

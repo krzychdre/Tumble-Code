@@ -1,0 +1,137 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+  /* The page geometry follow.js reads: a long conversation scrolling the
+     window, and the controls as the template renders them, sticky at the
+     bottom after the conversation. */
+  body { margin: 0; }
+  .msg { height: 100px; border-bottom: 1px solid #ccc; }
+  #live-controls { position: sticky; bottom: 0; height: 120px; background: #eee; }
+</style>
+<link rel="stylesheet" href="../../src/web/static/app.css">
+</head><body>
+<!--
+  static/follow.js on the owner's task page: the page stays at the newest
+  message while the reader is at the bottom, stops when they scroll up (with a
+  "Latest" pill counting the rows that arrived since), and resumes at the
+  bottom or on the pill. The stored history is in the page before follow.js
+  loads, as render.js draws it before follow.js starts watching.
+-->
+<div id="conversation" class="conversation"></div>
+<div id="live-controls" class="live-controls"><textarea></textarea></div>
+<script>
+  var convo = document.getElementById("conversation")
+  var n = 0
+  function addRow() {
+    var el = document.createElement("div")
+    el.className = "msg"
+    el.setAttribute("data-ts", String(++n))
+    el.textContent = "row " + n
+    convo.appendChild(el)
+    return el
+  }
+  for (var i = 0; i < 30; i++) addRow()
+</script>
+<script src="../../src/web/static/follow.js"></script>
+<script>
+window.addEventListener("load", function () {
+  var out = [], fail = 0
+  function check(name, cond) { out.push((cond ? "PASS " : "FAIL ") + name); if (!cond) fail++ }
+  var scroller = document.scrollingElement
+  var pill = document.querySelector("#live-controls .follow-jump")
+  function gap() { return scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight }
+  function atBottom() { return gap() <= 1 }
+  // The reader scrolling. The event is dispatched here: the harness's virtual
+  // clock runs no rendering steps, which is where a browser fires it.
+  function scrollTo(top) {
+    scroller.scrollTop = top
+    window.dispatchEvent(new Event("scroll"))
+  }
+  function settle(then) {
+    setTimeout(then, 100)
+  }
+  function steps(list) {
+    var i = 0
+    function next() {
+      if (i >= list.length) {
+        var pre = document.createElement("pre")
+        pre.id = "results"
+        pre.textContent = out.join("\n") + "\nTOTAL_FAILURES=" + fail
+        document.body.appendChild(pre)
+        return
+      }
+      list[i++]()
+      settle(next)
+    }
+    next()
+  }
+
+  steps([
+    function () {
+      check("the pill lives in the controls", !!pill)
+      check("a finished task opens at the top", scroller.scrollTop === 0)
+      check("no pill on a task that is not live", pill.hidden)
+      addRow()
+    },
+    function () {
+      check("a row arriving on a page that is not following does not move it", scroller.scrollTop === 0)
+      check("the row it missed is counted", !pill.hidden && pill.textContent === "↓ Latest (1 new)")
+      window.TumbleFollow.toTail()
+    },
+    function () {
+      check("a live task opens at its tail", atBottom())
+      check("no pill while following", pill.hidden)
+      addRow()
+    },
+    function () {
+      check("a new row keeps the page at the bottom", atBottom())
+      convo.lastChild.style.height = "600px"
+    },
+    function () {
+      check("a growing row keeps the page at the bottom", atBottom())
+      scrollTo(scroller.scrollTop - 500)
+    },
+    function () {
+      check("scrolling up leaves the reader where they are", gap() >= 499)
+      check("scrolling up offers the pill", !pill.hidden && pill.textContent === "↓ Latest")
+      var top = scroller.scrollTop
+      addRow()
+      addRow()
+      // A streaming row swapped for its next version is not a new message.
+      var last = convo.lastChild
+      var swapped = last.cloneNode(true)
+      convo.replaceChild(swapped, last)
+      window.__topBefore = top
+    },
+    function () {
+      check("rows arriving while reading above do not move the page", scroller.scrollTop === window.__topBefore)
+      check("the pill counts the new rows, not the swapped one", pill.textContent === "↓ Latest (2 new)")
+      pill.click()
+    },
+    function () {
+      check("the pill goes to the bottom", atBottom())
+      check("the pill hides once following", pill.hidden)
+      addRow()
+    },
+    function () {
+      check("after the pill the page follows again", atBottom())
+      scrollTo(0)
+    },
+    function () {
+      addRow()
+    },
+    function () {
+      check("after scrolling to the top it stays there", scroller.scrollTop === 0)
+      // Within the tolerance of the bottom counts as the bottom.
+      scrollTo(scroller.scrollHeight - scroller.clientHeight - 40)
+    },
+    function () {
+      check("reaching the bottom by hand hides the pill", pill.hidden)
+      addRow()
+    },
+    function () {
+      check("reaching the bottom by hand resumes following", atBottom())
+    },
+  ])
+})
+</script>
+</body></html>
