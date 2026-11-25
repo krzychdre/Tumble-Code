@@ -1,7 +1,5 @@
 // npx vitest run core/prompts/__tests__/modeDetails.spec.ts
 
-import type * as vscode from "vscode"
-
 import type { ModeConfig } from "@tumble-code/types"
 
 vi.mock("../sections/custom-instructions", () => ({
@@ -94,28 +92,17 @@ describe("getFullModeDetails", () => {
 })
 
 describe("getAllModesWithPrompts", () => {
-	function contextWith(values: Record<string, unknown>): vscode.ExtensionContext {
-		return {
-			globalState: { get: (key: string) => values[key] },
-		} as unknown as vscode.ExtensionContext
-	}
-
-	it("returns the built-in modes when nothing is stored", async () => {
-		const result = await getAllModesWithPrompts(contextWith({}))
+	it("returns the built-in modes when there are no custom modes", () => {
+		const result = getAllModesWithPrompts(undefined, undefined)
 
 		expect(result.map((mode) => mode.slug)).toEqual(modes.map((mode) => mode.slug))
 	})
 
-	it("applies stored prompt overrides and appends stored custom modes", async () => {
+	it("applies prompt overrides and appends custom modes", () => {
 		const custom: ModeConfig = { slug: "reviewer-x", name: "Reviewer X", roleDefinition: "Reviews", groups: [] }
-		const result = await getAllModesWithPrompts(
-			contextWith({
-				customModes: [custom],
-				customModePrompts: {
-					debug: { roleDefinition: "Stored role", whenToUse: "Stored when", description: "ignored" },
-				},
-			}),
-		)
+		const result = getAllModesWithPrompts([custom], {
+			debug: { roleDefinition: "Stored role", whenToUse: "Stored when", description: "ignored" },
+		})
 
 		const debug = result.find((mode) => mode.slug === "debug")!
 		expect(debug.roleDefinition).toBe("Stored role")
