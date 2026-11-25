@@ -20,7 +20,7 @@ import { getBaseUrlField, getModelField, isSupportedProvider } from "./provider-
 export interface VscodeProfile {
 	/** Provider, model and base URL. The API key is not in the section: the CLI finds its own. */
 	connection: ProviderConfigLayer
-	/** What the profile says about its model, as a `models` entry of cli-settings.json would. */
+	/** What the profile says about its model (and its server's headers), as a `models` entry of cli-settings.json would. */
 	modelSettings: CliModelSettings
 }
 
@@ -88,6 +88,8 @@ function modelSettingsOf(settings: ProviderSettings): CliModelSettings {
 		modelSize: settings.compactProfile ? "compact" : settings.slimToolset ? "slim" : undefined,
 		hideMcp: settings.slimHidesMcp,
 		maxConcurrentRequests: settings.maxConcurrentRequests,
+		temperature: settings.modelTemperature ?? undefined,
+		headers: settings.apiProvider === "openai" ? settings.openAiHeaders : undefined,
 	}
 }
 

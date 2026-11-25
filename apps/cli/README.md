@@ -476,7 +476,8 @@ It also writes the provider profiles and the modes they are bound to
 (`vscode.profiles`, as "Export settings" writes them: without API keys). A mode
 runs on its VS Code profile, else on the current one: provider, model and base
 URL, with the profile's model facts (context window, prices, images, reasoning
-effort, model size, concurrent requests) while the run uses that connection.
+effort, model size, concurrent requests, temperature, custom headers) while the
+run uses that connection.
 The key comes from the CLI: `apiKey` or `apiKeyEnv` in this file, the
 provider's environment variable, or the key the CLI stored for that provider.
 Leave the section to the extension; the next change replaces it. It leaves out
@@ -868,6 +869,26 @@ settings:
 - It works with every provider and follows the model through every mode and
   through `/model`. A value that is not a whole number of 1 or more fails at
   startup and names the model.
+
+### Temperature and headers per model
+
+`temperature` (0 to 2) is sent with every request to the model, the same as
+"Temperature" in the VS Code profile settings; it works with every provider.
+`headers` are HTTP headers sent with every request to the model's server, the
+same as "Custom headers" there, for the openai provider (an OpenAI-compatible
+server or gateway that needs a routing or team header):
+
+```json
+{
+	"models": {
+		"GLM-5.3-Flash-NVFP4": { "temperature": 0.6, "headers": { "X-Team": "qub-it" } }
+	}
+}
+```
+
+Without them the provider's default temperature applies and no extra headers
+are sent. A VS Code profile in the `vscode` section brings both along, under
+what the `models` entry says.
 
 ## MCP Servers
 

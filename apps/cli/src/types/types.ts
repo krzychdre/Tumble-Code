@@ -137,6 +137,18 @@ export interface CliModelSettings {
 	 */
 	maxConcurrentRequests?: number
 	/**
+	 * The sampling temperature sent with every request to this model, from 0
+	 * to 2, as "Temperature" in the VS Code profile settings. Works with every
+	 * provider. Without it the provider's default applies.
+	 */
+	temperature?: number
+	/**
+	 * HTTP headers sent with every request to the model's server, as "Custom
+	 * headers" in the VS Code profile settings (for example a gateway's
+	 * routing or auth header). Used with the openai provider.
+	 */
+	headers?: Record<string, string>
+	/**
 	 * The modes that run this model, by slug (e.g. ["code", "debug"]). The
 	 * same as writing `"modes": { "code": { "model": "<this id>" } }` for each
 	 * of them, so a mode listed here runs the model on startup, on every mode

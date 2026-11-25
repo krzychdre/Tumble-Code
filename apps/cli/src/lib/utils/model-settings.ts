@@ -39,6 +39,10 @@
  * over the limit waits, and it caps the subagents that run on the model, where
  * the main task takes one request when it runs on the same model.
  *
+ * `temperature` works with every provider and becomes the extension's
+ * modelTemperature. `headers`, the HTTP headers the model's server needs,
+ * becomes openAiHeaders of the openai provider.
+ *
  * `provider`, `baseUrl`, `apiKey` and `apiKeyEnv` put the model on its own
  * connection, for a model served elsewhere than the top level or the mode
  * says; resolveProviderConfigWithModel layers them under the flags.
@@ -66,6 +70,7 @@ const ANY_PROVIDER_KEYS: ReadonlySet<string> = new Set([
 	"modelSize",
 	"hideMcp",
 	"maxConcurrentRequests",
+	"temperature",
 	"provider",
 	"baseUrl",
 	"apiKey",
@@ -86,8 +91,8 @@ export function getConfiguredModelSettings(
 /**
  * The keys an entry sets that only the openai provider takes, for the warning
  * that names what is ignored with another provider. `reasoningEffort`,
- * `modelSize`, `hideMcp`, `maxConcurrentRequests`, the connection fields and
- * `modes` are not among them: every provider takes them.
+ * `modelSize`, `hideMcp`, `maxConcurrentRequests`, `temperature`, the
+ * connection fields and `modes` are not among them: every provider takes them.
  */
 export function listSetModelSettings(entry: CliModelSettings | undefined): string[] {
 	return Object.entries(entry ?? {})
@@ -113,7 +118,8 @@ export function findModelSettingsProblems(models: unknown): string[] {
 			continue
 		}
 
-		const { contextWindow, maxConcurrentRequests, reasoningEffort, modelSize } = entry as CliModelSettings
+		const { contextWindow, maxConcurrentRequests, reasoningEffort, modelSize, temperature, headers } =
+			entry as CliModelSettings
 
 		if (contextWindow !== undefined && !(Number.isInteger(contextWindow) && contextWindow > 0)) {
 			problems.push(
@@ -127,6 +133,21 @@ export function findModelSettingsProblems(models: unknown): string[] {
 		) {
 			problems.push(
 				`models.${model}.maxConcurrentRequests must be a whole number of requests greater than 0, got ${JSON.stringify(maxConcurrentRequests)}`,
+			)
+		}
+
+		if (temperature !== undefined && !(typeof temperature === "number" && temperature >= 0 && temperature <= 2)) {
+			problems.push(
+				`models.${model}.temperature must be a number from 0 to 2, got ${JSON.stringify(temperature)}`,
+			)
+		}
+
+		if (
+			headers !== undefined &&
+			!(isPlainObject(headers) && Object.values(headers).every((value) => typeof value === "string"))
+		) {
+			problems.push(
+				`models.${model}.headers must be an object of header names and string values, e.g. { "X-Team": "qub-it" }, got ${JSON.stringify(headers)}`,
 			)
 		}
 

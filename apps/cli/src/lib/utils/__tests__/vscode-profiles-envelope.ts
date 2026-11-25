@@ -24,6 +24,8 @@ export function vscodeProfilesEnvelope(): ProviderProfilesEnvelope {
 				enableReasoningEffort: true,
 				reasoningEffort: "high",
 				maxConcurrentRequests: 4,
+				modelTemperature: 0.6,
+				openAiHeaders: { "X-Team": "qub-it" },
 			}),
 			opus: createKnownPersistedProviderProfile({
 				id: "opus-id",

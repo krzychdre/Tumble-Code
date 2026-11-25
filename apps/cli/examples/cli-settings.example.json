@@ -28,7 +28,9 @@
 			"trimOldReasoning": true,
 			"supportsImages": false,
 			"modelSize": "standard",
-			"maxConcurrentRequests": 4
+			"maxConcurrentRequests": 4,
+			"temperature": 0.6,
+			"headers": { "X-Team": "qub-it" }
 		},
 		"GLM-5.3-NVFP4": {
 			"contextWindow": 262144,

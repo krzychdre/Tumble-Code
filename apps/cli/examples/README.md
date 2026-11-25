@@ -70,6 +70,8 @@ and the mode entry; only the flags override them.
 | `modelSize`             | all       | `standard`, `slim` or `compact`: how much system prompt and how many tools the model gets ([Model size](../README.md#model-size)).                             |
 | `hideMcp`               | all       | With `slim`, `false` keeps the MCP tools (default `true`).                                                                                                     |
 | `maxConcurrentRequests` | all       | Requests the server takes for this model at once; caps the subagents on it ([Concurrent requests per model](../README.md#concurrent-requests-per-model)).      |
+| `temperature`           | all       | Sampling temperature, 0 to 2 ([Temperature and headers per model](../README.md#temperature-and-headers-per-model)).                                            |
+| `headers`               | `openai`  | HTTP headers sent with every request to the model's server, e.g. a gateway's routing header.                                                                   |
 | `contextWindow`         | `openai`  | Context window in tokens; without it 128,000 is assumed.                                                                                                       |
 | `inputPrice`            | `openai`  | USD per million input tokens not read from the prompt cache.                                                                                                   |
 | `outputPrice`           | `openai`  | USD per million output tokens, reasoning included.                                                                                                             |

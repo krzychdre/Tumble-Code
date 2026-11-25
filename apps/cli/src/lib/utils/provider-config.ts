@@ -291,6 +291,9 @@ function applyModelSettings(
 	// the same reason as the model size.
 	settings.maxConcurrentRequests = config.modelSettings?.maxConcurrentRequests
 
+	// The model's temperature, written always (null clears it) for the same reason.
+	settings.modelTemperature = config.modelSettings?.temperature ?? null
+
 	// The openai provider sizes and prices its model from
 	// openAiCustomModelInfo, else from openAiModelInfoSaneDefaults (128,000
 	// tokens, $0, sees images): its model list has ids only. The same model
@@ -337,6 +340,7 @@ function applyModelSettings(
 				: null
 		settings.openAiPreserveReasoning = preserveReasoning ?? false
 		settings.openAiTrimOldReasoning = trimOldReasoning ?? false
+		settings.openAiHeaders = config.modelSettings?.headers ?? {}
 	}
 
 	return settings
