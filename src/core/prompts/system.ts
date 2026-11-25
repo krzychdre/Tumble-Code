@@ -32,6 +32,7 @@ import {
 	getDeferredToolsSection,
 	getMemorySection,
 	getMemoryIndexSection,
+	getSubtaskSection,
 } from "./sections"
 import {
 	COMPACT_PROMPT_OPENER,
@@ -218,8 +219,8 @@ async function generatePrompt(
 	// Memory system: the behavioral section (what/when/how to save) and the
 	// truncated MEMORY.md index. Both are workspace-scoped and mode-independent,
 	// so they close the stable head (WS-F sections 7). Both are "" when memory
-	// is disabled.
-	const memorySection = await getMemorySection(cwd)
+	// is disabled. A subtask reads the index but does not write notes.
+	const memorySection = settings?.isSubtask ? "" : await getMemorySection(cwd)
 	const memoryIndex = getMemoryIndexSection(cwd, options.memoryIndex)
 
 	const customInstructionsSection = await buildCustomInstructionsSection(options, mode, baseInstructions)
@@ -228,8 +229,9 @@ async function generatePrompt(
 	// STABLE HEAD (WS-F sections 1-7).
 	//
 	// Every byte here is identical for every mode and every profile on this
-	// workspace and machine, so a provider that caches by prompt prefix keeps
-	// its cache across mode switches instead of re-prefilling from token 1.
+	// workspace and machine (a subtask drops the memory-writing section), so a
+	// provider that caches by prompt prefix reuses it between any two requests
+	// with the same tools array, which renders BEFORE the system prompt.
 	// Nothing that varies with the mode, the model, or the request may be
 	// added to this list; see CONTRIBUTING.md, "KV-cache contract".
 	// ------------------------------------------------------------------
@@ -289,16 +291,17 @@ async function generatePrompt(
 		skillsSection,
 		// Per-workspace and per-profile (shell, cwd, stealth-model flag).
 		getRulesSection(cwd, settings),
+		// Per-origin: the contract of a delegated task, before the role it qualifies.
+		settings?.isSubtask ? getSubtaskSection() : "",
 		// Per-mode: the role the opener points at.
 		getModeSection(roleDefinition),
 		// Per-mode and per-user: language, global and mode instructions, rules files.
 		customInstructionsSection,
-		// LAST on purpose. This is the only section that mutates WITHIN a
-		// conversation: every `tools_load` materialization drops an entry from the
-		// catalog, so anything printed after it would be re-prefilled on the next
-		// request. Nothing follows it, so the invalidation costs its own bytes and
-		// no more. Being last also gives the two-step `tools_load` procedure the
-		// recency a weak model needs to actually follow it.
+		// LAST: the only section that mutates WITHIN a conversation, since every
+		// `tools_load` materialization drops an entry from the catalog. The same
+		// call adds the tool to the tools array, which renders before the system
+		// prompt, so the request is re-prefilled from there anyway; being last
+		// gives the two-step `tools_load` procedure the recency a weak model needs.
 		deferredToolsSection,
 	]
 
@@ -369,7 +372,7 @@ async function generateCompactPrompt(
 
 	const modesSection = getCompactModesSection(customModeConfigs, options.customModePrompts)
 	const [memorySection, customInstructionsSection] = await Promise.all([
-		getCompactMemorySection(cwd),
+		settings?.isSubtask ? "" : getCompactMemorySection(cwd),
 		buildCustomInstructionsSection(options, mode, baseInstructions),
 	])
 	const memoryIndex = getCompactMemoryIndexSection(cwd, options.memoryIndex)
@@ -398,6 +401,7 @@ async function generateCompactPrompt(
 			exampleMode: getModeBySlug("code", customModeConfigs),
 		}),
 		getCompactVendorConfidentialitySection(settings?.isStealthModel),
+		settings?.isSubtask ? getSubtaskSection() : "",
 		getModeSection(roleDefinition),
 		customInstructionsSection,
 	]

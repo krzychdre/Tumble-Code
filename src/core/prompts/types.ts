@@ -34,9 +34,15 @@ export interface SystemPromptSettings {
 	 */
 	compactProfile?: boolean
 	/**
+	 * The task was delegated by a parent (`new_task` or `run_parallel_tasks`):
+	 * the prompt states the subtask contract and leaves out the memory-writing
+	 * instructions, which are about learning from a conversation with the user.
+	 */
+	isSubtask?: boolean
+	/**
 	 * Tool names the request removes on top of the mode's groups (the user's
-	 * `disabledTools`, the model's `excludedTools`, the background-task
-	 * removals). TOOLS IN THIS MODE reads it so it never suggests `new_task` or
+	 * `disabledTools`, the model's `excludedTools`, the removals of a
+	 * delegated task). TOOLS IN THIS MODE reads it so it never suggests `new_task` or
 	 * `switch_mode` when the tool array does not carry them.
 	 */
 	removedTools?: string[]
