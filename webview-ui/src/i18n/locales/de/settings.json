@@ -966,6 +966,14 @@
 			"description": "Wie lange die Frage eines Subagenten auf deine Antwort wartet, bevor sie automatisch genehmigt wird und der Subagent selbstständig fortfährt. 0 antwortet sofort (voll autonom).",
 			"immediate": "aus"
 		},
+		"contextReminder": {
+			"label": "Erinnerung zur Übergabe von Unteraufgaben",
+			"description": "Wenn eine delegierte Aufgabe (eine Unteraufgabe oder ein Subagent) diesen Anteil des Kontextfensters ihres Modells verbraucht hat, wird sie einmal aufgefordert, ihren Schritt abzuschließen und zu berichten, damit eine neue Unteraufgabe die Arbeit fortsetzen kann. Aufgaben, die du selbst startest, sind nicht betroffen."
+		},
+		"contextStop": {
+			"label": "Stopp für Unteraufgaben",
+			"description": "Wenn eine delegierte Aufgabe diesen Anteil des Kontextfensters ihres Modells verbraucht hat, stoppt sie und kehrt mit ihren offenen TODO-Punkten zur übergeordneten Aufgabe zurück. Immer über der Erinnerung."
+		},
 		"compactNote": "Das bearbeitete Profil nutzt den Kompaktmodus (sehr kleine Modelle), daher sind Subagenten dafür immer aus, unabhängig von diesen Einstellungen. Für alle anderen Profile gelten sie weiterhin."
 	}
 }

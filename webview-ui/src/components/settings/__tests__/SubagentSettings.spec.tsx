@@ -49,3 +49,26 @@ describe("SubagentSettings max parallel subagents", () => {
 		expect(screen.getByText(String(MAX_PARALLEL_TASKS_MAX_CONCURRENCY))).toBeInTheDocument()
 	})
 })
+
+describe("SubagentSettings context limits", () => {
+	const thumb = (testId: string) => screen.getByTestId(testId).querySelector('[role="slider"]')!
+
+	it("keeps the reminder one step below the stop, and the stop one step above the reminder", () => {
+		const store = renderTab({ subtaskContextReminderPercent: 50, subtaskContextStopPercent: 70 })
+
+		fireEvent.keyDown(thumb("subagents-context-reminder-slider"), { key: "End" })
+		expect(store.getState().subtaskContextReminderPercent).toBe(65)
+
+		fireEvent.keyDown(thumb("subagents-context-stop-slider"), { key: "Home" })
+		expect(store.getState().subtaskContextStopPercent).toBe(70)
+		expect(screen.getByText("65%")).toBeInTheDocument()
+		expect(screen.getByText("70%")).toBeInTheDocument()
+	})
+
+	it("shows the defaults when nothing is set", () => {
+		renderTab({})
+
+		expect(screen.getByText("65%")).toBeInTheDocument()
+		expect(screen.getByText("85%")).toBeInTheDocument()
+	})
+})

@@ -79,11 +79,6 @@ const AUTO_APPROVAL_LIMIT_MESSAGE = "Auto-approval limit reached and user did no
 /** Requests a task may make past its mode's budget (the first carries the reminder) before it is stopped. */
 const MODE_BUDGET_GRACE_REQUESTS = 2
 
-/** Share of the context window at which a delegated task is told to hand its work over. */
-const SUBTASK_CONTEXT_REMINDER = 0.65
-/** Share of the context window at which a delegated task is stopped and returns to its parent. */
-const SUBTASK_CONTEXT_STOP = 0.85
-
 /**
  * Interface for Task access needed by TaskApiLoop.
  * This is a narrow interface to minimize coupling between modules.
@@ -626,37 +621,40 @@ export class TaskApiLoop {
 
 	/**
 	 * A delegated task (`new_task` child or subagent) continues on a fresh context instead of a
-	 * condensed one. Past SUBTASK_CONTEXT_REMINDER of the model's window it is told once to hand its
-	 * work over; past SUBTASK_CONTEXT_STOP it returns to its parent (Task#handOverAtContextLimit). The
-	 * size is the last request's, with what microcompaction stripped added back, as the condense gate
-	 * reads it. A task the user started keeps the whole window. Returns true when the task was stopped.
+	 * condensed one. Past `subtaskContextReminderPercent` of the model's window it is told once to
+	 * hand its work over; past `subtaskContextStopPercent` it returns to its parent
+	 * (Task#handOverAtContextLimit). The size is the last request's, with what microcompaction
+	 * stripped added back, as the condense gate reads it. A task the user started keeps the whole
+	 * window. Returns true when the task was stopped.
 	 */
 	private async handleSubtaskContextLimit(
+		state: ProviderState | undefined,
 		currentUserContent: Anthropic.Messages.ContentBlockParam[],
 	): Promise<boolean> {
 		if (taskOrigin(this.access) === "user") {
 			return false
 		}
+		const reminderPercent = state?.subtaskContextReminderPercent ?? SETTINGS_DEFAULTS.subtaskContextReminderPercent
+		const stopPercent = state?.subtaskContextStopPercent ?? SETTINGS_DEFAULTS.subtaskContextStopPercent
 		const contextTokens = this.access.getTokenUsage().contextTokens + this.access.microcompactStrippedTokens
-		const used = contextTokens / this.access.api.getModel().info.contextWindow
-		const percent = Math.round(used * 100)
-		if (used >= SUBTASK_CONTEXT_STOP) {
+		const usedPercent = (contextTokens / this.access.api.getModel().info.contextWindow) * 100
+		if (usedPercent >= stopPercent) {
 			this.access.contextHandoff = true
 			await this.access.handOverAtContextLimit(
-				`Its context window was ${percent}% full, so it handed its work over.`,
+				`Its context window was ${Math.round(usedPercent)}% full, so it handed its work over.`,
 			)
 			return true
 		}
-		if (used >= SUBTASK_CONTEXT_REMINDER && !this.access.contextHandoff) {
+		if (usedPercent >= reminderPercent && !this.access.contextHandoff) {
 			this.access.contextHandoff = true
 			currentUserContent.push({
 				type: "text",
 				text:
-					`Your context window is ${percent}% full. This subtask stops at ` +
-					`${Math.round(SUBTASK_CONTEXT_STOP * 100)}%, and a new subtask will continue your work. ` +
-					"Finish the step you are on, then call attempt_completion with a handoff report: what is done " +
-					"(files, commits, test results), the state of the work, and every item still open, each " +
-					"written so a new subtask can do it without this conversation.",
+					`Your context window is ${Math.round(usedPercent)}% full. This subtask stops at ${stopPercent}%, ` +
+					"and a new subtask will continue your work. Finish the step you are on, then call " +
+					"attempt_completion with a handoff report: what is done (files, commits, test results), the " +
+					"state of the work, and every item still open, each written so a new subtask can do it " +
+					"without this conversation.",
 			})
 		}
 		return false
@@ -732,7 +730,7 @@ export class TaskApiLoop {
 		if (await this.handleModeRequestBudget(cycleState, currentItem, currentUserContent)) {
 			return "return_true"
 		}
-		if (await this.handleSubtaskContextLimit(currentUserContent)) {
+		if (await this.handleSubtaskContextLimit(cycleState, currentUserContent)) {
 			return "return_true"
 		}
 

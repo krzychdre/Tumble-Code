@@ -966,6 +966,14 @@
 			"description": "Quanto a lungo la domanda di un subagente attende la tua risposta prima di essere approvata automaticamente e il subagente prosegue da solo. 0 risponde immediatamente (completamente autonomo).",
 			"immediate": "disattivato"
 		},
+		"contextReminder": {
+			"label": "Promemoria di passaggio delle sottoattività",
+			"description": "Quando un'attività delegata (una sottoattività o un subagente) ha usato questa parte della finestra di contesto del suo modello, riceve una sola volta l'istruzione di completare il passo e fare rapporto, così che una nuova sottoattività possa continuare il lavoro. Le attività che avvii tu non sono interessate."
+		},
+		"contextStop": {
+			"label": "Arresto delle sottoattività",
+			"description": "Quando un'attività delegata ha usato questa parte della finestra di contesto del suo modello, si ferma e torna all'attività principale con gli elementi TODO rimasti aperti. Sempre sopra il promemoria."
+		},
 		"compactNote": "Il profilo in modifica usa la modalità compatta (modelli molto piccoli), quindi per esso i subagenti sono sempre disattivati, qualunque cosa dicano queste impostazioni. Continuano a valere per tutti gli altri profili."
 	}
 }

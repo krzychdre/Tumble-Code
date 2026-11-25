@@ -966,6 +966,14 @@
 			"description": "Berapa lama pertanyaan subagen menunggu jawaban Anda sebelum disetujui otomatis dan subagen melanjutkan sendiri. 0 menjawab segera (sepenuhnya otonom).",
 			"immediate": "mati"
 		},
+		"contextReminder": {
+			"label": "Pengingat serah terima subtugas",
+			"description": "Saat tugas yang didelegasikan (subtugas atau subagen) telah memakai porsi jendela konteks modelnya sebesar ini, tugas itu diminta sekali untuk menyelesaikan langkahnya dan melapor, agar subtugas baru dapat melanjutkan pekerjaannya. Tugas yang Anda mulai sendiri tidak terpengaruh."
+		},
+		"contextStop": {
+			"label": "Penghentian subtugas",
+			"description": "Saat tugas yang didelegasikan telah memakai porsi jendela konteks modelnya sebesar ini, tugas itu berhenti dan kembali ke tugas induk dengan item TODO yang masih terbuka. Selalu di atas pengingat."
+		},
 		"compactNote": "Profil yang sedang diedit memakai mode ringkas (model sangat kecil), jadi subagen selalu nonaktif untuknya, apa pun isi pengaturan ini. Pengaturan ini tetap berlaku untuk semua profil lain."
 	}
 }

@@ -10,7 +10,7 @@ vi.mock("../../../i18n", () => ({
 	t: vi.fn((key: string) => key),
 }))
 
-// A delegated task is reminded once at 65% of the window and handed over at 85%.
+// A delegated task is reminded once at 65% of the window and handed over at 85% (the defaults).
 describe("TaskApiLoop subtask context limit", () => {
 	let access: any
 	let loop: TaskApiLoop
@@ -33,10 +33,10 @@ describe("TaskApiLoop subtask context limit", () => {
 	})
 
 	// handleSubtaskContextLimit is private; it is the unit under test.
-	const request = async (contextTokens: number) => {
+	const request = async (contextTokens: number, state?: object) => {
 		access.contextTokens = contextTokens
 		const content: any[] = []
-		const stopped = (await (loop as any).handleSubtaskContextLimit(content)) as boolean
+		const stopped = (await (loop as any).handleSubtaskContextLimit(state, content)) as boolean
 		return { stopped, content }
 	}
 
@@ -62,6 +62,16 @@ describe("TaskApiLoop subtask context limit", () => {
 		expect(access.handOverAtContextLimit).toHaveBeenCalledWith(
 			"Its context window was 85% full, so it handed its work over.",
 		)
+	})
+
+	it("uses the thresholds set in the settings", async () => {
+		const state = { subtaskContextReminderPercent: 50, subtaskContextStopPercent: 70 }
+
+		expect(await request(49_000, state)).toEqual({ stopped: false, content: [] })
+		expect((await request(50_000, state)).content[0].text).toContain(
+			"Your context window is 50% full. This subtask stops at 70%",
+		)
+		expect((await request(70_000, state)).stopped).toBe(true)
 	})
 
 	it("counts what microcompaction stripped from the request", async () => {

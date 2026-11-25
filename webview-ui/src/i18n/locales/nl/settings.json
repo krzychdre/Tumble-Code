@@ -966,6 +966,14 @@
 			"description": "Hoe lang de vraag van een subagent op je antwoord wacht voordat deze automatisch wordt goedgekeurd en de subagent zelfstandig doorgaat. 0 antwoordt direct (volledig autonoom).",
 			"immediate": "uit"
 		},
+		"contextReminder": {
+			"label": "Herinnering voor overdracht van subtaken",
+			"description": "Wanneer een gedelegeerde taak (een subtaak of een subagent) dit deel van het contextvenster van zijn model heeft gebruikt, krijgt die eenmalig de opdracht om de stap af te ronden en te rapporteren, zodat een nieuwe subtaak het werk kan voortzetten. Taken die je zelf start, worden niet beïnvloed."
+		},
+		"contextStop": {
+			"label": "Stop voor subtaken",
+			"description": "Wanneer een gedelegeerde taak dit deel van het contextvenster van zijn model heeft gebruikt, stopt die en keert terug naar de bovenliggende taak met de TODO-punten die nog openstaan. Altijd boven de herinnering."
+		},
 		"compactNote": "Het profiel dat je bewerkt gebruikt de compacte modus (zeer kleine modellen), dus subagenten staan er altijd uit, wat deze instellingen ook zeggen. Ze blijven gelden voor alle andere profielen."
 	}
 }

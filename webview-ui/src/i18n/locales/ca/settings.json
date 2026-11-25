@@ -966,6 +966,14 @@
 			"description": "Quant de temps una pregunta d'un subagent espera la teva resposta abans de ser aprovada automàticament i el subagent continua pel seu compte. 0 respon immediatament (totalment autònom).",
 			"immediate": "desactivat"
 		},
+		"contextReminder": {
+			"label": "Recordatori de traspàs de subtasques",
+			"description": "Quan una tasca delegada (una subtasca o un subagent) ha fet servir aquesta part de la finestra de context del seu model, rep una sola vegada la indicació d'acabar el pas i informar, perquè una subtasca nova continuï la feina. Les tasques que inicies tu no es veuen afectades."
+		},
+		"contextStop": {
+			"label": "Aturada de subtasques",
+			"description": "Quan una tasca delegada ha fet servir aquesta part de la finestra de context del seu model, s'atura i torna a la tasca principal amb els elements TODO que ha deixat oberts. Sempre per sobre del recordatori."
+		},
 		"compactNote": "El perfil que s'està editant fa servir el mode compacte (models molt petits), de manera que els subagents sempre hi estan desactivats, digui el que digui aquesta configuració. Continua aplicant-se a tots els altres perfils."
 	}
 }

@@ -354,6 +354,8 @@ const FULL_SETTINGS = {
 	maxGitStatusFiles: 12,
 	parallelTasksMaxConcurrency: 5,
 	subagentFollowupTimeoutSec: 60,
+	subtaskContextReminderPercent: 50,
+	subtaskContextStopPercent: 75,
 } as unknown as TumbleCodeSettings
 
 /**

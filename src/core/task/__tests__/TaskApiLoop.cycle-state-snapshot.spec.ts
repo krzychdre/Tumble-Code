@@ -299,11 +299,11 @@ describe("TaskApiLoop: one state snapshot per request cycle (P5)", () => {
 })
 
 describe("TaskApiLoop request cycle: subtask context limit", () => {
-	it("a delegated task past its context limit hands over before the request goes out", async () => {
-		const { access, createMessage } = makeAccess()
+	it("a delegated task past its configured context limit hands over before the request goes out", async () => {
+		const { access, createMessage } = makeAccess(() => ({ subtaskContextStopPercent: 80 }))
 		access.parentTaskId = "parent-1"
 		access.contextHandoff = false
-		access.getTokenUsage = () => ({ contextTokens: 90_000 })
+		access.getTokenUsage = () => ({ contextTokens: 82_000 })
 		access.api.getModel.mockReturnValue({ id: "test-model", info: { contextWindow: 100_000 } })
 		access.handOverAtContextLimit = vi.fn().mockResolvedValue(undefined)
 

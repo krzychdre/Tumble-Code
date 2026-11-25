@@ -216,6 +216,19 @@ export const globalSettingsSchema = z.object({
 	 * @default 300
 	 */
 	subagentFollowupTimeoutSec: z.number().optional(),
+	/**
+	 * Share of the model's context window, in percent, at which a delegated task
+	 * (`new_task` child or subagent) is told once to finish its step and hand its
+	 * work over. Below `subtaskContextStopPercent`.
+	 * @default 65
+	 */
+	subtaskContextReminderPercent: z.number().optional(),
+	/**
+	 * Share of the model's context window, in percent, at which a delegated task
+	 * is stopped and returns to its parent with the TODO items it left open.
+	 * @default 85
+	 */
+	subtaskContextStopPercent: z.number().optional(),
 
 	/**
 	 * Whether to include diagnostic messages (errors, warnings) in tool outputs

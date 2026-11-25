@@ -110,6 +110,8 @@ const settingsDefaults = {
 	includeCurrentCost: true,
 	parallelTasksMaxConcurrency: DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY,
 	subagentFollowupTimeoutSec: DEFAULT_SUBAGENT_FOLLOWUP_TIMEOUT_SEC,
+	subtaskContextReminderPercent: 65,
+	subtaskContextStopPercent: 85,
 
 	historyPreviewCollapsed: false,
 	reasoningBlockCollapsed: true,

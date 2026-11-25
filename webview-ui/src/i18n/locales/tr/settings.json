@@ -966,6 +966,14 @@
 			"description": "Bir alt aracının sorusu, otomatik onaylanıp alt aracın kendi başına devam etmeden önce cevabınızı ne kadar bekler. 0 anında yanıt verir (tamamen otonom).",
 			"immediate": "kapalı"
 		},
+		"contextReminder": {
+			"label": "Alt görev devir hatırlatması",
+			"description": "Devredilmiş bir görev (bir alt görev veya bir alt ajan) modelinin bağlam penceresinin bu kadarını kullandığında, bir kez adımını bitirip rapor vermesi istenir; böylece yeni bir alt görev işe devam edebilir. Kendi başlattığınız görevler etkilenmez."
+		},
+		"contextStop": {
+			"label": "Alt görev durdurma",
+			"description": "Devredilmiş bir görev modelinin bağlam penceresinin bu kadarını kullandığında durur ve açık kalan TODO maddeleriyle üst göreve döner. Her zaman hatırlatmanın üzerindedir."
+		},
 		"compactNote": "Düzenlenen profil kompakt modu (çok küçük modeller) kullanıyor; bu yüzden bu ayarlar ne derse desin onun için alt aracılar her zaman kapalıdır. Ayarlar diğer tüm profiller için geçerli olmaya devam eder."
 	}
 }

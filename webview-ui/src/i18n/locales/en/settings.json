@@ -966,6 +966,14 @@
 			"description": "How long a subagent's question waits for your answer before it is auto-approved and the subagent continues on its own. 0 answers immediately (fully autonomous).",
 			"immediate": "off"
 		},
+		"contextReminder": {
+			"label": "Subtask handoff reminder",
+			"description": "When a delegated task (a subtask or a subagent) has used this share of its model's context window, it is told once to finish its step and report, so a fresh subtask can continue its work. Tasks you start yourself are not affected."
+		},
+		"contextStop": {
+			"label": "Subtask handoff stop",
+			"description": "When a delegated task has used this share of its model's context window, it stops and returns to its parent with the TODO items it left open. Always above the reminder."
+		},
 		"compactNote": "The profile being edited uses compact mode (very small models), so subagents are always off for it, whatever these settings say. They still apply to every other profile."
 	}
 }

@@ -966,6 +966,14 @@
 			"description": "Cuánto tiempo la pregunta de un subagente espera tu respuesta antes de ser aprobada automáticamente y el subagente continúa por su cuenta. 0 responde inmediatamente (totalmente autónomo).",
 			"immediate": "desactivado"
 		},
+		"contextReminder": {
+			"label": "Aviso de traspaso de subtareas",
+			"description": "Cuando una tarea delegada (una subtarea o un subagente) ha usado esta parte de la ventana de contexto de su modelo, recibe una única indicación de terminar su paso e informar, para que una subtarea nueva continúe el trabajo. Las tareas que inicias tú no se ven afectadas."
+		},
+		"contextStop": {
+			"label": "Detención de subtareas",
+			"description": "Cuando una tarea delegada ha usado esta parte de la ventana de contexto de su modelo, se detiene y vuelve a su tarea principal con los elementos TODO que dejó abiertos. Siempre por encima del aviso."
+		},
 		"compactNote": "El perfil que se está editando usa el modo compacto (modelos muy pequeños), así que los subagentes siempre están desactivados para él, digan lo que digan estos ajustes. Siguen aplicándose a todos los demás perfiles."
 	}
 }
