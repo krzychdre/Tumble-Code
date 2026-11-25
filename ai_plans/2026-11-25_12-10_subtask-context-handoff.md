@@ -1,6 +1,6 @@
 # A delegated task hands its work over at its context limit
 
-Status: in progress.
+Status: done, merged as #1363.
 
 ## Problem
 
