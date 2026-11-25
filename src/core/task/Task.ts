@@ -141,6 +141,7 @@ import { MessageManager } from "../message-manager"
 import { validateAndFixToolResultIds } from "./validateToolResultIds"
 import { mergeConsecutiveApiMessages } from "./mergeConsecutiveApiMessages"
 import { TaskMessageLog } from "./TaskMessageLog"
+import { childReportNotes, lastSayText } from "./childReport"
 import { TaskAskSay } from "./TaskAskSay"
 import { TaskStreamProcessor } from "./TaskStreamProcessor"
 import { TaskTokenTracking } from "./TaskTokenTracking"
@@ -390,6 +391,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 * one line saying what it kept doing.
 	 */
 	stopMessage?: string
+	/** A delegated task reached its context limit and was told to hand over (TaskApiLoop.handleSubtaskContextLimit). */
+	contextHandoff = false
 	isInitialized = false
 	isPaused: boolean = false
 
@@ -1528,11 +1531,34 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 * otherwise. `message` says what it kept doing and reaches the fan-out
 	 * parent through awaitTaskCompletion.
 	 */
-	public async stopBackgroundTask(reason: "stuck" | "budget", message: string): Promise<void> {
+	public async stopBackgroundTask(reason: "stuck" | "budget" | "context", message: string): Promise<void> {
 		this.stopMessage = message
 		logger.warn(`[Task#${this.taskId}.${this.instanceId}] Background task stopped (${reason}): ${message}`)
 		this.abortReason = reason
 		await this.abortTask()
+	}
+
+	/**
+	 * End a delegated task that reached its context limit (TaskApiLoop.handleSubtaskContextLimit).
+	 * A subagent stops like a stuck one, with `abortReason` "context"; a new_task child returns its
+	 * last words to its parent as its result. Either way childReportNotes tells the parent it is a
+	 * handoff and lists the TODO items left open. A child whose parent no longer waits is aborted.
+	 */
+	public async handOverAtContextLimit(message: string): Promise<void> {
+		if (this.isBackground) {
+			return this.stopBackgroundTask("context", message)
+		}
+		const returned = await this.providerRef.deref()?.reopenParentFromDelegation({
+			parentTaskId: this.parentTaskId!,
+			childTaskId: this.taskId,
+			completionResultSummary: lastSayText(this.clineMessages) ?? message,
+			notes: childReportNotes(this),
+		})
+		if (!returned) {
+			await this.say("error", `Task stopped: ${message}`)
+			this.abortReason = "context"
+			await this.abortTask()
+		}
 	}
 
 	/**

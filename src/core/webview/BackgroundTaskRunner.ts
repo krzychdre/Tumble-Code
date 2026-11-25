@@ -6,7 +6,7 @@ import { getModelMaxOutputTokens } from "@tumble-code/core/browser"
 
 import { buildApiHandler } from "../../api"
 import { Task, type AutoApprovalOverride } from "../task/Task"
-import { childReportNotes } from "../task/childReport"
+import { childReportNotes, lastSayText } from "../task/childReport"
 import { type SideQuery } from "../memory"
 import { makeSideQuery } from "../memory/memoryTaskIntegration"
 
@@ -63,7 +63,8 @@ export interface BackgroundTaskOutcome {
 	/**
 	 * Why the task stopped, in one line: its API request failed for good
 	 * (Task#apiFailureMessage: status, reason, provider and model), or it was
-	 * stopped as stuck or over its request budget (Task#stopMessage, `abortReason` "stuck" or "budget").
+	 * stopped as stuck, over its request budget or at its context limit (Task#stopMessage, `abortReason`
+	 * "stuck", "budget" or "context").
 	 */
 	failureMessage?: string
 	/** What the parent reads besides the task's own words (childReportNotes). */
@@ -371,13 +372,11 @@ export class BackgroundTaskRunner {
 			// far the work got.
 			const onAborted = () => {
 				const failureMessage = task.stopMessage ?? task.apiFailureMessage
-				const lastText = [...task.clineMessages]
-					.reverse()
-					.find((m) => m.type === "say" && m.say === "text" && !m.partial && m.text?.trim())
+				const lastText = lastSayText(task.clineMessages)
 				finish({
 					completed: false,
 					abortReason: task.abortReason,
-					...(lastText ? { lastMessage: lastText.text } : {}),
+					...(lastText ? { lastMessage: lastText } : {}),
 					...(failureMessage ? { failureMessage } : {}),
 				})
 			}

@@ -749,6 +749,23 @@ describe("RunParallelTasksTool.execute", () => {
 		expect(callbacks.pushToolResult.mock.calls[0][0]).toContain("The user wrote: stop")
 	})
 
+	it("reports a subagent handed over at its context limit as completed, with its notes", async () => {
+		const { callbacks } = await runFanOut({
+			subtasks: [{ message: "job" }],
+			setup: (p) =>
+				p.backgroundTaskRunner.awaitTaskCompletion.mockResolvedValueOnce({
+					completed: false,
+					abortReason: "context",
+					lastMessage: "parser wired",
+					writtenPaths: [],
+					notes: "TODO items it left open",
+				}),
+		})
+		const report = callbacks.pushToolResult.mock.calls[0][0] as string
+		expect(report).toContain("COMPLETED")
+		expect(report).toContain("parser wired\n\nTODO items it left open")
+	})
+
 	it("a second fan-out of the same parent numbers its subagents after the first one's", async () => {
 		const provider = makeFakeProvider()
 		const parent = makeFakeParentTask(provider)

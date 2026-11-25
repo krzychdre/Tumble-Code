@@ -427,7 +427,8 @@ async function runOneSubtask({
 		if (!outcome.completed && (signal.aborted || wasCancelledIndividually)) {
 			return await end("cancelled", { worktreePath, branch })
 		}
-		if (outcome.completed) {
+		// A handoff at the context limit is a finished part of the work; its notes say what is left.
+		if (outcome.completed || outcome.abortReason === "context") {
 			return await end("completed", { worktreePath, branch, message: outcome.lastMessage, notes: outcome.notes })
 		}
 		return await end("failed", {
