@@ -472,11 +472,20 @@ The VS Code extension keeps the `vscode` section up to date: on every change in
 its Settings it writes the settings there (`vscode.settings`), so the CLI runs
 the engine the way the editor does: context management, subagents and their
 handoff limits, memory, custom instructions, prompts, experiments and the rest.
+It also writes the provider profiles and the modes they are bound to
+(`vscode.profiles`, as "Export settings" writes them: without API keys). A mode
+runs on its VS Code profile, else on the current one: provider, model and base
+URL, with the profile's model facts (context window, prices, images, reasoning
+effort, model size, concurrent requests) while the run uses that connection.
+The key comes from the CLI: `apiKey` or `apiKeyEnv` in this file, the
+provider's environment variable, or the key the CLI stored for that provider.
 Leave the section to the extension; the next change replaces it. It leaves out
 the editor's approvals (the CLI has its own, see `requireApproval`), its
-terminal integration, the code index, custom modes and view settings. A key you
-set yourself at the top level, such as `commandExecutionTimeout`, wins over the
-section.
+terminal integration, the code index, custom modes and view settings. What you
+set yourself wins over the section: a top-level key such as
+`commandExecutionTimeout`, `provider`/`model`/`baseUrl` (then every mode without
+its own entry runs on them), a `modes` entry, and each field of a `models`
+entry.
 
 Note on `commandExecutionTimeout`: a shell command the agent runs is stopped
 once it has run this many seconds (default 300), and the model is told not to

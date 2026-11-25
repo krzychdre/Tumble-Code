@@ -10,6 +10,8 @@ import { providerRequiresApiKey, getEnvVarName, keylessProviders, getBaseUrlFiel
 
 import { run } from "../run.js"
 import { loadSettings, saveSettings, getSettingsPath } from "@/lib/storage/settings.js"
+import { vscodeProfilesEnvelope } from "@/lib/utils/__tests__/vscode-profiles-envelope.js"
+import { readVsCodeConfig } from "@/lib/utils/vscode-config.js"
 import { getConfigDir } from "@/lib/storage/config-dir.js"
 import type { FlagOptions } from "@/types/index.js"
 import { CLEAR_SCREEN } from "@/ui/utils/clearTerminal.js"
@@ -46,7 +48,7 @@ const mockHost = vi.hoisted(() => ({
 				mode?: string
 				reasoningEffort?: string
 				apiKey?: string
-				modelSettings?: { contextWindow?: number; inputPrice?: number }
+				modelSettings?: { contextWindow?: number; inputPrice?: number; reasoningEffort?: string }
 				commandExecutionTimeout?: number
 				vscodeSettings?: Record<string, unknown>
 				maxParallelSubagents?: number
@@ -205,6 +207,93 @@ describe("run provider requirements shared with the settings UI", () => {
 
 		expect(mockHost.lastOptions?.provider).toBe("ollama")
 		expect(mockHost.lastOptions?.apiKey).toBeUndefined()
+	})
+
+	describe("with the VS Code profiles in the vscode section", () => {
+		beforeEach(() => {
+			vi.stubEnv("ANTHROPIC_API_KEY", "anthropic-key")
+			// A base URL from the environment would replace the profile's connection.
+			vi.stubEnv("ANTHROPIC_BASE_URL", undefined)
+		})
+
+		it("runs every mode on its VS Code profile, with the profile's model facts, when the file names no provider", async () => {
+			await saveSettings({ vscode: { profiles: vscodeProfilesEnvelope() } })
+
+			await runToEnd({})
+
+			expect(mockHost.lastOptions).toMatchObject({
+				provider: "openai",
+				model: "GLM-5.3-NVFP4",
+				baseUrl: "http://192.168.50.194:11111/v1",
+				apiKey: "test-key",
+				reasoningEffort: "high",
+			})
+			expect(mockHost.lastOptions?.modelSettings?.contextWindow).toBe(1_048_576)
+			expect(mockHost.lastOptions?.modeProviderSettings?.modes.architect).toMatchObject({
+				apiProvider: "anthropic",
+				apiModelId: "claude-opus-5-5",
+				apiKey: "anthropic-key",
+				slimToolset: true,
+			})
+		})
+
+		it("keeps the key the CLI stored itself for the profile's provider", async () => {
+			vi.stubEnv("ANTHROPIC_API_KEY", undefined)
+			vi.mocked(readVsCodeConfig).mockReturnValueOnce({ provider: "anthropic", apiKey: "stored-anthropic-key" })
+			await saveSettings({ vscode: { profiles: vscodeProfilesEnvelope() } })
+
+			await runToEnd({})
+
+			expect(mockHost.lastOptions?.modeProviderSettings?.modes.architect).toMatchObject({
+				apiKey: "stored-anthropic-key",
+			})
+		})
+
+		it("never sends a key stored for another provider", async () => {
+			vi.stubEnv("OPENAI_API_KEY", undefined)
+			vi.mocked(readVsCodeConfig).mockReturnValueOnce({ provider: "anthropic", apiKey: "stored-anthropic-key" })
+			await saveSettings({ vscode: { profiles: vscodeProfilesEnvelope() } })
+
+			await expect(run("hello", baseFlags({}))).rejects.toBe(exitError)
+
+			expect(exitSpy).toHaveBeenCalledWith(1)
+			expect(mockHost.lastOptions).toBeUndefined()
+		})
+
+		it("the file's models entry wins field by field over the profile", async () => {
+			await saveSettings({
+				vscode: { profiles: vscodeProfilesEnvelope() },
+				models: { "GLM-5.3-NVFP4": { contextWindow: 200_000 } },
+			})
+
+			await runToEnd({})
+
+			expect(mockHost.lastOptions?.modelSettings).toMatchObject({
+				contextWindow: 200_000,
+				reasoningEffort: "high",
+			})
+		})
+
+		it("the file's own provider wins, and the profile's model facts stay with the profile's connection", async () => {
+			await saveSettings({
+				provider: "openai",
+				baseUrl: "http://192.168.50.244:18020/v1",
+				model: "Qwen3.8-27B",
+				vscode: { profiles: vscodeProfilesEnvelope() },
+			})
+
+			await runToEnd({})
+
+			expect(mockHost.lastOptions).toMatchObject({
+				model: "Qwen3.8-27B",
+				baseUrl: "http://192.168.50.244:18020/v1",
+			})
+			expect(mockHost.lastOptions?.modelSettings).toBeUndefined()
+			expect(mockHost.lastOptions?.modeProviderSettings?.modes.architect).toMatchObject({
+				apiProvider: "openai",
+				openAiModelId: "Qwen3.8-27B",
+			})
+		})
 	})
 })
 

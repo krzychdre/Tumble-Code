@@ -228,7 +228,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// The CLI runs the same engine: it gets the editor's settings through its settings file.
 	if (!cliRuntime.isCliRuntime) {
-		context.subscriptions.push(startCliSettingsMirror(contextProxy, CLI_SETTINGS_PATH))
+		context.subscriptions.push(startCliSettingsMirror(context, contextProxy, CLI_SETTINGS_PATH))
 	}
 
 	// Initialize the native memory system's path module. The config accessor

@@ -2,16 +2,21 @@ import fs from "fs/promises"
 import os from "os"
 import path from "path"
 
-import { GLOBAL_SETTINGS_KEYS, type GlobalSettings } from "@tumble-code/types"
+import type { ExtensionContext } from "vscode"
+
+import { GLOBAL_SETTINGS_KEYS, type GlobalSettings, type ProviderProfilesEnvelope } from "@tumble-code/types"
 import { withLockedJsonTransaction } from "@tumble-code/core"
 
 import { logger } from "../../utils/logging"
 import type { ContextProxy } from "./ContextProxy"
+import { ProviderSettingsManager } from "./ProviderSettingsManager"
 
 /**
  * The editor's settings, mirrored into the `vscode` section of the CLI's
  * settings file, so the CLI runs the engine the way the editor does. The CLI
- * applies the section under its own keys (apps/cli/src/commands/cli/run.ts).
+ * applies the section under its own keys (apps/cli/src/commands/cli/run.ts):
+ * the settings under its settings, the provider profiles under its provider,
+ * model and `models` entries.
  * The extension writes only this section; the rest of the file is the user's.
  */
 
@@ -96,10 +101,15 @@ const NOT_MIRRORED: ReadonlySet<GlobalSettingsKey> = new Set<GlobalSettingsKey>(
 export interface VscodeSection {
 	/** The editor's global settings the CLI applies, set values only. */
 	settings: Partial<GlobalSettings>
+	/** The provider profiles and their modes, as "Export settings" writes them: without API keys. */
+	profiles: ProviderProfilesEnvelope
 }
 
-/** The section for the editor's current settings. */
-export function buildVscodeSection(contextProxy: Pick<ContextProxy, "getValue">): VscodeSection {
+/** The section for the editor's current settings and provider profiles. */
+export async function buildVscodeSection(
+	contextProxy: Pick<ContextProxy, "getValue">,
+	profiles: Pick<ProviderSettingsManager, "export">,
+): Promise<VscodeSection> {
 	const settings: Record<string, unknown> = {}
 	for (const key of GLOBAL_SETTINGS_KEYS) {
 		const value = contextProxy.getValue(key)
@@ -107,7 +117,7 @@ export function buildVscodeSection(contextProxy: Pick<ContextProxy, "getValue">)
 			settings[key] = value
 		}
 	}
-	return { settings }
+	return { settings, profiles: await profiles.export() }
 }
 
 /** Replace the `vscode` section of the settings file, keeping every other key; no write when nothing changed. */
@@ -132,27 +142,35 @@ export async function writeVscodeSection(settingsPath: string, section: VscodeSe
 const MIRROR_DELAY_MS = 500
 
 /**
- * Write the section now and after every settings change. A failed write is
- * logged and left for the next change (a malformed file stays as the user
- * wrote it).
+ * Write the section now and after every change of a setting or of the secret
+ * store, where the provider profiles live. A failed write is logged and left
+ * for the next change (a malformed file stays as the user wrote it).
  */
-export function startCliSettingsMirror(contextProxy: ContextProxy, settingsPath: string): { dispose(): void } {
+export function startCliSettingsMirror(
+	context: ExtensionContext,
+	contextProxy: ContextProxy,
+	settingsPath: string,
+): { dispose(): void } {
+	const profiles = new ProviderSettingsManager(context)
 	const write = () =>
-		writeVscodeSection(settingsPath, buildVscodeSection(contextProxy)).catch((error) =>
-			logger.error(
-				`[cliSettingsMirror] Could not write ${settingsPath}: ${error instanceof Error ? error.message : String(error)}`,
-			),
-		)
+		buildVscodeSection(contextProxy, profiles)
+			.then((section) => writeVscodeSection(settingsPath, section))
+			.catch((error) =>
+				logger.error(
+					`[cliSettingsMirror] Could not write ${settingsPath}: ${error instanceof Error ? error.message : String(error)}`,
+				),
+			)
 	let timer: NodeJS.Timeout | undefined
-	const subscription = contextProxy.onDidChangeValues(() => {
+	const schedule = () => {
 		clearTimeout(timer)
 		timer = setTimeout(write, MIRROR_DELAY_MS)
-	})
+	}
+	const subscriptions = [contextProxy.onDidChangeValues(schedule), context.secrets.onDidChange(schedule)]
 	void write()
 	return {
 		dispose() {
 			clearTimeout(timer)
-			subscription.dispose()
+			subscriptions.forEach((subscription) => subscription.dispose())
 		},
 	}
 }
