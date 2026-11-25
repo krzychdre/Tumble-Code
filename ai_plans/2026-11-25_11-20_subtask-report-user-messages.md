@@ -1,6 +1,6 @@
 # The parent reads what the user wrote to its subtask
 
-Status: in progress.
+Status: done, merged as #1362.
 
 ## Problem
 
