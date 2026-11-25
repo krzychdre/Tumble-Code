@@ -332,6 +332,27 @@ describe("ExtensionHost", () => {
 			expect(sentSettings(createTestHost({ terminalShell: "/bin/bash" })).execaShellPath).toBe("/bin/bash")
 		})
 
+		it("saves the code index after the settings, as the VS Code code index settings do", () => {
+			const codeIndexSettings = {
+				codebaseIndexEnabled: true,
+				codebaseIndexQdrantUrl: "http://localhost:6333",
+				codebaseIndexEmbedderProvider: "ollama" as const,
+				codebaseIndexEmbedderModelId: "bge-m3",
+			}
+			const host = createTestHost({ codeIndexSettings })
+			const emitSpy = vi.spyOn(host, "emit")
+			host.markWebviewReady()
+
+			const sent = emitSpy.mock.calls
+				.filter((call) => call[0] === "webviewMessage")
+				.map((call) => call[1] as WebviewMessage)
+			const types = sent.map((message) => message.type)
+			expect(types.indexOf("saveCodeIndexSettingsAtomic")).toBeGreaterThan(types.indexOf("updateSettings"))
+			expect(sent.find((message) => message.type === "saveCodeIndexSettingsAtomic")?.codeIndexSettings).toEqual(
+				codeIndexSettings,
+			)
+		})
+
 		it("applies the editor's settings under the run's own and the CLI's permissions", () => {
 			const settings = sentSettings(
 				createTestHost({

@@ -11,11 +11,12 @@ import { buildVscodeSection, startCliSettingsMirror, writeVscodeSection } from "
 import type { ContextProxy } from "../ContextProxy"
 import { ProviderSettingsManager } from "../ProviderSettingsManager"
 
-/** A proxy over plain values that tells its listeners about every set. */
-function proxyOf(values: Record<string, unknown>) {
+/** A proxy over plain values and secrets that tells its listeners about every set. */
+function proxyOf(values: Record<string, unknown>, secrets: Record<string, string> = {}) {
 	const listeners = new Set<() => void>()
 	return {
 		getValue: (key: string) => values[key],
+		getSecret: (key: string) => secrets[key],
 		set(key: string, value: unknown) {
 			values[key] = value
 			listeners.forEach((listener) => listener())
@@ -71,6 +72,7 @@ const emptyProfiles = {
 
 describe("buildVscodeSection", () => {
 	it("carries the engine settings the editor has set and leaves out approvals, profiles, terminal and view state", async () => {
+		const codebaseIndexConfig = { codebaseIndexEnabled: true, codebaseIndexEmbedderProvider: "ollama" }
 		const { settings } = await buildVscodeSection(
 			proxyOf({
 				subtaskContextStopPercent: 75,
@@ -84,7 +86,8 @@ describe("buildVscodeSection", () => {
 				uiDensity: "compact",
 				mode: "architect",
 				customModes: [],
-				codebaseIndexConfig: { codebaseIndexEnabled: true },
+				codebaseIndexConfig,
+				codebaseIndexModels: { ollama: {} },
 			}) as unknown as ContextProxy,
 			{ export: async () => emptyProfiles },
 		)
@@ -93,6 +96,27 @@ describe("buildVscodeSection", () => {
 			subtaskContextStopPercent: 75,
 			autoCondenseContextPercent: 80,
 			customInstructions: "Answer in Polish.",
+			codebaseIndexConfig,
+		})
+	})
+
+	it("carries the active embedder's key and Qdrant's, and no other secret", async () => {
+		const { codeIndexSecrets } = await buildVscodeSection(
+			proxyOf(
+				{ codebaseIndexConfig: { codebaseIndexEmbedderProvider: "openai-compatible" } },
+				{
+					codebaseIndexOpenAiCompatibleApiKey: "embedder-key",
+					codeIndexQdrantApiKey: "qdrant-key",
+					codebaseIndexGeminiApiKey: "gemini-key",
+					openAiApiKey: "model-key",
+				},
+			) as unknown as ContextProxy,
+			{ export: async () => emptyProfiles },
+		)
+
+		expect(codeIndexSecrets).toEqual({
+			codebaseIndexOpenAiCompatibleApiKey: "embedder-key",
+			codeIndexQdrantApiKey: "qdrant-key",
 		})
 	})
 
@@ -125,6 +149,7 @@ describe("writeVscodeSection", () => {
 	const section = (autoCondenseContextPercent: number) => ({
 		settings: { autoCondenseContextPercent },
 		profiles: emptyProfiles,
+		codeIndexSecrets: {},
 	})
 
 	it("creates a file only its owner can read", async () => {

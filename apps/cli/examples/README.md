@@ -33,6 +33,7 @@ full rules; every key below links to them.
 | `mcpSettingsPath`         | `"~/.roo/mcp.json"`                | File with the global MCP servers (the default shown); `~` is the home directory.                                                                      |
 | `cloudApiUrl`             | `"https://cloud.example.com"`      | Tumble Code Cloud API for `tumble auth cloud login` and telemetry; leave it out without a cloud.                                                      |
 | `timeZone`                | `"Europe/Warsaw"`                  | IANA zone for the times shown and told to the model; only needed where the system zone is missing.                                                    |
+| `codeIndex`               | a local embedder and Qdrant        | The code index (semantic code search), see [Code Index](../README.md#code-index).                                                                     |
 | `modes`                   | two entries                        | Provider settings per mode, see below.                                                                                                                |
 | `models`                  | four entries                       | Facts per model, see below.                                                                                                                           |
 

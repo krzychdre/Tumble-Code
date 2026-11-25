@@ -1,4 +1,4 @@
-import type { CodebaseIndexConfig, SecretState } from "@tumble-code/types"
+import { CODEBASE_INDEX_EMBEDDER_SECRET_KEYS, type CodebaseIndexConfig, type SecretState } from "@tumble-code/types"
 
 import type { CodeIndexConfig, PreviousConfigSnapshot } from "../interfaces/config"
 import type { IEmbedder } from "../interfaces/embedder"
@@ -63,7 +63,7 @@ export const EMBEDDER_DESCRIPTORS: Record<EmbedderProvider, EmbedderDescriptor> 
 		id: "openai",
 		optionsKey: "openAiOptions",
 		missingConfigMessage: "embeddings:serviceFactory.openAiConfigMissing",
-		read: (saved) => ({ openAiNativeApiKey: saved.secret("codeIndexOpenAiKey") }),
+		read: (saved) => ({ openAiNativeApiKey: saved.secret(CODEBASE_INDEX_EMBEDDER_SECRET_KEYS.openai) }),
 		isConfigured: (options) => !!options?.openAiNativeApiKey,
 		snapshot: (options) => ({ openAiKey: options?.openAiNativeApiKey ?? "" }),
 		create: (options, modelId) => new OpenAiEmbedder({ ...options, openAiEmbeddingModelId: modelId }),
@@ -84,7 +84,7 @@ export const EMBEDDER_DESCRIPTORS: Record<EmbedderProvider, EmbedderDescriptor> 
 		missingConfigMessage: "embeddings:serviceFactory.openAiCompatibleConfigMissing",
 		read: (saved) => {
 			const baseUrl = saved.config.codebaseIndexOpenAiCompatibleBaseUrl?.trim() ?? ""
-			const apiKey = saved.secret("codebaseIndexOpenAiCompatibleApiKey")
+			const apiKey = saved.secret(CODEBASE_INDEX_EMBEDDER_SECRET_KEYS["openai-compatible"])
 			return baseUrl && apiKey ? { baseUrl, apiKey } : undefined
 		},
 		// read() returns options only when both the base URL and the key are set.
@@ -99,7 +99,7 @@ export const EMBEDDER_DESCRIPTORS: Record<EmbedderProvider, EmbedderDescriptor> 
 		id: "gemini",
 		optionsKey: "geminiOptions",
 		missingConfigMessage: "embeddings:serviceFactory.geminiConfigMissing",
-		read: (saved) => apiKeyOptions(saved.secret("codebaseIndexGeminiApiKey")),
+		read: (saved) => apiKeyOptions(saved.secret(CODEBASE_INDEX_EMBEDDER_SECRET_KEYS.gemini)),
 		isConfigured: (options) => !!options?.apiKey,
 		snapshot: (options) => ({ geminiApiKey: options?.apiKey ?? "" }),
 		create: (options, modelId) => new GeminiEmbedder(options.apiKey, modelId),
@@ -108,7 +108,7 @@ export const EMBEDDER_DESCRIPTORS: Record<EmbedderProvider, EmbedderDescriptor> 
 		id: "mistral",
 		optionsKey: "mistralOptions",
 		missingConfigMessage: "embeddings:serviceFactory.mistralConfigMissing",
-		read: (saved) => apiKeyOptions(saved.secret("codebaseIndexMistralApiKey")),
+		read: (saved) => apiKeyOptions(saved.secret(CODEBASE_INDEX_EMBEDDER_SECRET_KEYS.mistral)),
 		isConfigured: (options) => !!options?.apiKey,
 		snapshot: (options) => ({ mistralApiKey: options?.apiKey ?? "" }),
 		create: (options, modelId) => new MistralEmbedder(options.apiKey, modelId),
@@ -132,7 +132,7 @@ export const EMBEDDER_DESCRIPTORS: Record<EmbedderProvider, EmbedderDescriptor> 
 		optionsKey: "openRouterOptions",
 		missingConfigMessage: "embeddings:serviceFactory.openRouterConfigMissing",
 		read: (saved) => {
-			const apiKey = saved.secret("codebaseIndexOpenRouterApiKey")
+			const apiKey = saved.secret(CODEBASE_INDEX_EMBEDDER_SECRET_KEYS.openrouter)
 			const specificProvider = saved.config.codebaseIndexOpenRouterSpecificProvider ?? ""
 			return apiKey ? { apiKey, specificProvider: specificProvider || undefined } : undefined
 		},

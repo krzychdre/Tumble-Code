@@ -51,6 +51,7 @@ const mockHost = vi.hoisted(() => ({
 				modelSettings?: { contextWindow?: number; inputPrice?: number; reasoningEffort?: string }
 				commandExecutionTimeout?: number
 				vscodeSettings?: Record<string, unknown>
+				codeIndexSettings?: Record<string, unknown>
 				maxParallelSubagents?: number
 				mcpSettingsPath?: string
 				modeProviderSettings?: {
@@ -207,6 +208,31 @@ describe("run provider requirements shared with the settings UI", () => {
 
 		expect(mockHost.lastOptions?.provider).toBe("ollama")
 		expect(mockHost.lastOptions?.apiKey).toBeUndefined()
+	})
+
+	const openAiConnection = {
+		provider: "openai" as const,
+		model: "GLM-5.3-NVFP4",
+		baseUrl: "http://localhost:8000/v1",
+	}
+
+	it("hands the code index of the file to the host, and stops on a malformed entry", async () => {
+		await saveSettings({
+			...openAiConnection,
+			codeIndex: { qdrantUrl: "http://localhost:6333", embedder: "ollama" },
+		})
+		await runToEnd({})
+		expect(mockHost.lastOptions?.codeIndexSettings).toMatchObject({
+			codebaseIndexEnabled: true,
+			codebaseIndexQdrantUrl: "http://localhost:6333",
+			codebaseIndexEmbedderProvider: "ollama",
+		})
+
+		mockHost.lastOptions = undefined
+		await saveSettings({ ...openAiConnection, codeIndex: { embedder: "vercel-ai-gateway" as never } })
+		await expect(run("hello", baseFlags({}))).rejects.toBe(exitError)
+		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("codeIndex.embedder must be one of"))
+		expect(mockHost.lastOptions).toBeUndefined()
 	})
 
 	describe("with the VS Code profiles in the vscode section", () => {

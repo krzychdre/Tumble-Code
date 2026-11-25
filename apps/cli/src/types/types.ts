@@ -1,4 +1,10 @@
-import type { GlobalSettings, ProviderProfilesEnvelope, ReasoningEffortExtended } from "@tumble-code/types"
+import type {
+	CodebaseIndexEmbedderProvider,
+	GlobalSettings,
+	ProviderProfilesEnvelope,
+	ReasoningEffortExtended,
+	SecretState,
+} from "@tumble-code/types"
 import type { OutputFormat } from "./json-events.js"
 import type { SupportedProvider } from "@/lib/utils/provider-types.js"
 import type { MODEL_SIZES } from "./constants.js"
@@ -227,6 +233,8 @@ export interface CliSettings {
 	 * wrong, such as a container without /etc/localtime; overrides TZ.
 	 */
 	timeZone?: string
+	/** The code index (semantic code search), see lib/utils/code-index-settings.ts. */
+	codeIndex?: CliCodeIndexSettings
 	/**
 	 * Written by the VS Code extension on every settings change; do not edit
 	 * it, the next change replaces it. The run applies it under everything
@@ -241,4 +249,36 @@ export interface CliVscodeSection {
 	settings?: Partial<GlobalSettings>
 	/** The editor's provider profiles and their modes, without API keys (lib/utils/vscode-profiles.ts). */
 	profiles?: ProviderProfilesEnvelope
+	/** The keys of the editor's code index: the active embedder's and Qdrant's. */
+	codeIndexSecrets?: Partial<SecretState>
+}
+
+/**
+ * The `codeIndex` entry of cli-settings.json, the same settings as the code
+ * index settings of VS Code. Each key set here wins over the `vscode` section.
+ */
+export interface CliCodeIndexSettings {
+	/** Index the workspace and offer codebase_search; defaults to true once this entry exists. */
+	enabled?: boolean
+	/** Qdrant server, e.g. "http://localhost:6333". */
+	qdrantUrl?: string
+	qdrantApiKey?: string
+	/** Name of the environment variable holding the Qdrant key, instead of qdrantApiKey. */
+	qdrantApiKeyEnv?: string
+	/** The embedding provider, as in VS Code. */
+	embedder?: CodebaseIndexEmbedderProvider
+	/** The embedder's server (openai-compatible and ollama). */
+	baseUrl?: string
+	/** The embedding model id. */
+	model?: string
+	/** The model's vector size, for a model the extension does not know. */
+	dimension?: number
+	/** The embedder's API key. */
+	apiKey?: string
+	/** Name of the environment variable holding the embedder's key, instead of apiKey. */
+	apiKeyEnv?: string
+	/** Lowest similarity a search result needs, 0 to 1. */
+	searchMinScore?: number
+	/** Most results a search returns, 10 to 200. */
+	searchMaxResults?: number
 }

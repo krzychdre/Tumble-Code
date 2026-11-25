@@ -12,6 +12,14 @@
 	"mcpSettingsPath": "~/.roo/mcp.json",
 	"cloudApiUrl": "https://cloud.example.com",
 	"timeZone": "Europe/Warsaw",
+	"codeIndex": {
+		"qdrantUrl": "http://192.168.50.194:6333",
+		"embedder": "openai-compatible",
+		"baseUrl": "http://192.168.50.194:11111/v1",
+		"model": "granite-embedding-311m-multilingual-r2",
+		"dimension": 768,
+		"apiKeyEnv": "EMBEDDINGS_API_KEY"
+	},
 	"modes": {
 		"architect": { "model": "GLM-5.3-NVFP4" },
 		"ask": { "model": "claude-sonnet-5-5" }
