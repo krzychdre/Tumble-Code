@@ -1020,6 +1020,48 @@ async def test_live_upsert_replaces_metrics_instead_of_adding(
         assert task.cost == pytest.approx(0.02)
 
 
+@pytest.mark.parametrize(
+    "arrivals, title",
+    [
+        # The opening prompt never arrived: neither the retry's status line nor
+        # the model's later answer is the request.
+        (
+            [
+                (10, "api_req_started", json.dumps({"tokensIn": 5})),
+                (20, "api_req_retry_delayed", "423\nmodel locked\n"),
+                (30, "text", "Here is the answer"),
+            ],
+            None,
+        ),
+        # The opening prompt arrives after a later message was stored.
+        (
+            [
+                (10, "api_req_started", json.dumps({"tokensIn": 5})),
+                (5, "text", "**Fix** the `pager`"),
+                (30, "text", "Done"),
+            ],
+            "Fix the pager",
+        ),
+    ],
+    ids=["opening-lost", "opening-late"],
+)
+async def test_a_live_task_takes_its_title_from_the_opening_prompt_only(
+    db_session, session_factory, arrivals, title
+):
+    from src.services.telemetry_service import upsert_task_message
+
+    await _seed_user(db_session)
+    async with session_factory() as s:
+        for ts, say, text in arrivals:
+            message = {"ts": ts, "type": "say", "say": say, "text": text}
+            await upsert_task_message(s, "task-live-title", "user_test", None, message)
+        await s.commit()
+
+    async with session_factory() as s:
+        task = await s.get(Task, "task-live-title")
+        assert task.title == title
+
+
 async def test_task_list_is_paginated(client, db_session, session_factory):
     """More tasks than one page must not all render at once."""
     PAGE_SIZE = task_list.PAGE_SIZE
