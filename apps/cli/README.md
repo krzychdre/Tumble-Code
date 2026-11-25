@@ -928,6 +928,10 @@ section); `codeIndex` sets them without VS Code, or changes some of them:
 - `enabled`: `false` turns the index off; the entry turns it on otherwise.
   Without the entry and without VS Code the index is off.
 
+The footer shows the index on the right while it is on: `◐ index 42%` while it
+indexes, `● index` once the workspace is indexed, `✗ index` after an error,
+whose reason appears once as a message on the left.
+
 Each key set here wins over the `vscode` section; the rest comes from there. A
 key that is malformed stops the run at startup and names the key. The index
 lives in Qdrant under the workspace path, so the CLI and VS Code share one

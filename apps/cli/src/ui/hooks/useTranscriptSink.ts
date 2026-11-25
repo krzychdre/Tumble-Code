@@ -76,6 +76,9 @@ function applyTranscriptEffects(effects: readonly TranscriptEffect[]): void {
 			case "setCloudStatus":
 				store.setCloudStatus(effect.status)
 				break
+			case "setCodeIndexStatus":
+				store.setCodeIndexStatus(effect.status)
+				break
 		}
 	}
 }

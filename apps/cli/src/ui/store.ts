@@ -1,6 +1,6 @@
 import { create } from "zustand"
 
-import type { TokenUsage, ProviderSettings, TodoItem, McpServer } from "@tumble-code/types"
+import type { IndexingStatus, TokenUsage, ProviderSettings, TodoItem, McpServer } from "@tumble-code/types"
 
 import type { CloudStatus, TUIMessage, PendingAsk, TaskHistoryItem } from "./types.js"
 import type { FileResult, SlashCommandResult, ModeResult } from "./components/autocomplete/index.js"
@@ -165,6 +165,9 @@ interface CLIState {
 
 	// The cloud session and its bridge (footer status). Process-wide too.
 	cloudStatus: CloudStatus | null
+
+	// The code index of the workspace (footer status). Process-wide too.
+	codeIndexStatus: IndexingStatus | null
 }
 
 interface CLIActions {
@@ -214,6 +217,8 @@ interface CLIActions {
 
 	// Cloud status action; an equal status keeps the old object.
 	setCloudStatus: (status: CloudStatus) => void
+
+	setCodeIndexStatus: (status: IndexingStatus) => void
 }
 
 const initialState: CLIState = {
@@ -240,6 +245,7 @@ const initialState: CLIState = {
 	previousTodos: [],
 	mcpServers: [],
 	cloudStatus: null,
+	codeIndexStatus: null,
 }
 
 export const useCLIStore = create<CLIState & CLIActions>((set, get) => ({
@@ -300,7 +306,13 @@ export const useCLIStore = create<CLIState & CLIActions>((set, get) => ({
 	setComplete: (complete) => set({ isComplete: complete }),
 	setHasStartedTask: (started) => set({ hasStartedTask: started }),
 	setError: (error) => set({ error }),
-	reset: () => set((state) => ({ ...initialState, mcpServers: state.mcpServers, cloudStatus: state.cloudStatus })),
+	reset: () =>
+		set((state) => ({
+			...initialState,
+			mcpServers: state.mcpServers,
+			cloudStatus: state.cloudStatus,
+			codeIndexStatus: state.codeIndexStatus,
+		})),
 	resetForTaskSwitch: () =>
 		set((state) => ({
 			// Clear task-specific state
@@ -359,4 +371,5 @@ export const useCLIStore = create<CLIState & CLIActions>((set, get) => ({
 		}
 		set({ cloudStatus: status })
 	},
+	setCodeIndexStatus: (status) => set({ codeIndexStatus: status }),
 }))

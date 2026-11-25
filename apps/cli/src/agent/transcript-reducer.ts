@@ -25,6 +25,7 @@ import {
 	type ClineMessage,
 	type ClineSay,
 	type ExtensionMessage,
+	type IndexingStatus,
 	type McpServer,
 	type ModelRecord,
 	type ProviderSettings,
@@ -169,6 +170,7 @@ export type TranscriptEffect =
 	| { type: "setAvailableModes"; modes: ModeResult[] }
 	| { type: "setRouterModels"; models: RouterModelsUpdate }
 	| { type: "setCloudStatus"; status: CloudStatus }
+	| { type: "setCodeIndexStatus"; status: IndexingStatus }
 
 export interface TranscriptReduceOptions {
 	/** Auto-approve mode: asks other than followup and api_req_failed are printed, not asked. */
@@ -904,6 +906,8 @@ export function reduceExtensionMessage(
 		r.emit({ type: "setAllSlashCommands", commands: (message.commands as SlashCommandResult[]) || [] })
 	} else if (message.type === "modes") {
 		r.emit({ type: "setAvailableModes", modes: (message.modes as ModeResult[]) || [] })
+	} else if (message.type === "indexingStatusUpdate") {
+		r.emit({ type: "setCodeIndexStatus", status: message.values as IndexingStatus })
 	} else if (message.type === "providerModels") {
 		// The request/response `providerModels` protocol (see webview-ui
 		// ApiOptions.tsx + useProviderModels): each result carries a `sourceId`

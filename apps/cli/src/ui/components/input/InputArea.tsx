@@ -8,6 +8,8 @@ import type { AutocompleteItem, AutocompleteTrigger, AutocompletePickerState } f
 import type { AutocompleteInputHandle } from "../autocomplete/AutocompleteInput.js"
 import InputFooter from "./InputFooter.js"
 import type { Toast } from "../../hooks/useToast.js"
+import type { IndexingStatus } from "@tumble-code/types"
+
 import type { CloudStatus } from "../../types.js"
 import type { PermissionMode } from "../../../lib/utils/permissions.js"
 
@@ -43,6 +45,7 @@ export interface InputAreaProps {
 	contextWindow?: number
 	cost?: number
 	cloud?: CloudStatus | null
+	codeIndex?: IndexingStatus | null
 	toast?: Toast | null
 	exitHint?: string | null
 }
@@ -78,6 +81,7 @@ function InputArea({
 	contextWindow,
 	cost,
 	cloud,
+	codeIndex,
 	toast,
 	exitHint,
 }: InputAreaProps) {
@@ -116,6 +120,7 @@ function InputArea({
 				contextWindow={contextWindow}
 				cost={cost}
 				cloud={cloud}
+				codeIndex={codeIndex}
 			/>
 		</Box>
 	)

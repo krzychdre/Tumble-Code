@@ -31,6 +31,7 @@ interface TranscriptModel {
 	tokenUsage: TokenUsage | null
 	mcpServers: McpServer[]
 	cloudStatus: CloudStatus | null
+	codeIndexStatus: unknown
 	currentMode: string | null
 	apiConfiguration: ProviderSettings | null
 	taskHistory: unknown[]
@@ -55,6 +56,7 @@ function emptyModel(): TranscriptModel {
 		tokenUsage: null,
 		mcpServers: [],
 		cloudStatus: null,
+		codeIndexStatus: null,
 		currentMode: null,
 		apiConfiguration: null,
 		taskHistory: [],
@@ -128,6 +130,9 @@ function apply(model: TranscriptModel, effect: TranscriptEffect): void {
 			break
 		case "setCloudStatus":
 			model.cloudStatus = effect.status
+			break
+		case "setCodeIndexStatus":
+			model.codeIndexStatus = effect.status
 			break
 	}
 }
@@ -375,6 +380,13 @@ describe("transcript reducer", () => {
 
 			expect(model.taskHistory).toEqual(history)
 			expect(model.currentMode).toBe("architect")
+		})
+
+		it("routes the code index status to the store", () => {
+			const values = { systemStatus: "Indexing", processedItems: 3, totalItems: 4 }
+			handle({ type: "indexingStatusUpdate", values } as never)
+
+			expect(model.codeIndexStatus).toEqual(values)
 		})
 
 		it("routes file search results, commands, modes and provider models to the store", () => {
