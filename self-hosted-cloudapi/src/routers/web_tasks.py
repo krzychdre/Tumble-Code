@@ -222,6 +222,7 @@ async def task_detail(
         owner_share=_owner_share(share),
         live=live,
         can_delete=True,
+        delete_blocked=task_id in registry.live_tasks(user["user_id"]),
         # A conversation is prose, so the page switches to the reading
         # measure instead of the wider scanning column the list uses.
         read_measure=True,

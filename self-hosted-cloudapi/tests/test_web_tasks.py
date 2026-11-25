@@ -274,6 +274,55 @@ async def test_owner_task_detail_renders_live_controls(
     assert folded.index('class="task-stats panel"') < folded.index('id="conversation"')
 
 
+@pytest.mark.parametrize("live", [False, True])
+async def test_task_page_delete_asks_with_the_lists_dialog(
+    client, db_session, session_factory, live
+):
+    """The task page's Delete opens the list's dialog (static/app.js) with this
+    task's title, messages and subtree, and waits for Stop while the task is
+    live, as a row of the list does."""
+    from src.realtime.hub import EVT_INSTANCE_STATE, registry
+
+    await _seed_user(db_session)
+    async with session_factory() as s:
+        s.add(Task(id="run", user_id="user_test", title="Fix it", message_count=3))
+        s.add(Task(id="kid", user_id="user_test", parent_task_id="run"))
+        s.add(Task(id="grandkid", user_id="user_test", parent_task_id="kid"))
+        await s.commit()
+    registry.reset()
+    if live:
+        registry.attach("ext", "extension", "user_test")
+        registry.note_task_event(
+            "ext",
+            "run",
+            {"type": EVT_INSTANCE_STATE, "taskId": "run", "isRunning": True},
+        )
+
+    from src.main import app
+
+    _override_web_user(app)
+    try:
+        body = client.get("/app/tasks/run").text
+    finally:
+        app.dependency_overrides.pop(get_web_user_optional, None)
+        registry.reset()
+
+    start = body.index('<form class="task-delete-detail"')
+    form = body[start : body.index("</form>", start)]
+    assert 'action="/app/tasks/run/delete"' in form and "data-confirm" not in form
+    assert (
+        'data-delete-dialog data-title="Fix it" data-messages="3" data-subtasks="2"'
+        in form
+    )
+    assert ('title="Stop the task before deleting it"' in form) is live
+    assert (" disabled" in form) is live
+    dialog = body[body.index('<dialog id="delete-dialog"') :]
+    assert (
+        'name="include_subtasks" value="1" checked'
+        in dialog[: dialog.index("</dialog>")]
+    )
+
+
 async def test_shared_page_anonymous_never_renders_live_controls(
     client, db_session, session_factory, monkeypatch
 ):

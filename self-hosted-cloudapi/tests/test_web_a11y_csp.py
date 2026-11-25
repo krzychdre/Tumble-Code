@@ -227,9 +227,6 @@ async def test_pages_run_no_inline_script(rendered):
 
 
 async def test_confirmations_are_data_attributes(rendered):
-    detail = rendered["/app/tasks/run"].text
-    form = re.search(r'<form class="task-delete-detail"[^>]*>', detail).group(0)
-    assert "data-confirm=" in form and "permanently" in form
     settings_page = rendered["/app/settings"].text
     run = re.search(
         r'<form method="post" action="/app/settings/run"[^>]*>', settings_page

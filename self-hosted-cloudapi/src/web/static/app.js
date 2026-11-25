@@ -5,6 +5,10 @@
  * - A form with data-confirm asks that question before it submits. These were
  *   inline onsubmit handlers; as attributes they let the pages run under a
  *   Content Security Policy whose script-src is only 'self'.
+ * - A button with data-delete-dialog (a task's Delete, on the list and on the
+ *   task page) opens #delete-dialog (templates/_delete_dialog.html) instead of
+ *   posting: it names the task, counts its messages, offers its subtasks, and
+ *   posts to the button's own endpoint.
  * - A button with data-copy="<selector>" copies that element's text. It
  *   starts hidden (it does nothing without scripting) and is revealed here.
  * - A button with data-copy-url="<url>" fetches that URL (same origin, with
@@ -67,6 +71,40 @@
 		var question = form.getAttribute("data-confirm")
 		if (question && !window.confirm(question)) e.preventDefault()
 	})
+
+	function plural(n, word) {
+		return n + " " + word + (n === 1 ? "" : "s")
+	}
+
+	// Bound on the document, so the list's rows swapped in later need nothing.
+	;(function bindDeleteDialog() {
+		var dialog = document.getElementById("delete-dialog")
+		if (!dialog) return
+		var dialogForm = document.getElementById("delete-dialog-form")
+		var wrap = document.getElementById("delete-dialog-subtasks-wrap")
+		var include = wrap.querySelector("input")
+
+		document.addEventListener("click", function (e) {
+			var btn = e.target.closest("button[data-delete-dialog]")
+			if (!btn) return
+			e.preventDefault()
+			var subtasks = Number(btn.getAttribute("data-subtasks"))
+			dialogForm.setAttribute("action", btn.getAttribute("formaction") || btn.form.getAttribute("action"))
+			document.getElementById("delete-dialog-what").textContent = btn.getAttribute("data-title")
+			document.getElementById("delete-dialog-messages").textContent = plural(
+				Number(btn.getAttribute("data-messages")),
+				"message",
+			)
+			document.getElementById("delete-dialog-subtasks").textContent = plural(subtasks, "subtask")
+			// Unticked as well as hidden when there is nothing under it, so it never posts.
+			wrap.hidden = subtasks === 0
+			include.checked = subtasks > 0
+			dialog.showModal()
+		})
+		document.getElementById("delete-dialog-cancel").addEventListener("click", function () {
+			dialog.close()
+		})
+	})()
 
 	function copyText(text) {
 		if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text)

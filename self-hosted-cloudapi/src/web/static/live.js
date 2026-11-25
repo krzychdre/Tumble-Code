@@ -53,6 +53,7 @@
 		header: document.getElementById("detail-header"),
 		state: document.getElementById("task-state"),
 		headStop: document.getElementById("head-stop"),
+		del: document.getElementById("task-delete"),
 		sumMode: document.getElementById("sum-mode"),
 	}
 	var composerPlaceholder = els.input ? els.input.placeholder : ""
@@ -207,10 +208,24 @@
 	}
 
 	function refreshState() {
-		if (!els.state) return
 		var state = taskState()
-		els.state.setAttribute("data-state", state)
-		els.state.textContent = STATE_LABELS[state]
+		if (els.state) {
+			els.state.setAttribute("data-state", state)
+			els.state.textContent = STATE_LABELS[state]
+		}
+		refreshDelete(state)
+	}
+
+	// A live task is not deleted, as on the list: its next message would create
+	// the row again with only what follows (realtime/sio.py). Until the join
+	// answers, the state the server rendered stands. The title sits on the form
+	// because a disabled button gets no hover.
+	function refreshDelete(state) {
+		if (!els.del || state === "connecting") return
+		var blocked = state === "running" || state === "waiting"
+		els.del.disabled = blocked
+		if (blocked) els.del.form.title = "Stop the task before deleting it"
+		else els.del.form.removeAttribute("title")
 	}
 
 	// Surface what the task is doing right now (api / tool / thinking), like the

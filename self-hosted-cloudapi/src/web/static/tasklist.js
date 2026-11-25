@@ -2,7 +2,7 @@
  * The task list: selection (checkboxes, shift-click ranges, the bulk action
  * bar), folding the run tree and the groups (and remembering what was left
  * open), the density preference, select mode, the filter form's live
- * results, a row's delete dialog, and the live "Needs your attention" strip.
+ * results, and the live "Needs your attention" strip.
  *
  * Progressive enhancement. The form and every button work without this file:
  * the bar starts hidden and is only revealed here, so with scripting off the
@@ -15,8 +15,8 @@
  *
  * Confirmations are attached here rather than as inline `onsubmit` handlers so
  * the page needs no inline script, and so the bulk confirmation can state the
- * real count instead of a fixed sentence. A row's delete opens the page's
- * dialog, which says what goes and posts to that row's endpoint.
+ * real count instead of a fixed sentence. A row's delete opens the delete
+ * dialog (static/app.js), which says what goes and posts to that row's endpoint.
  *
  * The strip is fetched again (/app/attention) whenever the bridge tells this
  * user's browsers that their running or waiting tasks changed, and the rows
@@ -319,7 +319,7 @@
 		// --- confirmation -------------------------------------------------------
 
 		// A row's own delete never submits this form with scripting on (it opens
-		// the dialog instead, see bindDeleteDialog), so a submission is the bulk one.
+		// the delete dialog instead, static/app.js), so a submission is the bulk one.
 		form.addEventListener("submit", function (e) {
 			var n = selected().length
 			if (n === 0) {
@@ -440,43 +440,6 @@
 		})
 	}
 
-	// --- a row's delete: the dialog ---------------------------------------------
-
-	function plural(n, word) {
-		return n + " " + word + (n === 1 ? "" : "s")
-	}
-
-	// Bound once: the dialog is outside the swapped regions, and the click is
-	// caught on the document so rows swapped in later need nothing.
-	function bindDeleteDialog() {
-		var dialog = document.getElementById("delete-dialog")
-		if (!dialog) return
-		var dialogForm = document.getElementById("delete-dialog-form")
-		var wrap = document.getElementById("delete-dialog-subtasks-wrap")
-		var include = wrap.querySelector("input")
-
-		document.addEventListener("click", function (e) {
-			var btn = e.target.closest("#bulk-form button.btn-delete")
-			if (!btn) return
-			e.preventDefault()
-			var subtasks = Number(btn.getAttribute("data-subtasks"))
-			dialogForm.setAttribute("action", btn.getAttribute("formaction"))
-			document.getElementById("delete-dialog-what").textContent = btn.getAttribute("data-title")
-			document.getElementById("delete-dialog-messages").textContent = plural(
-				Number(btn.getAttribute("data-messages")),
-				"message",
-			)
-			document.getElementById("delete-dialog-subtasks").textContent = plural(subtasks, "subtask")
-			// Unticked as well as hidden when there is nothing under it, so it never posts.
-			wrap.hidden = subtasks === 0
-			include.checked = subtasks > 0
-			dialog.showModal()
-		})
-		document.getElementById("delete-dialog-cancel").addEventListener("click", function () {
-			dialog.close()
-		})
-	}
-
 	// --- the live strip -----------------------------------------------------------
 
 	var STOP_FIRST = "Stop the task before deleting it"
@@ -551,6 +514,5 @@
 	}
 
 	bindList()
-	bindDeleteDialog()
 	bindLive()
 })()
