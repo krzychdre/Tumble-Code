@@ -73,4 +73,6 @@ export interface SystemPromptOptions {
 	skillsManager?: SkillsManager
 	/** Deferred tools the task already loaded; they drop out of the deferred-tools catalog. */
 	materializedDeferredTools?: ReadonlySet<string>
+	/** MEMORY.md as `readMemoryIndex` returned it, "" for none. */
+	memoryIndex: string
 }

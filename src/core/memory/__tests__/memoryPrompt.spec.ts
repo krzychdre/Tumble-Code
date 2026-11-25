@@ -8,12 +8,13 @@ import {
 	buildSearchingPastContextSection,
 	MAX_ENTRYPOINT_LINES,
 	MAX_ENTRYPOINT_BYTES,
-	loadMemoryIndex,
+	readMemoryIndex,
+	formatMemoryIndex,
 	loadMemoryPrompt,
 	buildCompactMemoryInstruction,
 	truncateCompactMemoryIndex,
 	compactMemoryIndex,
-	loadCompactMemoryIndex,
+	formatCompactMemoryIndex,
 	loadCompactMemoryPrompt,
 	COMPACT_MAX_INDEX_CHARS,
 	COMPACT_INDEX_HOOK_CHARS,
@@ -94,7 +95,7 @@ describe("memoryPrompt", () => {
 		})
 	})
 
-	describe("loadMemoryIndex / loadMemoryPrompt", () => {
+	describe("readMemoryIndex + formatMemoryIndex / loadMemoryPrompt", () => {
 		let tmpBase: string
 		const cwd = "/fake/cwd"
 
@@ -108,23 +109,23 @@ describe("memoryPrompt", () => {
 			await fs.rm(tmpBase, { recursive: true, force: true })
 		})
 
-		it("loadMemoryIndex returns '' when the entrypoint doesn't exist yet", async () => {
-			expect(await loadMemoryIndex(cwd)).toBe("")
+		it("the long index is '' when the entrypoint doesn't exist yet", async () => {
+			expect(formatMemoryIndex(cwd, await readMemoryIndex(cwd))).toBe("")
 		})
 
-		it("loadMemoryIndex returns the truncated content with a header when present", async () => {
+		it("the long index is the truncated content with a header when present", async () => {
 			const memDir = path.join(tmpBase, "memory", "projects", "_fake_cwd", "memory")
 			await fs.mkdir(memDir, { recursive: true })
 			await fs.writeFile(path.join(memDir, "MEMORY.md"), "- [Title](file.md) — hook\n")
-			const result = await loadMemoryIndex(cwd)
+			const result = formatMemoryIndex(cwd, await readMemoryIndex(cwd))
 			expect(result).toContain("user's auto-memory")
 			expect(result).toContain("- [Title](file.md) — hook")
 		})
 
-		it("loadMemoryIndex returns '' when memory is disabled", async () => {
+		it("the long index is '' when memory is disabled", async () => {
 			resetMemoryPaths()
 			initMemoryPaths(tmpBase, () => ({ autoMemoryEnabled: false }))
-			expect(await loadMemoryIndex(cwd)).toBe("")
+			expect(formatMemoryIndex(cwd, await readMemoryIndex(cwd))).toBe("")
 		})
 
 		it("loadMemoryPrompt returns '' when memory is disabled", async () => {
@@ -269,7 +270,7 @@ describe("memoryPrompt, compact profile variants", () => {
 		})
 	})
 
-	describe("loadCompactMemoryIndex / loadCompactMemoryPrompt", () => {
+	describe("formatCompactMemoryIndex / loadCompactMemoryPrompt", () => {
 		let tmpBase: string
 		const cwd = "/fake/cwd"
 		const memDirFor = (base: string) => path.join(base, "memory", "projects", "_fake_cwd", "memory")
@@ -294,7 +295,7 @@ describe("memoryPrompt, compact profile variants", () => {
 		})
 
 		it("returns '' for the index when MEMORY.md does not exist yet", async () => {
-			expect(await loadCompactMemoryIndex(cwd)).toBe("")
+			expect(formatCompactMemoryIndex(cwd, await readMemoryIndex(cwd))).toBe("")
 		})
 
 		it("returns the compact, capped index with its heading when MEMORY.md exists", async () => {
@@ -302,7 +303,7 @@ describe("memoryPrompt, compact profile variants", () => {
 			const body = Array.from({ length: 80 }, (_, i) => `- [N${i}](n${i}.md) - ${"z".repeat(80)}`).join("\n")
 			await fs.writeFile(path.join(memDirFor(tmpBase), "MEMORY.md"), body)
 
-			const index = await loadCompactMemoryIndex(cwd)
+			const index = formatCompactMemoryIndex(cwd, await readMemoryIndex(cwd))
 			expect(index.startsWith(`MEMORY.md:\n- n0.md: ${"z".repeat(80)}`)).toBe(true)
 			expect(index).toContain(
 				`[MEMORY.md is longer; only its first lines are shown. To find another note, call search_files with path "${memDirFor(tmpBase)}`,
@@ -316,7 +317,7 @@ describe("memoryPrompt, compact profile variants", () => {
 			const body = "# Memory Index\n\n- [Coffee](coffee.md) \u2014 Coffee goes to zdrowie/dziennik-kawy.md\n"
 			await fs.writeFile(file, body)
 
-			expect(await loadCompactMemoryIndex(cwd)).toBe(
+			expect(formatCompactMemoryIndex(cwd, await readMemoryIndex(cwd))).toBe(
 				"MEMORY.md:\n- coffee.md: Coffee goes to zdrowie/dziennik-kawy.md",
 			)
 			expect(await fs.readFile(file, "utf-8")).toBe(body)
@@ -325,7 +326,7 @@ describe("memoryPrompt, compact profile variants", () => {
 		it("returns '' when MEMORY.md holds only a heading", async () => {
 			await fs.mkdir(memDirFor(tmpBase), { recursive: true })
 			await fs.writeFile(path.join(memDirFor(tmpBase), "MEMORY.md"), "# Memory Index\n")
-			expect(await loadCompactMemoryIndex(cwd)).toBe("")
+			expect(formatCompactMemoryIndex(cwd, await readMemoryIndex(cwd))).toBe("")
 		})
 
 		it("leaves the long index loader unchanged by the compact cap", async () => {
@@ -333,7 +334,7 @@ describe("memoryPrompt, compact profile variants", () => {
 			const body = Array.from({ length: 50 }, (_, i) => `- [N${i}](n${i}.md) - ${"z".repeat(80)}`).join("\n")
 			await fs.writeFile(path.join(memDirFor(tmpBase), "MEMORY.md"), body)
 
-			expect(await loadMemoryIndex(cwd)).toContain("[N49]")
+			expect(formatMemoryIndex(cwd, await readMemoryIndex(cwd))).toContain("[N49]")
 		})
 
 		it.each([
@@ -353,7 +354,7 @@ describe("memoryPrompt, compact profile variants", () => {
 			setUp()
 
 			expect(await loadCompactMemoryPrompt(cwd)).toBe("")
-			expect(await loadCompactMemoryIndex(cwd)).toBe("")
+			expect(formatCompactMemoryIndex(cwd, await readMemoryIndex(cwd))).toBe("")
 		})
 	})
 })

@@ -70,6 +70,8 @@ export interface SystemPromptSource {
 	 */
 	compactProfile?: boolean
 	skillsManager?: SkillsManager
+	/** MEMORY.md as `readMemoryIndex` returned it; the live request reads it once per task. */
+	memoryIndex: string
 }
 
 /** Whether the prompt gets the MCP hub. An unset value takes the settings default. */
@@ -145,5 +147,6 @@ export function buildSystemPromptInput(source: SystemPromptSource): SystemPrompt
 		},
 		skillsManager: source.skillsManager,
 		materializedDeferredTools: source.materializedDeferredTools,
+		memoryIndex: source.memoryIndex,
 	}
 }
