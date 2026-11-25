@@ -33,7 +33,6 @@ export const generateSystemPrompt = async (provider: ClineProvider, message: Web
 
 	return SYSTEM_PROMPT(
 		buildSystemPromptInput({
-			context: provider.context,
 			cwd: provider.cwd,
 			mode: message.mode ?? defaultModeSlug,
 			state,

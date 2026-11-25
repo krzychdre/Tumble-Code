@@ -417,10 +417,6 @@ async function generateCompactPrompt(
  * prompt" preview share.
  */
 export const SYSTEM_PROMPT = async (options: SystemPromptOptions): Promise<string> => {
-	if (!options.context) {
-		throw new Error("Extension context is required for generating system prompt")
-	}
-
 	const mode = options.mode ?? defaultModeSlug
 
 	// Check if it's a custom mode

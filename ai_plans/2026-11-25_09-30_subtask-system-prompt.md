@@ -1,6 +1,6 @@
 # A system prompt written for delegated subtasks
 
-Status: in progress. Overview: `2026-11-25_08-20_prompt-cache-overview.md`.
+Status: done, merged as #1359.
 
 ## Problem
 

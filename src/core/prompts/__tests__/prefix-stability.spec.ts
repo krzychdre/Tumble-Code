@@ -104,18 +104,6 @@ import { SYSTEM_PROMPT, STABLE_PROMPT_OPENER } from "../system"
 import { COMPACT_PROMPT_OPENER } from "../sections/compact"
 import type { SystemPromptSettings } from "../types"
 
-const mockContext = {
-	extensionPath: "/mock/extension/path",
-	globalStoragePath: "/mock/storage/path",
-	subscriptions: [],
-	workspaceState: { get: () => undefined, update: () => Promise.resolve() },
-	globalState: { get: () => undefined, update: () => Promise.resolve(), setKeysForSync: () => {} },
-	extensionUri: { fsPath: "/mock/extension/path" },
-	globalStorageUri: { fsPath: "/mock/settings/path" },
-	asAbsolutePath: (relativePath: string) => `/mock/extension/path/${relativePath}`,
-	extension: { packageJSON: { version: "1.0.0" } },
-} as unknown as vscode.ExtensionContext
-
 /** Two servers, each with a tool and a resource, so every MCP prompt path has something to say. */
 const mcpHubWithServers = {
 	getServers: () => [
@@ -172,7 +160,6 @@ async function buildPrompt(
 	extras: PromptExtras = {},
 ): Promise<string> {
 	return SYSTEM_PROMPT({
-		context: mockContext,
 		memoryIndex: "",
 		cwd: "/test/path",
 		mcpHub,

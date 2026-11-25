@@ -1,6 +1,6 @@
 # Prompt cache losses in delegated work: overview
 
-Status: in progress (four branches, see below).
+Status: done, merged as #1355, #1356, #1357, #1358, #1359 and the `context` cleanup below.
 
 ## Evidence
 
@@ -61,3 +61,5 @@ order, so orchestrator, architect and code share only the first 45 characters of
 4. `perf/subtask-system-prompt`: a system prompt written for a delegated subtask (the assignment contract in the
    prompt, no memory-writing section, no `switch_mode`), the orchestrator no longer dictates boilerplate into every
    message, and the tool array is ordered so the tools every mode has come first.
+5. `refactor/prompt-drop-context`: `SystemPromptOptions.context` and `SystemPromptSource.context` removed, since no
+   section reads VS Code state any more; tests drop their mock extension contexts.

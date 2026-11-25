@@ -1,6 +1,6 @@
 # Microcompaction headroom: select once, then keep the prefix
 
-Status: in review, branch `fix/microcompact-headroom`
+Status: done, merged as #1356 (its Task.spec fixture follow-up is #1358).
 
 ## Problem
 

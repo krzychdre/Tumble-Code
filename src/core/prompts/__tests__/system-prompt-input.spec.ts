@@ -5,16 +5,12 @@
 // (computed by getRequestDisabledTools) and the model's `excludedTools`, so the
 // prompt input has to see the same removals.
 
-import type * as vscode from "vscode"
-
 import { PARALLEL_TASKS_NO_LIMIT } from "@tumble-code/types"
 
 import { buildSystemPromptInput, getRequestDisabledTools, taskOrigin } from "../system-prompt-input"
 
-const context = {} as vscode.ExtensionContext
-
 /** The source fields every test leaves at their plain value. */
-const source = { context, memoryIndex: "", cwd: "/test/path", mode: "orchestrator", origin: "user" as const }
+const source = { memoryIndex: "", cwd: "/test/path", mode: "orchestrator", origin: "user" as const }
 
 describe("taskOrigin", () => {
 	it.each([

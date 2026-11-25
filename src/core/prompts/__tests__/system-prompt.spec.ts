@@ -145,30 +145,6 @@ vi.mock("../../../utils/shell", () => ({
 }))
 
 // Create a mock ExtensionContext
-const mockContext = {
-	extensionPath: "/mock/extension/path",
-	globalStoragePath: "/mock/storage/path",
-	storagePath: "/mock/storage/path",
-	logPath: "/mock/log/path",
-	subscriptions: [],
-	workspaceState: {
-		get: () => undefined,
-		update: () => Promise.resolve(),
-	},
-	globalState: {
-		get: () => undefined,
-		update: () => Promise.resolve(),
-		setKeysForSync: () => {},
-	},
-	extensionUri: { fsPath: "/mock/extension/path" },
-	globalStorageUri: { fsPath: "/mock/settings/path" },
-	asAbsolutePath: (relativePath: string) => `/mock/extension/path/${relativePath}`,
-	extension: {
-		packageJSON: {
-			version: "1.0.0",
-		},
-	},
-} as unknown as vscode.ExtensionContext
 
 // Instead of extending McpHub, create a mock that implements just what we need
 const createMockMcpHub = (withServers: boolean = false): McpHub =>
@@ -216,7 +192,6 @@ describe("SYSTEM_PROMPT", () => {
 
 	it("should maintain consistent system prompt", async () => {
 		const prompt = await SYSTEM_PROMPT({
-			context: mockContext,
 			memoryIndex: "",
 			cwd: "/test/path",
 			mode: defaultModeSlug,
@@ -230,7 +205,6 @@ describe("SYSTEM_PROMPT", () => {
 		mockMcpHub = createMockMcpHub(true)
 
 		const prompt = await SYSTEM_PROMPT({
-			context: mockContext,
 			memoryIndex: "",
 			cwd: "/test/path",
 			mcpHub: mockMcpHub,
@@ -272,7 +246,6 @@ describe("SYSTEM_PROMPT", () => {
 		})
 
 		const prompt = await SYSTEM_PROMPT({
-			context: mockContext,
 			memoryIndex: "",
 			cwd: "/test/path",
 			mode: defaultModeSlug,
@@ -326,7 +299,6 @@ describe("SYSTEM_PROMPT", () => {
 		]
 
 		const prompt = await SYSTEM_PROMPT({
-			context: mockContext,
 			memoryIndex: "",
 			cwd: "/test/path",
 			mode: "custom-mode",
@@ -356,7 +328,6 @@ describe("SYSTEM_PROMPT", () => {
 		}
 
 		const prompt = await SYSTEM_PROMPT({
-			context: mockContext,
 			memoryIndex: "",
 			cwd: "/test/path",
 			mode: defaultModeSlug as Mode,
@@ -378,7 +349,6 @@ describe("SYSTEM_PROMPT", () => {
 		}
 
 		const prompt = await SYSTEM_PROMPT({
-			context: mockContext,
 			memoryIndex: "",
 			cwd: "/test/path",
 			mode: defaultModeSlug as Mode,
@@ -404,7 +374,6 @@ describe("SYSTEM_PROMPT", () => {
 			]
 
 			const prompt = await SYSTEM_PROMPT({
-				context: mockContext,
 				memoryIndex: "",
 				cwd: "/test/path",
 				mcpHub: mockMcpHub,
@@ -430,7 +399,6 @@ describe("SYSTEM_PROMPT", () => {
 			]
 
 			const prompt = await SYSTEM_PROMPT({
-				context: mockContext,
 				memoryIndex: "",
 				cwd: "/test/path",
 				mcpHub: mockMcpHub,
@@ -487,7 +455,6 @@ describe("SYSTEM_PROMPT per-mode MCP allowlist (built-in modes)", () => {
 		// Control: with no allowlist, both servers' tools appear. This anchors the restricted case
 		// below — without it, the absence assertion could pass vacuously.
 		const prompt = await SYSTEM_PROMPT({
-			context: mockContext,
 			memoryIndex: "",
 			cwd: "/test/path",
 			mcpHub: createTwoServerHub(),
@@ -503,7 +470,6 @@ describe("SYSTEM_PROMPT per-mode MCP allowlist (built-in modes)", () => {
 		const customModePrompts = { code: { allowedMcpServers: ["allowed-srv"] } }
 
 		const prompt = await SYSTEM_PROMPT({
-			context: mockContext,
 			memoryIndex: "",
 			cwd: "/test/path",
 			mcpHub: createTwoServerHub(),
@@ -523,7 +489,6 @@ describe("SYSTEM_PROMPT per-mode MCP allowlist (built-in modes)", () => {
 		const customModePrompts = { code: { allowedMcpServers: [] as string[] } }
 
 		const prompt = await SYSTEM_PROMPT({
-			context: mockContext,
 			memoryIndex: "",
 			cwd: "/test/path",
 			mcpHub: createTwoServerHub(),
