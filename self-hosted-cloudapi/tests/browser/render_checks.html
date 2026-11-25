@@ -150,6 +150,24 @@ window.addEventListener("load", function () {
           apiRows[0].querySelector(".msg-head").innerHTML.indexOf("msg-model") <
             apiRows[0].querySelector(".msg-head").innerHTML.indexOf("msg-detail"))
 
+  // The pending ask: its row is marked, with no actions of its own (the dock
+  // in live.js has them); answered, it says what the answer was.
+  var q = { ts: 13, type: "ask", ask: "followup", text: JSON.stringify({ question: "Which?", suggest: ["A"] }) }
+  convo0.upsert(q)
+  convo0.setActiveAsk(13)
+  var qRow = function () { return document.querySelector('#conversation .msg[data-ts="13"]') }
+  check("the pending ask's row is marked", qRow().classList.contains("ask-pending"))
+  check("the pending ask's row has no buttons", !qRow().querySelector("button.btn"))
+  convo0.upsert(Object.assign({}, q, { text: JSON.stringify({ question: "Which one?", suggest: ["A"] }) }))
+  check("the mark survives a live update", qRow().classList.contains("ask-pending"))
+  var long = "Expand-contract: add the column, write both, then drop the old one"
+  convo0.markResolved(13, "answered", long)
+  var badge = qRow().querySelector(".ask-resolution")
+  check("answered: the mark goes", !qRow().classList.contains("ask-pending"))
+  check("answered: the badge quotes the answer, cut", badge && badge.textContent === "✓ Answered: " + long.slice(0, 40) + "…")
+  check("answered: the whole answer is its title", badge && badge.title === long)
+  check("revealRow finds the row, and only a real one", convo0.revealRow(13) === true && convo0.revealRow(999) === false)
+
   var pre = document.createElement("pre")
   pre.id = "results"
   pre.textContent = out.join("\n") + "\nTOTAL_FAILURES=" + fail

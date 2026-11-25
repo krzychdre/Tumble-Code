@@ -39,7 +39,19 @@
 		autoEnabled: document.getElementById("auto-enabled"),
 		autoMode: document.getElementById("auto-mode"),
 		controls: document.getElementById("live-controls"),
+		dock: document.getElementById("ask-dock"),
+		dockKind: document.getElementById("ask-dock-kind"),
+		dockJump: document.getElementById("ask-dock-jump"),
+		dockQuestion: document.getElementById("ask-dock-question"),
+		dockDetail: document.getElementById("ask-dock-detail"),
+		dockSuggestions: document.getElementById("ask-dock-suggestions"),
+		dockOwn: document.getElementById("ask-dock-own"),
+		dockDecide: document.getElementById("ask-dock-decide"),
+		dockApprove: document.getElementById("ask-dock-approve"),
+		dockDeny: document.getElementById("ask-dock-deny"),
+		dockComment: document.getElementById("ask-dock-comment"),
 	}
+	var composerPlaceholder = els.input ? els.input.placeholder : ""
 	var toggles = {}
 	;["ReadOnly", "Write", "Execute", "Mcp", "ModeSwitch", "Subtasks"].forEach(function (k) {
 		toggles[k] = document.getElementById("auto-" + k)
@@ -91,6 +103,8 @@
 		els.status.className = "live-status " + (cls || "")
 	}
 
+	var controlsOnline = false
+
 	function setControlsEnabled(online) {
 		if (els.controls) els.controls.classList.toggle("offline", !online)
 		;[els.send, els.stop, els.input, els.autoEnabled, els.autoMode].forEach(function (el) {
@@ -99,6 +113,12 @@
 		Object.keys(toggles).forEach(function (k) {
 			if (toggles[k]) toggles[k].disabled = !online
 		})
+		controlsOnline = online
+		if (els.dock) {
+			els.dock.querySelectorAll("button").forEach(function (b) {
+				b.disabled = !online || !!(dockAsk && dockAsk.partial)
+			})
+		}
 		// Resume stays available when offline so the user can reopen the task.
 		if (els.resume) els.resume.disabled = false
 	}
@@ -257,31 +277,242 @@
 
 	var answered = {} // ask ts -> true: a stale instanceState must not re-show it
 
-	// Drive the inline Approve/Deny on the ask's own conversation row.
-	function updateAskFromState(ask) {
-		var c = getConvo()
-		if (!c || !c.setActiveAsk) return
-		if (ask && ask.ts != null && !answered[ask.ts]) {
-			c.setActiveAsk(ask.ts, {
-				onApprove: function () {
-					answerAsk(ask, "approved")
-				},
-				onDeny: function () {
-					answerAsk(ask, "denied")
-				},
-			})
-		} else {
-			c.clearActiveAsk()
+	// --- the ask dock ---------------------------------------------------------
+	// What the dock offers per ClineAsk, after the VS Code panel's buttons
+	// (webview-ui useAskButtons.ts). Approve sends approve_ask, Deny deny_ask;
+	// an ask missing here (completion_result, resume_task, ...) gets no dock and
+	// the composer answers it as a message. A value may be a function of the ask
+	// and its parsed text.
+	var EDIT_TOOLS = { editedExistingFile: true, appliedDiff: true, newFileCreated: true }
+
+	function toolApprove(ask, obj) {
+		if (obj.tool === "finishTask") return "Complete subtask and keep going"
+		var label = EDIT_TOOLS[obj.tool] ? "Save" : "Approve"
+		return isBatch(obj) ? label + " All" : label
+	}
+	function toolDeny(ask, obj) {
+		if (obj.tool === "finishTask") return null
+		return isBatch(obj) ? "Deny All" : "Deny"
+	}
+	function isBatch(obj) {
+		return Array.isArray(obj.batchDiffs) || Array.isArray(obj.batchFiles) || Array.isArray(obj.batchDirs)
+	}
+	function askText(ask) {
+		return ask.text || ""
+	}
+	function toolDetail(ask, obj) {
+		return (obj.tool || "tool") + (obj.path ? " " + obj.path : "")
+	}
+	function mcpDetail(ask, obj) {
+		return [obj.serverName, obj.toolName || obj.uri].filter(Boolean).join(" · ")
+	}
+
+	var ASK_DOCK = {
+		followup: { kind: "Question" },
+		command: { kind: "Run command", prompt: "Run this command?", approve: "Run", deny: "Deny", detail: askText },
+		command_output: {
+			kind: "Command running",
+			prompt: "The command is still running.",
+			approve: "Continue While Running",
+		},
+		tool: {
+			kind: "Approve tool",
+			prompt: "Allow this tool call?",
+			approve: toolApprove,
+			deny: toolDeny,
+			detail: toolDetail,
+		},
+		use_mcp_server: {
+			kind: "Use MCP server",
+			prompt: "Allow this MCP call?",
+			approve: "Approve",
+			deny: "Deny",
+			detail: mcpDetail,
+		},
+		api_req_failed: {
+			kind: "Request failed",
+			prompt: "The API request failed.",
+			approve: "Retry",
+			detail: askText,
+		},
+		mistake_limit_reached: {
+			kind: "Needs guidance",
+			prompt: "The model keeps failing. Proceed, or write it guidance below.",
+			approve: "Proceed Anyways",
+			detail: askText,
+		},
+		auto_approval_max_req_reached: {
+			kind: "Limit reached",
+			prompt: "The auto-approved request limit was reached.",
+			approve: "Reset and Continue",
+		},
+	}
+
+	function valueOf(field, ask, obj) {
+		return typeof field === "function" ? field(ask, obj) : field
+	}
+
+	function parseText(text) {
+		try {
+			var obj = JSON.parse(text || "")
+			return obj && typeof obj === "object" ? obj : {}
+		} catch (e) {
+			return {}
 		}
 	}
 
-	function answerAsk(ask, decision) {
-		if (ask && ask.ts != null) answered[ask.ts] = true
-		sendCommand(decision === "approved" ? "approve_ask" : "deny_ask", { payload: {} })
-		var c = getConvo()
-		if (c && ask) c.markResolved(ask.ts, decision)
-		lastAsk = null
+	// A suggestion is a string or { answer, mode }; one without a usable answer is
+	// dropped, as the extension does (packages/types followup.ts).
+	function suggestionsOf(obj) {
+		var list = obj.suggest || obj.suggestions
+		if (!Array.isArray(list)) return []
+		return list
+			.map(function (s) {
+				return typeof s === "string" ? { answer: s } : { answer: s && s.answer, mode: s && s.mode }
+			})
+			.filter(function (s) {
+				return typeof s.answer === "string" && s.answer.trim() !== ""
+			})
 	}
+
+	var dockAsk = null // the ask the dock shows
+	var dockKey = null // what it was drawn from, so a repeated snapshot does not redraw it
+
+	function markdownHelpers() {
+		return window.TumbleConversation || null
+	}
+
+	function showDock(ask) {
+		var spec = ASK_DOCK[ask.ask]
+		var key = ask.ts + "|" + (ask.partial ? 1 : 0) + "|" + (ask.text || "")
+		dockAsk = ask
+		if (key === dockKey) return
+		dockKey = key
+		var obj = parseText(ask.text)
+		var helpers = markdownHelpers()
+		els.dockKind.textContent = spec.kind
+		els.dockSuggestions.innerHTML = ""
+		var offline = !controlsOnline || !!ask.partial
+
+		if (ask.ask === "followup") {
+			// While streaming the text is the bare question, not yet JSON.
+			var question = obj.question || (obj.suggest ? "" : ask.text || "")
+			els.dockQuestion.innerHTML = helpers ? helpers.markdown(question) : ""
+			suggestionsOf(obj).forEach(function (s) {
+				var b = document.createElement("button")
+				b.type = "button"
+				b.className = "btn suggestion"
+				b.disabled = offline
+				var label = document.createElement("span")
+				label.className = "suggestion-answer"
+				label.innerHTML = helpers ? helpers.inlineMarkdown(s.answer) : ""
+				b.appendChild(label)
+				if (s.mode) {
+					var mode = document.createElement("span")
+					mode.className = "suggestion-mode"
+					mode.textContent = "→ " + s.mode + " mode"
+					b.appendChild(mode)
+				}
+				b.addEventListener("click", function () {
+					answerFollowup(s.answer, s.mode)
+				})
+				els.dockSuggestions.appendChild(b)
+			})
+			els.dockSuggestions.hidden = !els.dockSuggestions.childNodes.length
+			els.dockDetail.hidden = true
+			els.dockDecide.hidden = true
+			els.dockOwn.hidden = false
+			setPlaceholder("Your answer… (or pick one above)")
+		} else {
+			var approve = valueOf(spec.approve, ask, obj)
+			var deny = valueOf(spec.deny, ask, obj)
+			var detail = valueOf(spec.detail, ask, obj)
+			els.dockQuestion.textContent = spec.prompt
+			els.dockDetail.textContent = detail || ""
+			els.dockDetail.hidden = !detail
+			els.dockSuggestions.hidden = true
+			els.dockOwn.hidden = true
+			els.dockApprove.textContent = approve
+			els.dockApprove.disabled = offline
+			els.dockDeny.textContent = deny || ""
+			els.dockDeny.hidden = !deny
+			els.dockDeny.disabled = offline
+			els.dockComment.hidden = !deny
+			els.dockDecide.hidden = false
+			setPlaceholder(deny ? "Optional comment for " + approve + " / " + deny + "…" : composerPlaceholder)
+		}
+		els.dock.hidden = false
+	}
+
+	function hideDock() {
+		dockAsk = null
+		dockKey = null
+		if (!els.dock) return
+		els.dock.hidden = true
+		setPlaceholder(composerPlaceholder)
+	}
+
+	function setPlaceholder(text) {
+		if (els.input) els.input.placeholder = text
+	}
+
+	// Mark the pending ask's row and dock its actions above the composer.
+	function updateAskFromState(ask) {
+		var c = getConvo()
+		var docked = ask && ask.ts != null && !answered[ask.ts] && ASK_DOCK[ask.ask] && els.dock
+		if (docked) {
+			if (c && c.setActiveAsk) c.setActiveAsk(ask.ts)
+			showDock(ask)
+		} else {
+			if (c && c.clearActiveAsk) c.clearActiveAsk()
+			hideDock()
+		}
+	}
+
+	function resolveAsk(decision, answer) {
+		var ask = dockAsk
+		if (!ask) return
+		answered[ask.ts] = true
+		var c = getConvo()
+		if (c) c.markResolved(ask.ts, decision, answer)
+		lastAsk = null
+		hideDock()
+	}
+
+	// The extension answers a pending followup with a plain message (Task
+	// submitUserMessage), exactly as the panel's suggestion buttons do.
+	function answerFollowup(text, mode) {
+		var payload = { text: text }
+		if (mode) payload.mode = mode
+		sendCommand("message", { payload: payload })
+		resolveAsk("answered", text)
+	}
+
+	function decide(type, decision) {
+		var payload = {}
+		var text = ((els.input && els.input.value) || "").trim()
+		if (text) {
+			payload.text = text
+			els.input.value = ""
+		}
+		sendCommand(type, { payload: payload })
+		resolveAsk(decision)
+	}
+
+	if (els.dockApprove)
+		els.dockApprove.addEventListener("click", function () {
+			decide("approve_ask", "approved")
+		})
+	if (els.dockDeny)
+		els.dockDeny.addEventListener("click", function () {
+			decide("deny_ask", "denied")
+		})
+	if (els.dockJump)
+		els.dockJump.addEventListener("click", function (e) {
+			e.preventDefault()
+			var c = getConvo()
+			if (dockAsk && c && c.revealRow) c.revealRow(dockAsk.ts)
+		})
 
 	var suppressAuto = false
 	function applyAutoApproval(a) {
@@ -322,8 +553,12 @@
 		els.send.addEventListener("click", function () {
 			var text = ((els.input && els.input.value) || "").trim()
 			if (!text) return
-			sendCommand("message", { payload: { text: text } })
 			if (els.input) els.input.value = ""
+			if (dockAsk && dockAsk.ask === "followup" && !dockAsk.partial) {
+				answerFollowup(text)
+				return
+			}
+			sendCommand("message", { payload: { text: text } })
 		})
 	}
 	if (els.input) {

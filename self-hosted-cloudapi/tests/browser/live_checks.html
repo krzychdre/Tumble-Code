@@ -23,12 +23,24 @@
   </tbody></table>
 </section>
 <div id="live-controls" class="live-controls offline">
+  <section id="ask-dock" hidden>
+    <span id="ask-dock-kind"></span><a href="#" id="ask-dock-jump">show in conversation</a>
+    <div id="ask-dock-question"></div>
+    <div id="ask-dock-detail" hidden></div>
+    <div id="ask-dock-suggestions" hidden></div>
+    <p id="ask-dock-own" hidden></p>
+    <div id="ask-dock-decide" hidden>
+      <button type="button" id="ask-dock-approve">Approve</button>
+      <button type="button" id="ask-dock-deny">Deny</button>
+      <p id="ask-dock-comment"></p>
+    </div>
+  </section>
   <input id="auto-enabled" type="checkbox">
   <select id="auto-mode"><option value="default">default</option><option value="bypass">bypass</option></select>
   <input id="auto-ReadOnly" type="checkbox"><input id="auto-Write" type="checkbox">
   <input id="auto-Execute" type="checkbox"><input id="auto-Mcp" type="checkbox">
   <input id="auto-ModeSwitch" type="checkbox"><input id="auto-Subtasks" type="checkbox">
-  <textarea id="chat-input"></textarea>
+  <textarea id="chat-input" placeholder="Message the task…"></textarea>
   <button id="btn-send" type="button">Send</button>
   <button id="btn-stop" type="button" hidden>Stop</button>
   <button id="btn-resume" type="button">Resume</button>
@@ -36,8 +48,12 @@
 </div>
 <script id="live-config" type="application/json">{"taskId": "task-a", "bridgePath": "/bridge/socket.io",
   "subtasks": {"tokensIn": 3000000, "tokensOut": 54200, "cost": 1.2434}}</script>
-<!-- live.js formats with the page-wide helpers the template loads before it. -->
+<!-- live.js formats with the page-wide helpers the template loads before it,
+     and draws the dock's Markdown with render.js. -->
+<script src="../../src/web/static/vendor/marked.min.js"></script>
+<script src="../../src/web/static/vendor/purify.min.js"></script>
 <script src="../../src/web/static/format.js"></script>
+<script src="../../src/web/static/render.js"></script>
 <script>
 // What the saved conversation of task-a adds up to (render.js getMetrics).
 window.__tumbleConversation = {
@@ -46,8 +62,12 @@ window.__tumbleConversation = {
   },
   getActivity: function () { return null },
   upsert: function () {},
-  setActiveAsk: function () {},
-  clearActiveAsk: function () {},
+  // What live.js asked of the conversation, newest last.
+  calls: [],
+  setActiveAsk: function (ts) { this.calls.push(["setActiveAsk", ts]) },
+  clearActiveAsk: function () { this.calls.push(["clearActiveAsk"]) },
+  markResolved: function (ts, decision, answer) { this.calls.push(["markResolved", ts, decision, answer]) },
+  revealRow: function (ts) { this.calls.push(["revealRow", ts]) },
 }
 // static/follow.js: live.js asks it to open a live task at its tail.
 window.TumbleFollow = { calls: 0, toTail: function () { this.calls++ } }
@@ -213,10 +233,15 @@ window.addEventListener("load", function () {
                         more.getAttribute("aria-expanded") === "false")
                 },
                 function () {
-                  var pre = document.createElement("pre")
-                  pre.id = "results"
-                  pre.textContent = out.join("\n") + "\nTOTAL_FAILURES=" + fail
-                  document.body.appendChild(pre)
+                  // Earlier loads of live.js still listen on the controls;
+                  // a fresh copy leaves only the next one bound.
+                  var old = document.getElementById("live-controls")
+                  old.parentNode.replaceChild(old.cloneNode(true), old)
+                  scenario(
+                    { success: true, instanceOnline: true, instance: { taskId: "task-a", isRunning: true, currentAsk: followup(100) } },
+                    askDockChecks,
+                    finish,
+                  )
                 },
               )
             },
@@ -225,6 +250,101 @@ window.addEventListener("load", function () {
       )
     },
   )
+
+  function followup(ts) {
+    return {
+      ts: ts, type: "ask", ask: "followup",
+      text: JSON.stringify({
+        question: "Which **one**?",
+        suggest: [{ answer: "Use `a`", mode: "code" }, "Plain b", { answer: "  " }],
+      }),
+    }
+  }
+
+  function askDockChecks(sock) {
+    var convo = window.__tumbleConversation
+    var dock = document.getElementById("ask-dock")
+    var input = document.getElementById("chat-input")
+    function lastCall(name) {
+      for (var i = convo.calls.length - 1; i >= 0; i--) if (convo.calls[i][0] === name) return convo.calls[i]
+      return null
+    }
+    function lastCommand() {
+      var cmds = sock.emitted.filter(function (e) { return e.evt === "task:command" })
+      return cmds.length ? cmds[cmds.length - 1].payload : null
+    }
+    function ask(a) { sock.fire("task:relayed_event", { type: "instanceState", taskId: "task-a", currentAsk: a }) }
+    function buttons() { return dock.querySelectorAll("#ask-dock-suggestions button") }
+
+    // A followup: the question, a button per usable suggestion, the composer as the own answer.
+    check("followup: the dock shows", dock.hidden === false && text("ask-dock-kind") === "Question")
+    check("followup: the question is Markdown",
+          document.getElementById("ask-dock-question").innerHTML.indexOf("<strong>one</strong>") >= 0)
+    check("followup: a button per usable suggestion", buttons().length === 2)
+    check("followup: a suggestion is inline Markdown", buttons()[0].innerHTML.indexOf("<code>a</code>") >= 0)
+    check("followup: a suggestion names the mode it switches to",
+          buttons()[0].querySelector(".suggestion-mode").textContent === "→ code mode" &&
+          !buttons()[1].querySelector(".suggestion-mode"))
+    check("followup: its row is marked", (lastCall("setActiveAsk") || [])[1] === 100)
+    check("followup: the composer asks for an answer", input.placeholder === "Your answer… (or pick one above)")
+
+    buttons()[0].click()
+    var cmd = lastCommand()
+    check("a suggestion is sent as the answer, with its mode",
+          cmd.type === "message" && cmd.payload.text === "Use `a`" && cmd.payload.mode === "code")
+    check("a suggestion marks the row answered with its text",
+          JSON.stringify(lastCall("markResolved")) === JSON.stringify(["markResolved", 100, "answered", "Use `a`"]))
+    check("an answered question leaves the dock", dock.hidden === true && input.placeholder === "Message the task…")
+    ask(followup(100))
+    check("a stale snapshot does not bring the answered question back", dock.hidden === true)
+
+    ask(followup(101))
+    input.value = "  my own  "
+    document.getElementById("btn-send").click()
+    cmd = lastCommand()
+    check("Send during a followup answers it", cmd.type === "message" && cmd.payload.text === "my own" &&
+          !("mode" in cmd.payload) && (lastCall("markResolved") || [])[1] === 101 && dock.hidden === true)
+
+    // An approval: the VS Code labels, the composer text as the comment.
+    ask({ ts: 102, type: "ask", ask: "command", text: "npm test" })
+    check("command: Run and Deny", text("ask-dock-approve") === "Run" && text("ask-dock-deny") === "Deny" &&
+          document.getElementById("ask-dock-deny").hidden === false && dock.hidden === false)
+    check("command: the command is shown", text("ask-dock-detail") === "npm test")
+    check("command: the composer offers a comment", input.placeholder === "Optional comment for Run / Deny…")
+    check("command: no suggestions", document.getElementById("ask-dock-suggestions").hidden === true)
+    input.value = "careful"
+    document.getElementById("ask-dock-approve").click()
+    cmd = lastCommand()
+    check("approve carries the composer text", cmd.type === "approve_ask" && cmd.payload.text === "careful" && input.value === "")
+    check("approve marks the row approved", (lastCall("markResolved") || [])[2] === "approved")
+
+    ask({ ts: 103, type: "ask", ask: "tool", text: JSON.stringify({ tool: "appliedDiff", path: "a.ts" }) })
+    check("edit tool: Save and Deny", text("ask-dock-approve") === "Save" && text("ask-dock-deny") === "Deny")
+    check("edit tool: the tool and its file", text("ask-dock-detail") === "appliedDiff a.ts")
+    document.getElementById("ask-dock-deny").click()
+    cmd = lastCommand()
+    check("deny with an empty composer sends no text", cmd.type === "deny_ask" && !("text" in cmd.payload))
+
+    ask({ ts: 104, type: "ask", ask: "api_req_failed", text: "502 Bad Gateway" })
+    check("failed request: Retry only", text("ask-dock-approve") === "Retry" &&
+          document.getElementById("ask-dock-deny").hidden === true && input.placeholder === "Message the task…")
+
+    ask({ ts: 105, type: "ask", ask: "completion_result", text: "" })
+    check("a finished task gets no dock", dock.hidden === true && lastCall("clearActiveAsk") === convo.calls[convo.calls.length - 1])
+
+    ask({ ts: 106, type: "ask", ask: "command", text: "ls" })
+    document.getElementById("ask-dock-jump").click()
+    check("the jump reveals the ask's row", (lastCall("revealRow") || [])[1] === 106)
+    sock.fire("disconnect")
+    check("offline: the dock's buttons are off", document.getElementById("ask-dock-approve").disabled === true)
+  }
+
+  function finish() {
+                  var pre = document.createElement("pre")
+                  pre.id = "results"
+                  pre.textContent = out.join("\n") + "\nTOTAL_FAILURES=" + fail
+                  document.body.appendChild(pre)
+  }
 })
 </script>
 </body></html>
