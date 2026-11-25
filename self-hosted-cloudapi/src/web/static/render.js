@@ -57,6 +57,15 @@
 		return false
 	}
 
+	// One line of Markdown (a suggested answer), with the same guards as md().
+	const MAX_INLINE_CHARS = 4096
+
+	function mdInline(text) {
+		const s = String(text || "")
+		if (s.length > MAX_INLINE_CHARS || inlineMarksExceed(s, MAX_INLINE_MARKS)) return escapeHtml(s)
+		return DOMPurify.sanitize(marked.parseInline(s))
+	}
+
 	function plainText(text) {
 		return '<pre class="plain-text"><code>' + escapeHtml(text) + "</code></pre>"
 	}
@@ -899,10 +908,19 @@
 	}
 
 	// Badge an answered ask row so the reader can see the decision after the fact.
-	function resolutionBadge(decision) {
+	const RESOLUTION_TEXT = { approved: "✓ Approved", denied: "✗ Denied", answered: "✓ Answered" }
+	const ANSWER_PREVIEW_CHARS = 40
+
+	function resolutionBadge(resolution) {
 		const span = document.createElement("span")
-		span.className = "ask-resolution " + decision
-		span.textContent = decision === "approved" ? "✓ Approved" : decision === "denied" ? "✗ Denied" : "✓ Answered"
+		span.className = "ask-resolution " + resolution.decision
+		let text = RESOLUTION_TEXT[resolution.decision]
+		const answer = resolution.answer
+		if (answer) {
+			text += ": " + (answer.length > ANSWER_PREVIEW_CHARS ? answer.slice(0, ANSWER_PREVIEW_CHARS) + "…" : answer)
+			span.title = answer
+		}
+		span.textContent = text
 		return span
 	}
 
@@ -913,11 +931,11 @@
 		const byTs = {}
 		const rawByTs = {} // key -> latest raw message, for token/cost metrics
 		const activeByTs = {} // key -> { ts, label }, for the "executing now" indicator
-		const resolvedByTs = {} // key -> "approved"|"denied", survives row replacement
+		const resolvedByTs = {} // key -> { decision, answer }, survives row replacement
 		const foldByTs = {} // key -> bool: a fold the reader set, kept across upserts
 		const imageBase = container.getAttribute("data-image-base") || ""
 		const rolesSeen = {} // role -> true, for building the filter chips
-		let activeAsk = null // { ts, onApprove, onDeny, ... } — the pending approval
+		let activeAskTs = null // the pending ask; live.js docks its actions
 		let tail = null // { ts, key, el } — last row in document order, for step duration
 		let count = 0
 		let lastCommandTs = null // owning command for trailing command_output rows
@@ -957,10 +975,10 @@
 			return el && (el.querySelector(".msg-meta") || el.querySelector(".msg-head"))
 		}
 
-		function applyResolution(el, decision) {
+		function applyResolution(el, resolution) {
 			if (!el || el.querySelector(".ask-resolution")) return
 			const meta = metaOf(el)
-			if (meta) meta.appendChild(resolutionBadge(decision))
+			if (meta) meta.appendChild(resolutionBadge(resolution))
 		}
 
 		function setDuration(el, ms) {
@@ -974,48 +992,15 @@
 			if (a && b && a.textContent) b.textContent = a.textContent
 		}
 
-		// Attach Approve/Deny to the ask's own conversation row (chronological,
-		// coherent) instead of a detached bar. Buttons stop propagation so they
-		// never toggle the row's fold.
+		// The pending ask's own row is highlighted; its actions are in the dock
+		// above the composer (live.js), so they stay in reach in a long run.
 		function decorateAsk(el) {
-			if (!el || !activeAsk || resolvedByTs[el.getAttribute("data-ts")]) return
+			if (!el || resolvedByTs[el.getAttribute("data-ts")]) return
 			el.classList.add("ask-pending")
-			if (el.querySelector(".ask-actions-inline")) return
-			const bar = document.createElement("div")
-			bar.className = "ask-actions-inline"
-			const spec = activeAsk
-			const mkBtn = function (cls, text, fn) {
-				const b = document.createElement("button")
-				b.type = "button"
-				b.className = "btn " + cls
-				b.textContent = text
-				b.addEventListener("click", function (e) {
-					e.preventDefault()
-					e.stopPropagation()
-					fn()
-				})
-				return b
-			}
-			bar.appendChild(
-				mkBtn("btn-approve", spec.approveLabel || "Approve", function () {
-					spec.onApprove && spec.onApprove()
-				}),
-			)
-			if (spec.showDeny !== false) {
-				bar.appendChild(
-					mkBtn("btn-deny", spec.denyLabel || "Deny", function () {
-						spec.onDeny && spec.onDeny()
-					}),
-				)
-			}
-			el.appendChild(bar)
 		}
 
 		function undecorateAsk(el) {
-			if (!el) return
-			el.classList.remove("ask-pending")
-			const bar = el.querySelector(".ask-actions-inline")
-			if (bar) bar.remove()
+			if (el) el.classList.remove("ask-pending")
 		}
 
 		function upsert(m, opts) {
@@ -1082,7 +1067,7 @@
 				headingByKey[key] = info.label + (info.detail ? " · `" + info.detail + "`" : "")
 				addCopyButton(fresh, key)
 				if (resolvedByTs[key]) applyResolution(fresh, resolvedByTs[key])
-				else if (activeAsk && activeAsk.ts === key) decorateAsk(fresh)
+				else if (activeAskTs === key) decorateAsk(fresh)
 				// Remember a fold the reader sets, so it survives the next upsert.
 				// A patched row kept its element, and with it the listener.
 				const details = fresh.querySelector(":scope > details")
@@ -1166,31 +1151,34 @@
 			return Object.keys(rolesSeen)
 		}
 
-		// Show inline Approve/Deny on the ask row. `spec` carries the handlers.
-		function setActiveAsk(ts, spec) {
-			if (ts == null) {
-				clearActiveAsk()
-				return
-			}
-			if (activeAsk && activeAsk.ts !== ts) clearActiveAsk()
-			if (resolvedByTs[ts]) return
-			activeAsk = Object.assign({ ts: ts }, spec || {})
+		function setActiveAsk(ts) {
+			if (activeAskTs !== ts) clearActiveAsk()
+			if (ts == null || resolvedByTs[ts]) return
+			activeAskTs = ts
 			decorateAsk(byTs[ts])
 		}
 
 		function clearActiveAsk() {
-			if (activeAsk) undecorateAsk(byTs[activeAsk.ts])
-			activeAsk = null
+			if (activeAskTs != null) undecorateAsk(byTs[activeAskTs])
+			activeAskTs = null
 		}
 
-		// Mark an answered ask (approve/deny) so the decision stays visible.
-		function markResolved(ts, decision) {
+		// Mark an answered ask so the decision (and a typed answer) stays visible.
+		function markResolved(ts, decision, answer) {
 			if (ts == null) return
-			resolvedByTs[ts] = decision
+			resolvedByTs[ts] = { decision: decision, answer: answer || "" }
 			delete activeByTs[ts]
-			if (activeAsk && activeAsk.ts === ts) activeAsk = null
+			if (activeAskTs === ts) activeAskTs = null
 			undecorateAsk(byTs[ts])
-			applyResolution(byTs[ts], decision)
+			applyResolution(byTs[ts], resolvedByTs[ts])
+		}
+
+		// Scroll a message's row into view; false when it is not on the page.
+		function revealRow(ts) {
+			const el = byTs[ts]
+			if (!el) return false
+			el.scrollIntoView({ block: "center" })
+			return true
 		}
 
 		// Token/cost summary derived from the persisted conversation — the same
@@ -1263,6 +1251,7 @@
 			markResolved: markResolved,
 			setActiveAsk: setActiveAsk,
 			clearActiveAsk: clearActiveAsk,
+			revealRow: revealRow,
 			getActivity: getActivity,
 			getMetrics: getMetrics,
 			setAllFolds: setAllFolds,
@@ -1276,7 +1265,7 @@
 	}
 
 	// Exposed so the live controller (live.js) can reuse the exact same rendering.
-	window.TumbleConversation = { mount: mountConversation }
+	window.TumbleConversation = { mount: mountConversation, markdown: md, inlineMarkdown: mdInline }
 
 	// Controls above the conversation: expand/collapse everything, and mute a
 	// whole kind of row. Built here rather than in the template because the

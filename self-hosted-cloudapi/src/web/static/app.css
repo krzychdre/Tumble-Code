@@ -2612,11 +2612,105 @@ a.rough-link:hover {
 	border-color: var(--signal);
 	box-shadow: 0 0 0 1px var(--signal-wash);
 }
-.ask-actions-inline {
+/* A typed answer rides on its badge; long ones are cut, the whole is its title. */
+.ask-resolution.answered {
+	background: var(--d-you-wash);
+	color: var(--d-you);
+	max-width: min(20rem, 55vw);
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* The pending ask's actions, docked above the composer (live.js). */
+.ask-dock {
 	display: flex;
+	flex-direction: column;
 	gap: var(--s2);
-	justify-content: flex-end;
-	padding: var(--s2) var(--s3) var(--s3);
+	padding: var(--s3);
+	background: var(--signal-wash);
+	border: 1px solid var(--signal);
+	border-radius: var(--r-md);
+}
+.ask-dock-head {
+	display: flex;
+	align-items: center;
+	gap: var(--s2);
+}
+.ask-dock-kind {
+	font-family: var(--mono);
+	font-size: var(--t-label);
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: var(--track-caps);
+	color: var(--signal);
+}
+.ask-dock-jump {
+	margin-left: auto;
+	font-size: var(--t-micro);
+}
+.ask-dock-question {
+	font-size: var(--t-body);
+	font-weight: 550;
+	max-height: 30vh;
+	overflow-y: auto;
+}
+.ask-dock-question > :first-child {
+	margin-top: 0;
+}
+.ask-dock-question > :last-child {
+	margin-bottom: 0;
+}
+.ask-dock-detail {
+	max-height: 8rem;
+	overflow: auto;
+	padding: var(--s2) var(--s3);
+	font-family: var(--mono);
+	font-size: var(--t-sm);
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	background: var(--sunken);
+	border-radius: var(--r-sm);
+}
+.ask-dock-note {
+	margin: 0;
+	font-size: var(--t-micro);
+	color: var(--text-dim);
+}
+.ask-suggestions {
+	display: flex;
+	flex-direction: column;
+	gap: var(--s2);
+}
+.btn.suggestion {
+	justify-content: space-between;
+	gap: var(--s3);
+	height: auto;
+	min-height: var(--control-h);
+	padding: var(--s2) var(--s3);
+	text-align: left;
+	white-space: normal;
+	color: var(--text);
+	background: var(--surface-1);
+	border: 1px solid var(--line-strong);
+}
+.btn.suggestion:hover:not(:disabled) {
+	background: var(--surface-2);
+	border-color: var(--signal);
+}
+.suggestion-mode {
+	flex-shrink: 0;
+	font-family: var(--mono);
+	font-size: var(--t-label);
+	color: var(--d-out);
+}
+.ask-decide {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--s2);
+}
+.ask-decide .ask-dock-note {
+	margin-left: auto;
 }
 
 /* --- folding -------------------------------------------------------------- */
@@ -4372,6 +4466,19 @@ table.diag-table th.diag-num {
 	}
 	.follow-jump {
 		min-height: 40px;
+	}
+	/* Thumb-sized answers: each suggestion a full-width row, the two
+	   decisions sharing one. */
+	.btn.suggestion,
+	.ask-decide .btn {
+		min-height: 44px;
+	}
+	.ask-decide .btn {
+		flex: 1;
+	}
+	.ask-decide .ask-dock-note {
+		flex-basis: 100%;
+		margin-left: 0;
 	}
 
 	.period-control {

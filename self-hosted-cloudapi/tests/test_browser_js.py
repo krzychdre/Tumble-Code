@@ -34,13 +34,14 @@ _MIN_CHECKS = {
     # The join acknowledgement against the header: registration-only record,
     # another task's snapshot, a snapshot without figures, this task's snapshot;
     # the run row of the spend table following this task's figures; the phone
-    # fold; a live task sent to its tail once, an idle one not.
-    "live_checks.html": 34,
+    # fold; a live task sent to its tail once, an idle one not; the ask dock:
+    # suggestions, own answer, approvals with a comment, no dock.
+    "live_checks.html": 59,
     # Opens at the top unless live; follows new and growing rows at the bottom;
     # stops on scrolling up and counts what arrives; resumes on the pill or at
     # the bottom.
     "follow_checks.html": 19,
-    "render_checks.html": 37,
+    "render_checks.html": 44,
     # Inline/display math, dollar amounts, code, tables, KaTeX trust off.
     "math_checks.html": 12,
     # Formula and wrapper openers without a closer, emphasis and raw-HTML bombs,

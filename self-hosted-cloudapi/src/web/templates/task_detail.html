@@ -204,6 +204,23 @@
 
 {% if live %}
 <div id="live-controls" class="live-controls offline">
+  {# The pending question or approval, filled by live.js. Docked here rather
+     than on the ask's row, so it stays in reach however long the run is. #}
+  <section id="ask-dock" class="ask-dock" aria-live="polite" aria-labelledby="ask-dock-kind" hidden>
+    <div class="ask-dock-head">
+      <span id="ask-dock-kind" class="ask-dock-kind"></span>
+      <a href="#" id="ask-dock-jump" class="ask-dock-jump">show in conversation ↑</a>
+    </div>
+    <div id="ask-dock-question" class="ask-dock-question"></div>
+    <div id="ask-dock-detail" class="ask-dock-detail" hidden></div>
+    <div id="ask-dock-suggestions" class="ask-suggestions" hidden></div>
+    <p id="ask-dock-own" class="ask-dock-note" hidden>…or type your own answer below.</p>
+    <div id="ask-dock-decide" class="ask-decide" hidden>
+      <button type="button" id="ask-dock-approve" class="btn btn-approve">Approve</button>
+      <button type="button" id="ask-dock-deny" class="btn btn-deny">Deny</button>
+      <p id="ask-dock-comment" class="ask-dock-note">Text in the box below goes along as your comment.</p>
+    </div>
+  </section>
   {# Shown on a phone only (app.css): there the six toggles would take a third
      of a bar that stays on screen, so they fold behind this. #}
   <button type="button" id="auto-more" class="auto-more" aria-expanded="false" aria-controls="auto-bar">Auto-approve settings</button>
