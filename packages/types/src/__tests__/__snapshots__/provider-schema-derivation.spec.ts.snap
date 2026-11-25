@@ -2881,6 +2881,8 @@ exports[`generated provider settings schemas > keeps the global state keys in or
   "maxGitStatusFiles",
   "parallelTasksMaxConcurrency",
   "subagentFollowupTimeoutSec",
+  "subtaskContextReminderPercent",
+  "subtaskContextStopPercent",
   "includeDiagnosticMessages",
   "maxDiagnosticMessages",
   "enableCheckpoints",

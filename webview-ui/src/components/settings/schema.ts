@@ -161,6 +161,8 @@ export const SETTINGS_SCHEMA = {
 	maxGitStatusFiles: { apply: "onSave", default: SETTINGS_DEFAULTS.maxGitStatusFiles },
 	parallelTasksMaxConcurrency: onSave,
 	subagentFollowupTimeoutSec: onSave,
+	subtaskContextReminderPercent: { apply: "onSave", default: SETTINGS_DEFAULTS.subtaskContextReminderPercent },
+	subtaskContextStopPercent: { apply: "onSave", default: SETTINGS_DEFAULTS.subtaskContextStopPercent },
 	profileThresholds: { apply: "immediate" },
 	experiments: onSave,
 	customSupportPrompts: { apply: "onSave", equals: sameJson },

@@ -92,6 +92,8 @@ export type ExtensionState = Pick<
 	| "maxGitStatusFiles"
 	| "parallelTasksMaxConcurrency"
 	| "subagentFollowupTimeoutSec"
+	| "subtaskContextReminderPercent"
+	| "subtaskContextStopPercent"
 	| "requestDelaySeconds"
 	| "showWorktreesInHomeScreen"
 	| "disabledTools"

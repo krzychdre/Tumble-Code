@@ -966,6 +966,14 @@
 			"description": "Thời gian câu hỏi của tác nhân con chờ câu trả lời của bạn trước khi được tự động phê duyệt và tác nhân con tự tiếp tục. 0 trả lời ngay lập tức (hoàn toàn tự chủ).",
 			"immediate": "tắt"
 		},
+		"contextReminder": {
+			"label": "Nhắc bàn giao tác vụ con",
+			"description": "Khi một tác vụ được ủy quyền (tác vụ con hoặc tác tử con) đã dùng đến tỷ lệ này của cửa sổ ngữ cảnh của mô hình, nó được nhắc một lần để hoàn tất bước đang làm và báo cáo, để một tác vụ con mới tiếp tục công việc. Không áp dụng cho các tác vụ do bạn tự khởi chạy."
+		},
+		"contextStop": {
+			"label": "Dừng tác vụ con",
+			"description": "Khi một tác vụ được ủy quyền đã dùng đến tỷ lệ này của cửa sổ ngữ cảnh của mô hình, nó dừng lại và trở về tác vụ cha cùng các mục TODO còn dang dở. Luôn cao hơn ngưỡng nhắc."
+		},
 		"compactNote": "Hồ sơ đang chỉnh sửa dùng chế độ gọn (mô hình rất nhỏ), nên tác nhân con luôn tắt với hồ sơ này, bất kể các cài đặt này ra sao. Các cài đặt vẫn áp dụng cho mọi hồ sơ khác."
 	}
 }

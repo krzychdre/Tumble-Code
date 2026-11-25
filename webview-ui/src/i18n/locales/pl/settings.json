@@ -912,6 +912,14 @@
 			"description": "Jak długo pytanie subagenta czeka na Twoją odpowiedź, zanim zostanie automatycznie zatwierdzone i subagent ruszy dalej samodzielnie. 0 odpowiada natychmiast (pełna autonomia).",
 			"immediate": "wył."
 		},
+		"contextReminder": {
+			"label": "Przypomnienie o przekazaniu podzadania",
+			"description": "Gdy zadanie delegowane (podzadanie albo subagent) zużyje taką część okna kontekstu swojego modelu, dostaje jednorazowe polecenie, by dokończyć krok i złożyć raport, tak aby świeże podzadanie mogło kontynuować pracę. Nie dotyczy zadań, które uruchamiasz sam."
+		},
+		"contextStop": {
+			"label": "Zatrzymanie podzadania",
+			"description": "Gdy zadanie delegowane zużyje taką część okna kontekstu swojego modelu, zatrzymuje się i wraca do rodzica z listą otwartych punktów TODO. Zawsze powyżej progu przypomnienia."
+		},
 		"compactNote": "Edytowany profil używa trybu kompaktowego (bardzo małe modele), więc subagenci są dla niego zawsze wyłączeni, niezależnie od tych ustawień. Nadal obowiązują one wszystkie pozostałe profile."
 	},
 	"memory": {

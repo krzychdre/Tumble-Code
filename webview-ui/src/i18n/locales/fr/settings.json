@@ -966,6 +966,14 @@
 			"description": "Combien de temps la question d'un sous-agent attend votre réponse avant d'être auto-approuvée et que le sous-agent continue de lui-même. 0 répond immédiatement (totalement autonome).",
 			"immediate": "désactivé"
 		},
+		"contextReminder": {
+			"label": "Rappel de passation des sous-tâches",
+			"description": "Lorsqu'une tâche déléguée (une sous-tâche ou un sous-agent) a utilisé cette part de la fenêtre de contexte de son modèle, elle reçoit une seule fois la consigne de terminer son étape et de faire son rapport, afin qu'une nouvelle sous-tâche poursuive le travail. Les tâches que vous lancez vous-même ne sont pas concernées."
+		},
+		"contextStop": {
+			"label": "Arrêt des sous-tâches",
+			"description": "Lorsqu'une tâche déléguée a utilisé cette part de la fenêtre de contexte de son modèle, elle s'arrête et revient à sa tâche parente avec les éléments TODO restés ouverts. Toujours au-dessus du rappel."
+		},
 		"compactNote": "Le profil en cours de modification utilise le mode compact (très petits modèles) : les sous-agents y sont donc toujours désactivés, quels que soient ces paramètres. Ils s'appliquent toujours à tous les autres profils."
 	}
 }

@@ -966,6 +966,14 @@
 			"description": "Por quanto tempo a pergunta de um subagente aguarda sua resposta antes de ser auto-aprovada e o subagente seguir sozinho. 0 responde imediatamente (totalmente autônomo).",
 			"immediate": "desligado"
 		},
+		"contextReminder": {
+			"label": "Lembrete de passagem de subtarefas",
+			"description": "Quando uma tarefa delegada (uma subtarefa ou um subagente) usou esta parte da janela de contexto do seu modelo, ela recebe uma única instrução para concluir a etapa e relatar, para que uma nova subtarefa continue o trabalho. Tarefas que você inicia não são afetadas."
+		},
+		"contextStop": {
+			"label": "Parada de subtarefas",
+			"description": "Quando uma tarefa delegada usou esta parte da janela de contexto do seu modelo, ela para e volta à tarefa principal com os itens TODO que deixou abertos. Sempre acima do lembrete."
+		},
 		"compactNote": "O perfil em edição usa o modo compacto (modelos muito pequenos), então os subagentes ficam sempre desativados para ele, independentemente destas configurações. Elas continuam valendo para todos os outros perfis."
 	}
 }
