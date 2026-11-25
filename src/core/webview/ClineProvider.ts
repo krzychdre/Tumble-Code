@@ -708,6 +708,11 @@ export class ClineProvider
 		}
 	}
 
+	/** Every task this panel holds: the slot's tasks plus the live parallel subagents. */
+	public ownLiveTasks(): Task[] {
+		return [...this.taskSlot.liveTasks(), ...this.backgroundTaskRunner.liveSubagents()]
+	}
+
 	/** The working tasks of this panel: the slot's tasks plus the live parallel subagents. */
 	public ownRunningTasks(): Record<string, RunningTaskStatus> {
 		return this.taskSlot.getRunningTasks(this.backgroundTaskRunner.liveSubagents())

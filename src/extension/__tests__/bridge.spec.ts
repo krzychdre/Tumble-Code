@@ -25,6 +25,7 @@ const cloud = vi.hoisted(() => {
 		workspacePath?: string
 		repositoryUrl?: string
 		secretValues?: () => readonly string[]
+		liveTasks?: () => Array<{ taskId: string; messages: readonly unknown[] }>
 	}
 	const created: Array<Options> = []
 	class BridgeOrchestrator {
@@ -71,6 +72,7 @@ vi.spyOn(Math, "random").mockReturnValue(0.999)
 
 import { setupRemoteControlBridge } from "../bridge"
 import { getRemoteControlStatus } from "../remoteControlStatus"
+import { panelRegistry } from "../../core/webview/panelRegistry"
 
 describe("setupRemoteControlBridge retry (DEF-C50)", () => {
 	let logs: string[]
@@ -197,6 +199,23 @@ describe("setupRemoteControlBridge status", () => {
 		await vi.advanceTimersByTimeAsync(0)
 
 		expect(cloud.created[0]!.secretValues).toBe(cloud.instance.secretValues)
+	})
+
+	it("replays the tasks every open panel holds, with their messages", async () => {
+		const message = { ts: 1, type: "say", say: "text", text: "the prompt" }
+		const open = { isDisposed: false, ownLiveTasks: () => [{ taskId: "t-1", clineMessages: [message] }] }
+		const closing = { isDisposed: true, ownLiveTasks: () => [{ taskId: "t-2", clineMessages: [] }] }
+		panelRegistry.add(open as never)
+		panelRegistry.add(closing as never)
+		try {
+			setup()
+			await vi.advanceTimersByTimeAsync(0)
+
+			expect(cloud.created[0]!.liveTasks!()).toEqual([{ taskId: "t-1", messages: [message] }])
+		} finally {
+			panelRegistry.remove(open as never)
+			panelRegistry.remove(closing as never)
+		}
 	})
 
 	it("is offline while a failed start waits for its retry", async () => {

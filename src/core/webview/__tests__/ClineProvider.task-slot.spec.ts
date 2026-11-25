@@ -379,6 +379,15 @@ describe("getRunningTasks: the working tasks shown on the history rows", () => {
 		})
 	})
 
+	it("liveTasks holds the foreground task and the detached ones, at rest or working", async () => {
+		const provider = makeProvider()
+		await provider.taskSlot.set(makeLiveTask("task-A"))
+		await provider.leaveCurrentTask()
+		await provider.taskSlot.set(makeLiveTask("task-B", { type: "ask", ask: "completion_result" }))
+
+		expect(provider.taskSlot.liveTasks().map((task) => task.taskId)).toEqual(["task-B", "task-A"])
+	})
+
 	it("drops a detached task once it comes to rest", async () => {
 		const provider = makeProvider()
 		const taskA = makeLiveTask("task-A")

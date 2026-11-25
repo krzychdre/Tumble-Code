@@ -93,6 +93,7 @@ async function bridgeText() {
 		events: bus as BridgeEventSource,
 		workspacePath: "/work",
 		snapshot: async () => null,
+		liveTasks: () => [],
 		secretValues,
 		ioFactory: (() => socket) as any,
 	}).start()
