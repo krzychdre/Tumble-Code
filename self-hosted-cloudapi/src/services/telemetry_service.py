@@ -27,6 +27,7 @@ from src.services.session_quality import (
 from src.services.task_summary import (
     derive_prompt,
     derive_title,
+    is_opening_prompt,
     message_metrics,
     refresh_task_summary,
 )
@@ -691,13 +692,26 @@ async def _refresh_after_live_write(
     if not is_final:
         return
 
-    # Only a text-bearing message can supply a title, and only the first one
-    # ever does — refresh_task_summary keeps an existing title as-is.
-    has_text = bool(message.get("text"))
-    candidate = derive_title([message]) if has_text else None
+    # Only the opening prompt supplies a title (task_summary.opening_query),
+    # and refresh_task_summary keeps an existing one. A prompt-shaped message
+    # with an earlier one stored is the model's answer after a lost opening.
+    opening = is_opening_prompt(message) and not await _has_earlier_message(
+        db, task_id, message_ts(message)
+    )
     await refresh_task_summary(
         db,
         task_id,
-        title=candidate,
-        prompt=derive_prompt([message]) if has_text else None,
+        title=derive_title([message]) if opening else None,
+        prompt=derive_prompt([message]) if opening else None,
     )
+
+
+async def _has_earlier_message(db: AsyncSession, task_id: str, ts: int | None) -> bool:
+    if ts is None:
+        return False
+    found = await db.scalar(
+        select(TaskMessage.id)
+        .where(TaskMessage.task_id == task_id, TaskMessage.message_ts < ts)
+        .limit(1)
+    )
+    return found is not None

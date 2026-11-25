@@ -124,40 +124,69 @@ def strip_task_wrappers(text: str) -> str:
     return cleaned.strip()
 
 
-def first_user_query(messages: Iterable[dict]) -> str:
-    """The opening human-authored request, machine framing stripped.
+def opening_query(messages: Iterable[dict]) -> str:
+    """The task's opening request, machine framing stripped; empty without one.
 
-    What both the title and the excerpt are made of: the first text-bearing
-    message, unwrapped (``<environment_details>`` dropped, ``<task>`` unwrapped)
-    so what comes back is what the user typed, not the mode/file tree the
-    extension appended. Empty when the conversation holds no such message.
+    The opening request is the conversation's first message, when that is the
+    prompt (``say: "text"``): every task starts with it. When the client's
+    first messages never reached the cloud (the bridge connected after the task
+    started), the first stored message is something else, and nothing later
+    is the request: the next ``text`` is the model's answer, and an
+    ``api_req_retry_delayed`` opens with its HTTP status ("423").
 
-    Messages whose text opens with ``{`` are skipped: those are the JSON
-    payloads (``api_req_started`` and friends), never prose. So is a text that
-    is no string, which only a hand-made message has.
+    What both the title and the excerpt are made of, unwrapped
+    (``<environment_details>`` dropped, ``<task>`` unwrapped) so what comes
+    back is what the user typed, not the mode/file tree the extension appended.
     """
-    for msg in messages:
-        text = msg.get("text")
-        text = text.strip() if isinstance(text, str) else ""
-        if not text or text.startswith("{"):
-            continue
-        query = strip_task_wrappers(text)
-        if query:
-            return query
-    return ""
+    first = next(iter(messages), None)
+    if not is_opening_prompt(first):
+        return ""
+    text = first.get("text")
+    return strip_task_wrappers(text) if isinstance(text, str) else ""
+
+
+def is_opening_prompt(msg: object) -> bool:
+    """Whether a message has the shape of a task's opening prompt."""
+    return (
+        isinstance(msg, dict) and msg.get("type") == "say" and msg.get("say") == "text"
+    )
+
+
+# Markdown a title shows as plain text. A title is one line, so only inline
+# markup and the line's own block prefix (heading, quote, list item) occur.
+_MD_IMAGE_RE = re.compile(r"!\[([^\]]*)\]\([^)]*\)")
+_MD_LINK_RE = re.compile(r"\[([^\]]*)\]\([^)]*\)")
+_MD_PAIRED_RE = re.compile(r"(\*\*|__|~~)(.+?)\1")
+_MD_STAR_RE = re.compile(r"(?<![\w*])\*(?=\S)(.+?)(?<=\S)\*(?![\w*])")
+_MD_UNDERSCORE_RE = re.compile(r"(?<!\w)_(?=\S)(.+?)(?<=\S)_(?!\w)")
+_MD_PREFIX_RE = re.compile(r"^(?:\s*(?:#{1,6}\s+|>\s*|[-*+]\s+|\d+[.)]\s+))+")
+_SPACE_RUN_RE = re.compile(r"\s+")
+# Markup never lengthens a line, so a title is read from at most this much of
+# it; the lazy patterns above then stay cheap on a pasted 40 KB line.
+_TITLE_SCAN = TITLE_MAX * 4
+
+
+def plain_title(line: str) -> str:
+    """One line of Markdown as the plain text it reads as."""
+    text = line[:_TITLE_SCAN]
+    text = _MD_PREFIX_RE.sub("", text)
+    text = _MD_IMAGE_RE.sub(r"\1", text)
+    text = _MD_LINK_RE.sub(r"\1", text)
+    text = text.replace("`", "")
+    text = _MD_PAIRED_RE.sub(r"\2", text)
+    text = _MD_STAR_RE.sub(r"\1", text)
+    text = _MD_UNDERSCORE_RE.sub(r"\1", text)
+    return _SPACE_RUN_RE.sub(" ", text).strip()
 
 
 def derive_title(messages: Iterable[dict]) -> str:
-    """Pick a human-readable title from the conversation (first text-bearing msg).
+    """The first line of the opening request, as plain text.
 
-    A single line — the first one of the opening query — so the list's title
-    column stays one row tall. The rest of that query is kept by
-    ``derive_prompt``.
+    A single line, so the list's title column stays one row tall; the rest of
+    the request is kept by ``derive_prompt``.
     """
-    first_line = first_user_query(messages).splitlines()[:1]
-    if not first_line:
-        return DEFAULT_TITLE
-    line = first_line[0].strip()
+    first_line = opening_query(messages).splitlines()[:1]
+    line = plain_title(first_line[0]) if first_line else ""
     if not line:
         return DEFAULT_TITLE
     return line[:TITLE_MAX] + ("…" if len(line) > TITLE_MAX else "")
@@ -169,7 +198,7 @@ def derive_prompt(messages: Iterable[dict]) -> str:
     Newlines survive (a prompt's shape is half of how it reads); an over-long
     one is cut back to the last word boundary so the excerpt never ends mid-word.
     """
-    query = _BLANK_RUN_RE.sub("\n\n", first_user_query(messages))
+    query = _BLANK_RUN_RE.sub("\n\n", opening_query(messages))
     if len(query) <= PROMPT_MAX:
         return query
     head = query[:PROMPT_MAX]
