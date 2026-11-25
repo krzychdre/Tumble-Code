@@ -1,6 +1,6 @@
 # The CLI runs each mode on its VS Code profile
 
-Status: in progress.
+Status: done, merged as #1368.
 
 ## Problem
 
