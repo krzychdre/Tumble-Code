@@ -27,13 +27,19 @@ from src.auth.web_session import _serializer
 from src.models.user import User, Session
 from src.models.task import Task, TaskMessage
 from src.realtime import sio as sio_module
-from src.realtime.hub import EVT_INSTANCE_STATE, ConnectionRegistry, registry
+from src.realtime.hub import (
+    EVT_INSTANCE_STATE,
+    ConnectionRegistry,
+    live_state,
+    registry,
+)
 from src.realtime.sio import (
     _identity_from_token,
     _cookie_from_environ,
     EVT_MESSAGE,
     TASK_RELAYED_EVENT,
     TASK_RELAYED_COMMAND,
+    USER_TASKS_CHANGED,
 )
 
 
@@ -173,6 +179,66 @@ def test_registry_detaching_a_window_forgets_its_tasks_but_keeps_the_user_online
     assert "isRunning" not in reg.instance("u1", "t")
 
 
+def _state(**fields):
+    return {"type": EVT_INSTANCE_STATE, **fields}
+
+
+@pytest.mark.parametrize(
+    "snapshot, expected",
+    [
+        ({"isRunning": True}, "running"),
+        # Blocked on the user: waiting, whatever isRunning says.
+        ({"isRunning": True, "currentAsk": {"ask": "followup"}}, "waiting"),
+        ({"currentAsk": {"ask": "command"}}, "waiting"),
+        ({"currentAsk": {"ask": "tool"}}, "waiting"),
+        ({"currentAsk": {"ask": "use_mcp_server"}}, "waiting"),
+        # Idle, finished or resumable: nothing live.
+        ({"isRunning": False, "currentAsk": {"ask": "completion_result"}}, None),
+        ({"currentAsk": {"ask": "resume_task"}}, None),
+        ({}, None),
+        # A client's malformed ask is not an ask.
+        ({"isRunning": True, "currentAsk": "followup"}, "running"),
+    ],
+)
+def test_live_state_reads_the_snapshot(snapshot, expected):
+    assert live_state(snapshot) == expected
+
+
+def test_registry_reports_a_change_only_of_what_the_strip_shows():
+    reg = ConnectionRegistry()
+    reg.attach("ext", "extension", "u1")
+    assert reg.note_task_event("ext", "t", _state(isRunning=True, mode="code")) is True
+    # Token counts move on every request; the strip does not show them.
+    assert (
+        reg.note_task_event(
+            "ext", "t", _state(isRunning=True, mode="code", contextTokens=9)
+        )
+        is False
+    )
+    assert reg.note_task_event("ext", "t", _state(isRunning=True, mode="ask")) is True
+    ask = {"ask": "command", "ts": 5}
+    assert reg.note_task_event("ext", "t", _state(currentAsk=ask)) is True
+    assert reg.note_task_event("ext", "t", _state(currentAsk={**ask, "ts": 6})) is True
+    # A message event carries no state.
+    assert reg.note_task_event("ext", "t", {"type": "message"}) is False
+
+
+def test_registry_live_tasks_are_the_users_own_running_or_waiting_ones():
+    reg = ConnectionRegistry()
+    reg.attach("ext1", "extension", "u1")
+    reg.attach("ext2", "extension", "u2")
+    reg.note_task_event("ext1", "run", _state(isRunning=True))
+    reg.note_task_event("ext1", "ask", _state(currentAsk={"ask": "followup"}))
+    reg.note_task_event("ext1", "idle", _state(isRunning=False))
+    reg.note_task_event("ext2", "other", _state(isRunning=True))
+
+    assert set(reg.live_tasks("u1")) == {"run", "ask"}
+    assert set(reg.live_tasks("u2")) == {"other"}
+
+    reg.detach("ext1")
+    assert reg.live_tasks("u1") == {}
+
+
 # --- handshake auth helpers ------------------------------------------------
 
 
@@ -287,7 +353,9 @@ async def test_connect_extension_with_bad_token_is_rejected(patch_session_factor
 # --- browser handshake via cookie ------------------------------------------
 
 
-async def test_connect_browser_with_valid_cookie(patch_session_factory, db_session):
+async def test_connect_browser_with_valid_cookie(
+    patch_session_factory, db_session, stub_emit
+):
     await _seed_user(db_session, "user_web")
     sid_val = await _seed_session(db_session, "user_web")
     cookie = _signed_cookie(sid_val, "user_web")
@@ -295,6 +363,8 @@ async def test_connect_browser_with_valid_cookie(patch_session_factory, db_sessi
 
     ok = await sio_module.connect("brsid", environ, None)
     assert ok is True
+    # Told when the user's running or waiting tasks change (the list's strip).
+    sio_module.sio.enter_room.assert_awaited_once_with("brsid", "user:user_web")
     assert registry.meta("brsid") == {
         "role": "browser",
         "user_id": "user_web",
@@ -308,7 +378,7 @@ async def test_connect_browser_without_cookie_is_rejected(patch_session_factory)
 
 
 async def test_connect_browser_outside_the_allowlist_is_rejected_despite_a_valid_cookie(
-    patch_session_factory, db_session, monkeypatch
+    patch_session_factory, db_session, monkeypatch, stub_emit
 ):
     """The client is read off the ASGI scope. engine.io's own REMOTE_ADDR is a
     constant "127.0.0.1", so checking that would wave every browser through as
@@ -781,11 +851,62 @@ async def test_task_event_instance_state_updates_registry(
     }
     await sio_module.on_task_event("ext_owner", event)
 
-    stub_emit.assert_awaited_once_with(TASK_RELAYED_EVENT, event, room="task:task-own")
+    stub_emit.assert_any_await(TASK_RELAYED_EVENT, event, room="task:task-own")
+    # It started running: the owner's browsers are told, nobody else's.
+    stub_emit.assert_any_await(USER_TASKS_CHANGED, {}, room="user:owner")
+    assert stub_emit.await_count == 2
     inst = registry.instance("owner", "task-own")
     assert inst["isRunning"] is True
     assert inst["contextTokens"] == 5000
     assert inst["contextWindow"] == 200000
+
+
+async def test_only_a_change_the_strip_shows_reaches_the_users_browsers(
+    patch_session_factory, db_session, stub_emit
+):
+    await _seed_user(db_session, "owner")
+    await _seed_user(db_session, "stranger", "s@example.com")
+    db_session.add_all(
+        [
+            Task(id="task-own", user_id="owner"),
+            Task(id="task-other", user_id="stranger"),
+        ]
+    )
+    await db_session.commit()
+    for sid, user in (("ext_owner", "owner"), ("ext_other", "stranger")):
+        registry.attach(sid, "extension", user)
+        registry.register_extension(sid, user)
+
+    async def changes(sid, task_id, **fields):
+        stub_emit.reset_mock()
+        await sio_module.on_task_event(
+            sid, {"taskId": task_id, "type": EVT_INSTANCE_STATE, **fields}
+        )
+        return [
+            c.kwargs["room"]
+            for c in stub_emit.await_args_list
+            if c.args[0] == USER_TASKS_CHANGED
+        ]
+
+    assert await changes("ext_owner", "task-own", isRunning=True) == ["user:owner"]
+    assert await changes("ext_owner", "task-own", isRunning=True, contextTokens=5) == []
+    assert await changes(
+        "ext_owner", "task-own", currentAsk={"ask": "followup", "ts": 1}
+    ) == ["user:owner"]
+    # Another user's task tells that user only.
+    assert await changes("ext_other", "task-other", isRunning=True) == ["user:stranger"]
+
+
+async def test_a_window_going_away_tells_its_users_browsers(stub_emit):
+    registry.attach("ext_owner", "extension", "owner")
+    registry.register_extension("ext_owner", "owner")
+    registry.attach("br_owner", "browser", "owner")
+
+    await sio_module.disconnect("br_owner")
+    stub_emit.assert_not_awaited()
+
+    await sio_module.on_extension_unregister("ext_owner")
+    stub_emit.assert_awaited_once_with(USER_TASKS_CHANGED, {}, room="user:owner")
 
 
 async def test_task_event_from_non_extension_is_ignored(stub_emit):
@@ -931,9 +1052,8 @@ async def test_state_event_for_an_unknown_task_is_held_until_the_task_exists(
     await db_session.commit()
 
     await sio_module.on_task_event("ext_owner", state)
-    stub_emit.assert_awaited_once_with(
-        TASK_RELAYED_EVENT, state, room="task:task-later"
-    )
+    stub_emit.assert_any_await(TASK_RELAYED_EVENT, state, room="task:task-later")
+    stub_emit.assert_any_await(USER_TASKS_CHANGED, {}, room="user:owner")
 
 
 async def test_task_event_ownership_is_looked_up_once_per_socket_and_task(
@@ -974,7 +1094,8 @@ async def test_task_event_ownership_is_looked_up_once_per_socket_and_task(
             },
         )
     assert opened == 4  # one save per message, no extra lookup
-    assert stub_emit.await_count == 7
+    # Seven relays, and the one change of what the strip shows (it started).
+    assert stub_emit.await_count == 8
 
 
 def test_registry_task_access_cache_is_per_socket_and_dropped_on_detach():

@@ -27,7 +27,9 @@
        with its own subtasks nested under it in turn. Collapsed by default so
        the page still scans as a list of runs. #}
     {% for t in rows recursive %}
-    <li class="task-node">
+    {#- data-rest: the state the row falls back to once it is no longer live
+        (tasklist.js keeps data-state in step with the strip). -#}
+    <li class="task-node" data-task-id="{{ t.id }}" data-state="{{ t.state }}" data-rest="{{ t.rest_state }}">
     <div class="task-item{{ ' is-subtask' if t.is_subtask else '' }}"{% if tree_view %} style="--depth: {{ loop.depth0 }}"{% endif %}>
       <label class="task-check">
         <input type="checkbox" name="task_ids" value="{{ t.id }}"
@@ -58,7 +60,7 @@
            did it ride on a second line under it, so neither costs the title
            a column. #}
         <span class="cell-main">
-          <span class="cell-title">{% if t.is_subtask and not tree_view %}<span class="subtask-mark" title="Subtask of another run">↳</span>{% endif %}{{ t.title }}{% if t.child_count %}<span class="child-count" title="{{ t.child_count }} subtask{{ '' if t.child_count == 1 else 's' }}">{{ t.child_count }}</span>{% endif %}</span>
+          <span class="cell-title">{% if t.live_label %}<span class="state-pill">{{ t.live_label }}</span>{% endif %}{% if t.is_subtask and not tree_view %}<span class="subtask-mark" title="Subtask of another run">↳</span>{% endif %}{{ t.title }}{% if t.child_count %}<span class="child-count" title="{{ t.child_count }} subtask{{ '' if t.child_count == 1 else 's' }}">{{ t.child_count }}</span>{% endif %}</span>
           <span class="cell-meta">
             {#- The folder the task ran in: a project groups all of its worktrees. #}
             {%- if t.workspace_label %}<span class="badge badge-workspace" title="{{ t.workspace }}">{{ t.workspace_label }}</span>{% endif -%}
@@ -72,10 +74,14 @@
         <span class="cell-grade"><span class="grade grade-{{ t.grade }}" title="{{ t.grade_title }}">{{ t.grade_label }}</span></span>
         <span class="cell-date"{% if t.updated_at %} title="{{ t.updated_at | localtime }}"{% endif %}>{{ t.updated_at | localtime(false) }}</span>
       </a>
-      <div class="task-delete">
+      {#- A live task is not deleted: its next message would create the row
+          again with only what follows (realtime/sio.py, on_task_event). The
+          title sits on the wrapper because a disabled button gets no hover. -#}
+      {%- set live = t.live_label is not none %}
+      <div class="task-delete"{% if live %} title="Stop the task before deleting it"{% endif %}>
         <button class="btn ghost small icon-btn btn-delete" type="submit" formaction="/app/tasks/{{ t.id }}/delete"
-                title="Delete task" aria-label="Delete “{{ t.title }}”"
-                data-confirm="Delete “{{ t.title }}” and its conversation permanently? This cannot be undone."><svg class="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2.5 4.5h11M6.5 4.5V3h3v1.5M4 4.5l.6 8.5h6.8l.6-8.5M6.75 7v3.5M9.25 7v3.5"/></svg></button>
+                {% if live %}disabled {% else %}title="Delete task" {% endif %}aria-label="Delete “{{ t.title }}”"
+                data-title="{{ t.title }}" data-messages="{{ t.message_count }}" data-subtasks="{{ t.descendant_count }}"><svg class="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2.5 4.5h11M6.5 4.5V3h3v1.5M4 4.5l.6 8.5h6.8l.6-8.5M6.75 7v3.5M9.25 7v3.5"/></svg></button>
       </div>
     </div>
     {% if t.children %}
@@ -86,6 +92,8 @@
     </li>
     {% endfor %}
 {%- endmacro %}
+{% include "_attention.html" %}
+
 <div class="list-head">
   {# The pill counts the rows of this view, so it names them: under "Runs" a
      run is a top-level task with its subtasks folded in, fewer than "All". #}
@@ -251,6 +259,14 @@
     {% if g.more_url %}<a class="group-more" href="{{ g.more_url }}">Show all {{ g.count }} {{ row_unit }}s in {{ g.label }} →</a>{% endif %}
   </details>
   {% endfor %}
+  {% elif days %}
+  {# The newest-first list reads by day; each heading says what its whole day holds. #}
+  <ul class="task-list">
+    {% for d in days %}
+    <li class="day-sep"><span class="day-name">{{ d.label }}</span> <span class="day-sum">{{ d.count }}{% if d.cost %} · {{ d.cost }}{% endif %}</span></li>
+    {{ task_rows(d.rows) }}
+    {% endfor %}
+  </ul>
   {% else %}
   <ul class="task-list">
     {{ task_rows(tasks) }}
@@ -311,7 +327,29 @@
 </section>
 {% endif %}
 </div>
+{# A row's delete asks here (tasklist.js); outside the swapped regions so it
+   stays bound. Without scripting the row's button posts on its own. #}
+<dialog id="delete-dialog" class="confirm" aria-labelledby="delete-dialog-title">
+  <form method="post" id="delete-dialog-form">
+    <h2 id="delete-dialog-title">Delete this task?</h2>
+    <p class="confirm-what" id="delete-dialog-what"></p>
+    <p>The task and its whole conversation (<b id="delete-dialog-messages"></b>) are removed from the cloud for good, together with its share link. The task history in VS Code keeps its own copy.</p>
+    <label class="confirm-option" id="delete-dialog-subtasks-wrap">
+      <input type="checkbox" name="include_subtasks" value="1" checked>
+      <span>Also delete its <b id="delete-dialog-subtasks"></b></span>
+    </label>
+    <div class="confirm-actions">
+      <button type="button" class="btn ghost" id="delete-dialog-cancel">Cancel</button>
+      <button type="submit" class="btn btn-danger">Delete</button>
+    </div>
+  </form>
+</dialog>
 {% endblock %}
 {% block scripts %}
+{% if live_config_json %}
+{# Only for the strip: the bridge says when the reader's live tasks change. #}
+<script id="list-live-config" type="application/json">{{ live_config_json }}</script>
+<script src="/static/vendor/socket.io.min.js?v={{ asset_v }}"></script>
+{% endif %}
 <script src="/static/tasklist.js?v={{ asset_v }}"></script>
 {% endblock %}

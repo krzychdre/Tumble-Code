@@ -11,36 +11,36 @@
     <label class="select-all"><input type="checkbox" id="select-all"><span>Select page</span></label>
   </div>
   <ul class="task-list">
-    <li class="task-node"><div class="task-item">
+    <li class="task-node" data-task-id="t1" data-state="done" data-rest="done"><div class="task-item">
       <label class="task-check"><input type="checkbox" name="task_ids" value="t1" data-child-count="0"></label>
       <a class="task-link" href="/app/tasks/t1"><span class="cell-title">One</span></a>
       <div class="task-delete">
-        <button class="btn-delete" type="submit" formaction="/app/tasks/t1/delete"
-                data-confirm="Delete One?">Delete</button>
+        <button class="btn-delete" type="submit" formaction="/app/tasks/t1/delete" title="Delete task"
+                data-title="One" data-messages="1" data-subtasks="0">Delete</button>
       </div>
     </div></li>
-    <li class="task-node"><div class="task-item">
+    <li class="task-node" data-task-id="t2" data-state="done" data-rest="done"><div class="task-item">
       <label class="task-check"><input type="checkbox" name="task_ids" value="t2" data-child-count="2"></label>
       <a class="task-link" href="/app/tasks/t2"><span class="cell-title">Two</span></a>
       <div class="task-delete">
-        <button class="btn-delete" type="submit" formaction="/app/tasks/t2/delete"
-                data-confirm="Delete Two?">Delete</button>
+        <button class="btn-delete" type="submit" formaction="/app/tasks/t2/delete" title="Delete task"
+                data-title="Two" data-messages="1" data-subtasks="2">Delete</button>
       </div>
     </div></li>
-    <li class="task-node"><div class="task-item">
+    <li class="task-node" data-task-id="t3" data-state="done" data-rest="done"><div class="task-item">
       <label class="task-check"><input type="checkbox" name="task_ids" value="t3" data-child-count="0"></label>
       <a class="task-link" href="/app/tasks/t3"><span class="cell-title">Three</span></a>
       <div class="task-delete">
-        <button class="btn-delete" type="submit" formaction="/app/tasks/t3/delete"
-                data-confirm="Delete Three?">Delete</button>
+        <button class="btn-delete" type="submit" formaction="/app/tasks/t3/delete" title="Delete task"
+                data-title="Three" data-messages="4" data-subtasks="0">Delete</button>
       </div>
     </div></li>
-    <li class="task-node"><div class="task-item">
+    <li class="task-node" data-task-id="t4" data-state="done" data-rest="done"><div class="task-item">
       <label class="task-check"><input type="checkbox" name="task_ids" value="t4" data-child-count="0"></label>
       <a class="task-link" href="/app/tasks/t4"><span class="cell-title">Four</span></a>
       <div class="task-delete">
-        <button class="btn-delete" type="submit" formaction="/app/tasks/t4/delete"
-                data-confirm="Delete Four?">Delete</button>
+        <button class="btn-delete" type="submit" formaction="/app/tasks/t4/delete" title="Delete task"
+                data-title="Four" data-messages="1" data-subtasks="0">Delete</button>
       </div>
     </div></li>
   </ul>
@@ -55,6 +55,36 @@
   </div>
 </form>
 
+<section id="attention" class="attention" hidden></section>
+<dialog id="delete-dialog" class="confirm">
+  <form method="post" id="delete-dialog-form">
+    <p id="delete-dialog-what"></p>
+    <b id="delete-dialog-messages"></b>
+    <label id="delete-dialog-subtasks-wrap">
+      <input type="checkbox" name="include_subtasks" value="1" checked>
+      <b id="delete-dialog-subtasks"></b>
+    </label>
+    <button type="button" id="delete-dialog-cancel">Cancel</button>
+    <button type="submit" id="delete-dialog-ok">Delete</button>
+  </form>
+</dialog>
+<script id="list-live-config" type="application/json">{"bridgePath": "/bridge/socket.io"}</script>
+<script>
+  // The bridge and the server, stood in for: tasklist.js is what is tested.
+  var socketHandlers = {}
+  var socketOptions = null
+  window.io = function (url, options) {
+    socketOptions = options
+    return { on: function (name, fn) { socketHandlers[name] = fn } }
+  }
+  var fetched = []
+  var serverHtml = ""
+  window.fetch = function (url) {
+    fetched.push(url)
+    var html = serverHtml
+    return Promise.resolve({ ok: true, text: function () { return Promise.resolve(html) } })
+  }
+</script>
 <script src="../../src/web/static/tasklist.js"></script>
 <script>
 window.addEventListener("load", function () {
@@ -140,18 +170,90 @@ window.addEventListener("load", function () {
   document.getElementById("bulk-delete").click()
   check("accepting submits once", submits === 1)
 
-  // A per-row delete asks its own question, not the bulk one.
-  asked = []
-  answer = false
-  submits = 0
-  form.querySelector('.btn-delete[formaction="/app/tasks/t3/delete"]').click()
-  check("row delete asks about that row", (asked[0] || "").indexOf("Delete Three?") === 0)
-  check("declining a row delete cancels it", submits === 0)
+  // A row's delete opens the dialog for that row instead of submitting the list.
+  var dialog = document.getElementById("delete-dialog")
+  var dialogForm = document.getElementById("delete-dialog-form")
+  var wrap = document.getElementById("delete-dialog-subtasks-wrap")
+  var include = wrap.querySelector("input")
+  var dialogSubmits = []
+  dialogForm.addEventListener("submit", function (e) {
+    dialogSubmits.push([dialogForm.getAttribute("action"), new FormData(dialogForm).get("include_subtasks")])
+    e.preventDefault()
+  })
+  function rowDelete(id) { return form.querySelector('.btn-delete[formaction="/app/tasks/' + id + '/delete"]') }
 
-  var pre = document.createElement("pre")
-  pre.id = "results"
-  pre.textContent = out.join("\n") + "\nTOTAL_FAILURES=" + fail
-  document.body.appendChild(pre)
+  asked = []
+  submits = 0
+  rowDelete("t3").click()
+  check("row delete opens the dialog", dialog.open === true)
+  check("row delete neither confirms nor submits the list", asked.length === 0 && submits === 0)
+  check("dialog names the row", document.getElementById("delete-dialog-what").textContent === "Three")
+  check("dialog counts its messages", document.getElementById("delete-dialog-messages").textContent === "4 messages")
+  check("no subtasks: the option is hidden and unticked", wrap.hidden === true && include.checked === false)
+  document.getElementById("delete-dialog-cancel").click()
+  check("cancel closes the dialog", dialog.open === false)
+
+  rowDelete("t2").click()
+  check("subtasks: the option is offered, ticked", wrap.hidden === false && include.checked === true)
+  check("the option names the subtree", document.getElementById("delete-dialog-subtasks").textContent === "2 subtasks")
+  check("one message is singular", document.getElementById("delete-dialog-messages").textContent === "1 message")
+  document.getElementById("delete-dialog-ok").click()
+  check("the dialog posts to that row's endpoint with its subtasks",
+        dialogSubmits.length === 1 && dialogSubmits[0][0] === "/app/tasks/t2/delete" && dialogSubmits[0][1] === "1")
+  dialog.close()
+
+  // The live strip: fetched again when the bridge says so, and the rows follow it.
+  function tick() { return new Promise(function (r) { setTimeout(r, 0) }) }
+  function node(id) { return form.querySelector('.task-node[data-task-id="' + id + '"]') }
+  var STRIP = '<section id="attention" class="attention"><ul>' +
+    '<li class="attention-card" data-task-id="t1" data-state="waiting"><span class="state-pill">Waiting for you</span></li>' +
+    '</ul></section>'
+  var EMPTY = '<section id="attention" class="attention" hidden></section>'
+
+  check("the socket uses the bridge path", socketOptions && socketOptions.path === "/bridge/socket.io")
+  socketHandlers.connect()
+  check("the first connect fetches nothing (the page is fresh)", fetched.length === 0)
+
+  serverHtml = STRIP
+  socketHandlers["user:tasks_changed"]()
+  tick().then(tick).then(function () {
+    check("a change fetches the strip", fetched[0] === "/app/attention")
+    var strip = document.getElementById("attention")
+    check("the strip is replaced", strip.hidden === false && strip.querySelector(".attention-card") !== null)
+    var t1 = node("t1")
+    check("a live row takes the strip's state", t1.getAttribute("data-state") === "waiting")
+    var pill = t1.querySelector(".cell-title > .state-pill")
+    check("a live row gets the pill", pill !== null && pill.textContent === "Waiting for you")
+    check("a live row cannot be deleted", rowDelete("t1").disabled === true &&
+          t1.querySelector(".task-delete").title === "Stop the task before deleting it")
+    check("other rows stay as they were", node("t2").getAttribute("data-state") === "done" && !rowDelete("t2").disabled)
+
+    // A session that ended answers with the sign-in page: what is shown stays.
+    serverHtml = "<html><body>Sign in</body></html>"
+    socketHandlers["user:tasks_changed"]()
+    return tick().then(tick)
+  }).then(function () {
+    check("an answer without the strip keeps it", document.querySelector("#attention .attention-card") !== null)
+
+    serverHtml = EMPTY
+    socketHandlers.connect()
+    return tick().then(tick)
+  }).then(function () {
+    check("a reconnect fetches the strip again", fetched.length === 3)
+    var t1 = node("t1")
+    check("a row no longer live falls back to its own state", t1.getAttribute("data-state") === "done")
+    check("its pill goes", t1.querySelector(".state-pill") === null)
+    check("it can be deleted again", rowDelete("t1").disabled === false &&
+          rowDelete("t1").title === "Delete task" && !t1.querySelector(".task-delete").hasAttribute("title"))
+    check("the empty strip is hidden", document.getElementById("attention").hidden === true)
+  }).catch(function (err) {
+    check("live checks threw: " + err, false)
+  }).then(function () {
+    var pre = document.createElement("pre")
+    pre.id = "results"
+    pre.textContent = out.join("\n") + "\nTOTAL_FAILURES=" + fail
+    document.body.appendChild(pre)
+  })
 })
 </script>
 </body></html>

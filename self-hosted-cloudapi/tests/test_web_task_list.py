@@ -20,6 +20,7 @@ from src.auth.web_session import get_web_user_optional
 from src.models.organization import Membership, Organization
 from src.models.project import Project
 from src.models.task import Task
+from src.realtime.hub import EVT_INSTANCE_STATE, registry
 from src.services.model_attribution import primary_model
 from src.services.projects import folder_key
 from src.services.task_tree import refresh_run_totals
@@ -1184,6 +1185,7 @@ async def test_a_group_its_run_leaves_while_the_page_is_read_has_no_rows(
         "t@example.com",
         ZoneInfo("UTC"),
         1,
+        {},
     )
 
     assert [(g["label"], len(g["rows"])) for g in page["groups"]] == [
@@ -1222,3 +1224,202 @@ async def test_group_none_is_the_flat_list_and_switching_drops_the_narrowing(
         "/app?scope=roots&group=user&sort=cost&dir=asc",
         "/app?scope=roots&group=none&sort=cost&dir=asc",
     ]
+
+
+# --- live tasks: the strip and the rows ---------------------------------------
+
+
+@pytest.fixture
+def report_live():
+    """Report a task's live snapshot as an extension window of ``user`` would."""
+    registry.reset()
+
+    def report(task_id, user="user_test", **fields):
+        sid = f"ext-{user}"
+        if registry.meta(sid) is None:
+            registry.attach(sid, "extension", user)
+        registry.note_task_event(
+            sid, task_id, {"type": EVT_INSTANCE_STATE, "taskId": task_id, **fields}
+        )
+
+    yield report
+    registry.reset()
+
+
+def _strip(html: str) -> str:
+    start = html.index('<section id="attention"')
+    return html[start : html.index("</section>", start)]
+
+
+async def test_the_strip_lists_what_waits_on_the_reader_then_what_runs(
+    client, db_session, session_factory, report_live
+):
+    await _seed_user(db_session)
+    await _seed(
+        session_factory,
+        {"id": "run", "title": "Running one", "models": "glm-5.3", "age": 1},
+        {"id": "cmd", "title": "Command one", "age": 2},
+        {"id": "quiz", "title": "Question one", "age": 3},
+        {"id": "edit", "title": "Edit one", "age": 4},
+        {"id": "idle", "title": "Idle one", "age": 5},
+    )
+    await _seed_user(db_session, "other", "other@example.com")
+    await _seed(session_factory, {"id": "theirs", "title": "Not mine"}, user_id="other")
+    question = {"question": "Which <b>migration</b>?", "suggest": [{"answer": "A"}]}
+    report_live(
+        "quiz", currentAsk={"ask": "followup", "ts": 1, "text": json.dumps(question)}
+    )
+    report_live("cmd", currentAsk={"ask": "command", "ts": 2, "text": "npm test"})
+    report_live(
+        "edit",
+        currentAsk={
+            "ask": "tool",
+            "ts": 3,
+            "text": json.dumps({"tool": "appliedDiff", "path": "src/a.ts"}),
+        },
+    )
+    report_live("run", isRunning=True, mode="code", tokenUsage={"totalCost": 0.42})
+    report_live("idle", isRunning=False)
+    # Live but not stored yet, and another user's: neither is the reader's card.
+    report_live("unsaved", isRunning=True)
+    report_live("theirs", user="other", isRunning=True)
+
+    strip = _strip(_get(client, "/app/attention").text)
+
+    # Waiting first, newest first within each kind; then the running one.
+    assert re.findall(r'data-task-id="([^"]+)"', strip) == [
+        "cmd",
+        "quiz",
+        "edit",
+        "run",
+    ]
+    assert "Approve command: npm test" in strip
+    assert "Question: “Which &lt;b&gt;migration&lt;/b&gt;?”" in strip
+    assert "Approve tool: appliedDiff src/a.ts" in strip
+    assert "code mode · glm-5.3 · $0.4200" in strip
+    assert re.findall(r'aria-label="(\w+): ', strip) == [
+        "Review",
+        "Answer",
+        "Review",
+        "Open",
+    ]
+    assert strip.count(">Waiting for you<") == 3 and strip.count(">Working<") == 1
+
+    # The list page carries the same strip, and what it needs to keep it live.
+    page = _get(client, "/app", group="none").text
+    assert _strip(page) == strip
+    assert 'id="list-live-config"' in page and "socket.io.min.js" in page
+
+
+async def test_with_nothing_live_the_strip_is_an_empty_placeholder(
+    client, db_session, session_factory, report_live
+):
+    await _seed_user(db_session)
+    await _seed(session_factory, {"id": "a", "title": "A"})
+    report_live("a", isRunning=False)
+
+    empty = '<section id="attention" class="attention" hidden></section>'
+    assert empty in _get(client, "/app/attention").text
+    assert empty in _get(client, "/app", group="none").text
+
+
+def _node(html: str, task_id: str) -> str:
+    """A row's own markup: its node's opening tag through its delete button."""
+    start = html.index(f'<li class="task-node" data-task-id="{task_id}"')
+    return html[start : html.index("<svg", html.index('class="task-delete"', start))]
+
+
+async def test_a_row_carries_its_state_and_a_live_one_cannot_be_deleted(
+    client, db_session, session_factory, report_live
+):
+    await _seed_user(db_session)
+    await _seed(
+        session_factory,
+        {"id": "busy", "title": "Busy run"},
+        {"id": "done", "title": "Done run", "q_completed": True},
+        {"id": "open", "title": "Open run"},
+        {"id": "sub", "title": "Sub", "parent_task_id": "done"},
+        {"id": "subsub", "title": "Sub sub", "parent_task_id": "sub"},
+    )
+    report_live("busy", isRunning=True)
+
+    page = _get(client, "/app", group="none").text
+
+    busy = _node(page, "busy")
+    assert 'data-state="running" data-rest="unfinished"' in busy
+    assert '<span class="state-pill">Working</span>Busy run' in busy
+    assert 'title="Stop the task before deleting it"' in busy
+    assert " disabled " in busy
+
+    done = _node(page, "done")
+    assert 'data-state="done" data-rest="done"' in done
+    assert "state-pill" not in done and "disabled" not in done
+    # What the dialog says about it: its title, its messages, its whole subtree.
+    assert 'data-title="Done run" data-messages="0" data-subtasks="2"' in done
+    assert 'formaction="/app/tasks/done/delete"' in done
+
+    assert 'data-state="unfinished" data-rest="unfinished"' in _node(page, "open")
+
+    dialog = page[page.index('<dialog id="delete-dialog"') :]
+    dialog = dialog[: dialog.index("</dialog>")]
+    assert 'name="include_subtasks" value="1" checked' in dialog
+    assert "The task history in VS Code keeps its own copy." in dialog
+
+
+# --- day sections -------------------------------------------------------------
+
+
+def _days(html: str) -> list[tuple[str, str]]:
+    return re.findall(
+        r'<li class="day-sep"><span class="day-name">([^<]*)</span> '
+        r'<span class="day-sum">([^<]*)</span>',
+        html,
+    )
+
+
+async def test_the_newest_first_list_reads_by_day(
+    client, db_session, session_factory, monkeypatch
+):
+    """Each day's heading says what the whole day holds, rows on the next page
+    included; under "All" every task counts its own cost."""
+    monkeypatch.setattr(task_list, "today", lambda zone: BASE.date())
+    monkeypatch.setattr(task_list, "PAGE_SIZE", 3)
+    day = 24 * 60
+    await _seed_user(db_session)
+    await _seed(
+        session_factory,
+        {"id": "t1", "cost": 1.0, "age": 0},
+        {"id": "t2", "cost": 0.5, "age": 10},
+        {"id": "t1-sub", "cost": 0.25, "age": 20, "parent_task_id": "t1"},
+        {"id": "y1", "cost": 0.0, "age": day},
+        {"id": "f1", "cost": 2.0, "age": 3 * day},
+        {"id": "old", "cost": 0.1, "age": 153 * day},
+    )
+
+    runs = _get(client, "/app", group="none").text
+    assert _days(runs) == [("Today", "2 runs · $1.7500"), ("Yesterday", "1 run")]
+    rest = _get(client, "/app", group="none", page="2").text
+    assert _days(rest) == [
+        ("Fri 29 May", "1 run · $2.0000"),
+        ("Tue 30 Dec 2025", "1 run · $0.1000"),
+    ]
+
+    # Three tasks today, one of them on the next page: the heading counts it.
+    every = _get(client, "/app", group="none", scope="all").text
+    assert _days(every) == [("Today", "3 tasks · $1.7500")]
+    assert _order(every) == ["t1", "t2", "t1-sub"]
+
+
+@pytest.mark.parametrize(
+    "params",
+    [{}, {"group": "none", "sort": "cost"}],
+    ids=["grouped", "sorted-by-cost"],
+)
+async def test_day_headings_only_on_the_newest_first_list(
+    client, db_session, session_factory, params
+):
+    await _seed_user(db_session)
+    await _seed(session_factory, {"id": "a", "title": "A"})
+    page = _get(client, "/app", **params).text
+    assert 'name="task_ids" value="a"' in page
+    assert "day-sep" not in page

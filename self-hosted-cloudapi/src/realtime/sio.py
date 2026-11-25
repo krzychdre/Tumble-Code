@@ -48,6 +48,8 @@ TASK_EVENT = "task:event"  # from extension
 TASK_RELAYED_EVENT = "task:relayed_event"  # to browsers
 TASK_COMMAND = "task:command"  # from browser
 TASK_RELAYED_COMMAND = "task:relayed_command"  # to extension
+# To every browser of a user: which of their tasks run or wait on them changed.
+USER_TASKS_CHANGED = "user:tasks_changed"
 
 # Bridge event `type` discriminators (TaskBridgeEventName).
 EVT_MESSAGE = "message"
@@ -115,6 +117,24 @@ async def _user_session(user_id: str):
 
 def _room(task_id: str) -> str:
     return f"task:{task_id}"
+
+
+def _user_room(user_id: str) -> str:
+    return f"user:{user_id}"
+
+
+async def _note(sid: str, task_id: str, user_id: str, data: dict) -> None:
+    """Record an event of an owned task; tell the user's browsers when what
+    the live strip shows of it changed."""
+    if registry.note_task_event(sid, task_id, data):
+        await sio.emit(USER_TASKS_CHANGED, {}, room=_user_room(user_id))
+
+
+async def _detach(sid: str) -> None:
+    """Forget a socket; a window going away ends its tasks' live state."""
+    meta = registry.detach(sid)
+    if meta and meta["role"] == "extension":
+        await sio.emit(USER_TASKS_CHANGED, {}, room=_user_room(meta["user_id"]))
 
 
 def _identity_from_token(token: Optional[str]) -> Optional[tuple[str, Optional[str]]]:
@@ -207,6 +227,7 @@ async def connect(sid, environ, auth):
     registry.attach(
         sid, "browser", web_user["user_id"], session_id=web_user["session_id"]
     )
+    await sio.enter_room(sid, _user_room(web_user["user_id"]))
     return True
 
 
@@ -244,7 +265,7 @@ async def _browser_session_live(sid: str) -> bool:
 async def disconnect(sid):
     # A stream cut off mid-way still leaves its last revision behind.
     await partial_messages.flush_sid(sid)
-    registry.detach(sid)
+    await _detach(sid)
 
 
 # --- extension → server ---------------------------------------------------
@@ -289,7 +310,7 @@ async def on_extension_heartbeat(sid, data=None):
 
 @sio.on(EXT_UNREGISTER)
 async def on_extension_unregister(sid, data=None):
-    registry.detach(sid)
+    await _detach(sid)
     return {"success": True}
 
 
@@ -332,7 +353,7 @@ async def on_task_event(sid, data):
     is_message = evt_type == EVT_MESSAGE and isinstance(data.get("message"), dict)
 
     if owned:
-        registry.note_task_event(sid, task_id, data)
+        await _note(sid, task_id, user_id, data)
         await sio.emit(TASK_RELAYED_EVENT, data, room=_room(task_id))
         if (
             is_message
@@ -358,7 +379,7 @@ async def on_task_event(sid, data):
         return
     registry.remember_task_access(sid, task_id, owned)
     if owned:
-        registry.note_task_event(sid, task_id, data)
+        await _note(sid, task_id, user_id, data)
         await sio.emit(TASK_RELAYED_EVENT, data, room=_room(task_id))
 
 

@@ -56,7 +56,9 @@ _MIN_CHECKS = {
     # links, others left alone, live rows, the retry and the placeholder.
     "images_checks.html": 16,
     "resume_span_checks.html": 6,
-    "tasklist_checks.html": 18,
+    # Selection and the bulk delete; a row's delete dialog; the live strip
+    # fetched again on the bridge's word, with the rows following it.
+    "tasklist_checks.html": 40,
     # Groups and run trees served closed, the remembered ones reopened, opening
     # and closing kept.
     "taskfold_checks.html": 6,
