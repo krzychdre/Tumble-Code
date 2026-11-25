@@ -1,6 +1,6 @@
 # The CLI runs the code index with the editor's settings or its own
 
-Status: in progress.
+Status: done, merged as #1376.
 
 ## Problem
 
