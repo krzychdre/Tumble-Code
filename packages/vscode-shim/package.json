@@ -17,5 +17,7 @@
 		"@types/node": "catalog:",
 		"vitest": "catalog:"
 	},
-	"dependencies": {}
+	"dependencies": {
+		"chokidar": "^6.0.0"
+	}
 }

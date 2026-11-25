@@ -8,6 +8,7 @@ import { Range } from "../classes/Range.js"
 import { Position } from "../classes/Position.js"
 import { WorkspaceEdit } from "../classes/TextEdit.js"
 import { ExtensionContextImpl } from "../context/ExtensionContext.js"
+import type { FileSystemWatcher } from "../interfaces/document.js"
 
 describe("WorkspaceAPI", () => {
 	let tempDir: string
@@ -236,13 +237,89 @@ describe("WorkspaceAPI", () => {
 	})
 
 	describe("createFileSystemWatcher()", () => {
-		it("should return a file system watcher object", () => {
-			const watcher = workspaceAPI.createFileSystemWatcher()
+		const watchers: FileSystemWatcher[] = []
 
-			expect(typeof watcher.onDidChange).toBe("function")
-			expect(typeof watcher.onDidCreate).toBe("function")
-			expect(typeof watcher.onDidDelete).toBe("function")
-			expect(typeof watcher.dispose).toBe("function")
+		afterEach(() => {
+			watchers.splice(0).forEach((watcher) => watcher.dispose())
+		})
+
+		/** A watcher whose events are collected as paths relative to the workspace. */
+		function watched(...args: Parameters<WorkspaceAPI["createFileSystemWatcher"]>) {
+			const watcher = workspaceAPI.createFileSystemWatcher(...args)
+			watchers.push(watcher)
+			const events = { created: [] as string[], changed: [] as string[], deleted: [] as string[] }
+			const record = (list: string[]) => (uri: Uri) => list.push(path.relative(workspacePath, uri.fsPath))
+			watcher.onDidCreate(record(events.created))
+			watcher.onDidChange(record(events.changed))
+			watcher.onDidDelete(record(events.deleted))
+			return events
+		}
+
+		/** Writes until `seen` holds: a write before the watcher is ready goes unreported. */
+		async function writeUntil(seen: () => boolean, write: (attempt: number) => void) {
+			let attempt = 0
+			await vi.waitFor(
+				() => {
+					write(attempt++)
+					expect(seen()).toBe(true)
+				},
+				{ timeout: 10_000, interval: 200 },
+			)
+		}
+
+		const writeFile = (relative: string, content = "x") => {
+			fs.mkdirSync(path.dirname(path.join(workspacePath, relative)), { recursive: true })
+			fs.writeFileSync(path.join(workspacePath, relative), content)
+		}
+
+		it("reports the files a relative pattern matches, outside node_modules", async () => {
+			const events = watched({ base: workspacePath, pattern: "**/*{ts,js}" })
+			const file = path.join("src", "index.ts")
+
+			await writeUntil(
+				() => events.created.length > 0,
+				(attempt) => writeFile(path.join("src", `start-${attempt}.ts`)),
+			)
+			writeFile(path.join("node_modules", "lib", "index.ts"))
+			writeFile(path.join("src", "notes.md"))
+			writeFile(file)
+			await vi.waitFor(() => expect(events.created).toContain(file))
+			await writeUntil(
+				() => events.changed.includes(file),
+				(attempt) => writeFile(file, `change ${attempt}`),
+			)
+			fs.rmSync(path.join(workspacePath, file))
+			await vi.waitFor(() => expect(events.deleted).toContain(file))
+
+			expect([...events.created, ...events.changed, ...events.deleted].join()).not.toMatch(/node_modules|notes/)
+		})
+
+		it("watches one file named by an absolute path, also before it exists", async () => {
+			const events = watched(path.join(workspacePath, ".rooignore"))
+
+			await writeUntil(
+				() => events.created.length + events.changed.length > 0,
+				(attempt) => {
+					writeFile("other.txt", `${attempt}`)
+					writeFile(".rooignore", `${attempt}`)
+				},
+			)
+
+			expect([...events.created, ...events.changed]).not.toContain("other.txt")
+		})
+
+		it("leaves out the kinds of event it is told to ignore", async () => {
+			const events = watched({ base: workspacePath, pattern: "*.md" }, false, true, false)
+
+			await writeUntil(
+				() => events.created.length > 0,
+				(attempt) => writeFile(`note-${attempt}.md`),
+			)
+			writeFile(events.created[0]!, "changed")
+			writeFile("last.md")
+			await vi.waitFor(() => expect(events.created).toContain("last.md"))
+
+			expect(events.changed).toEqual([])
 		})
 	})
 

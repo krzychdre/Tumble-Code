@@ -4,6 +4,9 @@
 
 import * as fs from "fs"
 import * as path from "path"
+
+import { watch } from "chokidar"
+
 import { logs } from "../utils/logger.js"
 import { Uri } from "../classes/Uri.js"
 import { Position } from "../classes/Position.js"
@@ -26,6 +29,12 @@ import type {
 } from "../interfaces/document.js"
 import type { Disposable, WorkspaceConfiguration } from "../interfaces/workspace.js"
 import type { Thenable } from "../types.js"
+
+/** Characters that make a pattern segment a glob. */
+const GLOB_CHARACTERS = /[*?[\]{}]/
+
+/** A path, relative to a watcher's base, inside node_modules or .git. */
+const UNWATCHED_DIRECTORY = /(^|[\\/])(node_modules|\.git)([\\/]|$)/
 
 /**
  * Workspace API mock for CLI mode
@@ -301,18 +310,72 @@ export class WorkspaceAPI {
 		}
 	}
 
+	/**
+	 * Watches the files a glob pattern matches, as VS Code does: a relative
+	 * pattern from its base, a relative string pattern from the workspace
+	 * folder, an absolute string from its last directory without a glob
+	 * character. A pattern without a glob character watches that one file.
+	 * node_modules and .git are never watched (VS Code's default
+	 * files.watcherExclude covers them).
+	 */
 	createFileSystemWatcher(
-		_globPattern?: string | RelativePattern,
-		_ignoreCreateEvents?: boolean,
-		_ignoreChangeEvents?: boolean,
-		_ignoreDeleteEvents?: boolean,
+		globPattern: string | RelativePattern,
+		ignoreCreateEvents = false,
+		ignoreChangeEvents = false,
+		ignoreDeleteEvents = false,
 	): FileSystemWatcher {
-		const emitter = new EventEmitter<Uri>()
+		const { base, pattern } = this.splitGlobPattern(globPattern)
+		const watchesOneFile = !GLOB_CHARACTERS.test(pattern)
+		const target = path.resolve(base, pattern)
+		const matches = (file: string) => watchesOneFile || path.matchesGlob(path.relative(base, file), pattern)
+		const created = new EventEmitter<Uri>()
+		const changed = new EventEmitter<Uri>()
+		const deleted = new EventEmitter<Uri>()
+		const fire = (emitter: EventEmitter<Uri>, ignored: boolean) => (file: string) => {
+			if (!ignored && matches(file)) {
+				emitter.fire(Uri.file(file))
+			}
+		}
+		const watcher = watch(watchesOneFile ? target : base, {
+			ignoreInitial: true,
+			ignored: (file) => UNWATCHED_DIRECTORY.test(path.relative(base, file)),
+		})
+			.on("add", fire(created, ignoreCreateEvents))
+			.on("addDir", fire(created, ignoreCreateEvents))
+			.on("change", fire(changed, ignoreChangeEvents))
+			.on("unlink", fire(deleted, ignoreDeleteEvents))
+			.on("unlinkDir", fire(deleted, ignoreDeleteEvents))
+			// Out of inotify watches, a vanished base: the watcher stops reporting, the run goes on.
+			.on("error", (error) => logs.warn(`File watcher on ${base} failed: ${String(error)}`, "VSCode.Workspace"))
 		return {
-			onDidChange: (listener: (e: Uri) => void) => emitter.event(listener),
-			onDidCreate: (listener: (e: Uri) => void) => emitter.event(listener),
-			onDidDelete: (listener: (e: Uri) => void) => emitter.event(listener),
-			dispose: () => emitter.dispose(),
+			onDidCreate: created.event,
+			onDidChange: changed.event,
+			onDidDelete: deleted.event,
+			dispose: () => {
+				void watcher.close()
+				created.dispose()
+				changed.dispose()
+				deleted.dispose()
+			},
+		}
+	}
+
+	/** The directory a glob pattern starts from and the pattern relative to it, with / separators. */
+	private splitGlobPattern(globPattern: string | RelativePattern): { base: string; pattern: string } {
+		if (typeof globPattern !== "string") {
+			const { base } = globPattern as { base: string | Uri | WorkspaceFolder }
+			const basePath = typeof base === "string" ? base : "uri" in base ? base.uri.fsPath : base.fsPath
+			return { base: basePath, pattern: globPattern.pattern }
+		}
+		if (!path.isAbsolute(globPattern)) {
+			return { base: this.workspaceFolders![0]!.uri.fsPath, pattern: globPattern }
+		}
+		const segments = globPattern.split(/[\\/]/)
+		const firstGlob = segments.findIndex((segment) => GLOB_CHARACTERS.test(segment))
+		const baseEnd = firstGlob === -1 ? segments.length - 1 : firstGlob
+		return {
+			base: segments.slice(0, baseEnd).join(path.sep) || path.sep,
+			pattern: segments.slice(baseEnd).join("/"),
 		}
 	}
 
