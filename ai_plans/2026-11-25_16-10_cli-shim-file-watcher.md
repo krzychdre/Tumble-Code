@@ -1,6 +1,6 @@
 # The CLI watches files like VS Code
 
-Status: in progress.
+Status: done, merged as #1375.
 
 ## Problem
 
