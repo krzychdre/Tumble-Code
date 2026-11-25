@@ -12,6 +12,10 @@
 <div id="detail-header" class="detail-header cockpit">
   <span id="task-state" class="state-pill" data-state="connecting">Connecting…</span>
   <button type="button" id="head-stop" hidden>Stop</button>
+  <!-- Rendered blocked: the server's registry had the task live. -->
+  <form id="task-delete-form" method="post" action="/app/tasks/task-a/delete" title="Stop the task before deleting it">
+    <button type="submit" id="task-delete" disabled data-delete-dialog data-title="A" data-messages="3" data-subtasks="0">Delete task</button>
+  </form>
   <button type="button" id="details-toggle" aria-expanded="false" aria-controls="detail-more">Details
     <span id="sum-mode">&#8212;</span> <span id="sum-tokens">3.4M</span> <span id="sum-cost">$1.4090</span></button>
 </div>
@@ -103,6 +107,10 @@ window.addEventListener("load", function () {
   var out = [], fail = 0
   function check(name, cond) { out.push((cond ? "PASS " : "FAIL ") + name); if (!cond) fail++ }
   function text(id) { return document.getElementById(id).textContent }
+  function deletable() {
+    return document.getElementById("task-delete").disabled === false &&
+      !document.getElementById("task-delete-form").hasAttribute("title")
+  }
   function reset() {
     ;["hdr-mode", "hdr-context"].concat(
       ["run", "own"].reduce(function (ids, row) {
@@ -123,6 +131,10 @@ window.addEventListener("load", function () {
     s.src = "../../src/web/static/live.js?n=" + sockets.length
     s.onload = function () {
       var sock = sockets[sockets.length - 1]
+      if (sockets.length === 1) {
+        check("until the join answers, the rendered Delete state stands",
+              document.getElementById("task-delete").disabled === true)
+      }
       sock.join = joinAck
       sock.fire("connect")
       then(sock)
@@ -159,6 +171,7 @@ window.addEventListener("load", function () {
       check("registration only: the task is idle", text("task-state") === "Idle" &&
             document.getElementById("task-state").getAttribute("data-state") === "idle")
       check("registration only: no Stop in the header", document.getElementById("head-stop").hidden === true)
+      check("idle: the task can be deleted", deletable())
       check("registration only: the page is not sent to the tail", window.TumbleFollow.calls === 0)
     },
     function () {
@@ -222,6 +235,8 @@ window.addEventListener("load", function () {
               check("this task running: the header says Working", text("task-state") === "Working" &&
                     document.getElementById("task-state").getAttribute("data-state") === "running")
               check("this task running: the header offers Stop", document.getElementById("head-stop").hidden === false)
+              check("running: Delete waits for Stop", !deletable() &&
+                    document.getElementById("task-delete-form").title === "Stop the task before deleting it")
               check("the Details summary repeats the run row and the mode",
                     text("sum-tokens") === text("hdr-run-tokens") && text("sum-cost") === "$1.4136" &&
                     text("sum-mode") === "code")
@@ -318,6 +333,7 @@ window.addEventListener("load", function () {
     check("followup: its row is marked", (lastCall("setActiveAsk") || [])[1] === 100)
     check("followup: the composer asks for an answer", input.placeholder === "Your answer… (or pick one above)")
     check("a pending question outranks running in the header", text("task-state") === "Waiting for you")
+    check("waiting: Delete waits for Stop", !deletable())
 
     buttons()[0].click()
     var cmd = lastCommand()
@@ -368,6 +384,7 @@ window.addEventListener("load", function () {
     check("a finished task gets no dock", dock.hidden === true && lastCall("clearActiveAsk") === convo.calls[convo.calls.length - 1])
     sock.fire("task:relayed_event", { type: "instanceState", taskId: "task-a", isRunning: false, currentAsk: { ts: 105, type: "ask", ask: "completion_result", text: "" } })
     check("a finished task says Done", text("task-state") === "Done" && document.getElementById("head-stop").hidden === true)
+    check("done: the task can be deleted", deletable())
 
     ask({ ts: 106, type: "ask", ask: "command", text: "ls" })
     document.getElementById("ask-dock-jump").click()
@@ -376,6 +393,7 @@ window.addEventListener("load", function () {
     check("offline: the dock's buttons are off", document.getElementById("ask-dock-approve").disabled === true)
     check("offline: the header says so", text("task-state") === "Offline" &&
           document.getElementById("task-state").getAttribute("data-state") === "offline")
+    check("offline: the task can be deleted", deletable())
   }
 
   function finish() {

@@ -37,7 +37,7 @@ _MIN_CHECKS = {
     # fold; a live task sent to its tail once, an idle one not; the ask dock:
     # suggestions, own answer, approvals with a comment, no dock; the cockpit
     # header: its state word, its Stop, the Details summary and fold.
-    "live_checks.html": 72,
+    "live_checks.html": 78,
     # Opens at the top unless live; follows new and growing rows at the bottom;
     # stops on scrolling up and counts what arrives; resumes on the pill or at
     # the bottom.
@@ -66,9 +66,10 @@ _MIN_CHECKS = {
     # Density toggle, select mode, and the 300 ms fetch-and-swap of the filter
     # form, with the remembered groups reopened in the swapped list.
     "tasklist_filter_checks.html": 20,
-    # data-confirm forms (formerly inline onsubmit), the empty state's copy button,
-    # the auto-submitting filter form and the problem report's "Copy for agent".
-    "app_checks.html": 15,
+    # data-confirm forms (formerly inline onsubmit), a task's delete dialog, the
+    # empty state's copy button, the auto-submitting filter form and the problem
+    # report's "Copy for agent".
+    "app_checks.html": 19,
     # The metrics region fetched again on an interval: opened table and cleared
     # series kept, unusable answers ignored, nothing asked while hidden.
     "refresh_checks.html": 10,

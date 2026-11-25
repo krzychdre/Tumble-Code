@@ -2,11 +2,23 @@
 <!--
   static/app.js, loaded by every panel page: the confirmations that used to be
   inline onsubmit handlers (now data-confirm on the form, so the page can run
-  under a script-src 'self' policy), and the copy button of the empty state.
+  under a script-src 'self' policy), a task's delete dialog, and the copy
+  button of the empty state.
 -->
 <form id="del" method="post" action="/app/tasks/x/delete" data-confirm="Delete this task permanently?">
   <button type="submit" id="del-btn">Delete task</button>
 </form>
+<!-- The task page's Delete: no formaction, so the dialog posts to its form's action. -->
+<form id="task-del" method="post" action="/app/tasks/y/delete">
+  <button type="submit" id="task-del-btn" data-delete-dialog data-title="Fix it" data-messages="1" data-subtasks="3">Delete task</button>
+</form>
+<dialog id="delete-dialog">
+  <form method="post" id="delete-dialog-form">
+    <p id="delete-dialog-what"></p><b id="delete-dialog-messages"></b>
+    <label id="delete-dialog-subtasks-wrap"><input type="checkbox" name="include_subtasks" value="1" checked><b id="delete-dialog-subtasks"></b></label>
+    <button type="button" id="delete-dialog-cancel">Cancel</button>
+  </form>
+</dialog>
 <form id="plain" method="post" action="/elsewhere">
   <button type="submit" id="plain-btn">Go</button>
 </form>
@@ -61,6 +73,19 @@ window.addEventListener("load", function () {
   document.getElementById("del-btn").click()
   check("accepting submits", submitted.join() === "del")
   asked = []
+  document.getElementById("task-del-btn").click()
+  var dialog = document.getElementById("delete-dialog")
+  check("a data-delete-dialog button opens the dialog, not a confirm, and posts nothing",
+        dialog.open === true && asked.length === 0 && submitted.join() === "del")
+  check("without a formaction the dialog posts to the button's form",
+        document.getElementById("delete-dialog-form").getAttribute("action") === "/app/tasks/y/delete")
+  check("the dialog names the task and counts what goes",
+        document.getElementById("delete-dialog-what").textContent === "Fix it" &&
+        document.getElementById("delete-dialog-messages").textContent === "1 message" &&
+        document.getElementById("delete-dialog-subtasks").textContent === "3 subtasks" &&
+        document.getElementById("delete-dialog-subtasks-wrap").querySelector("input").checked === true)
+  document.getElementById("delete-dialog-cancel").click()
+  check("cancel closes it", dialog.open === false)
   document.getElementById("plain-btn").click()
   check("a form without data-confirm is not asked about", asked.length === 0 && submitted.join() === "del,plain")
 

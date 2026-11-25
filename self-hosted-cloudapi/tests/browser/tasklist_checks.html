@@ -1,6 +1,7 @@
 <!DOCTYPE html><html><head><meta charset="utf-8"></head><body>
 <!--
-  Selection behaviour for the task list (static/tasklist.js), driven against a
+  Selection behaviour for the task list (static/tasklist.js, and the delete
+  dialog every task's Delete shares, static/app.js), driven against a
   DOM that mirrors templates/tasks_list.html. Kept as a fixture rather than a
   copy of the template so the assertions are about behaviour, not markup.
 -->
@@ -15,7 +16,7 @@
       <label class="task-check"><input type="checkbox" name="task_ids" value="t1" data-child-count="0"></label>
       <a class="task-link" href="/app/tasks/t1"><span class="cell-title">One</span></a>
       <div class="task-delete">
-        <button class="btn-delete" type="submit" formaction="/app/tasks/t1/delete" title="Delete task"
+        <button class="btn-delete" type="submit" formaction="/app/tasks/t1/delete" title="Delete task" data-delete-dialog
                 data-title="One" data-messages="1" data-subtasks="0">Delete</button>
       </div>
     </div></li>
@@ -23,7 +24,7 @@
       <label class="task-check"><input type="checkbox" name="task_ids" value="t2" data-child-count="2"></label>
       <a class="task-link" href="/app/tasks/t2"><span class="cell-title">Two</span></a>
       <div class="task-delete">
-        <button class="btn-delete" type="submit" formaction="/app/tasks/t2/delete" title="Delete task"
+        <button class="btn-delete" type="submit" formaction="/app/tasks/t2/delete" title="Delete task" data-delete-dialog
                 data-title="Two" data-messages="1" data-subtasks="2">Delete</button>
       </div>
     </div></li>
@@ -31,7 +32,7 @@
       <label class="task-check"><input type="checkbox" name="task_ids" value="t3" data-child-count="0"></label>
       <a class="task-link" href="/app/tasks/t3"><span class="cell-title">Three</span></a>
       <div class="task-delete">
-        <button class="btn-delete" type="submit" formaction="/app/tasks/t3/delete" title="Delete task"
+        <button class="btn-delete" type="submit" formaction="/app/tasks/t3/delete" title="Delete task" data-delete-dialog
                 data-title="Three" data-messages="4" data-subtasks="0">Delete</button>
       </div>
     </div></li>
@@ -39,7 +40,7 @@
       <label class="task-check"><input type="checkbox" name="task_ids" value="t4" data-child-count="0"></label>
       <a class="task-link" href="/app/tasks/t4"><span class="cell-title">Four</span></a>
       <div class="task-delete">
-        <button class="btn-delete" type="submit" formaction="/app/tasks/t4/delete" title="Delete task"
+        <button class="btn-delete" type="submit" formaction="/app/tasks/t4/delete" title="Delete task" data-delete-dialog
                 data-title="Four" data-messages="1" data-subtasks="0">Delete</button>
       </div>
     </div></li>
@@ -86,6 +87,7 @@
   }
 </script>
 <script src="../../src/web/static/tasklist.js"></script>
+<script src="../../src/web/static/app.js"></script>
 <script>
 window.addEventListener("load", function () {
   var out = [], fail = 0

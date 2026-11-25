@@ -32,9 +32,12 @@
   <div class="detail-title-row">
     <h1 class="page-title">{{ title }}</h1>
     {% if can_delete %}
-    <form class="task-delete-detail" method="post" action="/app/tasks/{{ task.id }}/delete"
-          data-confirm="Delete this task and its conversation permanently? This cannot be undone.">
-      <button class="btn ghost small btn-delete" type="submit">Delete task</button>
+    {# A live task is not deleted, as on the list (realtime/sio.py,
+       on_task_event); live.js keeps this in step with the task's state. The
+       title sits on the form because a disabled button gets no hover. #}
+    <form class="task-delete-detail" method="post" action="/app/tasks/{{ task.id }}/delete"{% if delete_blocked %} title="Stop the task before deleting it"{% endif %}>
+      <button class="btn ghost small btn-delete" type="submit" id="task-delete"{% if delete_blocked %} disabled{% endif %}
+              data-delete-dialog data-title="{{ title }}" data-messages="{{ task.message_count }}" data-subtasks="{{ subtask_count }}">Delete task</button>
     </form>
     {% endif %}
   </div>
@@ -274,6 +277,8 @@
 </div>
 <script id="live-config" type="application/json">{{ live_config_json }}</script>
 {% endif %}
+
+{% if can_delete %}{% include "_delete_dialog.html" %}{% endif %}
 
 <script id="messages-data" type="application/json">{{ messages_json }}</script>
 {# Derived, not stored: message ts -> the model that answered that request.
