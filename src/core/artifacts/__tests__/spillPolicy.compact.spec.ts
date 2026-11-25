@@ -83,6 +83,7 @@ describe("Task#pushToolResultToUserContent under the compact profile", () => {
 			toolResultSpill: { store: { save, getTaskDir: () => "/tmp/none" }, maxInlineBytes: 24 * 1024 },
 			pendingToolResultSpills: new Set<Promise<void>>(),
 			spillToolResultInBackground: vi.fn(),
+			insertToolResult: (Task.prototype as unknown as { insertToolResult: unknown }).insertToolResult,
 			taskId: "t",
 		}
 		return { task, save }
