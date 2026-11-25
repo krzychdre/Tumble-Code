@@ -1,26 +1,28 @@
-import type * as vscode from "vscode"
-
 import type { CustomModePrompts, ModeConfig } from "@tumble-code/types"
 
 import { getAllModes, getModeBySlug, modes } from "../../shared/modes"
 
 import { addCustomInstructions } from "./sections/custom-instructions"
 
-// The extension-side mode helpers: they read VS Code state or the file system
+// The extension-side mode helpers: getFullModeDetails reads the file system
 // (custom instructions), so they live here and not in src/shared/modes.ts,
 // which the webview bundles.
 
-// Helper function to get all modes with their prompt overrides from extension state
-export async function getAllModesWithPrompts(context: vscode.ExtensionContext): Promise<ModeConfig[]> {
-	const customModes = (await context.globalState.get<ModeConfig[]>("customModes")) || []
-	const customModePrompts = (await context.globalState.get<CustomModePrompts>("customModePrompts")) || {}
-
-	const allModes = getAllModes(customModes)
-	return allModes.map((mode) => ({
+/**
+ * Every mode with its prompt overrides applied, from the caller's own
+ * `customModes` and `customModePrompts`. Never read these from
+ * `context.globalState`: VS Code shares it between all windows, a Remote-SSH
+ * window included, so another window's list would leak into this prompt.
+ */
+export function getAllModesWithPrompts(
+	customModes: ModeConfig[] | undefined,
+	customModePrompts: CustomModePrompts | undefined,
+): ModeConfig[] {
+	return getAllModes(customModes).map((mode) => ({
 		...mode,
-		roleDefinition: customModePrompts[mode.slug]?.roleDefinition ?? mode.roleDefinition,
-		whenToUse: customModePrompts[mode.slug]?.whenToUse ?? mode.whenToUse,
-		customInstructions: customModePrompts[mode.slug]?.customInstructions ?? mode.customInstructions,
+		roleDefinition: customModePrompts?.[mode.slug]?.roleDefinition ?? mode.roleDefinition,
+		whenToUse: customModePrompts?.[mode.slug]?.whenToUse ?? mode.whenToUse,
+		customInstructions: customModePrompts?.[mode.slug]?.customInstructions ?? mode.customInstructions,
 		// description is not overridable via customModePrompts, so we keep the original
 	}))
 }

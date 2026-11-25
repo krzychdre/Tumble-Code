@@ -56,7 +56,7 @@ import { MultiSearchReplaceDiffStrategy } from "../../diff/strategies/multi-sear
 
 // Mock the sections
 vi.mock("../sections/modes", () => ({
-	getModesSection: vi.fn().mockImplementation(async () => `====\n\nMODES\n\n- Test modes section`),
+	getModesSection: vi.fn().mockReturnValue(`====\n\nMODES\n\n- Test modes section`),
 }))
 
 // Mock the custom instructions

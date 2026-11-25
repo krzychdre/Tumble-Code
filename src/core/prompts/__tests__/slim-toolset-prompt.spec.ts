@@ -37,7 +37,7 @@ vi.mock("vscode", () => ({
 }))
 
 vi.mock("../sections/modes", () => ({
-	getModesSection: vi.fn().mockImplementation(async () => "====\n\nMODES\n\n- Test modes section"),
+	getModesSection: vi.fn().mockReturnValue("====\n\nMODES\n\n- Test modes section"),
 }))
 
 vi.mock("../sections/custom-instructions", () => ({

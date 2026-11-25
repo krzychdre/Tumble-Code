@@ -52,7 +52,7 @@ vi.mock("vscode", () => ({
 // The modes list needs the extension's settings directory; stub it to a fixed
 // string so this file measures prompt ORDER, not the tester's mode inventory.
 vi.mock("../sections/modes", () => ({
-	getModesSection: vi.fn().mockImplementation(async () => "====\n\nMODES\n\n- Test modes section"),
+	getModesSection: vi.fn().mockReturnValue("====\n\nMODES\n\n- Test modes section"),
 }))
 
 // Memory reads MEMORY.md from the user's real home directory. Fixed bodies keep

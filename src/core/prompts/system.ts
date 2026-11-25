@@ -148,7 +148,6 @@ async function generatePrompt(
 	promptComponent: PromptComponent | undefined,
 ): Promise<string> {
 	const {
-		context,
 		cwd,
 		mcpHub,
 		customModes: customModeConfigs,
@@ -195,10 +194,8 @@ async function generatePrompt(
 	// Tool calling is native-only.
 	const effectiveProtocol = "native"
 
-	const [modesSection, skillsSection] = await Promise.all([
-		getModesSection(context),
-		getSkillsSection(skillsManager, mode as string),
-	])
+	const modesSection = getModesSection(customModeConfigs, options.customModePrompts)
+	const skillsSection = await getSkillsSection(skillsManager, mode as string)
 
 	// Tools catalog is not included in the system prompt.
 	const toolsCatalog = ""
@@ -366,10 +363,10 @@ async function generateCompactPrompt(
 	roleDefinition: string,
 	baseInstructions: string,
 ): Promise<string> {
-	const { context, cwd, customModes: customModeConfigs, settings } = options
+	const { cwd, customModes: customModeConfigs, settings } = options
 
-	const [modesSection, memorySection, memoryIndex, customInstructionsSection] = await Promise.all([
-		getCompactModesSection(context),
+	const modesSection = getCompactModesSection(customModeConfigs, options.customModePrompts)
+	const [memorySection, memoryIndex, customInstructionsSection] = await Promise.all([
 		getCompactMemorySection(cwd),
 		getCompactMemoryIndexSection(cwd),
 		buildCustomInstructionsSection(options, mode, baseInstructions),

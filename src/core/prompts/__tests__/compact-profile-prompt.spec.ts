@@ -319,6 +319,22 @@ describe("compact system prompt: what it teaches", () => {
 		}
 	})
 
+	it("lists the custom modes it is given in both prompts, whatever the shared VS Code state holds", async () => {
+		// globalState is shared by every window, a Remote-SSH one included; mockContext's is empty.
+		const reviewer: ModeConfig = {
+			slug: "reviewer-x",
+			name: "Reviewer X",
+			roleDefinition: "Reviews",
+			whenToUse: "Review a diff.",
+			groups: ["read"],
+		}
+		const compact = await build("code", { customModes: [reviewer] })
+		const long = await build("code", { customModes: [reviewer], settings: { ...COMPACT, compactProfile: false } })
+
+		expect(compact).toContain("\n- reviewer-x: Reviewer X")
+		expect(long).toContain(`* "Reviewer X" mode (reviewer-x) - Review a diff.`)
+	})
+
 	it("states the missing tools of ask and orchestrator and none for code", async () => {
 		const ask = await build("ask")
 		const orchestrator = await build("orchestrator")

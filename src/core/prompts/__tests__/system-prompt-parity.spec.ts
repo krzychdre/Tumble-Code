@@ -38,7 +38,7 @@ vi.mock("../../../utils/shell", () => ({ getShell: () => "/bin/zsh" }))
 // The modes list and the memory sections read the tester's disk; fixed bodies
 // keep the snapshot reproducible on any machine.
 vi.mock("../sections/modes", () => ({
-	getModesSection: vi.fn().mockImplementation(async () => "====\n\nMODES\n\n- Test modes section"),
+	getModesSection: vi.fn().mockReturnValue("====\n\nMODES\n\n- Test modes section"),
 }))
 vi.mock("../sections/memory", () => ({
 	getMemorySection: vi.fn().mockResolvedValue("# auto memory\n\nMemory behavioral body."),

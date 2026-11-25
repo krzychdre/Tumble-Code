@@ -1,6 +1,4 @@
-import type * as vscode from "vscode"
-
-import { ALWAYS_AVAILABLE_TOOLS, type GroupEntry, type ModeConfig } from "@tumble-code/types"
+import { ALWAYS_AVAILABLE_TOOLS, type CustomModePrompts, type GroupEntry, type ModeConfig } from "@tumble-code/types"
 
 import { getGroupName } from "../../../../shared/modes"
 import { getAllModesWithPrompts } from "../../modeDetails"
@@ -16,11 +14,14 @@ import { resolveToolAlias } from "../../tools/filter-tools-for-mode"
 /**
  * MODES for the compact profile: one line per mode (slug and name) and how to
  * switch. The long section adds each mode's `whenToUse`, several hundred
- * characters per mode. Same source as the long section (the modes with their
- * overrides from extension state), so both list the same modes.
+ * characters per mode. Same source as the long section, so both list the same
+ * modes.
  */
-export async function getCompactModesSection(context: vscode.ExtensionContext): Promise<string> {
-	const allModes = await getAllModesWithPrompts(context)
+export function getCompactModesSection(
+	customModes: ModeConfig[] | undefined,
+	customModePrompts: CustomModePrompts | undefined,
+): string {
+	const allModes = getAllModesWithPrompts(customModes, customModePrompts)
 
 	return `====
 

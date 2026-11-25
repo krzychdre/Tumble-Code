@@ -1,16 +1,12 @@
-import * as vscode from "vscode"
-
-import type { ModeConfig } from "@tumble-code/types"
+import type { CustomModePrompts, ModeConfig } from "@tumble-code/types"
 
 import { getAllModesWithPrompts } from "../modeDetails"
-import { ensureSettingsDirectoryExists } from "../../../utils/globalContext"
 
-export async function getModesSection(context: vscode.ExtensionContext): Promise<string> {
-	// Make sure path gets created
-	await ensureSettingsDirectoryExists(context)
-
-	// Get all modes with their overrides from extension state
-	const allModes = await getAllModesWithPrompts(context)
+export function getModesSection(
+	customModes: ModeConfig[] | undefined,
+	customModePrompts: CustomModePrompts | undefined,
+): string {
+	const allModes = getAllModesWithPrompts(customModes, customModePrompts)
 
 	const modesContent = `====
 
