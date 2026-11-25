@@ -318,20 +318,40 @@ describe("ExtensionHost", () => {
 			expect(process.env.ROO_CLI_DISPLAY).toBe("images")
 		})
 
-		it("should set execaShellPath in initialSettings when terminalShell is provided", () => {
-			const host = createTestHost({ terminalShell: "/bin/bash" })
+		/** The settings the host sends the extension once its webview is ready. */
+		const sentSettings = (host: ExtensionHost) => {
 			const emitSpy = vi.spyOn(host, "emit")
 			host.markWebviewReady()
-			const updateSettingsCall = emitSpy.mock.calls.find(
-				(call) =>
-					call[0] === "webviewMessage" &&
-					typeof call[1] === "object" &&
-					call[1] !== null &&
-					(call[1] as WebviewMessage).type === "updateSettings",
+			const call = emitSpy.mock.calls.find(
+				(c) => c[0] === "webviewMessage" && (c[1] as WebviewMessage).type === "updateSettings",
 			)
-			expect(updateSettingsCall).toBeDefined()
-			const payload = updateSettingsCall?.[1] as WebviewMessage
-			expect(payload.updatedSettings?.execaShellPath).toBe("/bin/bash")
+			return (call?.[1] as WebviewMessage).updatedSettings!
+		}
+
+		it("should set execaShellPath in initialSettings when terminalShell is provided", () => {
+			expect(sentSettings(createTestHost({ terminalShell: "/bin/bash" })).execaShellPath).toBe("/bin/bash")
+		})
+
+		it("applies the editor's settings under the run's own and the CLI's permissions", () => {
+			const settings = sentSettings(
+				createTestHost({
+					nonInteractive: true,
+					commandExecutionTimeout: 600,
+					vscodeSettings: {
+						autoCondenseContextPercent: 80,
+						commandExecutionTimeout: 1,
+						enableCheckpoints: true,
+						alwaysAllowExecute: false,
+						experiments: { deferredTools: true },
+					},
+				}),
+			)
+
+			expect(settings.autoCondenseContextPercent).toBe(80)
+			expect(settings.commandExecutionTimeout).toBe(600)
+			expect(settings.enableCheckpoints).toBe(false)
+			expect(settings.alwaysAllowExecute).toBe(true)
+			expect(settings.experiments).toEqual({ deferredTools: true, customTools: true })
 		})
 	})
 

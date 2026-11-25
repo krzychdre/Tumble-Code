@@ -110,6 +110,12 @@ vi.mock("@tumble-code/types", async (importOriginal) => ({
 	formatLanguage: vi.fn().mockReturnValue("en"),
 }))
 
+// The mirror writes ~/.roo/cli-settings.json: never from a test.
+vi.mock("../core/config/cliSettingsMirror", () => ({
+	CLI_SETTINGS_PATH: "/test/cli-settings.json",
+	startCliSettingsMirror: vi.fn(() => ({ dispose: vi.fn() })),
+}))
+
 vi.mock("../core/config/ContextProxy", () => ({
 	ContextProxy: {
 		getInstance: vi.fn().mockResolvedValue({
@@ -424,6 +430,29 @@ describe("extension.ts", () => {
 			vi.unstubAllEnvs()
 		}
 	})
+
+	test.each([
+		["", 1],
+		["1", 0],
+	])(
+		"mirrors the settings into the CLI's settings file unless it runs inside the CLI (ROO_CLI_RUNTIME=%j)",
+		async (runtime, starts) => {
+			vi.resetModules()
+			vi.clearAllMocks()
+			vi.stubEnv("ROO_CLI_RUNTIME", runtime)
+
+			try {
+				const { startCliSettingsMirror } = await import("../core/config/cliSettingsMirror")
+				const { activate } = await import("../extension")
+
+				await activate(mockContext)
+
+				expect(startCliSettingsMirror).toHaveBeenCalledTimes(starts)
+			} finally {
+				vi.unstubAllEnvs()
+			}
+		},
+	)
 
 	test("deactivate releases the cached tree-sitter parsers", async () => {
 		vi.resetModules()

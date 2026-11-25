@@ -2,7 +2,7 @@ import fs from "fs/promises"
 import path from "path"
 
 import type { CliSettings } from "@/types/index.js"
-import { safeWriteJson } from "@tumble-code/core"
+import { withLockedJsonTransaction } from "@tumble-code/core"
 
 import { getConfigDir } from "./index.js"
 
@@ -49,19 +49,22 @@ export type CliSettingsUpdate = Omit<Partial<CliSettings>, "provider" | "model" 
 
 export async function saveSettings(settings: CliSettingsUpdate): Promise<void> {
 	const settingsPath = getSettingsPath()
-	const existing = await loadSettings()
-	const merged = { ...existing, ...settings }
+	// The VS Code extension writes the `vscode` section of this file: read and write under the same lock.
+	await withLockedJsonTransaction(settingsPath, settingsPath, async (writeJson) => {
+		const existing = await loadSettings()
+		const merged = { ...existing, ...settings }
 
-	// An explicit `null` clears the persisted value; `undefined` (or absent)
-	// keeps the existing value so a partial save merges instead of wiping.
-	for (const key of ["provider", "model", "baseUrl"] as const) {
-		if (merged[key] === null) {
-			delete merged[key]
+		// An explicit `null` clears the persisted value; `undefined` (or absent)
+		// keeps the existing value so a partial save merges instead of wiping.
+		for (const key of ["provider", "model", "baseUrl"] as const) {
+			if (merged[key] === null) {
+				delete merged[key]
+			}
 		}
-	}
 
-	if (JSON.stringify(existing) !== JSON.stringify(merged)) {
-		// The file may hold an API key: only the user may read it.
-		await safeWriteJson(settingsPath, merged, { prettyPrint: true, mode: 0o600 })
-	}
+		if (JSON.stringify(existing) !== JSON.stringify(merged)) {
+			// The file may hold an API key: only the user may read it.
+			await writeJson(merged, { prettyPrint: true, mode: 0o600 })
+		}
+	})
 }

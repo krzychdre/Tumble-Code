@@ -28,6 +28,7 @@ import { TerminalRegistry } from "./integrations/terminal/TerminalRegistry"
 import { openAiCodexOAuthManager } from "./integrations/openai-codex/oauth"
 import { McpServerManager } from "./services/mcp/McpServerManager"
 import { CodeIndexManager } from "./services/code-index/manager"
+import { CLI_SETTINGS_PATH, startCliSettingsMirror } from "./core/config/cliSettingsMirror"
 import { disposeLanguageParsers } from "./services/tree-sitter/languageParser"
 import { registerRooDirectoryWatchers } from "./services/roo-config/watcher"
 import { configureLogger, logger, setDebugLogging } from "./utils/logging"
@@ -224,6 +225,11 @@ export async function activate(context: vscode.ExtensionContext) {
 	}
 
 	const contextProxy = await ContextProxy.getInstance(context)
+
+	// The CLI runs the same engine: it gets the editor's settings through its settings file.
+	if (!cliRuntime.isCliRuntime) {
+		context.subscriptions.push(startCliSettingsMirror(contextProxy, CLI_SETTINGS_PATH))
+	}
 
 	// Initialize the native memory system's path module. The config accessor
 	// reads through to the live ContextProxy state so memory settings stay

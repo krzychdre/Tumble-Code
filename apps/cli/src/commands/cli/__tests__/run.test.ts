@@ -48,6 +48,7 @@ const mockHost = vi.hoisted(() => ({
 				apiKey?: string
 				modelSettings?: { contextWindow?: number; inputPrice?: number }
 				commandExecutionTimeout?: number
+				vscodeSettings?: Record<string, unknown>
 				maxParallelSubagents?: number
 				mcpSettingsPath?: string
 				modeProviderSettings?: {
@@ -1459,6 +1460,18 @@ describe("run command execution timeout", () => {
 		await saveSettings({ provider: "openrouter", commandExecutionTimeout: 0 })
 		await runWithExitThrowing()
 		expect(mockHost.lastOptions?.commandExecutionTimeout).toBe(0)
+	})
+
+	it("takes the editor's value from the vscode section when the file sets none, and hands the section to the host", async () => {
+		const vscode = { settings: { commandExecutionTimeout: 900, autoCondenseContextPercent: 80 } }
+		await saveSettings({ provider: "openrouter", vscode })
+		await runWithExitThrowing()
+		expect(mockHost.lastOptions?.commandExecutionTimeout).toBe(900)
+		expect(mockHost.lastOptions?.vscodeSettings).toEqual(vscode.settings)
+
+		await saveSettings({ provider: "openrouter", commandExecutionTimeout: 1800, vscode })
+		await runWithExitThrowing()
+		expect(mockHost.lastOptions?.commandExecutionTimeout).toBe(1800)
 	})
 
 	it("the flag wins over the settings value", async () => {

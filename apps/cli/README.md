@@ -414,8 +414,8 @@ CLI starts, so restart it after changing `cloudApiUrl`.
 
 `~/.roo/cli-settings.json` holds your defaults, so a bare `tumble` needs no
 flags. You write it; the CLI changes it in one place only: `/model` saves the
-model it gives a mode (see [Usage](#usage)), and the VS
-Code extension never changes it. Flags apply to the run they are given on and are never saved. When no
+model it gives a mode (see [Usage](#usage)). The VS Code extension writes one
+key, `vscode`, described below. Flags apply to the run they are given on and are never saved. When no
 provider is configured anywhere, the interactive session starts on `openrouter`
 and prints a one-line hint saying where to set one.
 
@@ -464,9 +464,19 @@ The file may hold an API key, so keep it readable only by you (`chmod 600
 the key out of the file, use `"apiKeyEnv": "MY_KEY_VAR"` instead: the CLI reads
 the key from that variable and stops with an error naming it when it is unset.
 
-Precedence: flag > settings file > built-in default. Provider, model and base
-URL also fall back to the CLI's own extension state in
+Precedence: flag > settings file > the `vscode` section > built-in default.
+Provider, model and base URL also fall back to the CLI's own extension state in
 `~/.vscode-mock/global-storage` before the built-in default.
+
+The VS Code extension keeps the `vscode` section up to date: on every change in
+its Settings it writes the settings there (`vscode.settings`), so the CLI runs
+the engine the way the editor does: context management, subagents and their
+handoff limits, memory, custom instructions, prompts, experiments and the rest.
+Leave the section to the extension; the next change replaces it. It leaves out
+the editor's approvals (the CLI has its own, see `requireApproval`), its
+terminal integration, the code index, custom modes and view settings. A key you
+set yourself at the top level, such as `commandExecutionTimeout`, wins over the
+section.
 
 Note on `commandExecutionTimeout`: a shell command the agent runs is stopped
 once it has run this many seconds (default 300), and the model is told not to
