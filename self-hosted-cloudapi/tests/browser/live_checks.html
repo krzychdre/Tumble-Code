@@ -8,6 +8,13 @@
   the rendered conversation are stubbed, so each scenario loads live.js afresh
   against its own fake socket.
 -->
+<!-- The cockpit header: the state, Stop, and the Details summary. -->
+<div id="detail-header" class="detail-header cockpit">
+  <span id="task-state" class="state-pill" data-state="connecting">Connecting…</span>
+  <button type="button" id="head-stop" hidden>Stop</button>
+  <button type="button" id="details-toggle" aria-expanded="false" aria-controls="detail-more">Details
+    <span id="sum-mode">&#8212;</span> <span id="sum-tokens">3.4M</span> <span id="sum-cost">$1.4090</span></button>
+</div>
 <section class="task-stats panel">
   <div class="live-line">
     <span id="live-status" class="live-status">Connecting…</span>
@@ -149,6 +156,9 @@ window.addEventListener("load", function () {
       check("run row: tokens in add the subtasks'", text("hdr-run-in") === "3.3M")
       check("run row: cost adds the subtasks'", text("hdr-run-cost") === "$1.4090")
       check("run row: total tokens add the subtasks'", text("hdr-run-tokens") === "3.4M")
+      check("registration only: the task is idle", text("task-state") === "Idle" &&
+            document.getElementById("task-state").getAttribute("data-state") === "idle")
+      check("registration only: no Stop in the header", document.getElementById("head-stop").hidden === true)
       check("registration only: the page is not sent to the tail", window.TumbleFollow.calls === 0)
     },
     function () {
@@ -209,13 +219,24 @@ window.addEventListener("load", function () {
               check("this task's snapshot: running offers Stop",
                     document.getElementById("btn-stop").hidden === false)
               check("this task running: the page opens at its tail", window.TumbleFollow.calls === 1)
+              check("this task running: the header says Working", text("task-state") === "Working" &&
+                    document.getElementById("task-state").getAttribute("data-state") === "running")
+              check("this task running: the header offers Stop", document.getElementById("head-stop").hidden === false)
+              check("the Details summary repeats the run row and the mode",
+                    text("sum-tokens") === text("hdr-run-tokens") && text("sum-cost") === "$1.4136" &&
+                    text("sum-mode") === "code")
+              document.getElementById("head-stop").click()
+              var stops = sock.emitted.filter(function (e) { return e.evt === "task:command" && e.payload.type === "stop_task" })
+              check("the header's Stop stops the task", stops.length === 1 && stops[0].payload.taskId === "task-a")
               sock.fire("task:relayed_event", { type: "instanceState", taskId: "task-a", isRunning: true })
               check("a later running snapshot does not move the page again", window.TumbleFollow.calls === 1)
 
               // Every load so far bound its own handler to the fold button;
               // the next scenario gets a fresh one, so exactly one is bound.
-              var old = document.getElementById("auto-more")
-              old.parentNode.replaceChild(old.cloneNode(true), old)
+              ;["auto-more", "details-toggle"].forEach(function (id) {
+                var old = document.getElementById(id)
+                old.parentNode.replaceChild(old.cloneNode(true), old)
+              })
             },
             function () {
               scenario(
@@ -231,6 +252,15 @@ window.addEventListener("load", function () {
                   more.click()
                   check("the auto-approval fold closes", !controls.classList.contains("show-auto") &&
                         more.getAttribute("aria-expanded") === "false")
+                  // The phone's Details fold, on the header.
+                  var header = document.getElementById("detail-header")
+                  var details = document.getElementById("details-toggle")
+                  details.click()
+                  check("the Details fold opens", header.classList.contains("show-details") &&
+                        details.getAttribute("aria-expanded") === "true")
+                  details.click()
+                  check("the Details fold closes", !header.classList.contains("show-details") &&
+                        details.getAttribute("aria-expanded") === "false")
                 },
                 function () {
                   // Earlier loads of live.js still listen on the controls;
@@ -287,6 +317,7 @@ window.addEventListener("load", function () {
           !buttons()[1].querySelector(".suggestion-mode"))
     check("followup: its row is marked", (lastCall("setActiveAsk") || [])[1] === 100)
     check("followup: the composer asks for an answer", input.placeholder === "Your answer… (or pick one above)")
+    check("a pending question outranks running in the header", text("task-state") === "Waiting for you")
 
     buttons()[0].click()
     var cmd = lastCommand()
@@ -295,6 +326,7 @@ window.addEventListener("load", function () {
     check("a suggestion marks the row answered with its text",
           JSON.stringify(lastCall("markResolved")) === JSON.stringify(["markResolved", 100, "answered", "Use `a`"]))
     check("an answered question leaves the dock", dock.hidden === true && input.placeholder === "Message the task…")
+    check("answered: the header is back to Working", text("task-state") === "Working")
     ask(followup(100))
     check("a stale snapshot does not bring the answered question back", dock.hidden === true)
 
@@ -331,12 +363,16 @@ window.addEventListener("load", function () {
 
     ask({ ts: 105, type: "ask", ask: "completion_result", text: "" })
     check("a finished task gets no dock", dock.hidden === true && lastCall("clearActiveAsk") === convo.calls[convo.calls.length - 1])
+    sock.fire("task:relayed_event", { type: "instanceState", taskId: "task-a", isRunning: false, currentAsk: { ts: 105, type: "ask", ask: "completion_result", text: "" } })
+    check("a finished task says Done", text("task-state") === "Done" && document.getElementById("head-stop").hidden === true)
 
     ask({ ts: 106, type: "ask", ask: "command", text: "ls" })
     document.getElementById("ask-dock-jump").click()
     check("the jump reveals the ask's row", (lastCall("revealRow") || [])[1] === 106)
     sock.fire("disconnect")
     check("offline: the dock's buttons are off", document.getElementById("ask-dock-approve").disabled === true)
+    check("offline: the header says so", text("task-state") === "Offline" &&
+          document.getElementById("task-state").getAttribute("data-state") === "offline")
   }
 
   function finish() {

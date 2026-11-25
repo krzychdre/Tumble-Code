@@ -35,8 +35,9 @@ _MIN_CHECKS = {
     # another task's snapshot, a snapshot without figures, this task's snapshot;
     # the run row of the spend table following this task's figures; the phone
     # fold; a live task sent to its tail once, an idle one not; the ask dock:
-    # suggestions, own answer, approvals with a comment, no dock.
-    "live_checks.html": 59,
+    # suggestions, own answer, approvals with a comment, no dock; the cockpit
+    # header: its state word, its Stop, the Details summary and fold.
+    "live_checks.html": 71,
     # Opens at the top unless live; follows new and growing rows at the bottom;
     # stops on scrolling up and counts what arrives; resumes on the pill or at
     # the bottom.
