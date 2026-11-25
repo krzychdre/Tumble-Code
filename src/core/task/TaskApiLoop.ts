@@ -95,6 +95,7 @@ export interface TaskApiLoopAccess
 		TaskBackgroundFlagAccess,
 		TaskWorkingDirectoryAccess {
 	instanceId: string
+	readonly parentTaskId?: string
 
 	// Abort state
 	abandoned: boolean
@@ -308,6 +309,7 @@ export class TaskApiLoop {
 			taskId: access.taskId,
 			instanceId: access.instanceId,
 			isBackground: access.isBackground,
+			parentTaskId: access.parentTaskId,
 			// A getter, so each request reads the task's CURRENT profile:
 			// Task.updateApiConfiguration replaces the object on a profile switch.
 			// The builder reads it only for the compact flag (system prompt, tools).

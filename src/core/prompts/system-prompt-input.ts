@@ -56,8 +56,8 @@ export interface SystemPromptSource {
 	rooIgnoreController?: { getInstructions(): string | undefined }
 	/** Task-scoped: deferred tools the task already loaded. */
 	materializedDeferredTools?: ReadonlySet<string>
-	/** Task-scoped: a background task (parallel subagent, memory writer) loses the delegation tools. */
-	isBackground?: boolean
+	/** Task-scoped: who started the task; a delegated one gets the subtask prompt and fewer tools. */
+	origin: TaskOrigin
 	/** Facts about the model the request goes to. */
 	modelInfo?: { isStealthModel?: boolean; excludedTools?: string[] }
 	/**
@@ -79,39 +79,52 @@ export function isMcpEnabledForPrompt(state: Pick<SystemPromptState, "mcpEnabled
 	return state?.mcpEnabled ?? SETTINGS_DEFAULTS.mcpEnabled
 }
 
+/**
+ * Who started a task: the user, a parent's `new_task` (a delegated child that
+ * the parent waits for) or a parent's `run_parallel_tasks` (a headless subagent).
+ */
+export type TaskOrigin = "user" | "new_task" | "subagent"
+
+export function taskOrigin(task: { isBackground: boolean; parentTaskId?: string }): TaskOrigin {
+	if (task.isBackground) {
+		return "subagent"
+	}
+	return task.parentTaskId === undefined ? "user" : "new_task"
+}
+
 /** The tools that start and collect parallel subagents: one switch hides both. */
 const SUBAGENT_TOOLS = ["run_parallel_tasks", "wait_for_subagents"]
 
-/** Delegation tools a background task never gets. */
-const BACKGROUND_DISABLED_TOOLS = ["new_task", ...SUBAGENT_TOOLS]
+/**
+ * Tools a task never gets because of its origin. A delegated task works in the
+ * mode its parent chose, so it cannot switch; a subagent is a one-shot job that
+ * must return to its parent, so it cannot delegate either.
+ */
+const ORIGIN_DISABLED_TOOLS: Record<TaskOrigin, string[]> = {
+	user: [],
+	new_task: ["switch_mode"],
+	subagent: ["switch_mode", "new_task", ...SUBAGENT_TOOLS],
+}
 
 /**
  * The `disabledTools` list a request hands to the tool filter: the user's
- * setting, plus the delegation tools a background task never gets, plus
- * the subagent tools (run_parallel_tasks, wait_for_subagents) when the
- * concurrency cap turns the feature off.
+ * setting, plus the tools the task's origin takes away, plus the subagent
+ * tools (run_parallel_tasks, wait_for_subagents) when the concurrency cap
+ * turns the feature off. Routed through disabledTools so the existing
+ * alias-resolving filter removes them.
  *
  * One function for the tools array (ApiRequestBuilder.buildToolsArray) and for
  * the prompt, so the prompt cannot suggest a tool the array no longer carries.
  */
 export function getRequestDisabledTools(
 	state: Pick<SystemPromptState, "disabledTools" | "parallelTasksMaxConcurrency"> | undefined,
-	isBackground: boolean,
-): string[] | undefined {
-	// Background tasks (parallel subagents, memory writers) never get
-	// delegation tools: a subtask is a small one-shot job that must return
-	// to its parent, not fan out further. Foreground tasks lose the
-	// subagent tools when the user's concurrency cap turns the feature
-	// Off (< 2). Routed through disabledTools so the existing
-	// alias-resolving filter removes them.
-	const disabledTools = state?.disabledTools
-	if (isBackground) {
-		return [...(disabledTools ?? []), ...BACKGROUND_DISABLED_TOOLS]
+	origin: TaskOrigin,
+): string[] {
+	const removed = [...(state?.disabledTools ?? []), ...ORIGIN_DISABLED_TOOLS[origin]]
+	if (origin !== "subagent" && !isParallelTasksEnabled(state?.parallelTasksMaxConcurrency)) {
+		removed.push(...SUBAGENT_TOOLS)
 	}
-	if (!isParallelTasksEnabled(state?.parallelTasksMaxConcurrency)) {
-		return [...(disabledTools ?? []), ...SUBAGENT_TOOLS]
-	}
-	return disabledTools
+	return removed
 }
 
 /** Map the facts about a request to the input of `SYSTEM_PROMPT`. */
@@ -139,9 +152,10 @@ export function buildSystemPromptInput(source: SystemPromptSource): SystemPrompt
 			slimToolset: state?.apiConfiguration?.slimToolset,
 			slimHidesMcp: state?.apiConfiguration?.slimHidesMcp,
 			compactProfile: source.compactProfile,
+			isSubtask: source.origin !== "user",
 			cliDisplay: readCliRuntimeEnv(process.env).display,
 			removedTools: [
-				...(getRequestDisabledTools(state, source.isBackground ?? false) ?? []),
+				...getRequestDisabledTools(state, source.origin),
 				...(source.modelInfo?.excludedTools ?? []),
 			],
 		},

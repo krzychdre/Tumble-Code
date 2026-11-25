@@ -100,15 +100,25 @@ from the cached request. llama.cpp does this locally, Z.ai/GLM and DeepSeek-styl
 remotely. One changed byte near the top throws away the cache for everything below it, so the
 byte layout of the prompt is a performance feature, not cosmetics.
 
+The provider renders a request in this order: the tools array, then the system prompt, then the
+messages (Anthropic documents it; the GLM chat template on vLLM does the same, checked with
+`POST /tokenize`). So a request that changes the tools array (a mode switch, a delegated task's
+reduced toolset, a `tools_load` call) shares no system prompt bytes with the cached one, and a
+change anywhere in the system prompt re-prefills the whole conversation after it. Anything the
+system prompt reads from disk or shared state must therefore be stable for the life of a task:
+the MEMORY.md index is read once per task, and the modes list comes from the window's own
+custom modes, never from `globalState`, which VS Code shares between windows.
+
 The prompt is assembled in [`src/core/prompts/system.ts`](src/core/prompts/system.ts) as two
 lists:
 
 - **Stable prefix** (`stableHead`): identity opener, markdown rules, tool-use protocol, output
   efficiency, objective, doing tasks, capabilities, system information, memory. These bytes are identical for
-  every mode and every profile on one workspace and machine.
+  every mode and every profile on one workspace and machine; a delegated task (`isSubtask`) leaves out
+  the memory-writing instructions.
 - **Variable tail** (`variableTail`): MCP availability, the mode's missing tools (only for a mode
-  without `command`, `read` or `edit`), modes list, skills, rules, the mode's MODE
-  section, user custom instructions, and last of all the deferred-tool catalog. These bytes may
+  without `command`, `read` or `edit`), modes list, skills, rules, the SUBTASK contract (delegated
+  tasks only), the mode's MODE section, user custom instructions, and last of all the deferred-tool catalog. These bytes may
   differ per mode, profile or user.
 
 A profile with `compactProfile` on gets a shorter prompt (`generateCompactPrompt`) with its own
@@ -121,8 +131,9 @@ Four rules:
    be independent of the mode, the model, the profile and the request, and it must never embed a
    timestamp, a random value, a set/map iteration order or a locale-dependent sort.
 2. **A section that can change WITHIN one conversation goes at the very end of the tail.** Today
-   that is the deferred-tool catalog, which shrinks on every `tools_load` call. Whatever is printed
-   after such a section is re-prefilled every time it changes, so nothing should be.
+   that is the deferred-tool catalog, which shrinks on every `tools_load` call (the same call also
+   changes the tools array). Whatever is printed after such a section is re-prefilled every time it
+   changes, so nothing should be.
 3. **Do not reorder the head casually.** `src/core/prompts/__tests__/prefix-stability.spec.ts`
    asserts byte stability, section order and the measured cross-mode shared prefix; update its
    snapshot and its `MIN_SHARED_PREFIX_BYTES` floor only with a reason in the commit message.

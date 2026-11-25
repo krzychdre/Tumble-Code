@@ -3,7 +3,7 @@ import { defaultModeSlug } from "../../shared/modes"
 import { resolveProviderModel } from "../../api"
 
 import { SYSTEM_PROMPT } from "../prompts/system"
-import { buildSystemPromptInput } from "../prompts/system-prompt-input"
+import { buildSystemPromptInput, taskOrigin } from "../prompts/system-prompt-input"
 import { readMemoryIndex } from "../memory/memoryPrompt"
 
 import { ClineProvider } from "./ClineProvider"
@@ -39,6 +39,7 @@ export const generateSystemPrompt = async (provider: ClineProvider, message: Web
 			state,
 			mcpHub: provider.getMcpHub(),
 			rooIgnoreController: task?.rooIgnoreController,
+			origin: task ? taskOrigin(task) : "user",
 			materializedDeferredTools: task?.materializedDeferredTools,
 			modelInfo,
 			// From the same profile as the preview model above. The live request

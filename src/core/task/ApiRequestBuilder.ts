@@ -28,7 +28,12 @@ import { getRuntimeProviderCapabilities } from "../../api/runtime-provider-regis
 import { McpHub } from "../../services/mcp/McpHub"
 import { McpServerManager } from "../../services/mcp/McpServerManager"
 import { SYSTEM_PROMPT } from "../prompts/system"
-import { buildSystemPromptInput, getRequestDisabledTools, isMcpEnabledForPrompt } from "../prompts/system-prompt-input"
+import {
+	buildSystemPromptInput,
+	getRequestDisabledTools,
+	isMcpEnabledForPrompt,
+	taskOrigin,
+} from "../prompts/system-prompt-input"
 import { applyMicrocompactCleared } from "../context-management/microcompact"
 import { applyReasoningTrims } from "../context-management/reasoningTrim"
 import { decodeProseToolUsesInHistory } from "../assistant-message/decodeProseToolArgs"
@@ -77,6 +82,9 @@ export interface ApiRequestBuilderAccess
 		TaskBackgroundFlagAccess,
 		TaskWorkingDirectoryAccess {
 	instanceId: string
+
+	// Set on a `new_task` child; with `isBackground` it decides the task's origin (taskOrigin).
+	readonly parentTaskId?: string
 
 	// Non-destructive microcompaction: transient set of tool_use_ids whose results
 	// are cleared, and `reasoning:<ts>` keys (reasoningTrimKey) whose reasoning is
@@ -204,7 +212,7 @@ export class ApiRequestBuilder {
 				mcpHub,
 				rooIgnoreController: this.access.rooIgnoreController,
 				materializedDeferredTools: this.access.materializedDeferredTools,
-				isBackground: this.access.isBackground,
+				origin: taskOrigin(this.access),
 				modelInfo: this.access.api.getModel().info,
 				// The task's own profile, the one `this.access.api` was built
 				// from, not `state.apiConfiguration` (the panel's active profile,
@@ -238,7 +246,7 @@ export class ApiRequestBuilder {
 
 		// Shared with the system prompt, so TOOLS IN THIS MODE never suggests
 		// a delegation tool this array does not carry.
-		const disabledTools = getRequestDisabledTools(state, this.access.isBackground)
+		const disabledTools = getRequestDisabledTools(state, taskOrigin(this.access))
 
 		const toolsResult = await buildNativeToolsArrayWithRestrictions({
 			provider,

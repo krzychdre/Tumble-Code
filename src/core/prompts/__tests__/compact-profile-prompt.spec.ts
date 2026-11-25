@@ -320,6 +320,26 @@ describe("compact system prompt: what it teaches", () => {
 		}
 	})
 
+	it.each([
+		["compact", true, "====\n\nMEMORY\n", "MEMORY.md:\n"],
+		["long", false, "# auto memory", "(user's auto-memory, persists across conversations)"],
+	])(
+		"gives a subtask the subtask contract and the memory index but no memory-writing instructions (%s)",
+		async (_label, compactProfile, writingMarker, indexMarker) => {
+			const settings = { ...COMPACT, compactProfile }
+			const main = await build("code", { settings })
+			const subtask = await build("code", { settings: { ...settings, isSubtask: true } })
+
+			expect(main).not.toContain("SUBTASK")
+			expect(main).toContain(writingMarker)
+			expect(subtask).toContain("====\n\nSUBTASK\n\nYou are working on a subtask")
+			expect(subtask).not.toContain(writingMarker)
+			expect(subtask).toContain(indexMarker)
+			// The contract qualifies the role, so it comes right before MODE.
+			expect(subtask.indexOf("SUBTASK")).toBeLessThan(subtask.indexOf("====\n\nMODE\n"))
+		},
+	)
+
 	it("lists the custom modes it is given in both prompts, whatever the shared VS Code state holds", async () => {
 		// globalState is shared by every window, a Remote-SSH one included; mockContext's is empty.
 		const reviewer: ModeConfig = {
