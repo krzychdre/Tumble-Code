@@ -1,6 +1,6 @@
 # Temperature and HTTP headers per model in the CLI
 
-Status: in progress.
+Status: done, merged as #1371.
 
 ## Problem
 
