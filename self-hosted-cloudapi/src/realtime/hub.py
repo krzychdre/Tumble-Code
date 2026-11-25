@@ -26,8 +26,18 @@ from typing import Optional, TypedDict
 # (TaskBridgeEventName.InstanceState).
 EVT_INSTANCE_STATE = "instanceState"
 
-# Asks that wait on the user (interactiveAsks, packages/types/src/message.ts).
-INTERACTIVE_ASKS = ("followup", "command", "tool", "use_mcp_server")
+# Asks the task stops on until the user acts: the interactive ones
+# (interactiveAsks, packages/types/src/message.ts) and the idle ones the task
+# page offers a button for (Retry, Proceed, Reset).
+WAITING_ASKS = (
+    "followup",
+    "command",
+    "tool",
+    "use_mcp_server",
+    "api_req_failed",
+    "mistake_limit_reached",
+    "auto_approval_max_req_reached",
+)
 
 LIVE_RUNNING = "running"
 LIVE_WAITING = "waiting"
@@ -38,7 +48,7 @@ def live_state(snapshot: dict) -> Optional[str]:
     or nothing live (idle, finished, resumable)."""
     # Sent by the client, so its shape is not ours to trust.
     ask = snapshot.get("currentAsk")
-    if isinstance(ask, dict) and ask.get("ask") in INTERACTIVE_ASKS:
+    if isinstance(ask, dict) and ask.get("ask") in WAITING_ASKS:
         return LIVE_WAITING
     if snapshot.get("isRunning") is True:
         return LIVE_RUNNING

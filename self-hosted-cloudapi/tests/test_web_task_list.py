@@ -1262,6 +1262,7 @@ async def test_the_strip_lists_what_waits_on_the_reader_then_what_runs(
         {"id": "quiz", "title": "Question one", "age": 3},
         {"id": "edit", "title": "Edit one", "age": 4},
         {"id": "idle", "title": "Idle one", "age": 5},
+        {"id": "fail", "title": "Failed one", "age": 6},
     )
     await _seed_user(db_session, "other", "other@example.com")
     await _seed(session_factory, {"id": "theirs", "title": "Not mine"}, user_id="other")
@@ -1278,6 +1279,7 @@ async def test_the_strip_lists_what_waits_on_the_reader_then_what_runs(
             "text": json.dumps({"tool": "appliedDiff", "path": "src/a.ts"}),
         },
     )
+    report_live("fail", currentAsk={"ask": "api_req_failed", "ts": 4, "text": "500"})
     report_live("run", isRunning=True, mode="code", tokenUsage={"totalCost": 0.42})
     report_live("idle", isRunning=False)
     # Live but not stored yet, and another user's: neither is the reader's card.
@@ -1291,19 +1293,22 @@ async def test_the_strip_lists_what_waits_on_the_reader_then_what_runs(
         "cmd",
         "quiz",
         "edit",
+        "fail",
         "run",
     ]
     assert "Approve command: npm test" in strip
     assert "Question: “Which &lt;b&gt;migration&lt;/b&gt;?”" in strip
     assert "Approve tool: appliedDiff src/a.ts" in strip
+    assert "The API request failed: retry?" in strip
     assert "code mode · glm-5.3 · $0.4200" in strip
     assert re.findall(r'aria-label="(\w+): ', strip) == [
         "Review",
         "Answer",
         "Review",
+        "Review",
         "Open",
     ]
-    assert strip.count(">Waiting for you<") == 3 and strip.count(">Working<") == 1
+    assert strip.count(">Waiting for you<") == 4 and strip.count(">Working<") == 1
 
     # The list page carries the same strip, and what it needs to keep it live.
     page = _get(client, "/app", group="none").text

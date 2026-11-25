@@ -49,23 +49,53 @@ def _payload(ask: dict) -> dict:
     return value if isinstance(value, dict) else {}
 
 
+def _question(data: dict, text: str) -> str:
+    return f"Question: “{data.get('question') or text}”"
+
+
+def _command(data: dict, text: str) -> str:
+    return f"Approve command: {text}"
+
+
+def _mcp(data: dict, text: str) -> str:
+    what = " · ".join(
+        str(v) for v in (data.get("serverName"), data.get("toolName")) if v
+    )
+    return f"Approve MCP: {what or text}"
+
+
+def _tool(data: dict, text: str) -> str:
+    what = " ".join(str(v) for v in (data.get("tool"), data.get("path")) if v)
+    return f"Approve tool: {what or text}"
+
+
+def _fixed(line: str):
+    return lambda data, text: line
+
+
+# Ask kind -> (its summary line, the button that leads to it); one row per
+# hub.WAITING_ASKS entry.
+_ASK_SUMMARY = {
+    "followup": (_question, "Answer"),
+    "command": (_command, "Review"),
+    "use_mcp_server": (_mcp, "Review"),
+    "tool": (_tool, "Review"),
+    "api_req_failed": (_fixed("The API request failed: retry?"), "Review"),
+    "mistake_limit_reached": (
+        _fixed("The model keeps failing: proceed or guide it"),
+        "Review",
+    ),
+    "auto_approval_max_req_reached": (
+        _fixed("Auto-approved request limit reached"),
+        "Review",
+    ),
+}
+
+
 def _ask_summary(ask: dict) -> tuple[str, str]:
     """What a pending ask asks for, and the button that leads to it."""
-    kind = ask.get("ask")
-    data = _payload(ask)
-    text = ask.get("text") or ""
-    if kind == "followup":
-        question = data.get("question") or text
-        return _clip(f"Question: “{question}”"), "Answer"
-    if kind == "command":
-        return _clip(f"Approve command: {text}"), "Review"
-    if kind == "use_mcp_server":
-        what = " · ".join(
-            str(v) for v in (data.get("serverName"), data.get("toolName")) if v
-        )
-        return _clip(f"Approve MCP: {what or text}"), "Review"
-    what = " ".join(str(v) for v in (data.get("tool"), data.get("path")) if v)
-    return _clip(f"Approve tool: {what or text}"), "Review"
+    line, action = _ASK_SUMMARY[ask["ask"]]
+    return _clip(line(_payload(ask), ask.get("text") or "")), action
 
 
 def _running_summary(snapshot: dict, task: Task) -> str:

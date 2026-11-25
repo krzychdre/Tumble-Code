@@ -23,8 +23,10 @@ the computer, and for deleting a task (its whole conversation) from the list.
 
 ## Fix
 
-- **State, one table.** `live_state(snapshot)` (hub.py): waiting when `currentAsk` is one of the interactive asks
-  (`followup`, `command`, `tool`, `use_mcp_server`, mirroring `interactiveAsks` in `packages/types`), running when
+- **State, one table.** `live_state(snapshot)` (hub.py): waiting when `currentAsk` is in `WAITING_ASKS`: the
+  interactive asks (`followup`, `command`, `tool`, `use_mcp_server`, `interactiveAsks` in `packages/types`) plus the
+  idle asks the task page offers a button for (`api_req_failed`, `mistake_limit_reached`,
+  `auto_approval_max_req_reached`), since the task stops on them until the user acts; running when
   `isRunning`, else not live. A row's state is its live state, else `unfinished` by grade, else `done`
   (`live_tasks.rest_state`, `task_rows._list_row`). `app.css` maps each to a colour (`[data-state]`), used by the card edge, the pill and
   the strip.
@@ -82,8 +84,8 @@ the computer, and for deleting a task (its whole conversation) from the list.
 
 ## Notes
 
-- Idle asks (`completion_result`, `api_req_failed`, `mistake_limit_reached`, ...) do not put a task on the strip;
-  only the interactive ones do, as the extension's `TaskStatus.Interactive` does.
+- `completion_result`, `resume_task` and `resume_completed_task` do not put a task on the strip: the task is done
+  or paused, not waiting on a decision.
 - Rows not on the current page are not touched; a reload of the list (filter swap) re-renders them from the
   registry anyway.
 - After a delete the list opens on the remembered view (the view cookie), as after a bulk delete.

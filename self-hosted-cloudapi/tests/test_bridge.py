@@ -192,6 +192,10 @@ def _state(**fields):
         ({"currentAsk": {"ask": "command"}}, "waiting"),
         ({"currentAsk": {"ask": "tool"}}, "waiting"),
         ({"currentAsk": {"ask": "use_mcp_server"}}, "waiting"),
+        # Idle asks that stop the task until the user retries or resets it.
+        ({"currentAsk": {"ask": "api_req_failed"}}, "waiting"),
+        ({"currentAsk": {"ask": "mistake_limit_reached"}}, "waiting"),
+        ({"currentAsk": {"ask": "auto_approval_max_req_reached"}}, "waiting"),
         # Idle, finished or resumable: nothing live.
         ({"isRunning": False, "currentAsk": {"ask": "completion_result"}}, None),
         ({"currentAsk": {"ask": "resume_task"}}, None),
