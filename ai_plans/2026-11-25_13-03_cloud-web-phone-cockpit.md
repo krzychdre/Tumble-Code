@@ -56,8 +56,9 @@ focus.
 
 ## Notes
 
-- A `command_output` ask (the dock's "Continue While Running") reads Waiting for you on the task page, while the
-  task list's strip (`hub.WAITING_ASKS`) counts it as running.
+- A `command_output` ask (the dock's "Continue While Running") keeps the header at Working: the command and the
+  task run on, so the button is optional (`waits: false` in `ASK_DOCK`). The task list's strip
+  (`hub.WAITING_ASKS`) counts it as running too.
 
 - The page title still shows the raw Markdown of the first message (`**one**`); that comes from the title derivation,
   not from this change.

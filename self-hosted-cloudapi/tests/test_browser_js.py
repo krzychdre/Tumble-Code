@@ -37,7 +37,7 @@ _MIN_CHECKS = {
     # fold; a live task sent to its tail once, an idle one not; the ask dock:
     # suggestions, own answer, approvals with a comment, no dock; the cockpit
     # header: its state word, its Stop, the Details summary and fold.
-    "live_checks.html": 71,
+    "live_checks.html": 72,
     # Opens at the top unless live; follows new and growing rows at the bottom;
     # stops on scrolling up and counts what arrives; resumes on the pill or at
     # the bottom.

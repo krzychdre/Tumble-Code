@@ -200,7 +200,7 @@
 	function taskState() {
 		if (!joined) return "connecting"
 		if (!controlsOnline) return "offline"
-		if (dockAsk) return "waiting"
+		if (dockAsk && ASK_DOCK[dockAsk.ask].waits !== false) return "waiting"
 		if (isRunning) return "running"
 		if (lastAsk && DONE_ASKS[lastAsk.ask]) return "done"
 		return "idle"
@@ -356,10 +356,13 @@
 	var ASK_DOCK = {
 		followup: { kind: "Question" },
 		command: { kind: "Run command", prompt: "Run this command?", approve: "Run", deny: "Deny", detail: askText },
+		// The command runs on and the task with it; Continue is optional, so the
+		// header keeps saying Working.
 		command_output: {
 			kind: "Command running",
 			prompt: "The command is still running.",
 			approve: "Continue While Running",
+			waits: false,
 		},
 		tool: {
 			kind: "Approve tool",

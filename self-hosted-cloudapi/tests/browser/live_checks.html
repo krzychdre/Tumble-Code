@@ -330,6 +330,9 @@ window.addEventListener("load", function () {
     ask(followup(100))
     check("a stale snapshot does not bring the answered question back", dock.hidden === true)
 
+    ask({ ts: 150, type: "ask", ask: "command_output", text: "" })
+    check("a running command's Continue does not read as waiting", dock.hidden === false && text("task-state") === "Working")
+
     ask(followup(101))
     input.value = "  my own  "
     document.getElementById("btn-send").click()
