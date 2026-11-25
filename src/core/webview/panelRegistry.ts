@@ -6,6 +6,7 @@ import { findLast } from "@tumble-code/core/browser"
 
 import { Package } from "../../shared/package"
 import { logger } from "../../utils/logging"
+import type { Task } from "../task/Task"
 import type { ClineProvider } from "./ClineProvider"
 
 /**
@@ -138,6 +139,13 @@ class PanelRegistry {
 			}
 		}
 		return runningTasks
+	}
+
+	/** Every task the live panels of this window hold, working or at rest. */
+	liveTasks(): Task[] {
+		return Array.from(this.panels)
+			.filter((provider) => !provider.isDisposed)
+			.flatMap((provider) => provider.ownLiveTasks())
 	}
 
 	/** Sends every live panel the merged working tasks, each only if its view holds a different map. */

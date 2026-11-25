@@ -149,6 +149,8 @@ export function setupRemoteControlBridge(opts: {
 			workspacePath,
 			repositoryUrl,
 			snapshot,
+			liveTasks: () =>
+				panelRegistry.liveTasks().map((task) => ({ taskId: task.taskId, messages: task.clineMessages })),
 			secretValues: CloudService.instance.secretValues,
 			// Re-arm the connector after socket.io gives up reconnecting (R11).
 			// Read at every start so the setting applies without a reload.

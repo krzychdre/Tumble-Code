@@ -9,7 +9,7 @@ import {
 	TaskBridgeCommandName,
 } from "@tumble-code/types"
 
-import { BridgeOrchestrator, type BridgeEventSource } from "../BridgeOrchestrator.js"
+import { BridgeOrchestrator, type BridgeEventSource, type BridgeOrchestratorOptions } from "../BridgeOrchestrator.js"
 import type { BridgeProvider } from "../types.js"
 
 /** Minimal EventEmitter standing in for both the socket and the API bus. */
@@ -48,6 +48,17 @@ class FakeEmitter {
 	}
 	emit(event: string, data?: any) {
 		this.emitted.push({ event, data })
+	}
+	/** When set, each acked emit waits until the test calls the resolver it pushes here. */
+	holdAcks: Array<() => void> | null = null
+	timeout(_ms: number) {
+		return {
+			emitWithAck: (event: string, data?: any) => {
+				this.emitted.push({ event, data })
+				const held = this.holdAcks
+				return held ? new Promise<void>((resolve) => held.push(resolve)) : Promise.resolve()
+			},
+		}
 	}
 	removeAllListeners() {
 		this.handlers.clear()
@@ -101,7 +112,7 @@ describe("BridgeOrchestrator", () => {
 		vi.useRealTimers()
 	})
 
-	function build() {
+	function build(opts: Partial<BridgeOrchestratorOptions> = {}) {
 		return new BridgeOrchestrator({
 			getBridgeConfig: vi.fn(async () => CONFIG),
 			provider,
@@ -109,11 +120,13 @@ describe("BridgeOrchestrator", () => {
 			workspacePath: "/work",
 			repositoryUrl: "https://github.com/acme/tool.git",
 			snapshot: vi.fn(async () => ({ mode: "code", isRunning: true })),
+			liveTasks: () => [],
 			secretValues: () => [],
 			ioFactory: ioFactory as any,
 			// Deterministic jitter: the top of the equal-jitter band, so the
 			// hand-reconnect delays below stay exactly 1 s, 2 s, ... (R11).
 			random: () => 0.999,
+			...opts,
 		})
 	}
 
@@ -157,6 +170,103 @@ describe("BridgeOrchestrator", () => {
 		})
 	})
 
+	describe("replay on connect", () => {
+		const TASKS = [
+			{
+				taskId: "a",
+				messages: [
+					{ ts: 1, say: "text", text: "key sk-secret" },
+					{ ts: 2, say: "api_req_started" },
+				],
+			},
+			{ taskId: "b", messages: [{ ts: 3, say: "text", text: "second" }] },
+		]
+
+		// The replay chains promises only (acks, snapshots); the heartbeat interval
+		// would make runAllTimersAsync loop forever.
+		async function settle() {
+			for (let i = 0; i < 100; i++) await Promise.resolve()
+		}
+
+		function sent() {
+			return socket.emitted
+				.filter((e) => e.event === TaskSocketEvents.EVENT)
+				.map((e) => [e.data.type, e.data.taskId, e.data.message?.ts ?? null])
+		}
+
+		it("sends every live task's messages in order, then its state", async () => {
+			const orch = build({ liveTasks: () => TASKS })
+			await orch.start()
+			socket.fire("connect")
+			await settle()
+			expect(sent()).toEqual([
+				[TaskBridgeEventName.Message, "a", 1],
+				[TaskBridgeEventName.Message, "a", 2],
+				[TaskBridgeEventName.InstanceState, "a", null],
+				[TaskBridgeEventName.Message, "b", 3],
+				[TaskBridgeEventName.InstanceState, "b", null],
+			])
+			const first = socket.emitted.find((e) => e.event === TaskSocketEvents.EVENT)!.data
+			expect(first).toMatchObject({ workspacePath: "/work", message: { say: "text" } })
+		})
+
+		it("redacts the stored secrets from a replayed message", async () => {
+			const orch = build({ liveTasks: () => TASKS, secretValues: () => ["sk-secret"] })
+			await orch.start()
+			socket.fire("connect")
+			await settle()
+			const first = socket.emitted.find((e) => e.event === TaskSocketEvents.EVENT)!.data
+			expect(JSON.stringify(first)).not.toContain("sk-secret")
+		})
+
+		it("sends one message at a time, each after the previous one's ack", async () => {
+			const acks: Array<() => void> = []
+			socket.holdAcks = acks
+			const orch = build({ liveTasks: () => TASKS })
+			await orch.start()
+			socket.fire("connect")
+			await settle()
+			expect(sent()).toEqual([[TaskBridgeEventName.Message, "a", 1]])
+			acks.shift()!()
+			await settle()
+			expect(sent()).toHaveLength(2)
+		})
+
+		it("replays again on a reconnect and stops a replay whose connection dropped", async () => {
+			const acks: Array<() => void> = []
+			socket.holdAcks = acks
+			const orch = build({ liveTasks: () => TASKS })
+			await orch.start()
+			socket.fire("connect")
+			await settle()
+			// The connection drops while the first message waits for its ack.
+			socket.connected = false
+			acks.shift()!()
+			await settle()
+			expect(sent()).toHaveLength(1)
+
+			socket.holdAcks = null
+			socket.connected = true
+			socket.fire("connect")
+			await settle()
+			expect(sent().slice(1)).toEqual([
+				[TaskBridgeEventName.Message, "a", 1],
+				[TaskBridgeEventName.Message, "a", 2],
+				[TaskBridgeEventName.InstanceState, "a", null],
+				[TaskBridgeEventName.Message, "b", 3],
+				[TaskBridgeEventName.InstanceState, "b", null],
+			])
+		})
+
+		it("sends nothing when no task is live", async () => {
+			const orch = build()
+			await orch.start()
+			socket.fire("connect")
+			await settle()
+			expect(sent()).toEqual([])
+		})
+	})
+
 	it("dispatches a relayed stop_task command to the provider", async () => {
 		const orch = build()
 		await orch.start()
@@ -191,16 +301,7 @@ describe("BridgeOrchestrator", () => {
 
 	it("logs connect_error with auth/network classification", async () => {
 		const logs: string[] = []
-		const orch = new BridgeOrchestrator({
-			getBridgeConfig: vi.fn(async () => CONFIG),
-			provider,
-			events: bus as unknown as BridgeEventSource,
-			workspacePath: "/work",
-			snapshot: vi.fn(async () => ({ mode: "code", isRunning: true })),
-			secretValues: () => [],
-			ioFactory: ioFactory as any,
-			log: (...args: unknown[]) => logs.push(args.join(" ")),
-		})
+		const orch = build({ log: (...args: unknown[]) => logs.push(args.join(" ")) })
 		await orch.start()
 		socket.fire("connect_error", new Error("token expired"))
 		expect(
@@ -217,16 +318,7 @@ describe("BridgeOrchestrator", () => {
 
 	it("logs reconnect_attempt #1 and every 5th, skips 2-4", async () => {
 		const logs: string[] = []
-		const orch = new BridgeOrchestrator({
-			getBridgeConfig: vi.fn(async () => CONFIG),
-			provider,
-			events: bus as unknown as BridgeEventSource,
-			workspacePath: "/work",
-			snapshot: vi.fn(async () => ({ mode: "code", isRunning: true })),
-			secretValues: () => [],
-			ioFactory: ioFactory as any,
-			log: (...args: unknown[]) => logs.push(args.join(" ")),
-		})
+		const orch = build({ log: (...args: unknown[]) => logs.push(args.join(" ")) })
 		await orch.start()
 		const manager = (socket as any).io as FakeEmitter
 
@@ -248,16 +340,7 @@ describe("BridgeOrchestrator", () => {
 
 	it("logs reconnect_failed when manager gives up", async () => {
 		const logs: string[] = []
-		const orch = new BridgeOrchestrator({
-			getBridgeConfig: vi.fn(async () => CONFIG),
-			provider,
-			events: bus as unknown as BridgeEventSource,
-			workspacePath: "/work",
-			snapshot: vi.fn(async () => ({ mode: "code", isRunning: true })),
-			secretValues: () => [],
-			ioFactory: ioFactory as any,
-			log: (...args: unknown[]) => logs.push(args.join(" ")),
-		})
+		const orch = build({ log: (...args: unknown[]) => logs.push(args.join(" ")) })
 		await orch.start()
 		const manager = (socket as any).io as FakeEmitter
 
@@ -278,16 +361,7 @@ describe("BridgeOrchestrator", () => {
 
 	it("resets reconnect counter on successful connect", async () => {
 		const logs: string[] = []
-		const orch = new BridgeOrchestrator({
-			getBridgeConfig: vi.fn(async () => CONFIG),
-			provider,
-			events: bus as unknown as BridgeEventSource,
-			workspacePath: "/work",
-			snapshot: vi.fn(async () => ({ mode: "code", isRunning: true })),
-			secretValues: () => [],
-			ioFactory: ioFactory as any,
-			log: (...args: unknown[]) => logs.push(args.join(" ")),
-		})
+		const orch = build({ log: (...args: unknown[]) => logs.push(args.join(" ")) })
 		await orch.start()
 		const manager = (socket as any).io as FakeEmitter
 

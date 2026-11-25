@@ -23,6 +23,9 @@ type BusListener = (...args: unknown[]) => void
 const RETRY_BASE_MS = 1_000
 const RETRY_MAX_MS = 60_000
 
+/** How long one replayed message may wait for the server's ack before the replay gives up. */
+const REPLAY_ACK_TIMEOUT_MS = 10_000
+
 /**
  * Delay before the given retry (0-based) of a bridge connection the server
  * refused: 1 s, 2 s, 4 s, ... capped at one minute, with equal jitter so
@@ -32,6 +35,12 @@ const RETRY_MAX_MS = 60_000
  */
 export function bridgeRetryDelayMs(attempt: number, random: () => number = Math.random): number {
 	return backoffDelayMs(attempt, { baseMs: RETRY_BASE_MS, capMs: RETRY_MAX_MS, random })
+}
+
+/** A task the extension holds, with the messages it has so far. */
+export interface BridgeLiveTask {
+	taskId: string
+	messages: readonly unknown[]
 }
 
 /** The slice of the extension `API` event bus the orchestrator subscribes to. */
@@ -50,6 +59,8 @@ export interface BridgeOrchestratorOptions {
 	repositoryUrl?: string
 	/** Build the live header/control snapshot for the active task. */
 	snapshot: (taskId: string) => Promise<InstanceStatePayload | null>
+	/** Every task the extension holds, replayed to the server on each connect. */
+	liveTasks: () => BridgeLiveTask[]
 	/** The stored secret values (`CloudService.secretValues`), redacted from every task event. */
 	secretValues: () => readonly string[]
 	log?: Logger
@@ -109,6 +120,9 @@ export class BridgeOrchestrator {
 
 	private currentStatus: BridgeConnectionStatus = "connecting"
 
+	/** Bumped on every connect, so a replay still running from the previous one stops. */
+	private replayRun = 0
+
 	constructor(private readonly options: BridgeOrchestratorOptions) {}
 
 	/** The connection as last reported through `onStatusChange`. */
@@ -164,6 +178,7 @@ export class BridgeOrchestrator {
 			this.log("connected", socket.id)
 			this.register()
 			this.startHeartbeat()
+			void this.replayLiveTasks(socket)
 		})
 		socket.on("disconnect", (reason: string) => {
 			this.log("disconnected", reason)
@@ -297,6 +312,37 @@ export class BridgeOrchestrator {
 		})
 	}
 
+	/**
+	 * Sends every live task's messages so far, then its state. Events emitted
+	 * before the socket existed (a task started before the cloud connected, as
+	 * `tumble -p` always does) or lost on a dead connection never reached the
+	 * server. The server upserts a message by (task, ts) and only lets it grow,
+	 * so a message it already has is a no-op. One message at a time, each
+	 * waiting for its ack: the server drops an account's events past a small
+	 * in-flight bound, and a long history sent at once would cross it.
+	 */
+	private async replayLiveTasks(socket: Socket) {
+		const run = ++this.replayRun
+		const current = () => run === this.replayRun && this.socket === socket && socket.connected
+		try {
+			for (const { taskId, messages } of this.options.liveTasks()) {
+				for (const message of [...messages]) {
+					if (!current()) return
+					await socket
+						.timeout(REPLAY_ACK_TIMEOUT_MS)
+						.emitWithAck(
+							TaskSocketEvents.EVENT,
+							this.taskEvent(this.messageEvent(taskId, "created", message)),
+						)
+				}
+				if (!current()) return
+				await this.pushInstanceState(taskId)
+			}
+		} catch (error) {
+			this.log("replay stopped:", error instanceof Error ? error.message : String(error))
+		}
+	}
+
 	private startHeartbeat() {
 		this.stopHeartbeat()
 		this.heartbeat = setInterval(() => {
@@ -314,16 +360,7 @@ export class BridgeOrchestrator {
 	private subscribeToBus() {
 		const onMessage: BusListener = (...args) => {
 			const payload = args[0] as { taskId: string; action?: string; message: unknown }
-			this.emitTaskEvent({
-				type: TaskBridgeEventName.Message,
-				taskId: payload.taskId,
-				action: payload.action ?? "",
-				message: payload.message,
-				// Stamp this window's worktree root on the event so the backend
-				// attributes the task to the project it actually ran in, instead of
-				// the user-keyed registry singleton (wrong with multiple windows).
-				workspacePath: this.options.workspacePath,
-			})
+			this.emitTaskEvent(this.messageEvent(payload.taskId, payload.action ?? "", payload.message))
 		}
 		const onState: BusListener = (...args) => void this.pushInstanceState(args[0] as string)
 
@@ -367,8 +404,25 @@ export class BridgeOrchestrator {
 		}
 	}
 
+	private messageEvent(taskId: string, action: string, message: unknown): Record<string, unknown> {
+		return {
+			type: TaskBridgeEventName.Message,
+			taskId,
+			action,
+			message,
+			// Stamp this window's worktree root on the event so the backend
+			// attributes the task to the project it actually ran in, instead of
+			// the user-keyed registry singleton (wrong with multiple windows).
+			workspacePath: this.options.workspacePath,
+		}
+	}
+
+	private taskEvent(event: Record<string, unknown>) {
+		return redactSecrets(event, this.options.secretValues())
+	}
+
 	private emitTaskEvent(event: Record<string, unknown>) {
-		this.socket?.emit(TaskSocketEvents.EVENT, redactSecrets(event, this.options.secretValues()))
+		this.socket?.emit(TaskSocketEvents.EVENT, this.taskEvent(event))
 	}
 
 	// --- server → extension -------------------------------------------------

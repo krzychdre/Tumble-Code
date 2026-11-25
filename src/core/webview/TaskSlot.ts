@@ -249,6 +249,12 @@ export class TaskSlot {
 		return this.currentTask?.taskId === taskId ? this.currentTask : this.detached.get(taskId)?.task
 	}
 
+	/** The foreground task and the detached ones, working or at rest. */
+	liveTasks(): Task[] {
+		const detached = [...this.detached.values()].map((entry) => entry.task)
+		return this.currentTask ? [this.currentTask, ...detached] : detached
+	}
+
 	/**
 	 * The tasks of this panel that work right now, by id: the foreground task
 	 * and the detached ones, judged by the same rule that decides whether a
@@ -259,8 +265,8 @@ export class TaskSlot {
 	 */
 	getRunningTasks(others: Iterable<Task> = []): Record<string, RunningTaskStatus> {
 		const runningTasks: Record<string, RunningTaskStatus> = {}
-		for (const task of [this.currentTask, ...[...this.detached.values()].map((entry) => entry.task), ...others]) {
-			if (task && isWorking(task)) {
+		for (const task of [...this.liveTasks(), ...others]) {
+			if (isWorking(task)) {
 				runningTasks[task.taskId] = task.taskStatus === TaskStatus.Interactive ? "awaiting_input" : "running"
 			}
 		}
