@@ -1,6 +1,6 @@
 # The code index status in the CLI footer
 
-Status: in progress.
+Status: done, merged as #1377.
 
 ## Problem
 
