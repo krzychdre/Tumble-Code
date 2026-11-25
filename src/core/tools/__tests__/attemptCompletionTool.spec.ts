@@ -287,7 +287,11 @@ describe("attemptCompletionTool", () => {
 				reopenParentFromDelegation: vi.fn().mockResolvedValue(options.reopened ?? true),
 				tryReattachDelegatedParent: vi.fn().mockResolvedValue(options.tryReattach ?? false),
 			}
-			const task = makeTask({ parentTaskId: PARENT_ID, providerRef: { deref: () => provider } })
+			const task = makeTask({
+				parentTaskId: PARENT_ID,
+				providerRef: { deref: () => provider },
+				clineMessages: [{ ts: 1, type: "say", say: "user_feedback", text: "stop for today" }],
+			})
 			return { task, provider }
 		}
 
@@ -313,6 +317,7 @@ describe("attemptCompletionTool", () => {
 				parentTaskId: PARENT_ID,
 				childTaskId: CHILD_ID,
 				completionResultSummary: "child done",
+				notes: expect.stringContaining("<user_message>\nstop for today\n</user_message>"),
 			})
 			// Re-attach is tried only when the gate fails.
 			expect(provider.tryReattachDelegatedParent.mock.calls.length > 0).toBe(!parentHistory.awaitingChildId)

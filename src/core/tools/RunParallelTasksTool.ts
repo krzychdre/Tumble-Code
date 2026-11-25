@@ -352,7 +352,7 @@ async function runOneSubtask({
 	/** Mark the panel row terminal and build the result, finalized when it names a worktree. */
 	const end = (
 		status: ParallelSubtaskResult["status"],
-		fields: Pick<ParallelSubtaskResult, "worktreePath" | "branch" | "message" | "error"> = {},
+		fields: Pick<ParallelSubtaskResult, "worktreePath" | "branch" | "message" | "error" | "notes"> = {},
 	): Promise<ParallelSubtaskResult> => {
 		registry.markTerminal(registryId, status, status === "completed" ? fields.message : fields.error)
 		return finalize(cwd, { index, mode: subtask.mode, status, ...fields })
@@ -428,13 +428,14 @@ async function runOneSubtask({
 			return await end("cancelled", { worktreePath, branch })
 		}
 		if (outcome.completed) {
-			return await end("completed", { worktreePath, branch, message: outcome.lastMessage })
+			return await end("completed", { worktreePath, branch, message: outcome.lastMessage, notes: outcome.notes })
 		}
 		return await end("failed", {
 			worktreePath,
 			branch,
 			message: outcome.lastMessage,
 			error: describeSubtaskFailure(outcome),
+			notes: outcome.notes,
 		})
 	} catch (error) {
 		return await end("failed", {

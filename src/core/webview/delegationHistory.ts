@@ -63,7 +63,8 @@ export function hasToolResultFor(messages: readonly ApiMessageLike[], toolUseId:
 	return false
 }
 
-/** The text a parent receives when its delegated subtask completes. */
-export function formatSubtaskResult(childTaskId: string, completionResultSummary: string): string {
-	return `Subtask ${childTaskId} completed.\n\nResult:\n${completionResultSummary}`
+/** The text a parent receives when its delegated subtask completes; `notes` from childReportNotes. */
+export function formatSubtaskResult(childTaskId: string, completionResultSummary: string, notes: string): string {
+	const result = `Subtask ${childTaskId} completed.\n\nResult:\n${completionResultSummary}`
+	return notes ? `${result}\n\n${notes}` : result
 }

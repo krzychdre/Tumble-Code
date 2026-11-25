@@ -6,6 +6,7 @@ import { getModelMaxOutputTokens } from "@tumble-code/core/browser"
 
 import { buildApiHandler } from "../../api"
 import { Task, type AutoApprovalOverride } from "../task/Task"
+import { childReportNotes } from "../task/childReport"
 import { type SideQuery } from "../memory"
 import { makeSideQuery } from "../memory/memoryTaskIntegration"
 
@@ -65,6 +66,8 @@ export interface BackgroundTaskOutcome {
 	 * stopped as stuck or over its request budget (Task#stopMessage, `abortReason` "stuck" or "budget").
 	 */
 	failureMessage?: string
+	/** What the parent reads besides the task's own words (childReportNotes). */
+	notes: string
 }
 
 /** Live memory-system activity counters ("recalling/writing memory..." badge). */
@@ -350,7 +353,7 @@ export class BackgroundTaskRunner {
 				if (result.completed) {
 					void task.abortTask(true).catch(logAbortFailure)
 				}
-				resolve({ ...result, writtenPaths })
+				resolve({ ...result, writtenPaths, notes: childReportNotes(task) })
 			}
 
 			const onCompleted = () => {

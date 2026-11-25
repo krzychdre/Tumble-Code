@@ -2222,6 +2222,7 @@ export class ClineProvider
 		parentTaskId: string
 		childTaskId: string
 		completionResultSummary: string
+		notes: string
 	}): Promise<boolean> {
 		return this.delegation.complete(params)
 	}

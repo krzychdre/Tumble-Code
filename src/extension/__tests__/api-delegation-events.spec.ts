@@ -154,6 +154,7 @@ describe("API forwards the delegation events DelegationService emits on the prov
 			parentTaskId: "p",
 			childTaskId: "c1",
 			completionResultSummary: "all done",
+			notes: "",
 		})
 
 		expect(reopened).toBe(true)

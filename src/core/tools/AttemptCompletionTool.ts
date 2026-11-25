@@ -5,6 +5,7 @@ import { TelemetryService } from "@tumble-code/telemetry"
 
 import { Task } from "../task/Task"
 import { ignorePartialAskRejection } from "../task/AskIgnoredError"
+import { childReportNotes } from "../task/childReport"
 import { parentAwaitsChild } from "../webview/DelegationService"
 import { formatResponse } from "../prompts/responses"
 import { Package } from "../../shared/package"
@@ -33,6 +34,7 @@ interface DelegationProvider {
 		parentTaskId: string
 		childTaskId: string
 		completionResultSummary: string
+		notes: string
 	}): Promise<boolean>
 	tryReattachDelegatedParent(parentTaskId: string, childTaskId: string): Promise<boolean>
 }
@@ -242,6 +244,7 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 			parentTaskId: task.parentTaskId!,
 			childTaskId: task.taskId,
 			completionResultSummary: result,
+			notes: childReportNotes(task),
 		})
 
 		if (didReopen === false) {

@@ -553,6 +553,15 @@ describe("RunParallelTasksTool helpers", () => {
 			expect(out).toContain("worktree: /wt/b")
 		})
 
+		it("appends what the user wrote to a subagent after its report", () => {
+			const out = formatParallelResults(
+				asFinished([
+					{ index: 0, mode: "code", status: "completed", message: "report", notes: "The user wrote" },
+				]),
+			)
+			expect(out).toContain("report\n\nThe user wrote")
+		})
+
 		it("shows a failed subtask's last message, so the parent sees how far it got", () => {
 			const results: ParallelSubtaskResult[] = [
 				{ index: 0, mode: "code", status: "failed", error: "Stopped as stuck", message: "Solver done." },
@@ -722,6 +731,22 @@ describe("RunParallelTasksTool.execute", () => {
 			"completed",
 			"done",
 		)
+	})
+
+	it.each([
+		{ completed: true, lastMessage: "done" },
+		{ completed: false, abortReason: "budget", lastMessage: "partial" },
+	])("tells the parent what the user wrote to the subagent (completed: $completed)", async (outcome) => {
+		const { callbacks } = await runFanOut({
+			subtasks: [{ message: "job" }],
+			setup: (p) =>
+				p.backgroundTaskRunner.awaitTaskCompletion.mockResolvedValueOnce({
+					...outcome,
+					writtenPaths: [],
+					notes: "The user wrote: stop",
+				}),
+		})
+		expect(callbacks.pushToolResult.mock.calls[0][0]).toContain("The user wrote: stop")
 	})
 
 	it("a second fan-out of the same parent numbers its subagents after the first one's", async () => {
