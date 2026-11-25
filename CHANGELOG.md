@@ -1,5 +1,43 @@
 # Tumble Code Changelog
 
+## 1.4.0
+
+Released 2026-11-25
+
+### New
+
+- **Self-hosted cloud: answer a question from the web.** When a task asks you something, the task page shows the question above the message box with each suggested answer as a button, and anything you type there answers it too; approvals show the same buttons as VS Code (Run, Save, Retry) and take your typed comment along.
+- **Self-hosted cloud: a clearer task list with live tasks on top.** Every run is a card whose edge shows its state, the newest-first list is split by day, and a "Needs your attention" strip lists the tasks that are working or waiting for your answer, updated live. A task can be deleted from the list with its whole conversation, optionally together with its subtasks.
+- **CLI: Code index.** The CLI indexes the workspace for `codebase_search` as VS Code does: with your VS Code code index settings, or with a `codeIndex` entry in `~/.roo/cli-settings.json` (Qdrant, embedder, model, key), which also works without VS Code. Only the embedder's and Qdrant's keys are copied from VS Code.
+- **CLI: Code index status in the footer.** While the code index is on, the footer shows `◐ index 42%` as it indexes, `● index` once the workspace is indexed and `✗ index` after an error, whose reason appears once as a message.
+- **CLI: Runs each mode on its VS Code profile.** The `vscode` section of `~/.roo/cli-settings.json` now also holds your VS Code provider profiles and the modes they are bound to, without API keys, so the CLI uses the same provider, model and model details per mode. Provider settings you write in the file still win.
+- **CLI: Runs with your VS Code settings.** The VS Code extension now keeps a `vscode` section of `~/.roo/cli-settings.json` up to date, so the CLI uses the same context, subagent, memory, prompt and experiment settings as the editor. Your own keys in the file still win, and the CLI keeps its own approval settings.
+- **CLI: Temperature and HTTP headers per model.** A `models` entry of `~/.roo/cli-settings.json` takes `temperature` (0 to 2, every provider) and `headers` (HTTP headers for an OpenAI-compatible server). Both also come along from your VS Code profile.
+
+### Improved
+
+- **Self-hosted cloud: a running task follows its newest messages.** A live task opens at its latest message and the page keeps up while you stay at the bottom; scroll up to read and it stays put, with a "Latest" button that counts what arrived and takes you back.
+- **Self-hosted cloud: steer a task from your phone.** On a phone the task page keeps a compact header at the top with what the task is doing (Working, Waiting for you, Done, Offline) and a Stop button, folds the rest behind Details, and docks the message box with thumb-sized buttons to the bottom edge.
+- **GPT-6.2 and a provider model sweep.** OpenAI's GPT-6.2 Sol and Astra are available on the OpenAI and Codex providers, and GPT-6.2 Sol is the new default there. Retired models are removed or flagged across OpenAI, xAI, MiniMax, Gemini, Bedrock and Copilot, Gemini 4 Hydrogen gains the extra-high thinking level, and cost estimates now follow the vendors' standard (post-promotion) prices, including corrected Bedrock prices for gpt-oss and other non-Claude models.
+- **CLI: Notices file changes during a session.** Like VS Code, the CLI now sees files change while it runs: edited rules, `.rooignore`, custom modes, skills and MCP settings take effect, and files in the task's context are known to be changed.
+- **Self-hosted cloud: deleting from the task page asks the same way as the list.** The task page's Delete opens the list's confirmation, which names the task, counts its messages, offers to delete its subtasks too, and waits until a running task is stopped.
+- **Saving a memory note no longer slows down running tasks.** Each task reads the memory index once, when it starts, so a note saved by one task (or by a subtask) no longer makes the other running tasks re-read their whole conversation.
+- **Long tasks stay cached.** When a long task fills the context, old tool output is now cleared in one larger step instead of a little more on every turn, so the following requests reuse the model's prompt cache instead of re-reading most of the conversation.
+- **Subagent context size.** The header of an open subagent shows how full its context window is, with the same gauge as the main task header.
+- **Full subagent prompt on click.** Clicking the title of an open subagent unfolds the whole subtask it was given, like the task card in the main chat; clicking again folds it.
+- **Subagent transcript opens at the latest message.** Opening a subagent shows the bottom of its transcript and keeps following new messages, like the main chat, until you scroll up or open a row.
+- **Subtasks hand their work over instead of running out of context.** A subtask or subagent whose context reaches 65% of the model's window is told to finish its step and report, and at 85% it returns to its parent with its open TODO items, so a fresh subtask continues the work. Tasks you start yourself still use the whole window.
+- **Choose when subtasks hand their work over.** Settings, Subagents now has two sliders: the share of the context window at which a subtask is reminded to hand over (65% by default) and the share at which it stops and returns to its parent (85% by default).
+- **Subtasks get a prompt written for subtasks.** A task started by another task (an orchestrator's subtask or a parallel subagent) now gets a shorter system prompt that states the delegation rules once, without the memory-writing instructions and without mode switching, so the orchestrator no longer has to repeat those rules in every assignment.
+
+### Fixed
+
+- **Tasks started before the cloud connection keep their opening messages.** When the connection to Tumble Code Cloud comes up, or comes back, every open task sends what it has so far, so a task started right away (as `tumble -p` does) shows its request and title on the web and can be followed from the first message.
+- **Self-hosted cloud: task titles read as plain text.** A title shows the first line of your request without its Markdown, and a task whose request never reached the cloud is no longer named after an error such as "423".
+- **The modes list in the prompt no longer flips while another VS Code window is open.** A second window, for example a Remote-SSH one with different custom modes, could swap the list in this window's prompt every few seconds, so the model had to re-read the whole conversation instead of using its cache.
+- **A parent task now knows what you told its subtask.** When you write to a subtask or a subagent, for example to stop for today, the parent gets your words with the result and follows them instead of starting the work again.
+- **Reading several images at once no longer breaks Anthropic requests.** When the model read more than one image in a single turn, the request failed with "tool_use ids were found without tool_result blocks immediately after"; the tool results now always come before the images.
+
 ## 1.3.0
 
 Released 2026-11-14
