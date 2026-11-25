@@ -1,6 +1,6 @@
 # Subtask context limits set in the Settings view
 
-Status: in progress.
+Status: done, merged as #1364.
 
 ## Problem
 
