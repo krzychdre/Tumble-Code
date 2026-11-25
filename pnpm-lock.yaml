@@ -666,6 +666,10 @@ importers:
         version: 5.1.0(@opentelemetry/api@1.10.0)(@types/node@22.20.5)(@vitest/ui@5.1.0)(jsdom@30.1.3(@noble/hashes@1.8.0))(vite@8.3.6(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/vscode-shim:
+    dependencies:
+      chokidar:
+        specifier: ^6.0.0
+        version: 6.0.0
     devDependencies:
       '@tumble-code/config-eslint':
         specifier: workspace:^
