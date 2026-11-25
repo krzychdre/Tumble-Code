@@ -2923,6 +2923,20 @@ details.env-details > pre {
 .live-controls.offline > * {
 	opacity: 0.6;
 }
+/* Back to the newest message (static/follow.js): floats just above the bar. It
+   moves the page, not the task, so an offline bar does not dim it. */
+.follow-jump {
+	position: absolute;
+	left: 50%;
+	top: calc(-1 * var(--s3));
+	transform: translate(-50%, -100%);
+	z-index: 4;
+	border-radius: var(--r-pill);
+	box-shadow: var(--shadow-lift);
+}
+.live-controls.offline > .follow-jump {
+	opacity: 1;
+}
 /* The fold for the auto-approval row; a phone-only control (see Responsive). */
 .auto-more {
 	display: none;
@@ -4355,6 +4369,9 @@ table.diag-table th.diag-num {
 	}
 	.live-controls:not(.show-auto) .auto-bar {
 		display: none;
+	}
+	.follow-jump {
+		min-height: 40px;
 	}
 
 	.period-control {

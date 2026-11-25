@@ -49,6 +49,8 @@ window.__tumbleConversation = {
   setActiveAsk: function () {},
   clearActiveAsk: function () {},
 }
+// static/follow.js: live.js asks it to open a live task at its tail.
+window.TumbleFollow = { calls: 0, toTail: function () { this.calls++ } }
 
 // One fake socket per load of live.js. `join` is what the server acknowledges
 // task:join with; `fire` delivers a server event to the handlers live.js set.
@@ -83,6 +85,7 @@ window.addEventListener("load", function () {
       document.getElementById(id).textContent = "\u2014"
     })
     document.querySelectorAll("#live-controls input[type=checkbox]").forEach(function (b) { b.checked = false })
+    window.TumbleFollow.calls = 0
   }
 
   // Loads live.js against a fresh socket, joins with `joinAck`, then hands the
@@ -126,6 +129,7 @@ window.addEventListener("load", function () {
       check("run row: tokens in add the subtasks'", text("hdr-run-in") === "3.3M")
       check("run row: cost adds the subtasks'", text("hdr-run-cost") === "$1.4090")
       check("run row: total tokens add the subtasks'", text("hdr-run-tokens") === "3.4M")
+      check("registration only: the page is not sent to the tail", window.TumbleFollow.calls === 0)
     },
     function () {
       scenario(
@@ -154,6 +158,8 @@ window.addEventListener("load", function () {
           check("a snapshot without figures keeps tokens out", text("hdr-own-out") === "5.9k")
           check("a snapshot without figures keeps the context", text("hdr-context") === "32.2k")
           check("a snapshot without figures still sets the mode", text("hdr-mode") === "ask")
+          check("another task running, this one idle: the page is not sent to the tail",
+                window.TumbleFollow.calls === 0)
         },
         function () {
           scenario(
@@ -170,7 +176,7 @@ window.addEventListener("load", function () {
                 contextWindow: 200000,
               },
             },
-            function () {
+            function (sock) {
               check("this task's snapshot: tokens in", text("hdr-own-in") === "310k")
               check("this task's snapshot: tokens out", text("hdr-own-out") === "6.1k")
               check("this task's snapshot: cost", text("hdr-own-cost") === "$0.1702")
@@ -182,6 +188,9 @@ window.addEventListener("load", function () {
               check("this task's snapshot: mode", text("hdr-mode") === "code")
               check("this task's snapshot: running offers Stop",
                     document.getElementById("btn-stop").hidden === false)
+              check("this task running: the page opens at its tail", window.TumbleFollow.calls === 1)
+              sock.fire("task:relayed_event", { type: "instanceState", taskId: "task-a", isRunning: true })
+              check("a later running snapshot does not move the page again", window.TumbleFollow.calls === 1)
 
               // Every load so far bound its own handler to the fold button;
               // the next scenario gets a fresh one, so exactly one is bound.

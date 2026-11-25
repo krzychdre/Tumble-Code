@@ -33,8 +33,13 @@ _CANDIDATES = ("google-chrome", "chromium", "chromium-browser", "google-chrome-s
 _MIN_CHECKS = {
     # The join acknowledgement against the header: registration-only record,
     # another task's snapshot, a snapshot without figures, this task's snapshot;
-    # the run row of the spend table following this task's figures; the phone fold.
-    "live_checks.html": 30,
+    # the run row of the spend table following this task's figures; the phone
+    # fold; a live task sent to its tail once, an idle one not.
+    "live_checks.html": 34,
+    # Opens at the top unless live; follows new and growing rows at the bottom;
+    # stops on scrolling up and counts what arrives; resumes on the pill or at
+    # the bottom.
+    "follow_checks.html": 19,
     "render_checks.html": 37,
     # Inline/display math, dollar amounts, code, tables, KaTeX trust off.
     "math_checks.html": 12,
