@@ -1,6 +1,6 @@
 # The CLI runs with the editor's settings
 
-Status: in progress.
+Status: done, merged as #1365.
 
 ## Problem
 
