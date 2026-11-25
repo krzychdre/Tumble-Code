@@ -64,8 +64,6 @@ vi.mock("../../../services/code-index/manager", () => ({
 }))
 
 import type OpenAI from "openai"
-import type * as vscode from "vscode"
-
 import type { ProviderSettings } from "@tumble-code/types"
 
 import type { McpHub } from "../../../services/mcp/McpHub"
@@ -73,18 +71,6 @@ import type { ClineProvider } from "../../webview/ClineProvider"
 import { buildNativeToolsArrayWithRestrictions } from "../../task/build-tools"
 import { SYSTEM_PROMPT } from "../system"
 import type { SystemPromptSettings } from "../types"
-
-const mockContext = {
-	extensionPath: "/mock/extension/path",
-	globalStoragePath: "/mock/storage/path",
-	subscriptions: [],
-	workspaceState: { get: () => undefined, update: () => Promise.resolve() },
-	globalState: { get: () => undefined, update: () => Promise.resolve(), setKeysForSync: () => {} },
-	extensionUri: { fsPath: "/mock/extension/path" },
-	globalStorageUri: { fsPath: "/mock/settings/path" },
-	asAbsolutePath: (relativePath: string) => `/mock/extension/path/${relativePath}`,
-	extension: { packageJSON: { version: "1.0.0" } },
-} as unknown as vscode.ExtensionContext
 
 /** MCP hub with one connected server exposing one tool, so every MCP prompt path has something to say. */
 const mcpHubWithServer = {
@@ -108,7 +94,6 @@ const baseSettings: SystemPromptSettings = {
 
 async function buildPrompt(settings: SystemPromptSettings): Promise<string> {
 	return SYSTEM_PROMPT({
-		context: mockContext,
 		memoryIndex: "",
 		cwd: "/test/path",
 		mcpHub: mcpHubWithServer,

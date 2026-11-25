@@ -96,8 +96,6 @@ vi.mock("../../../services/code-index/manager", () => ({
 	},
 }))
 
-import type * as vscode from "vscode"
-
 import type { ModeConfig } from "@tumble-code/types"
 
 import type { McpHub } from "../../../services/mcp/McpHub"
@@ -111,18 +109,6 @@ import type { SystemPromptSettings } from "../types"
 const CWD = "/test/path"
 const SNAPSHOT_DIR = "./__snapshots__/compact-profile"
 const BUDGET_CHARS = 4_000
-
-const mockContext = {
-	extensionPath: "/mock/extension/path",
-	globalStoragePath: "/mock/storage/path",
-	subscriptions: [],
-	workspaceState: { get: () => undefined, update: () => Promise.resolve() },
-	globalState: { get: () => undefined, update: () => Promise.resolve(), setKeysForSync: () => {} },
-	extensionUri: { fsPath: "/mock/extension/path" },
-	globalStorageUri: { fsPath: "/mock/settings/path" },
-	asAbsolutePath: (relativePath: string) => `/mock/extension/path/${relativePath}`,
-	extension: { packageJSON: { version: "1.0.0" } },
-} as unknown as vscode.ExtensionContext
 
 /** One connected server with a tool and a resource: the long prompt would advertise it. */
 const mcpHub = {
@@ -166,7 +152,6 @@ interface BuildExtras {
 
 function build(mode: string, extras: BuildExtras = {}): Promise<string> {
 	return SYSTEM_PROMPT({
-		context: mockContext,
 		memoryIndex: memoryIndex.present ? MEMORY_INDEX_FIXTURE : "",
 		cwd: CWD,
 		mode: mode as never,
@@ -340,8 +325,7 @@ describe("compact system prompt: what it teaches", () => {
 		},
 	)
 
-	it("lists the custom modes it is given in both prompts, whatever the shared VS Code state holds", async () => {
-		// globalState is shared by every window, a Remote-SSH one included; mockContext's is empty.
+	it("lists the custom modes it is given in both prompts", async () => {
 		const reviewer: ModeConfig = {
 			slug: "reviewer-x",
 			name: "Reviewer X",

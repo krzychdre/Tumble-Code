@@ -1,6 +1,6 @@
 # MEMORY.md index read once per task
 
-Status: in progress. Overview: `2026-11-25_08-20_prompt-cache-overview.md`.
+Status: done, merged as #1357.
 
 ## Problem
 

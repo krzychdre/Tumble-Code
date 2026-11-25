@@ -205,7 +205,6 @@ export class ApiRequestBuilder {
 		// The same builder serves the "copy system prompt" preview (generateSystemPrompt).
 		return await SYSTEM_PROMPT(
 			buildSystemPromptInput({
-				context: provider.context,
 				cwd: this.access.cwd,
 				mode: await this.access.getTaskMode(),
 				state,

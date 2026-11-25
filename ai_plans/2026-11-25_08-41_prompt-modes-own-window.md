@@ -1,6 +1,6 @@
 # MODES list from the window's own custom modes
 
-Status: in progress. Overview: `2026-11-25_08-20_prompt-cache-overview.md`.
+Status: done, merged as #1355.
 
 ## Problem
 
@@ -23,8 +23,7 @@ take the same two values `SYSTEM_PROMPT` already receives. The prompt no longer 
 directory side effect (`ensureSettingsDirectoryExists`) leaves the prompt; `CustomModesManager` and `McpHub` create
 the directory themselves.
 
-`SystemPromptOptions.context` is now unused by the prompt builder; removing it touches about thirty callers and is
-left as a separate cleanup.
+`SystemPromptOptions.context` became unused by the prompt builder and was removed in a follow-up (see the overview).
 
 ## Tests
 

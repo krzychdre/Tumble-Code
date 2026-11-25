@@ -1,5 +1,3 @@
-import type * as vscode from "vscode"
-
 import type { CliDisplay, CustomModePrompts, ModeConfig } from "@tumble-code/types"
 
 import type { McpHub } from "../../services/mcp/McpHub"
@@ -62,7 +60,6 @@ export interface SystemPromptSettings {
  * so the "copy system prompt" preview and the live request cannot drift apart.
  */
 export interface SystemPromptOptions {
-	context: vscode.ExtensionContext
 	cwd: string
 	/** Mode slug; an unknown slug falls back to the first built-in mode. Defaults to the default mode. */
 	mode?: Mode

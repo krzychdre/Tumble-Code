@@ -45,7 +45,6 @@ export interface SystemPromptState {
  * exists once and the two prompts cannot drift apart again (CORE-R11).
  */
 export interface SystemPromptSource {
-	context: vscode.ExtensionContext
 	cwd: string
 	mode: string
 	/** Provider state; undefined when the provider is gone, then every setting takes its default. */
@@ -133,7 +132,6 @@ export function buildSystemPromptInput(source: SystemPromptSource): SystemPrompt
 	const config = vscode.workspace.getConfiguration(Package.name)
 
 	return {
-		context: source.context,
 		cwd: source.cwd,
 		mode: source.mode,
 		mcpHub: isMcpEnabledForPrompt(state) ? source.mcpHub : undefined,
