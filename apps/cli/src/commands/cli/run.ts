@@ -57,6 +57,7 @@ import {
 } from "@/lib/utils/model-settings.js"
 import { readVsCodeConfig } from "@/lib/utils/vscode-config.js"
 import { definedOnly, readVscodeProfiles, type VscodeProfiles } from "@/lib/utils/vscode-profiles.js"
+import { findCodeIndexProblems, resolveCodeIndexSettings } from "@/lib/utils/code-index-settings.js"
 import { validateTerminalShellPath } from "@/lib/utils/shell.js"
 import { getDefaultExtensionPath } from "@/lib/utils/extension.js"
 import { isValidSessionId } from "@/lib/utils/session-id.js"
@@ -510,7 +511,11 @@ async function checkProviders(settings: CliSettings, flagOptions: FlagOptions, p
 		)
 	}
 
-	const modelSettingsProblems = [...findModelSettingsProblems(settings.models), ...findModeBindingProblems(settings)]
+	const modelSettingsProblems = [
+		...findModelSettingsProblems(settings.models),
+		...findModeBindingProblems(settings),
+		...findCodeIndexProblems(settings.codeIndex),
+	]
 	if (modelSettingsProblems.length > 0) {
 		for (const problem of modelSettingsProblems) {
 			console.error(`[CLI] Error: ${problem} (in ${getSettingsPath()})`)
@@ -663,6 +668,12 @@ async function resolveRunOptions(
 	}
 
 	await checkProviders(settings, flagOptions, providers)
+
+	const { codeIndexSettings, warnings: codeIndexWarnings } = resolveCodeIndexSettings(settings)
+	for (const warning of codeIndexWarnings) {
+		console.error(`[CLI] Warning: ${warning} (in ${getSettingsPath()})`)
+	}
+	extensionHostOptions.codeIndexSettings = codeIndexSettings
 
 	extensionHostOptions.apiKey = keyFor(providerConfig)
 	extensionHostOptions.modeProviderSettings = {

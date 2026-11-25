@@ -49,6 +49,19 @@ export const codebaseIndexConfigSchema = z.object({
 
 export type CodebaseIndexConfig = z.infer<typeof codebaseIndexConfigSchema>
 
+export type CodebaseIndexEmbedderProvider = NonNullable<CodebaseIndexConfig["codebaseIndexEmbedderProvider"]>
+
+/** The secret that holds each embedder's API key; ollama and bedrock take none. */
+export const CODEBASE_INDEX_EMBEDDER_SECRET_KEYS = {
+	openai: "codeIndexOpenAiKey",
+	ollama: undefined,
+	"openai-compatible": "codebaseIndexOpenAiCompatibleApiKey",
+	gemini: "codebaseIndexGeminiApiKey",
+	mistral: "codebaseIndexMistralApiKey",
+	bedrock: undefined,
+	openrouter: "codebaseIndexOpenRouterApiKey",
+} as const satisfies Record<CodebaseIndexEmbedderProvider, string | undefined>
+
 /**
  * CodebaseIndexModels
  */

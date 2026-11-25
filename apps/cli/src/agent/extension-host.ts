@@ -58,6 +58,7 @@ import {
 	type SaveModelChoice,
 } from "@/lib/storage/index.js"
 import { restoreCloudPort } from "@/lib/auth/cloud-api-url.js"
+import type { CodeIndexSettings } from "@/lib/utils/code-index-settings.js"
 import { openExternal as openInBrowser } from "@/lib/utils/open-external.js"
 
 import type { WaitingForInputEvent } from "./events.js"
@@ -102,6 +103,8 @@ export interface ExtensionHostOptions {
 	models?: Record<string, CliModelSettings>
 	/** The editor's settings (`vscode.settings` of cli-settings.json), applied under every other setting. */
 	vscodeSettings?: Partial<GlobalSettings>
+	/** The code index of the run (lib/utils/code-index-settings.ts), sent after the settings. */
+	codeIndexSettings?: CodeIndexSettings
 	/**
 	 * The provider settings /model gives `model` in `mode`, resolved from the
 	 * settings file: on the model's own provider and base URL when its
@@ -642,6 +645,14 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 			this.sendToExtension({
 				type: "cliModeProviderSettings",
 				cliModeProviderSettings: this.options.modeProviderSettings,
+			})
+		}
+
+		// Saved as the VS Code code index settings save it, so the extension starts or stops indexing.
+		if (this.options.codeIndexSettings) {
+			this.sendToExtension({
+				type: "saveCodeIndexSettingsAtomic",
+				codeIndexSettings: this.options.codeIndexSettings,
 			})
 		}
 

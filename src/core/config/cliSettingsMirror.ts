@@ -4,7 +4,13 @@ import path from "path"
 
 import type { ExtensionContext } from "vscode"
 
-import { GLOBAL_SETTINGS_KEYS, type GlobalSettings, type ProviderProfilesEnvelope } from "@tumble-code/types"
+import {
+	CODEBASE_INDEX_EMBEDDER_SECRET_KEYS,
+	GLOBAL_SETTINGS_KEYS,
+	type GlobalSettings,
+	type ProviderProfilesEnvelope,
+	type SecretState,
+} from "@tumble-code/types"
 import { withLockedJsonTransaction } from "@tumble-code/core"
 
 import { logger } from "../../utils/logging"
@@ -66,8 +72,7 @@ const NOT_MIRRORED: ReadonlySet<GlobalSettingsKey> = new Set<GlobalSettingsKey>(
 	"terminalZdotdir",
 	"terminalProfile",
 	"execaShellPath",
-	// The code index: its embedder keys are secrets, so a mirrored config would start an index that fails.
-	"codebaseIndexConfig",
+	// The embedder model catalog the code index settings list; the config itself is mirrored.
 	"codebaseIndexModels",
 	// Custom modes live in their own file, which the CLI reads from its own store.
 	"customModes",
@@ -103,11 +108,16 @@ export interface VscodeSection {
 	settings: Partial<GlobalSettings>
 	/** The provider profiles and their modes, as "Export settings" writes them: without API keys. */
 	profiles: ProviderProfilesEnvelope
+	/**
+	 * The keys the code index runs with: the active embedder's and Qdrant's, the only secrets in the
+	 * section (the CLI cannot index without them, and the owner chose to carry them).
+	 */
+	codeIndexSecrets: Partial<SecretState>
 }
 
 /** The section for the editor's current settings and provider profiles. */
 export async function buildVscodeSection(
-	contextProxy: Pick<ContextProxy, "getValue">,
+	contextProxy: Pick<ContextProxy, "getValue" | "getSecret">,
 	profiles: Pick<ProviderSettingsManager, "export">,
 ): Promise<VscodeSection> {
 	const settings: Record<string, unknown> = {}
@@ -117,7 +127,15 @@ export async function buildVscodeSection(
 			settings[key] = value
 		}
 	}
-	return { settings, profiles: await profiles.export() }
+	const embedder = contextProxy.getValue("codebaseIndexConfig")?.codebaseIndexEmbedderProvider
+	const codeIndexSecrets: Record<string, string> = {}
+	for (const key of [embedder && CODEBASE_INDEX_EMBEDDER_SECRET_KEYS[embedder], "codeIndexQdrantApiKey"] as const) {
+		const value = key && contextProxy.getSecret(key)
+		if (value) {
+			codeIndexSecrets[key] = value
+		}
+	}
+	return { settings, profiles: await profiles.export(), codeIndexSecrets }
 }
 
 /** Replace the `vscode` section of the settings file, keeping every other key; no write when nothing changed. */

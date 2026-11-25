@@ -105,8 +105,10 @@ slots by literal name, so renaming a slot means changing both. `TelemetryPropert
 
 The CLI also gets the editor's settings through a file. In VS Code (not inside the CLI) the extension writes the
 `vscode` section of `~/.roo/cli-settings.json` on every `ContextProxy` or secret-store change
-(`src/core/config/cliSettingsMirror.ts`, under the same file lock the CLI's `saveSettings` takes): the global settings
-and the provider profiles without keys (`ProviderSettingsManager.export()`). The CLI passes `vscode.settings` to the
+(`src/core/config/cliSettingsMirror.ts`, under the same file lock the CLI's `saveSettings` takes): the global settings,
+the provider profiles without keys (`ProviderSettingsManager.export()`) and the code index's two keys (the active
+embedder's and Qdrant's). The CLI sends the code index, its own `codeIndex` entry over the mirrored one, as
+`saveCodeIndexSettingsAtomic` (`apps/cli/src/lib/utils/code-index-settings.ts`). The CLI passes `vscode.settings` to the
 extension host under its own settings and resolves each mode's provider on its VS Code profile, under the file and the
 flags (`apps/cli/src/commands/cli/run.ts`, `apps/cli/src/lib/utils/vscode-profiles.ts`).
 

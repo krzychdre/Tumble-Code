@@ -450,6 +450,7 @@ and prints a one-line hint saying where to set one.
 | `mcpSettingsPath`         | File with the global MCP servers, see [MCP Servers](#mcp-servers)         |
 | `cloudApiUrl`             | Cloud API URL, see [Tumble Code Cloud](#tumble-code-cloud)                |
 | `timeZone`                | IANA zone such as `Europe/Warsaw`, see the note below                     |
+| `codeIndex`               | The code index, see [Code Index](#code-index)                             |
 
 [`examples/cli-settings.example.json`](examples/cli-settings.example.json) sets
 every one of these keys, with each explained in
@@ -472,7 +473,9 @@ The VS Code extension keeps the `vscode` section up to date: on every change in
 its Settings it writes the settings there (`vscode.settings`), so the CLI runs
 the engine the way the editor does: context management, subagents and their
 handoff limits, memory, custom instructions, prompts, experiments and the rest.
-It also writes the provider profiles and the modes they are bound to
+It also writes the code index settings with the two keys they need, the
+active embedder's and Qdrant's (`vscode.codeIndexSecrets`, the only keys in the
+section), and the provider profiles and the modes they are bound to
 (`vscode.profiles`, as "Export settings" writes them: without API keys). A mode
 runs on its VS Code profile, else on the current one: provider, model and base
 URL, with the profile's model facts (context window, prices, images, reasoning
@@ -889,6 +892,46 @@ server or gateway that needs a routing or team header):
 Without them the provider's default temperature applies and no extra headers
 are sent. A VS Code profile in the `vscode` section brings both along, under
 what the `models` entry says.
+
+### Code Index
+
+The code index lets the model search the workspace by meaning
+(`codebase_search`), as in VS Code: an embedding model turns the code into
+vectors and a Qdrant server stores them. The CLI indexes the workspace at
+startup and keeps the index current as files change. With the VS Code
+extension installed it runs with the editor's code index settings (the `vscode`
+section); `codeIndex` sets them without VS Code, or changes some of them:
+
+```json
+{
+	"codeIndex": {
+		"qdrantUrl": "http://192.168.50.194:6333",
+		"embedder": "openai-compatible",
+		"baseUrl": "http://192.168.50.194:11111/v1",
+		"model": "granite-embedding-311m-multilingual-r2",
+		"dimension": 768,
+		"apiKeyEnv": "EMBEDDINGS_API_KEY"
+	}
+}
+```
+
+- `embedder`: `openai`, `ollama`, `openai-compatible`, `gemini`, `mistral`,
+  `bedrock` or `openrouter`; `baseUrl` is the server of `openai-compatible`
+  and `ollama`.
+- `model` and `dimension`: the embedding model and its vector size (needed
+  for a model the extension does not know).
+- `apiKey` or `apiKeyEnv`: the embedder's key; `qdrantApiKey` or
+  `qdrantApiKeyEnv`: Qdrant's, if it has one. An unset variable is reported at
+  startup.
+- `searchMinScore` (0 to 1) and `searchMaxResults` (10 to 200) tune
+  `codebase_search`.
+- `enabled`: `false` turns the index off; the entry turns it on otherwise.
+  Without the entry and without VS Code the index is off.
+
+Each key set here wins over the `vscode` section; the rest comes from there. A
+key that is malformed stops the run at startup and names the key. The index
+lives in Qdrant under the workspace path, so the CLI and VS Code share one
+index of a workspace.
 
 ## MCP Servers
 
